@@ -47,6 +47,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        status: {
+          new: "hsl(var(--status-new))",
+          queue: "hsl(var(--status-queue))",
+          printing: "hsl(var(--status-printing))",
+          finished: "hsl(var(--status-finished))",
+          delivered: "hsl(var(--status-delivered))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
