@@ -19,6 +19,7 @@ const Login = () => {
     // Simulate login
     setTimeout(() => {
       setIsLoading(false);
+      localStorage.setItem("isLoggedIn", "true");
       toast.success("Login successful!");
       navigate("/dashboard");
     }, 1000);
@@ -31,6 +32,7 @@ const Login = () => {
     // Simulate signup
     setTimeout(() => {
       setIsLoading(false);
+      localStorage.setItem("isLoggedIn", "true");
       toast.success("Account created successfully!");
       navigate("/dashboard");
     }, 1000);
