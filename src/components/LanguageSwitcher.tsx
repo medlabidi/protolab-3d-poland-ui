@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,27 +7,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const languages = [
-  { code: "pl", name: "Polski", flag: "🇵🇱" },
   { code: "en", name: "English", flag: "🇬🇧" },
-  { code: "fr", name: "Français", flag: "🇫🇷" },
-  { code: "de", name: "Deutsch", flag: "🇩🇪" },
+  { code: "pl", name: "Polski", flag: "🇵🇱" },
 ];
 
 export const LanguageSwitcher = () => {
-  const [currentLang, setCurrentLang] = useState("en");
+  const { language, setLanguage, t } = useLanguage();
 
-  useEffect(() => {
-    const savedLang = localStorage.getItem("language") || "en";
-    setCurrentLang(savedLang);
-  }, []);
-
-  const handleLanguageChange = (langCode: string) => {
-    setCurrentLang(langCode);
-    localStorage.setItem("language", langCode);
+  const handleLanguageChange = (langCode: "en" | "pl") => {
+    setLanguage(langCode);
     const langName = languages.find((l) => l.code === langCode)?.name;
-    toast.success(`Language changed to ${langName}`);
+    toast.success(`${t.common.languageChanged} ${langName}`);
   };
 
   return (
@@ -36,14 +28,14 @@ export const LanguageSwitcher = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Globe className="h-4 w-4" />
-          {languages.find((l) => l.code === currentLang)?.flag}
+          {languages.find((l) => l.code === language)?.flag}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => handleLanguageChange(lang.code)}
+            onClick={() => handleLanguageChange(lang.code as "en" | "pl")}
             className="gap-2"
           >
             <span>{lang.flag}</span>
