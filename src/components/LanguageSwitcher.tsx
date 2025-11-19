@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 const languages = [
   { code: "pl", name: "Polski", flag: "🇵🇱" },
@@ -17,6 +18,18 @@ const languages = [
 
 export const LanguageSwitcher = () => {
   const [currentLang, setCurrentLang] = useState("en");
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem("language") || "en";
+    setCurrentLang(savedLang);
+  }, []);
+
+  const handleLanguageChange = (langCode: string) => {
+    setCurrentLang(langCode);
+    localStorage.setItem("language", langCode);
+    const langName = languages.find((l) => l.code === langCode)?.name;
+    toast.success(`Language changed to ${langName}`);
+  };
 
   return (
     <DropdownMenu>
@@ -30,7 +43,7 @@ export const LanguageSwitcher = () => {
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => setCurrentLang(lang.code)}
+            onClick={() => handleLanguageChange(lang.code)}
             className="gap-2"
           >
             <span>{lang.flag}</span>

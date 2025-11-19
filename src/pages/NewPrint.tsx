@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send } from "lucide-react";
+import { Upload, Calculator, Send, Box } from "lucide-react";
 import { toast } from "sonner";
 
 const NewPrint = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedIn);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -23,6 +32,13 @@ const NewPrint = () => {
   };
 
   const calculatePrice = () => {
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      toast.info("Please login to get price estimate");
+      navigate("/login");
+      return;
+    }
+    
     // Simulate price calculation
     const price = Math.floor(Math.random() * 200) + 50;
     setEstimatedPrice(price);
@@ -35,9 +51,26 @@ const NewPrint = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <DashboardSidebar />
+      {isLoggedIn && <DashboardSidebar />}
       
-      <main className="flex-1 p-8">
+      {!isLoggedIn && (
+        <header className="fixed top-0 left-0 right-0 border-b border-border bg-card/50 backdrop-blur-sm z-50">
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <button 
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-opacity"
+            >
+              <Box className="w-6 h-6" />
+              ProtoLab
+            </button>
+            <Button variant="outline" onClick={() => navigate("/login")}>
+              Login
+            </Button>
+          </div>
+        </header>
+      )}
+      
+      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''}`}>
         <div className="max-w-4xl mx-auto space-y-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">New Print Request</h1>
