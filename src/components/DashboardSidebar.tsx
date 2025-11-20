@@ -2,13 +2,16 @@ import { NavLink } from "@/components/NavLink";
 import { LayoutDashboard, Plus, Package, Settings, LogOut, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const DashboardSidebar = () => {
+  const { t } = useLanguage();
+  
   const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Plus, label: "New Print", path: "/new-print" },
-    { icon: Package, label: "My Orders", path: "/orders" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: LayoutDashboard, label: t.dashboard.overview, path: "/dashboard" },
+    { icon: Plus, label: t.dashboard.newPrint, path: "/new-print" },
+    { icon: Package, label: t.dashboard.orders, path: "/orders" },
+    { icon: Settings, label: t.dashboard.settings, path: "/settings" },
   ];
 
   return (
@@ -16,7 +19,7 @@ export const DashboardSidebar = () => {
       <div className="mb-8">
         <NavLink to="/" className="flex items-center gap-2 text-xl font-bold text-primary hover:text-primary/90 transition-colors">
           <Box className="w-6 h-6" />
-          ProtoLab
+          {t.common.protolab}
         </NavLink>
       </div>
 
@@ -42,7 +45,7 @@ export const DashboardSidebar = () => {
         onClick={() => console.log("Logout")}
       >
         <LogOut className="w-5 h-5" />
-        <span className="font-medium">Logout</span>
+        <span className="font-medium">{t.dashboard.logout}</span>
       </Button>
     </aside>
   );

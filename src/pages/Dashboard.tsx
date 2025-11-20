@@ -4,25 +4,27 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
 import { Package, DollarSign, Clock, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const stats = [
     {
-      title: "Active Orders",
+      title: t.dashboard.activeOrders,
       value: "3",
       icon: Clock,
       description: "Currently in progress",
     },
     {
-      title: "Completed Orders",
+      title: t.dashboard.completedPrints,
       value: "12",
       icon: Package,
       description: "Successfully delivered",
     },
     {
-      title: "Total Spent",
+      title: t.dashboard.totalSpent,
       value: "1,245 PLN",
       icon: DollarSign,
       description: "Lifetime spending",
@@ -60,8 +62,8 @@ const Dashboard = () => {
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back! Here's an overview of your 3D printing projects.</p>
+            <h1 className="text-3xl font-bold mb-2">{t.dashboard.overview}</h1>
+            <p className="text-muted-foreground">{t.dashboard.welcome}</p>
           </div>
 
           {/* Stats Grid */}
@@ -85,7 +87,7 @@ const Dashboard = () => {
           {/* Recent Orders */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Orders</CardTitle>
+              <CardTitle>{t.dashboard.recentOrders}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
