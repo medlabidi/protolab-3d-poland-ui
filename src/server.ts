@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import createApp from './app';
+import createApp from './express-app';
 import { connectDatabase } from './config/database';
 import { logger } from './config/logger';
 

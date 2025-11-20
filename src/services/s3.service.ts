@@ -1,7 +1,7 @@
 import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, S3_BUCKET_NAME } from '../config/s3';
-import { v4 as uuidv4 } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 export class S3Service {
   async uploadFile(file: Express.Multer.File): Promise<string> {

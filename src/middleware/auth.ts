@@ -22,7 +22,7 @@ export const authenticate = (
     req.user = payload;
     next();
   } catch (error) {
-    logger.error('Authentication error:', error);
+    logger.error({ err: error }, 'Authentication error');
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 };

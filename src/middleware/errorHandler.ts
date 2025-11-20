@@ -7,12 +7,11 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  logger.error('Error occurred:', {
-    message: err.message,
-    stack: err.stack,
+  logger.error({
+    err: err,
     path: req.path,
     method: req.method,
-  });
+  }, 'Error occurred');
   
   if (err.name === 'ValidationError') {
     res.status(400).json({ error: 'Validation error', details: err.message });
