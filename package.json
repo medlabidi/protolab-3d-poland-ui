@@ -15,7 +15,13 @@
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
-    "install-all": "npm install && npm install --prefix client && npm install --prefix server"
+    "install-all": "npm install && npm install --prefix client && npm install --prefix server",
+    "verify-db": "ts-node verify-db.ts",
+    "test": "echo \"Tests not configured yet\"",
+    "lint": "cd client && npm run lint && cd ../server && npm run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules && npm install",
+    "health-check": "npm run verify-db && npm run lint"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

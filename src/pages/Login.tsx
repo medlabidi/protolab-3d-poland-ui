@@ -14,30 +14,121 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
 
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  // Signup form state
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const API_URL = "http://localhost:5000/api";
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Login failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Store tokens and user info
+      localStorage.setItem("accessToken", data.tokens.accessToken);
+      localStorage.setItem("refreshToken", data.tokens.refreshToken);
+      localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
+
       toast.success("Login successful!");
       navigate("/dashboard");
-    }, 1000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Connection error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate signup
-    setTimeout(() => {
+
+    // Validation
+    if (!signupName || !signupEmail || !signupPassword || !confirmPassword) {
+      toast.error("All fields are required");
       setIsLoading(false);
+      return;
+    }
+
+    if (signupPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Registration failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Store tokens and user info
+      localStorage.setItem("accessToken", data.tokens.accessToken);
+      localStorage.setItem("refreshToken", data.tokens.refreshToken);
+      localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
+
       toast.success("Account created successfully!");
+      
+      // Clear signup form
+      setSignupName("");
+      setSignupEmail("");
+      setSignupPassword("");
+      setConfirmPassword("");
+
       navigate("/dashboard");
-    }, 1000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Connection error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,11 +155,24 @@ const Login = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">{t.login.email}</Label>
-                  <Input id="email" type="email" placeholder="your@email.com" required />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="your@email.com" 
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">{t.login.password}</Label>
-                  <Input id="password" type="password" required />
+                  <Input 
+                    id="password" 
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required 
+                  />
                 </div>
                 <Button type="button" variant="link" className="px-0 text-sm">
                   Forgot password?
@@ -116,19 +220,44 @@ const Login = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">{t.login.name}</Label>
-                  <Input id="signup-name" placeholder="John Doe" required />
+                  <Input 
+                    id="signup-name" 
+                    placeholder="John Doe" 
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">{t.login.email}</Label>
-                  <Input id="signup-email" type="email" placeholder="your@email.com" required />
+                  <Input 
+                    id="signup-email" 
+                    type="email" 
+                    placeholder="your@email.com" 
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">{t.login.password}</Label>
-                  <Input id="signup-password" type="password" required />
+                  <Input 
+                    id="signup-password" 
+                    type="password"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">{t.login.confirmPassword}</Label>
-                  <Input id="confirm-password" type="password" required />
+                  <Input 
+                    id="confirm-password" 
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required 
+                  />
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
