@@ -6,6 +6,11 @@ export interface IUser extends Document {
   passwordHash: string;
   phone?: string;
   address?: string;
+  city?: string;
+  zipCode?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
   role: 'user' | 'admin';
   createdAt: Date;
   orders: mongoose.Types.ObjectId[];
@@ -35,6 +40,24 @@ const userSchema = new Schema<IUser>({
   address: {
     type: String,
     trim: true,
+  },
+  city: {
+    type: String,
+    trim: true,
+  },
+  zipCode: {
+    type: String,
+    trim: true,
+  },
+  country: {
+    type: String,
+    trim: true,
+  },
+  latitude: {
+    type: Number,
+  },
+  longitude: {
+    type: Number,
   },
   role: {
     type: String,

@@ -11,6 +11,11 @@ export class AuthService {
     password: string;
     phone?: string;
     address?: string;
+    city?: string;
+    zipCode?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
   }): Promise<{ user: IUser; tokens: TokenPair }> {
     const existingUser = await User.findOne({ email: data.email });
     if (existingUser) {
@@ -25,6 +30,11 @@ export class AuthService {
       passwordHash,
       phone: data.phone,
       address: data.address,
+      city: data.city,
+      zipCode: data.zipCode,
+      country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
       role: 'user',
     });
     

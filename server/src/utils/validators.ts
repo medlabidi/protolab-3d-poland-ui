@@ -3,9 +3,15 @@ import { z } from 'zod';
 export const registerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
-  password: z.string().min(8).max(100),
+  password: z.string().min(6).max(100),
   phone: z.string().optional(),
   address: z.string().optional(),
+  city: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  role: z.enum(['user', 'admin']).optional(),
 });
 
 export const loginSchema = z.object({
@@ -17,6 +23,11 @@ export const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  city: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export const createOrderSchema = z.object({
