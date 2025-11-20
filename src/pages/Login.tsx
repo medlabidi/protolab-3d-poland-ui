@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Box } from "lucide-react";
+import { Box, Loader2, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -25,8 +25,54 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
   const [signupAddress, setSignupAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const API_URL = "http://localhost:5000/api";
+
+  // Auto-detect location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      setIsDetectingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setLatitude(latitude);
+          setLongitude(longitude);
+
+          // Reverse geocoding using Open Street Map Nominatim
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            
+            if (data.address) {
+              setSignupAddress(data.address.road || data.address.village || "");
+              setCity(data.address.city || data.address.town || "");
+              setZipCode(data.address.postcode || "");
+              setCountry(data.address.country || "");
+              
+              toast.success("Location detected!");
+            }
+          } catch (error) {
+            console.error("Reverse geocoding failed:", error);
+          } finally {
+            setIsDetectingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          setIsDetectingLocation(false);
+          toast.info("Please enable location services to auto-detect your address");
+        }
+      );
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +156,11 @@ const Login = () => {
           password: signupPassword,
           phone: signupPhone.trim() || undefined,
           address: signupAddress.trim() || undefined,
+          city: city.trim() || undefined,
+          zipCode: zipCode.trim() || undefined,
+          country: country.trim() || undefined,
+          latitude: latitude || undefined,
+          longitude: longitude || undefined,
           role: "user", // Default role
         }),
       });
@@ -137,6 +188,11 @@ const Login = () => {
       setConfirmPassword("");
       setSignupPhone("");
       setSignupAddress("");
+      setCity("");
+      setZipCode("");
+      setCountry("");
+      setLatitude(null);
+      setLongitude(null);
 
       navigate("/dashboard");
     } catch (error) {
@@ -292,6 +348,97 @@ const Login = () => {
                     value={signupAddress}
                     onChange={(e) => setSignupAddress(e.target.value)}
                   />
+                </div>
+                
+                {/* Delivery Location Section */}
+                <div className="pt-2 border-t space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <Label className="text-sm font-semibold">Delivery Location</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsDetectingLocation(true);
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                              const { latitude, longitude } = position.coords;
+                              setLatitude(latitude);
+                              setLongitude(longitude);
+
+                              try {
+                                const response = await fetch(
+                                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                                );
+                                const data = await response.json();
+                                
+                                if (data.address) {
+                                  setCity(data.address.city || data.address.town || "");
+                                  setZipCode(data.address.postcode || "");
+                                  setCountry(data.address.country || "");
+                                  toast.success("Location updated!");
+                                }
+                              } catch (error) {
+                                console.error("Reverse geocoding failed:", error);
+                              } finally {
+                                setIsDetectingLocation(false);
+                              }
+                            },
+                            () => {
+                              setIsDetectingLocation(false);
+                              toast.error("Could not get your location");
+                            }
+                          );
+                        }
+                      }}
+                      disabled={isDetectingLocation}
+                    >
+                      {isDetectingLocation ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Detect"
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-city" className="text-xs">City</Label>
+                      <Input 
+                        id="signup-city" 
+                        placeholder="New York"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-zipcode" className="text-xs">Zip Code</Label>
+                      <Input 
+                        id="signup-zipcode" 
+                        placeholder="10001"
+                        value={zipCode}
+                        onChange={(e) => setZipCode(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-country" className="text-xs">Country</Label>
+                    <Input 
+                      id="signup-country" 
+                      placeholder="United States"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
+                  </div>
+
+                  {latitude && longitude && (
+                    <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                      📍 Coordinates: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
