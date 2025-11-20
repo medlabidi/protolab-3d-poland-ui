@@ -71,19 +71,19 @@ const Login = () => {
                   <Input id="password" type="password" required />
                 </div>
                 <Button type="button" variant="link" className="px-0 text-sm">
-                  Forgot password?
+                  {t.login.forgotPassword}
                 </Button>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : t.login.signIn}
+                  {isLoading ? t.login.signingIn : t.login.signIn}
                 </Button>
                 <div className="relative w-full">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">{t.login.orContinueWith}</span>
                   </div>
                 </div>
                 <Button type="button" variant="outline" className="w-full">
@@ -133,10 +133,10 @@ const Login = () => {
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : t.login.signUp}
+                  {isLoading ? t.login.creatingAccount : t.login.signUp}
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  By signing up, you agree to our Terms of Service and Privacy Policy
+                  {t.login.bySigningUp}
                 </p>
               </CardFooter>
             </form>
