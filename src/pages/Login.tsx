@@ -23,6 +23,8 @@ const Login = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupAddress, setSignupAddress] = useState("");
 
   const API_URL = "http://localhost:5000/api";
 
@@ -88,6 +90,14 @@ const Login = () => {
       return;
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(signupEmail)) {
+      toast.error("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
@@ -95,9 +105,12 @@ const Login = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: signupName,
-          email: signupEmail,
+          name: signupName.trim(),
+          email: signupEmail.toLowerCase().trim(),
           password: signupPassword,
+          phone: signupPhone.trim() || undefined,
+          address: signupAddress.trim() || undefined,
+          role: "user", // Default role
         }),
       });
 
@@ -122,6 +135,8 @@ const Login = () => {
       setSignupEmail("");
       setSignupPassword("");
       setConfirmPassword("");
+      setSignupPhone("");
+      setSignupAddress("");
 
       navigate("/dashboard");
     } catch (error) {
@@ -257,6 +272,25 @@ const Login = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-phone">Phone (Optional)</Label>
+                  <Input 
+                    id="signup-phone" 
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    value={signupPhone}
+                    onChange={(e) => setSignupPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-address">Address (Optional)</Label>
+                  <Input 
+                    id="signup-address" 
+                    placeholder="123 Main St, City, State 12345"
+                    value={signupAddress}
+                    onChange={(e) => setSignupAddress(e.target.value)}
                   />
                 </div>
               </CardContent>
