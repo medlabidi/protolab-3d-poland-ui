@@ -47,6 +47,12 @@ BUILD FIX (added)
   • After build, start with:
       npm start
 
+BUILD / VERCEL FIX:
+  • Ensure TypeScript compiles into "dist" (tsconfig.json outDir = "dist").
+  • package.json must include "build": "tsc" (and "vercel-build": "npm run build").
+  • Add vercel.json with "outputDirectory": "dist" so Vercel finds the artifact.
+  • Run locally: npm install && npm run build  (dist/ will be created)
+
 ⚠️  SECURITY REMINDER:
   • .env file contains sensitive credentials
   • Add .env to .gitignore (do NOT commit to version control)
