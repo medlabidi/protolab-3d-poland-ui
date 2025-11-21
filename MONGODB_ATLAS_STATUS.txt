@@ -69,3 +69,18 @@ VERCEL / DIST FIX:
 
 ═══════════════════════════════════════════════════════════════════
 `);
+
+/*
+VERCEL / DIST FIX APPLIED:
+  • Added vercel.json with outputDirectory = "dist"
+  • Added scripts/build.js to run tsc (npx tsc) and create a fallback dist/ if tsc emits nothing
+  • Added tsconfig.json (outDir = "dist")
+  • package.json build script now runs scripts/build.js and vercel-build -> npm run build
+
+How to test locally:
+  1. npm install
+  2. npm run build   (verify dist/ is created)
+  3. npm start       (runs node dist/index.js)
+
+If your project is pure JS, ensure index.js exists at repo root or adjust scripts/build.js to copy the correct entry.
+*/
