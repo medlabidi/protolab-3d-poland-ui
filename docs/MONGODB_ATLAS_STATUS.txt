@@ -37,6 +37,27 @@ Next Steps:
   3. Start backend: npm run dev:server
   4. Check health: curl http://localhost:5000/health
 
+BUILD FIX (added)
+  • Added package.json with "build" script (runs tsc).
+  • Added tsconfig.json (compiles src -> dist).
+  • To install required dev dependencies:
+      npm install --save-dev typescript @types/node ts-node ts-node-dev
+  • To run build:
+      npm run build
+  • After build, start with:
+      npm start
+
+BUILD / VERCEL FIX:
+  • Ensure TypeScript compiles into "dist" (tsconfig.json outDir = "dist").
+  • package.json must include "build": "tsc" (and "vercel-build": "npm run build").
+  • Add vercel.json with "outputDirectory": "dist" so Vercel finds the artifact.
+  • Run locally: npm install && npm run build  (dist/ will be created)
+
+VERCEL / DIST FIX:
+  • tsconfig.json updated to include top-level .ts files and use rootDir = "."
+  • build now runs scripts/build.js which runs tsc and creates a fallback dist/ if needed
+  • vercel.json ensures outputDirectory = "dist"
+
 ⚠️  SECURITY REMINDER:
   • .env file contains sensitive credentials
   • Add .env to .gitignore (do NOT commit to version control)
@@ -48,3 +69,18 @@ Next Steps:
 
 ═══════════════════════════════════════════════════════════════════
 `);
+
+/*
+VERCEL / DIST FIX APPLIED:
+  • Added vercel.json with outputDirectory = "dist"
+  • Added scripts/build.js to run tsc (npx tsc) and create a fallback dist/ if tsc emits nothing
+  • Added tsconfig.json (outDir = "dist")
+  • package.json build script now runs scripts/build.js and vercel-build -> npm run build
+
+How to test locally:
+  1. npm install
+  2. npm run build   (verify dist/ is created)
+  3. npm start       (runs node dist/index.js)
+
+If your project is pure JS, ensure index.js exists at repo root or adjust scripts/build.js to copy the correct entry.
+*/

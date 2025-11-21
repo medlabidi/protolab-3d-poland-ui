@@ -11,10 +11,9 @@
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "start": "cd server && npm start",
+    "build": "node scripts/build.js",
+    "vercel-build": "npm run build",
+    "start": "node dist/index.js",
     "install-all": "npm install && npm install --prefix client && npm install --prefix server",
     "verify-db": "ts-node verify-db.ts",
     "test": "echo \"Tests not configured yet\"",
@@ -24,6 +23,10 @@
     "health-check": "npm run verify-db && npm run lint"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0",
+    "ts-node-dev": "^2.0.0"
   }
 }
