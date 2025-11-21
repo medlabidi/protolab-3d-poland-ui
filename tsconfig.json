@@ -4,19 +4,13 @@
     "module": "commonjs",
     "lib": ["ES2020", "dom", "dom.iterable"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
-    "jsx": "react-jsx",
     "sourceMap": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

@@ -53,6 +53,11 @@ BUILD / VERCEL FIX:
   • Add vercel.json with "outputDirectory": "dist" so Vercel finds the artifact.
   • Run locally: npm install && npm run build  (dist/ will be created)
 
+VERCEL / DIST FIX:
+  • tsconfig.json updated to include top-level .ts files and use rootDir = "."
+  • build now runs scripts/build.js which runs tsc and creates a fallback dist/ if needed
+  • vercel.json ensures outputDirectory = "dist"
+
 ⚠️  SECURITY REMINDER:
   • .env file contains sensitive credentials
   • Add .env to .gitignore (do NOT commit to version control)
