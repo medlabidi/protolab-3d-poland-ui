@@ -37,6 +37,16 @@ Next Steps:
   3. Start backend: npm run dev:server
   4. Check health: curl http://localhost:5000/health
 
+BUILD FIX (added)
+  • Added package.json with "build" script (runs tsc).
+  • Added tsconfig.json (compiles src -> dist).
+  • To install required dev dependencies:
+      npm install --save-dev typescript @types/node ts-node ts-node-dev
+  • To run build:
+      npm run build
+  • After build, start with:
+      npm start
+
 ⚠️  SECURITY REMINDER:
   • .env file contains sensitive credentials
   • Add .env to .gitignore (do NOT commit to version control)
