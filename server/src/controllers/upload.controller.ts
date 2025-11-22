@@ -1,73 +1,36 @@
 import { Request, Response } from 'express';
-import { uploadTempFile, downloadTempFile, moveFileToJob, deleteTempFile } from '../services/storage.service';
+import { uploadTempFile, downloadTempFile, moveFileToJob } from '../services/storage.service';
 import { analyzeFile, estimatePrintJob, EstimationResult } from '../services/file-analysis.service';
 import { getPrintParameters, MATERIAL_DENSITY } from '../config/print-parameters';
+import { pricingService } from '../services/pricing.service';
 import { createPrintJob, updateJob } from '../services/print-job.service';
-import { createUploadSession, updateUploadSession, bindSessionToUser, getUserSessions } from '../services/upload-session.service';
-import { AuthRequest } from '../middleware/auth';
-
-// POST /upload/create-session
-export async function handleCreateSession(req: AuthRequest, res: Response): Promise<void> {
-  try {
-    const userId = req.user?.userId;
-    const sessionId = await createUploadSession(userId);
-
-    res.status(201).json({
-      success: true,
-      sessionId,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-}
 
 // POST /upload-temp-file
-export async function handleUploadTempFile(req: AuthRequest, res: Response): Promise<void> {
+export async function handleUploadTempFile(req: Request, res: Response): Promise<void> {
   try {
     const { file } = req;
-    const { sessionId } = req.body;
-
     if (!file) {
       res.status(400).json({ error: 'No file uploaded' });
       return;
     }
 
-    if (!sessionId) {
-      res.status(400).json({ error: 'sessionId required' });
-      return;
-    }
+    const userId = (req as any).user?.id || 'anonymous';
+    const sessionId = userId; // Use userId as sessionId
 
-    // Get session
-    const session = await updateUploadSession(sessionId, {
-      filename: file.originalname,
-      fileSize: file.size,
-    });
-
-    if (!session) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
-    }
-
-    // Upload to Supabase temp bucket
-    const userId = req.user?.userId || sessionId;
+    // Upload to temp-files bucket
     const { path, url } = await uploadTempFile(
-      userId,
+      sessionId,
       file.originalname,
       file.buffer,
       file.mimetype
     );
 
-    await updateUploadSession(sessionId, {
-      filePath: path,
-      status: 'temp',
-    });
-
     res.status(200).json({
       success: true,
-      sessionId,
       filePath: path,
       filename: file.originalname,
       fileSize: file.size,
+      sessionId,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -75,45 +38,53 @@ export async function handleUploadTempFile(req: AuthRequest, res: Response): Pro
 }
 
 // POST /analyze-file
-export async function handleAnalyzeFile(req: AuthRequest, res: Response): Promise<void> {
+export async function handleAnalyzeFile(req: Request, res: Response): Promise<void> {
   try {
-    const { sessionId, quality, material, purpose } = req.body;
+    const { filename, sessionId, quality, material, purpose } = req.body;
 
-    if (!sessionId || !quality || !material || !purpose) {
+    if (!filename || !sessionId || !quality || !material || !purpose) {
       res.status(400).json({
-        error: 'sessionId, quality, material, and purpose are required',
+        error: 'filename, sessionId, quality, material, and purpose are required',
       });
       return;
     }
 
-    // Get session
-    const session = await updateUploadSession(sessionId, {});
-    if (!session || !session.filename) {
-      res.status(404).json({ error: 'Session or file not found' });
+    // Validate inputs
+    if (!['draft', 'standard', 'high'].includes(quality)) {
+      res.status(400).json({ error: 'Invalid quality (draft, standard, high)' });
       return;
     }
 
-    const userId = req.user?.userId || sessionId;
+    if (!['prototype', 'functional', 'aesthetic'].includes(purpose)) {
+      res.status(400).json({ error: 'Invalid purpose (prototype, functional, aesthetic)' });
+      return;
+    }
 
-    // Download temp file from Supabase
-    const fileBuffer = await downloadTempFile(userId, session.filename);
+    if (!MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY]) {
+      res.status(400).json({ error: `Invalid material. Supported: ${Object.keys(MATERIAL_DENSITY).join(', ')}` });
+      return;
+    }
 
-    // Analyze
-    const metadata = await analyzeFile(fileBuffer, session.filename);
+    // Download temp file
+    const fileBuffer = await downloadTempFile(sessionId, filename);
 
-    // Get parameters
+    // Analyze geometry
+    const metadata = await analyzeFile(fileBuffer, filename);
+
+    // Get print parameters
     const parameters = getPrintParameters(quality as any, purpose as any);
+
+    // Estimate print job
     const materialDensity = MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
     const estimations = estimatePrintJob(metadata, parameters, material as any, materialDensity);
 
-    // Update session
-    await updateUploadSession(sessionId, {
+    // Calculate pricing
+    const pricing = pricingService.calculatePrice({
+      materialWeight: estimations.material_weight_g,
+      printTime: estimations.print_time_minutes,
+      materialType: material,
       quality,
-      material,
       purpose,
-      metadata,
-      estimations,
-      status: 'analyzed',
     });
 
     const result: EstimationResult = {
@@ -125,6 +96,7 @@ export async function handleAnalyzeFile(req: AuthRequest, res: Response): Promis
     res.status(200).json({
       success: true,
       result,
+      pricing,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -132,87 +104,89 @@ export async function handleAnalyzeFile(req: AuthRequest, res: Response): Promis
 }
 
 // POST /finalize-print-job
-export async function handleFinalizePrintJob(req: AuthRequest, res: Response): Promise<void> {
+export async function handleFinalizePrintJob(req: Request, res: Response): Promise<void> {
   try {
-    const { sessionId } = req.body;
+    const { filename, sessionId, quality, material, purpose, metadata } =
+      req.body;
 
-    if (!sessionId) {
-      res.status(400).json({ error: 'sessionId required' });
+    if (!filename || !sessionId || !quality || !material || !purpose) {
+      res.status(400).json({
+        error:
+          'filename, sessionId, quality, material, purpose required',
+      });
       return;
     }
 
-    // Get session
-    const session = await updateUploadSession(sessionId, {});
-    if (!session || !session.filename) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
-    }
+    const userId = (req as any).user?.id || 'anonymous';
 
-    const userId = req.user?.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Must be logged in to finalize job' });
-      return;
-    }
-
-    // Create job
-    const job = createPrintJob(userId, session.filename, session.fileSize || 0);
+    // Create job record
+    const job = createPrintJob(userId, filename, metadata?.fileSize || 0);
 
     // Move file
-    await moveFileToJob(userId, session.filename, job.jobId);
+    await moveFileToJob(sessionId, filename, job.jobId);
 
-    // Update session
-    await updateUploadSession(sessionId, {
-      status: 'submitted',
-      userId,
+    // Get parameters and estimations
+    const parameters = getPrintParameters(quality as any, purpose as any);
+    const materialDensity =
+      MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
+    const estimations = estimatePrintJob(
+      metadata,
+      parameters,
+      material as any,
+      materialDensity
+    );
+
+    // Calculate pricing
+    const pricing = pricingService.calculatePrice({
+      materialWeight: estimations.material_weight_g,
+      printTime: estimations.print_time_minutes,
+      materialType: material,
+      quality,
+      purpose,
+    });
+
+    // Update job
+    updateJob(job.jobId, {
+      status: 'processing',
+      metadata: {
+        ...metadata,
+        parameters,
+        estimations,
+        pricing,
+        quality,
+        material,
+        purpose,
+      },
     });
 
     res.status(201).json({
       success: true,
       jobId: job.jobId,
-      estimations: session.estimations,
+      status: job.status,
+      estimations,
+      pricing,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 }
 
-// GET /upload-sessions
-export async function handleGetUserSessions(req: AuthRequest, res: Response): Promise<void> {
+// GET /download-print-file/:jobId
+export async function handleDownloadPrintFile(req: Request, res: Response): Promise<void> {
   try {
-    if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
+    const { jobId } = req.params;
+    if (!jobId) {
+      res.status(400).json({ error: 'jobId required' });
       return;
     }
 
-    const sessions = await getUserSessions(req.user.userId);
-    res.status(200).json({
-      success: true,
-      sessions,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-}
-
-// POST /bind-session (after login, link anonymous session to user)
-export async function handleBindSession(req: AuthRequest, res: Response): Promise<void> {
-  try {
-    const { sessionId } = req.body;
-
-    if (!sessionId || !req.user) {
-      res.status(400).json({ error: 'sessionId and authentication required' });
-      return;
-    }
-
-    const session = await bindSessionToUser(sessionId, req.user.userId);
-    if (!session) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
-    }
+    // In production, verify user has access to this job
+    // For now, backend-only (no direct user access)
 
     res.status(200).json({
       success: true,
-      session,
+      message: 'Use Supabase signed URL for secure file download (backend only)',
+      jobId,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

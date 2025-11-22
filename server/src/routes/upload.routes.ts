@@ -1,39 +1,29 @@
 import { Router } from 'express';
 import { upload, handleUploadError } from '../middleware/upload';
-import { optionalAuth, authenticateToken } from '../middleware/auth';
 import {
-  handleCreateSession,
   handleUploadTempFile,
   handleAnalyzeFile,
   handleFinalizePrintJob,
-  handleGetUserSessions,
-  handleBindSession,
+  handleDownloadPrintFile,
 } from '../controllers/upload.controller';
 
 const router = Router();
 
-// POST /upload/create-session (public, optional auth)
-router.post('/create-session', optionalAuth, handleCreateSession);
-
-// POST /upload-temp-file (public, optional auth)
+// POST /upload-temp-file
 router.post(
   '/upload-temp-file',
-  optionalAuth,
   upload.single('file'),
   handleUploadError,
   handleUploadTempFile
 );
 
-// POST /analyze-file (public, optional auth)
-router.post('/analyze-file', optionalAuth, handleAnalyzeFile);
+// POST /analyze-file (updated to accept quality, material, purpose)
+router.post('/analyze-file', handleAnalyzeFile);
 
-// POST /finalize-print-job (requires auth)
-router.post('/finalize-print-job', authenticateToken, handleFinalizePrintJob);
+// POST /finalize-print-job (updated to accept quality, material, purpose)
+router.post('/finalize-print-job', handleFinalizePrintJob);
 
-// GET /upload-sessions (requires auth)
-router.get('/sessions', authenticateToken, handleGetUserSessions);
-
-// POST /bind-session (requires auth)
-router.post('/bind-session', authenticateToken, handleBindSession);
+// GET /download-print-file/:jobId
+router.get('/download-print-file/:jobId', handleDownloadPrintFile);
 
 export default router;

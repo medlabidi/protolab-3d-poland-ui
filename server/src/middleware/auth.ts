@@ -1,53 +1,28 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../services/auth.service';
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../types';
+import { verifyAccessToken } from '../utils/jwt';
+import { logger } from '../config/logger';
 
-export interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-    email: string;
-    name: string;
-  };
-}
-
-// Verify token from Authorization header
-export function authenticateToken(
+export const authenticate = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): void {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    res.status(401).json({ error: 'No token provided' });
-    return;
-  }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    res.status(403).json({ error: 'Invalid or expired token' });
-    return;
-  }
-
-  req.user = payload;
-  next();
-}
-
-// Optional auth (doesn't fail if no token, but extracts if present)
-export function optionalAuth(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): void {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (token) {
-    const payload = verifyToken(token);
-    if (payload) {
-      req.user = payload;
+): void => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'No token provided' });
+      return;
     }
+    
+    const token = authHeader.substring(7);
+    const payload = verifyAccessToken(token);
+    
+    req.user = payload;
+    next();
+  } catch (error) {
+    logger.error({ err: error }, 'Authentication error');
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
-
-  next();
-}
+};
