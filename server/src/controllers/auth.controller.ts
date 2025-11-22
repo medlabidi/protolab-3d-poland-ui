@@ -1,95 +1,75 @@
-import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/auth.service';
-import { logger } from '../config/logger';
+import { Request, Response } from 'express';
+import { registerUser, loginUser, findOrCreateGoogleUser } from '../services/auth.service';
+import { AuthRequest } from '../middleware/auth';
 
-export class AuthController {
-  async register(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { user, tokens } = await authService.register(req.body);
-      
-      logger.info(`User registered: ${user.email}`);
-      
-      res.status(201).json({
-        message: 'Registration successful',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          address: user.address,
-          city: user.city,
-          zipCode: user.zipCode,
-          country: user.country,
-          latitude: user.latitude,
-          longitude: user.longitude,
-          role: user.role,
-        },
-        tokens,
-      });
-    } catch (error) {
-      next(error);
+// POST /auth/register
+export async function handleRegister(req: Request, res: Response): Promise<void> {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      res.status(400).json({ error: 'email, password, and name required' });
+      return;
     }
-  }
-  
-  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { email, password } = req.body;
-      const { user, tokens } = await authService.login(email, password);
-      
-      logger.info(`User logged in: ${user.email}`);
-      
-      res.json({
-        message: 'Login successful',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          address: user.address,
-          city: user.city,
-          zipCode: user.zipCode,
-          country: user.country,
-          latitude: user.latitude,
-          longitude: user.longitude,
-          role: user.role,
-        },
-        tokens,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { refreshToken } = req.body;
-      
-      if (!refreshToken) {
-        res.status(400).json({ error: 'Refresh token required' });
-        return;
-      }
-      
-      const tokens = await authService.refresh(refreshToken);
-      
-      res.json({ tokens });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { refreshToken } = req.body;
-      
-      if (refreshToken) {
-        await authService.logout(refreshToken);
-      }
-      
-      res.json({ message: 'Logout successful' });
-    } catch (error) {
-      next(error);
-    }
+
+    const result = await registerUser(email, password, name);
+    res.status(201).json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 }
 
-export const authController = new AuthController();
+// POST /auth/login
+export async function handleLogin(req: Request, res: Response): Promise<void> {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'email and password required' });
+      return;
+    }
+
+    const result = await loginUser(email, password);
+    res.status(200).json(result);
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+}
+
+// POST /auth/google-callback
+export async function handleGoogleCallback(req: Request, res: Response): Promise<void> {
+  try {
+    const { googleId, email, name } = req.body;
+
+    if (!googleId || !email || !name) {
+      res.status(400).json({ error: 'googleId, email, and name required' });
+      return;
+    }
+
+    const result = await findOrCreateGoogleUser(googleId, email, name);
+    res.status(200).json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// GET /auth/me (verify current user)
+export async function handleGetMe(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+
+  res.status(200).json({
+    user: {
+      id: req.user.userId,
+      email: req.user.email,
+      name: req.user.name,
+    },
+  });
+}
+
+// POST /auth/logout
+export async function handleLogout(req: Request, res: Response): Promise<void> {
+  res.status(200).json({ message: 'Logged out successfully' });
+}

@@ -1,20 +1,28 @@
 import { Router } from 'express';
-import { authController } from '../controllers/auth.controller';
-import { validate } from '../middleware/validate';
-import { registerSchema, loginSchema } from '../utils/validators';
-import rateLimit from 'express-rate-limit';
+import {
+  handleRegister,
+  handleLogin,
+  handleGoogleCallback,
+  handleGetMe,
+  handleLogout,
+} from '../controllers/auth.controller';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: 'Too many login attempts, please try again later',
-});
+// POST /auth/register
+router.post('/register', handleRegister);
 
-router.post('/register', validate(registerSchema), authController.register);
-router.post('/login', loginLimiter, validate(loginSchema), authController.login);
-router.post('/refresh', authController.refresh);
-router.post('/logout', authController.logout);
+// POST /auth/login
+router.post('/login', handleLogin);
+
+// POST /auth/google-callback
+router.post('/google-callback', handleGoogleCallback);
+
+// GET /auth/me
+router.get('/me', authenticateToken, handleGetMe);
+
+// POST /auth/logout
+router.post('/logout', handleLogout);
 
 export default router;

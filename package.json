@@ -23,10 +23,19 @@
     "health-check": "npm run verify-db && npm run lint"
   },
   "devDependencies": {
+    "@types/node": "^20.19.25",
     "concurrently": "^9.0.1",
-    "typescript": "^5.0.0",
-    "@types/node": "^20.0.0",
     "ts-node": "^10.0.0",
-    "ts-node-dev": "^2.0.0"
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
+    "uuid": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.1.1",
+    "mongoose": "^7.5.0",
+    "@react-oauth/google": "^0.12.1",
+    "jwt-decode": "^3.1.2"
   }
 }

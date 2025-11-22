@@ -1,108 +1,134 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/User';
-import { RefreshToken } from '../models/RefreshToken';
-import { generateTokenPair, verifyRefreshToken, getRefreshTokenExpiry } from '../utils/jwt';
-import { TokenPair } from '../types';
 
-export class AuthService {
-  async register(data: {
-    name: string;
-    email: string;
-    password: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    zipCode?: string;
-    country?: string;
-    latitude?: number;
-    longitude?: number;
-  }): Promise<{ user: IUser; tokens: TokenPair }> {
-    const existingUser = await User.findOne({ email: data.email });
-    if (existingUser) {
-      throw new Error('User already exists');
-    }
-    
-    const passwordHash = await bcrypt.hash(data.password, 10);
-    
-    const user = await User.create({
-      name: data.name,
-      email: data.email,
-      passwordHash,
-      phone: data.phone,
-      address: data.address,
-      city: data.city,
-      zipCode: data.zipCode,
-      country: data.country,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      role: 'user',
-    });
-    
-    const tokens = generateTokenPair({
-      id: user._id.toString(),
-      email: user.email,
-      role: user.role,
-    });
-    
-    await RefreshToken.create({
-      userId: user._id,
-      token: tokens.refreshToken,
-      expiresAt: getRefreshTokenExpiry(),
-    });
-    
-    return { user, tokens };
-  }
-  
-  async login(email: string, password: string): Promise<{ user: IUser; tokens: TokenPair }> {
-    const user = await User.findOne({ email });
-    if (!user) {
-      throw new Error('Invalid credentials');
-    }
-    
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      throw new Error('Invalid credentials');
-    }
-    
-    const tokens = generateTokenPair({
-      id: user._id.toString(),
-      email: user.email,
-      role: user.role,
-    });
-    
-    await RefreshToken.create({
-      userId: user._id,
-      token: tokens.refreshToken,
-      expiresAt: getRefreshTokenExpiry(),
-    });
-    
-    return { user, tokens };
-  }
-  
-  async refresh(refreshToken: string): Promise<TokenPair> {
-    const payload = verifyRefreshToken(refreshToken);
-    
-    const storedToken = await RefreshToken.findOne({ token: refreshToken });
-    if (!storedToken) {
-      throw new Error('Invalid refresh token');
-    }
-    
-    await RefreshToken.deleteOne({ token: refreshToken });
-    
-    const newTokens = generateTokenPair(payload);
-    
-    await RefreshToken.create({
-      userId: payload.id,
-      token: newTokens.refreshToken,
-      expiresAt: getRefreshTokenExpiry(),
-    });
-    
-    return newTokens;
-  }
-  
-  async logout(refreshToken: string): Promise<void> {
-    await RefreshToken.deleteOne({ token: refreshToken });
-  }
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRY = '7d';
+
+export interface AuthPayload {
+  userId: string;
+  email: string;
+  name: string;
 }
 
-export const authService = new AuthService();
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
+// Register new user
+export async function registerUser(
+  email: string,
+  password: string,
+  name: string
+): Promise<AuthResponse> {
+  // Check if user exists
+  const existing = await User.findOne({ email });
+  if (existing) {
+    throw new Error('User already exists');
+  }
+
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create user
+  const user = new User({
+    email,
+    password: hashedPassword,
+    name,
+  });
+
+  await user.save();
+
+  // Generate token
+  const token = jwt.sign(
+    { userId: user._id, email: user.email, name: user.name },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRY }
+  );
+
+  return {
+    token,
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+    },
+  };
+}
+
+// Login user
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  const user = await User.findOne({ email });
+  if (!user || !user.password) {
+    throw new Error('Invalid email or password');
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new Error('Invalid email or password');
+  }
+
+  const token = jwt.sign(
+    { userId: user._id, email: user.email, name: user.name },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRY }
+  );
+
+  return {
+    token,
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+    },
+  };
+}
+
+// Find or create Google user
+export async function findOrCreateGoogleUser(
+  googleId: string,
+  email: string,
+  name: string
+): Promise<AuthResponse> {
+  let user = await User.findOne({ googleId });
+
+  if (!user) {
+    // Create new user if doesn't exist
+    user = new User({
+      googleId,
+      email,
+      name,
+      password: null,
+    });
+    await user.save();
+  }
+
+  const token = jwt.sign(
+    { userId: user._id, email: user.email, name: user.name },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRY }
+  );
+
+  return {
+    token,
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+    },
+  };
+}
+
+// Verify JWT token
+export function verifyToken(token: string): AuthPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as AuthPayload;
+  } catch (err) {
+    return null;
+  }
+}

@@ -1,7 +1,8 @@
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
-import { isValidFileType, isValidFileExtension } from '../utils/validators';
+import { isValidFileExtension } from '../utils/validators';
 
+// Use memory storage for Supabase upload
 const storage = multer.memoryStorage();
 
 const fileFilter = (
@@ -10,10 +11,10 @@ const fileFilter = (
   cb: multer.FileFilterCallback
 ) => {
   if (!isValidFileExtension(file.originalname)) {
-    cb(new Error('Invalid file type. Only STL, OBJ, and STEP files are allowed.'));
+    cb(new Error('Invalid file type. Only STL, OBJ, and 3MF files are allowed.'));
     return;
   }
-  
+
   cb(null, true);
 };
 
@@ -39,11 +40,11 @@ export const handleUploadError = (
     res.status(400).json({ error: err.message });
     return;
   }
-  
+
   if (err) {
     res.status(400).json({ error: err.message });
     return;
   }
-  
+
   next();
 };
