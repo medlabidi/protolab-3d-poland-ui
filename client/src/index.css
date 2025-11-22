@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Contemporary Design System */
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
 
 @layer base {
   :root {
@@ -43,11 +45,9 @@
     --status-finished: 142 71% 45%;
     --status-delivered: 0 0% 0%;
 
-    /* Modern gradients */
+    /* Tech gradients */
     --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(214 32% 98%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(142 71% 45%) 100%);
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 40% 96%) 100%);
     
     /* Shadows */
     --shadow-soft: 0 2px 8px -2px hsl(217 33% 17% / 0.1);

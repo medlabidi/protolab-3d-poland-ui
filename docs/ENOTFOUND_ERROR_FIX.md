@@ -305,7 +305,6 @@ nslookup cluster0.mongodb.net
 # Test connection
 npm run verify-db
 ```
-
 ---
 
 **Database Name**: `protolab` (lowercase)  

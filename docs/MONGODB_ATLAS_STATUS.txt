@@ -7,7 +7,7 @@
 
 console.log(`
 ╔════════════════════════════════════════════════════════════════╗
-║         MongoDB Atlas Configuration - Status Report           ║
+║         MongoDB Atlas Configuration - Status Report            ║
 ╚════════════════════════════════════════════════════════════════╝
 
 ✅ CONFIGURATION COMPLETE

@@ -44,11 +44,6 @@ export const translations = {
       noAccount: "Don't have an account?",
       haveAccount: "Already have an account?",
       enterDetails: "Enter your details below to continue",
-      forgotPassword: "Forgot password?",
-      orContinueWith: "Or continue with",
-      bySigningUp: "By signing up, you agree to our Terms of Service and Privacy Policy",
-      creatingAccount: "Creating account...",
-      signingIn: "Signing in...",
     },
     // Dashboard
     dashboard: {
@@ -148,23 +143,6 @@ export const translations = {
       saveChanges: "Save Changes",
       changesSaved: "Settings saved successfully",
     },
-    // Footer
-    footer: {
-      about: "About ProtoLab",
-      aboutDesc: "Leading 3D printing service provider in Poland with cutting-edge technology and expert craftsmanship.",
-      services: "Services",
-      designConsultation: "Design Consultation",
-      rapidPrototyping: "Rapid Prototyping",
-      company: "Company",
-      aboutUs: "About Us",
-      contact: "Contact",
-      termsOfService: "Terms of Service",
-      contactInfo: "Contact",
-      email: "info@protolab.pl",
-      phone: "+48 123 456 789",
-      location: "Warsaw, Poland",
-      copyright: "© 2024 ProtoLab. All rights reserved.",
-    },
     // Common
     common: {
       protolab: "ProtoLab",
@@ -216,11 +194,6 @@ export const translations = {
       noAccount: "Nie masz konta?",
       haveAccount: "Masz już konto?",
       enterDetails: "Wprowadź swoje dane poniżej, aby kontynuować",
-      forgotPassword: "Zapomniałeś hasła?",
-      orContinueWith: "Lub zaloguj się za pomocą",
-      bySigningUp: "Rejestrując się, zgadzasz się na nasze Warunki Świadczenia Usług i Politykę Prywatności",
-      creatingAccount: "Tworzenie konta...",
-      signingIn: "Logowanie...",
     },
     // Dashboard
     dashboard: {
@@ -324,23 +297,6 @@ export const translations = {
     common: {
       protolab: "ProtoLab",
       languageChanged: "Język zmieniony na",
-    },
-    // Footer
-    footer: {
-      about: "O Nas",
-      aboutDesc: "Wiodący dostawca usług druku 3D w Polsce z najnowocześniejszą technologią i fachowym rzemiosłem.",
-      services: "Usługi",
-      designConsultation: "Konsultacja Projektowania",
-      rapidPrototyping: "Szybkie Prototypowanie",
-      company: "Firma",
-      aboutUs: "O Nas",
-      contact: "Kontakt",
-      termsOfService: "Warunki Świadczenia Usług",
-      contactInfo: "Kontakt",
-      email: "info@protolab.pl",
-      phone: "+48 123 456 789",
-      location: "Warszawa, Polska",
-      copyright: "© 2024 ProtoLab. Wszelkie prawa zastrzeżone.",
     },
   },
 };

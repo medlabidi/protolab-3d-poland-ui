@@ -1,22 +1,5 @@
 import dotenv from 'dotenv';
-import path from 'path';
-
-// Chargement explicite du .env depuis le dossier server
-const envPath = path.resolve(__dirname, '../.env');
-console.log('📁 Loading .env from:', envPath);
-const result = dotenv.config({ path: envPath });
-
-if (result.error) {
-  console.error('❌ Error loading .env:', result.error);
-} else {
-  console.log('✅ .env loaded successfully');
-}
-
-// TEST - À supprimer après
-console.log('🔍 MONGO_URI loaded:', process.env.MONGO_URI ? 'YES ✅' : 'NO ❌');
-if (process.env.MONGO_URI) {
-  console.log('🔍 Connection string starts with:', process.env.MONGO_URI.substring(0, 30) + '...');
-}
+dotenv.config();
 
 import createApp from './express-app';
 import { connectDatabase } from './config/database';
@@ -39,7 +22,10 @@ const startServer = async (): Promise<void> => {
       logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
+    // Structured logging: pass the unknown into an object so overloads accept it
     logger.error({ err: error }, 'Failed to start server');
+    // If you prefer stringifying:
+    // logger.error(`Failed to start server: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
     process.exit(1);
   }
 };
