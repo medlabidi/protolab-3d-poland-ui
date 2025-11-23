@@ -1,45 +1,58 @@
 import { User, IUser } from '../models/User';
 import { Order } from '../models/Order';
-import mongoose from 'mongoose';
+import { getSupabase } from '../config/database';
 
 export class UserService {
-  async getUserById(userId: string): Promise<IUser | null> {
-    return await User.findById(userId).select('-passwordHash');
+  async getUserById(userId: string): Promise<Omit<IUser, 'password_hash'> | null> {
+    const user = await User.findById(userId);
+    if (!user) return null;
+    
+    // Exclude password_hash from response
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
   
-  async updateUser(userId: string, updates: Partial<IUser>): Promise<IUser> {
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).select('-passwordHash');
+  async updateUser(userId: string, updates: Partial<IUser>): Promise<Omit<IUser, 'password_hash'>> {
+    // Remove fields that shouldn't be updated
+    const { id, created_at, password_hash, ...allowedUpdates } = updates as any;
+    
+    const user = await User.updateById(userId, allowedUpdates);
     
     if (!user) {
       throw new Error('User not found');
     }
     
-    return user;
+    const { password_hash: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
   
   async deleteUser(userId: string): Promise<void> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const supabase = getSupabase();
     
     try {
-      await Order.deleteMany({ userId }, { session });
-      await User.findByIdAndDelete(userId, { session });
+      // Delete all user orders first
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('user_id', userId);
       
-      await session.commitTransaction();
+      if (ordersError) throw ordersError;
+      
+      // Delete user
+      await User.deleteById(userId);
     } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      throw new Error(`Failed to delete user: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
-  async getAllUsers(): Promise<IUser[]> {
-    return await User.find().select('-passwordHash').sort({ createdAt: -1 });
+  async getAllUsers(): Promise<Omit<IUser, 'password_hash'>[]> {
+    const users = await User.find();
+    
+    // Exclude password_hash from all users
+    return users.map(user => {
+      const { password_hash, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    });
   }
 }
 

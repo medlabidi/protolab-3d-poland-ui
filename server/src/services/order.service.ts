@@ -1,67 +1,76 @@
 import { Order, IOrder, OrderStatus } from '../models/Order';
-import { User } from '../models/User';
 import { OrderCreateInput } from '../types';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
-import mongoose from 'mongoose';
+import { getSupabase } from '../config/database';
 
 export class OrderService {
   async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
     const settings = await settingsService.getSettings();
     
     const estimatedPrice = pricingService.estimatePrice(
-      settings.materialRate,
-      settings.timeRate,
-      settings.serviceFee
+      settings.material_rate,
+      settings.time_rate,
+      settings.service_fee
     );
     
     const order = await Order.create({
-      userId,
-      fileName: data.fileName,
-      fileUrl: data.fileUrl,
+      user_id: userId,
+      file_name: data.fileName,
+      file_url: data.fileUrl,
       material: data.material,
       color: data.color,
-      layerHeight: data.layerHeight,
+      layer_height: data.layerHeight,
       infill: data.infill,
       quantity: data.quantity,
-      shippingMethod: data.shippingMethod,
+      shipping_method: data.shippingMethod,
       price: estimatedPrice,
       status: 'submitted',
-    });
-    
-    await User.findByIdAndUpdate(userId, {
-      $push: { orders: order._id },
     });
     
     return order;
   }
   
   async getOrderById(orderId: string, userId?: string): Promise<IOrder | null> {
-    const query: any = { _id: orderId };
+    const supabase = getSupabase();
+    
+    let query = supabase
+      .from('orders')
+      .select('*, users(name, email)')
+      .eq('id', orderId);
     
     if (userId) {
-      query.userId = userId;
+      query = query.eq('user_id', userId);
     }
     
-    return await Order.findOne(query).populate('userId', 'name email');
+    const { data, error } = await query.single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw new Error(`Failed to get order: ${error.message}`);
+    }
+    
+    return data;
   }
   
   async getUserOrders(userId: string): Promise<IOrder[]> {
-    return await Order.find({ userId }).sort({ createdAt: -1 });
+    return await Order.findByUserId(userId);
   }
   
   async getAllOrders(): Promise<IOrder[]> {
-    return await Order.find()
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 });
+    const supabase = getSupabase();
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, users(name, email)')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw new Error(`Failed to get all orders: ${error.message}`);
+    return data || [];
   }
   
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<IOrder> {
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { $set: { status } },
-      { new: true, runValidators: true }
-    );
+    const order = await Order.updateById(orderId, { status });
     
     if (!order) {
       throw new Error('Order not found');
@@ -82,33 +91,29 @@ export class OrderService {
     
     const settings = await settingsService.getSettings();
     
+    const updates: any = {};
+    
     if (materialWeight !== undefined) {
-      order.materialWeight = materialWeight;
+      updates.material_weight = materialWeight;
     }
     
     if (printTime !== undefined) {
-      order.printTime = printTime;
+      updates.print_time = printTime;
     }
     
-    order.price = pricingService.calculatePrice({
-      materialWeight: order.materialWeight,
-      printTime: order.printTime,
-      materialRate: settings.materialRate,
-      timeRate: settings.timeRate,
-      serviceFee: settings.serviceFee,
+    updates.price = pricingService.calculatePrice({
+      materialWeight: materialWeight ?? order.material_weight,
+      printTime: printTime ?? order.print_time,
+      materialRate: settings.material_rate,
+      timeRate: settings.time_rate,
+      serviceFee: settings.service_fee,
     });
     
-    await order.save();
-    
-    return order;
+    return await Order.updateById(orderId, updates);
   }
   
   async updateOrderTracking(orderId: string, trackingCode: string): Promise<IOrder> {
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { $set: { trackingCode } },
-      { new: true, runValidators: true }
-    );
+    const order = await Order.updateById(orderId, { tracking_code: trackingCode });
     
     if (!order) {
       throw new Error('Order not found');
@@ -118,9 +123,16 @@ export class OrderService {
   }
   
   async addReview(orderId: string, userId: string, review: string): Promise<IOrder> {
-    const order = await Order.findOne({ _id: orderId, userId });
+    const supabase = getSupabase();
     
-    if (!order) {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
       throw new Error('Order not found');
     }
     
@@ -128,10 +140,7 @@ export class OrderService {
       throw new Error('Can only review finished or delivered orders');
     }
     
-    order.review = review;
-    await order.save();
-    
-    return order;
+    return await Order.updateById(orderId, { review });
   }
 }
 

@@ -34,44 +34,74 @@ const Login = () => {
 
   const API_URL = "http://localhost:5000/api";
 
-  // Auto-detect location on component mount
+  // Auto-detect location on component mount (optional)
   useEffect(() => {
-    if (navigator.geolocation) {
-      setIsDetectingLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setLatitude(latitude);
-          setLongitude(longitude);
-
-          // Reverse geocoding using Open Street Map Nominatim
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-            );
-            const data = await response.json();
-            
-            if (data.address) {
-              setSignupAddress(data.address.road || data.address.village || "");
-              setCity(data.address.city || data.address.town || "");
-              setZipCode(data.address.postcode || "");
-              setCountry(data.address.country || "");
-              
-              toast.success("Location detected!");
-            }
-          } catch (error) {
-            console.error("Reverse geocoding failed:", error);
-          } finally {
-            setIsDetectingLocation(false);
-          }
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          setIsDetectingLocation(false);
-          toast.info("Please enable location services to auto-detect your address");
-        }
-      );
+    // Only attempt geolocation if available and user hasn't filled address yet
+    if (!navigator.geolocation) {
+      console.log('Geolocation not supported');
+      return;
     }
+    
+    setIsDetectingLocation(true);
+    
+    // Set timeout for geolocation request
+    const timeoutId = setTimeout(() => {
+      setIsDetectingLocation(false);
+      console.log('Geolocation timeout');
+    }, 5000);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        clearTimeout(timeoutId);
+        const { latitude, longitude } = position.coords;
+        setLatitude(latitude);
+        setLongitude(longitude);
+
+        // Reverse geocoding using Open Street Map Nominatim
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                'User-Agent': 'ProtoLab3D-Poland' // Required by Nominatim
+              }
+            }
+          );
+          const data = await response.json();
+          
+          if (data.address) {
+            setSignupAddress(data.address.road || data.address.village || "");
+            setCity(data.address.city || data.address.town || "");
+            setZipCode(data.address.postcode || "");
+            setCountry(data.address.country || "");
+            
+            toast.success("Location detected! You can edit if needed.");
+          }
+        } catch (error) {
+          console.log("Reverse geocoding failed (optional):", error);
+          // Silent fail - geolocation is optional
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        setIsDetectingLocation(false);
+        
+        // Only show toast for permission denied, not for other errors
+        if (error.code === error.PERMISSION_DENIED) {
+          console.log('Geolocation permission denied - manual entry required');
+        } else {
+          console.log('Geolocation unavailable:', error.message);
+        }
+        // Geolocation is optional, so don't show error toast
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 300000 // Cache for 5 minutes
+      }
+    );
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

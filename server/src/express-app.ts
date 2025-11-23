@@ -18,9 +18,9 @@ const createApp = (): Application => {
   // Security middleware
   app.use(helmet());
   
-  // CORS configuration
+  // CORS configuration - Allow both ports 8080 and 8081
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+    origin: ['http://localhost:8080', 'http://localhost:8081', process.env.CORS_ORIGIN].filter(Boolean),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

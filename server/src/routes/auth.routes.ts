@@ -17,4 +17,8 @@ router.post('/login', loginLimiter, validate(loginSchema), authController.login)
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 
+// Admin approval endpoints
+router.get('/approve-user', authController.approveUser);
+router.get('/reject-user', authController.rejectUser);
+
 export default router;

@@ -15,16 +15,35 @@ import adminRoutes from './routes/admin.routes';
 const createApp = (): Application => {
   const app = express();
   
-  // Security middleware
-  app.use(helmet());
+  // Security middleware with relaxed CSP for development
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
   
-  // CORS configuration
+  // CORS configuration - Allow both ports 8080 and 8081
+  const allowedOrigins = ['http://localhost:8080', 'http://localhost:8081'];
+  
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.CORS_ORIGIN === origin) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    maxAge: 600, // Cache preflight for 10 minutes
   }));
+  
+  // Explicitly handle OPTIONS requests
+  app.options('*', cors());
   
   // Rate limiting
   const limiter = rateLimit({

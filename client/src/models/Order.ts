@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { getSupabase } from '../config/database';
 
 export type OrderStatus = 
   | 'submitted' 
@@ -9,98 +9,119 @@ export type OrderStatus =
 
 export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
 
-export interface IOrder extends Document {
-  userId: mongoose.Types.ObjectId;
-  fileUrl: string;
-  fileName: string;
+export interface IOrder {
+  id: string;
+  user_id: string;
+  file_url: string;
+  file_name: string;
   material: string;
   color: string;
-  layerHeight: number;
+  layer_height: number;
   infill: number;
   quantity: number;
   status: OrderStatus;
-  materialWeight?: number;
-  printTime?: number;
+  material_weight?: number;
+  print_time?: number;
   price: number;
-  shippingMethod: ShippingMethod;
+  shipping_method: ShippingMethod;
   review?: string;
-  trackingCode?: string;
-  createdAt: Date;
+  tracking_code?: string;
+  created_at: string;
 }
 
-const orderSchema = new Schema<IOrder>({
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  fileUrl: {
-    type: String,
-    required: true,
-  },
-  fileName: {
-    type: String,
-    required: true,
-  },
-  material: {
-    type: String,
-    required: true,
-  },
-  color: {
-    type: String,
-    required: true,
-  },
-  layerHeight: {
-    type: Number,
-    required: true,
-  },
-  infill: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1,
-  },
-  status: {
-    type: String,
-    enum: ['submitted', 'in_queue', 'printing', 'finished', 'delivered'],
-    default: 'submitted',
-  },
-  materialWeight: {
-    type: Number,
-    min: 0,
-  },
-  printTime: {
-    type: Number,
-    min: 0,
-  },
-  price: {
-    type: Number,
-    required: true,
-    default: 0,
-  },
-  shippingMethod: {
-    type: String,
-    enum: ['pickup', 'inpost', 'courier'],
-    required: true,
-  },
-  review: {
-    type: String,
-  },
-  trackingCode: {
-    type: String,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+export type CreateOrderData = Omit<IOrder, 'id' | 'created_at'>;
+export type UpdateOrderData = Partial<Omit<IOrder, 'id' | 'created_at' | 'user_id'>>;
 
-orderSchema.index({ userId: 1, createdAt: -1 });
-orderSchema.index({ status: 1 });
+export class Order {
+  static async create(data: CreateOrderData): Promise<IOrder> {
+    const supabase = getSupabase();
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert([data])
+      .select()
+      .single();
+    
+    if (error) throw new Error(`Failed to create order: ${error.message}`);
+    return order;
+  }
 
-export const Order = mongoose.model<IOrder>('Order', orderSchema);
+  static async findById(id: string): Promise<IOrder | null> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No rows found
+      throw new Error(`Failed to find order: ${error.message}`);
+    }
+    
+    return data;
+  }
+
+  static async findByUserId(userId: string): Promise<IOrder[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw new Error(`Failed to find orders: ${error.message}`);
+    return data || [];
+  }
+
+  static async find(filter: Partial<IOrder> = {}): Promise<IOrder[]> {
+    const supabase = getSupabase();
+    let query = supabase.from('orders').select('*');
+    
+    Object.entries(filter).forEach(([key, value]) => {
+      if (value !== undefined) {
+        query = query.eq(key, value);
+      }
+    });
+    
+    query = query.order('created_at', { ascending: false });
+    
+    const { data, error } = await query;
+    
+    if (error) throw new Error(`Failed to find orders: ${error.message}`);
+    return data || [];
+  }
+
+  static async updateById(id: string, data: UpdateOrderData): Promise<IOrder> {
+    const supabase = getSupabase();
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw new Error(`Failed to update order: ${error.message}`);
+    return order;
+  }
+
+  static async deleteById(id: string): Promise<void> {
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw new Error(`Failed to delete order: ${error.message}`);
+  }
+
+  static async countByStatus(status: OrderStatus): Promise<number> {
+    const supabase = getSupabase();
+    const { count, error } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', status);
+    
+    if (error) throw new Error(`Failed to count orders: ${error.message}`);
+    return count || 0;
+  }
+}

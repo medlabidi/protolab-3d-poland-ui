@@ -1,5 +1,4 @@
 import { Request } from 'express';
-import { Types } from 'mongoose';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -30,20 +29,11 @@ export type OrderStatus =
 export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
 
 export interface PricingParams {
-  materialWeight: number;
-  printTime: number;
-  materialType: string;
-  quality: string;
-  purpose: string;
-}
-
-export interface PricingBreakdown {
-  materialCost: number;
-  laborCost: number;
+  materialWeight?: number;
+  printTime?: number;
+  materialRate: number;
+  timeRate: number;
   serviceFee: number;
-  subtotal: number;
-  markup: number;
-  total: number;
 }
 
 export interface OrderCreateInput {
