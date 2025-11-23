@@ -9,10 +9,10 @@ import {
   estimatePrintJob,
   EstimationResult,
 } from '../services/file-analysis.service';
+import { fileValidationService } from '../services/file-validation.service';
 import { getPrintParameters, MATERIAL_DENSITY } from '../config/print-parameters';
 import { pricingService } from '../services/pricing.service';
 import { createPrintJob, updateJob } from '../services/print-job.service';
-import { getColorPrice } from '../config/material-colors';
 
 // POST /upload-temp-file
 export async function handleUploadTempFile(req: Request, res: Response): Promise<void> {
@@ -75,10 +75,25 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
     // Analyze geometry
     const metadata = await analyzeFile(fileBuffer, filename);
 
-    // Get print parameters
+    // VALIDATE FILE HEALTH
+    const validation = fileValidationService.validateFile(metadata);
+
+    if (!validation.isValid) {
+      res.status(400).json({
+        success: false,
+        error: 'File validation failed',
+        details: {
+          errors: validation.errors,
+          warnings: validation.warnings,
+          message: fileValidationService.getErrorMessage(validation),
+        },
+      });
+      return;
+    }
+
+    // File is valid, continue with estimation
     const parameters = getPrintParameters(quality as any, purpose as any);
 
-    // Estimate print job
     const colorInfo = MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
     const estimations = estimatePrintJob(
       metadata,
@@ -107,6 +122,10 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
       success: true,
       result,
       pricing,
+      validation: {
+        isValid: true,
+        warnings: validation.warnings,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -116,11 +135,23 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
 // POST /finalize-print-job
 export async function handleFinalizePrintJob(req: Request, res: Response): Promise<void> {
   try {
-    const { filename, sessionId, quality, material, color, purpose, metadata, deliveryFee } = req.body;
+    const { filename, sessionId, quality, material, color, purpose, metadata, deliveryFee } =
+      req.body;
 
     if (!filename || !sessionId || !quality || !material || !color || !purpose) {
       res.status(400).json({
         error: 'filename, sessionId, quality, material, color, purpose required',
+      });
+      return;
+    }
+
+    // Validate file one more time before finalizing
+    const validation = fileValidationService.validateFile(metadata);
+    if (!validation.isValid) {
+      res.status(400).json({
+        success: false,
+        error: 'File validation failed during finalization',
+        details: validation.errors,
       });
       return;
     }

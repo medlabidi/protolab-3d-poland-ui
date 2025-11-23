@@ -17,7 +17,7 @@ router.post(
   handleUploadTempFile
 );
 
-// POST /analyze-file (updated to accept quality, material, purpose)
+// POST /analyze-file (now includes validation)
 router.post('/analyze-file', handleAnalyzeFile);
 
 // POST /finalize-print-job (updated to accept quality, material, purpose)

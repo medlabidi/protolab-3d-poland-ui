@@ -27,7 +27,7 @@ export interface EstimationResult {
   };
 }
 
-// Parse STL (ASCII and binary support)
+// Parse ASCII STL
 function parseSTLASCII(buffer: Buffer): { vertices: number[][]; triangles: number } {
   const text = buffer.toString('utf-8');
   const vertexRegex = /vertex\s+([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+([eE][-+]?\d+)?)/g;
@@ -47,16 +47,34 @@ function parseSTLASCII(buffer: Buffer): { vertices: number[][]; triangles: numbe
 
 // Parse binary STL
 function parseSTLBinary(buffer: Buffer): { vertices: number[][]; triangles: number } {
-  const triangles = buffer.readUInt32LE(80);
+  // Binary STL structure:
+  // 0-79: 80-byte header
+  // 80-83: number of triangles (uint32, little-endian)
+  // 84+: 50 bytes per triangle
+
+  if (buffer.length < 84) {
+    return { vertices: [], triangles: 0 };
+  }
+
+  const triangleCount = buffer.readUInt32LE(80);
   const vertices: number[][] = [];
   let offset = 84;
 
-  for (let i = 0; i < triangles; i++) {
-    // Skip normal vector (12 bytes)
+  for (let i = 0; i < triangleCount; i++) {
+    // Check if we have enough bytes for this triangle (50 bytes)
+    if (offset + 50 > buffer.length) {
+      break;
+    }
+
+    // Skip normal vector (12 bytes: 3 × 4-byte floats)
     offset += 12;
 
-    // Read 3 vertices (36 bytes total, 12 bytes each)
+    // Read 3 vertices (36 bytes total, 12 bytes each = 3 × 4-byte floats)
     for (let j = 0; j < 3; j++) {
+      if (offset + 12 > buffer.length) {
+        return { vertices, triangles: i };
+      }
+
       const x = buffer.readFloatLE(offset);
       const y = buffer.readFloatLE(offset + 4);
       const z = buffer.readFloatLE(offset + 8);
@@ -64,11 +82,11 @@ function parseSTLBinary(buffer: Buffer): { vertices: number[][]; triangles: numb
       offset += 12;
     }
 
-    // Skip attribute byte count
+    // Skip attribute byte count (2 bytes)
     offset += 2;
   }
 
-  return { vertices, triangles };
+  return { vertices, triangles: triangleCount };
 }
 
 // Calculate bounding box
@@ -95,7 +113,7 @@ function calculateBoundingBox(
   };
 }
 
-// Estimate volume via divergence theorem (signed volume)
+// Estimate volume via divergence theorem
 function estimateVolume(vertices: number[][]): number {
   if (vertices.length < 3) return 0;
 
@@ -144,8 +162,7 @@ function estimateSurfaceArea(vertices: number[][]): number {
   return area;
 }
 
-// Estimate print time (simplified)
-// Based on: layer count × perimeter time + infill time
+// Estimate print time
 function estimatePrintTime(
   metadata: FileMetadata,
   parameters: PrintParameters,
@@ -157,15 +174,15 @@ function estimatePrintTime(
   // Layer count
   const layerCount = Math.ceil(dimensions_mm.depth / layer_height);
 
-  // Estimate perimeter (rough: surface area / depth)
+  // Estimate perimeter
   const estimatedPerimeter = surface_area_mm2 / dimensions_mm.depth;
 
-  // Perimeter time (mm / mm/s = seconds)
+  // Perimeter time
   const perimeterTime = (estimatedPerimeter * layerCount) / print_speed;
 
-  // Infill time (volume × infill density / print speed)
+  // Infill time
   const infillVolume = volume_mm3 * (infill_density / 100);
-  const infillTime = (infillVolume * 0.5) / print_speed; // 0.5 is rough filament cross-section
+  const infillTime = (infillVolume * 0.5) / print_speed;
 
   // Total in minutes
   return (perimeterTime + infillTime) / 60;
@@ -177,13 +194,8 @@ function estimateMaterialWeight(
   infill_density: number,
   materialDensity: number
 ): number {
-  // mm³ to cm³: divide by 1000
   const volumeCm3 = volume_mm3 / 1000;
-  
-  // Effective volume: shell + infill
   const effectiveVolume = volumeCm3 * (1 + (infill_density / 100));
-
-  // Weight in grams
   return effectiveVolume * materialDensity;
 }
 
@@ -198,10 +210,10 @@ export async function analyzeFile(
   let triangles = 0;
 
   try {
-    // Determine if ASCII or binary STL
-    const isASCII = fileBuffer.toString('utf-8', 0, 5).includes('solid');
-
     if (fileType === 'STL') {
+      // Determine if ASCII or binary by checking first 5 bytes for "solid"
+      const isASCII = fileBuffer.toString('utf-8', 0, 5).toLowerCase().includes('solid');
+
       const result = isASCII ? parseSTLASCII(fileBuffer) : parseSTLBinary(fileBuffer);
       vertices = result.vertices;
       triangles = result.triangles;
@@ -229,7 +241,7 @@ export async function analyzeFile(
   return metadata;
 }
 
-// Estimate print job (with parameters)
+// Estimate print job
 export function estimatePrintJob(
   metadata: FileMetadata,
   parameters: PrintParameters,
@@ -244,7 +256,6 @@ export function estimatePrintJob(
     materialDensity
   );
 
-  // Rough estimate: nozzle travel ≈ surface area × layer count × 0.1
   const nozzleTravelMm = metadata.surface_area_mm2 * layerCount * 0.1;
 
   return {
