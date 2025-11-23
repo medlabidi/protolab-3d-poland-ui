@@ -4,6 +4,7 @@ import { analyzeFile, estimatePrintJob, EstimationResult } from '../services/fil
 import { getPrintParameters, MATERIAL_DENSITY } from '../config/print-parameters';
 import { pricingService } from '../services/pricing.service';
 import { createPrintJob, updateJob } from '../services/print-job.service';
+import { getColorPrice } from '../config/material-colors';
 
 // POST /upload-temp-file
 export async function handleUploadTempFile(req: Request, res: Response): Promise<void> {
@@ -40,11 +41,11 @@ export async function handleUploadTempFile(req: Request, res: Response): Promise
 // POST /analyze-file
 export async function handleAnalyzeFile(req: Request, res: Response): Promise<void> {
   try {
-    const { filename, sessionId, quality, material, purpose } = req.body;
+    const { filename, sessionId, quality, material, color, purpose } = req.body;
 
-    if (!filename || !sessionId || !quality || !material || !purpose) {
+    if (!filename || !sessionId || !quality || !material || !color || !purpose) {
       res.status(400).json({
-        error: 'filename, sessionId, quality, material, and purpose are required',
+        error: 'filename, sessionId, quality, material, color, and purpose are required',
       });
       return;
     }
@@ -65,6 +66,14 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
       return;
     }
 
+    // Validate color
+    try {
+      getColorPrice(material, color);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
     // Download temp file
     const fileBuffer = await downloadTempFile(sessionId, filename);
 
@@ -74,15 +83,21 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
     // Get print parameters
     const parameters = getPrintParameters(quality as any, purpose as any);
 
-    // Estimate print job
-    const materialDensity = MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
-    const estimations = estimatePrintJob(metadata, parameters, material as any, materialDensity);
+    // Estimate print job (use color's density)
+    const colorInfo = getColorPrice(material, color);
+    const estimations = estimatePrintJob(
+      metadata,
+      parameters,
+      material as any,
+      colorInfo.density
+    );
 
     // Calculate pricing
     const pricing = pricingService.calculatePrice({
       materialWeight: estimations.material_weight_g,
       printTime: estimations.print_time_minutes,
       materialType: material,
+      color,
       quality,
       purpose,
     });
@@ -106,14 +121,20 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
 // POST /finalize-print-job
 export async function handleFinalizePrintJob(req: Request, res: Response): Promise<void> {
   try {
-    const { filename, sessionId, quality, material, purpose, metadata } =
-      req.body;
+    const { filename, sessionId, quality, material, color, purpose, metadata } = req.body;
 
-    if (!filename || !sessionId || !quality || !material || !purpose) {
+    if (!filename || !sessionId || !quality || !material || !color || !purpose) {
       res.status(400).json({
-        error:
-          'filename, sessionId, quality, material, purpose required',
+        error: 'filename, sessionId, quality, material, color, purpose required',
       });
+      return;
+    }
+
+    // Validate color
+    try {
+      getColorPrice(material, color);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
       return;
     }
 
@@ -127,13 +148,12 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
 
     // Get parameters and estimations
     const parameters = getPrintParameters(quality as any, purpose as any);
-    const materialDensity =
-      MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
+    const colorInfo = getColorPrice(material, color);
     const estimations = estimatePrintJob(
       metadata,
       parameters,
       material as any,
-      materialDensity
+      colorInfo.density
     );
 
     // Calculate pricing
@@ -141,6 +161,7 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
       materialWeight: estimations.material_weight_g,
       printTime: estimations.print_time_minutes,
       materialType: material,
+      color,
       quality,
       purpose,
     });
@@ -155,6 +176,7 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
         pricing,
         quality,
         material,
+        color,
         purpose,
       },
     });

@@ -7,6 +7,7 @@ interface PricingBreakdown {
   subtotal: number;
   markup: number;
   total: number;
+  colorSurcharge?: number; // Added optional color surcharge
 }
 
 interface EstimationData {
@@ -96,12 +97,17 @@ export const EstimationResults: React.FC<EstimationResultsProps> = ({
           >
             <ul style={{ listStyle: 'none', padding: 0 }}>
               <li>Material Cost: ${pricing.materialCost.toFixed(2)}</li>
+              {pricing.colorSurcharge && ( // Conditionally render color surcharge
+                <li style={{ color: '#d9534f' }}>
+                  Color Surcharge: ${pricing.colorSurcharge.toFixed(2)}
+                </li>
+              )}
               <li>Labor Cost: ${pricing.laborCost.toFixed(2)}</li>
               <li>Service Fee: ${pricing.serviceFee.toFixed(2)}</li>
               <li style={{ borderTop: '1px solid #ccc', paddingTop: '5px' }}>
                 Subtotal: ${pricing.subtotal.toFixed(2)}
               </li>
-              <li>Markup ({30}%): ${pricing.markup.toFixed(2)}</li>
+              <li>Markup (30%): ${pricing.markup.toFixed(2)}</li>
               <li
                 style={{
                   fontWeight: 'bold',

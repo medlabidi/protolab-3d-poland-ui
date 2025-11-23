@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { getAvailableColors } from '../services/material-colors';
 
 interface PrintParametersFormProps {
   onAnalyze: (params: {
     quality: string;
     material: string;
+    color: string;
     purpose: string;
   }) => void;
   loading?: boolean;
@@ -15,11 +17,24 @@ export const PrintParametersForm: React.FC<PrintParametersFormProps> = ({
 }) => {
   const [quality, setQuality] = useState<string>('standard');
   const [material, setMaterial] = useState<string>('PLA');
+  const [color, setColor] = useState<string>('Natural');
   const [purpose, setPurpose] = useState<string>('prototype');
+
+  // Get available colors for selected material
+  const availableColors = useMemo(() => {
+    return getAvailableColors(material);
+  }, [material]);
+
+  // Reset color if not available for new material
+  React.useEffect(() => {
+    if (!availableColors.includes(color)) {
+      setColor(availableColors[0] || 'Natural');
+    }
+  }, [material, color, availableColors]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAnalyze({ quality, material, purpose });
+    onAnalyze({ quality, material, color, purpose });
   };
 
   return (
@@ -53,6 +68,22 @@ export const PrintParametersForm: React.FC<PrintParametersFormProps> = ({
           <option value="PETG">PETG (1.27 g/cm³)</option>
           <option value="TPU">TPU (1.21 g/cm³)</option>
           <option value="Resin">Resin (1.1 g/cm³)</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="color">Color:</label>
+        <select
+          id="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          disabled={loading}
+        >
+          {availableColors.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
         </select>
       </div>
 

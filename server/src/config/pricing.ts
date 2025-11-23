@@ -1,5 +1,5 @@
-export const MATERIAL_COSTS = {
-  PLA: 0.02,      // $ per gram
+export const BASE_MATERIAL_COSTS = {
+  PLA: 0.02,      // $ per gram (base)
   ABS: 0.025,
   PETG: 0.028,
   TPU: 0.035,
