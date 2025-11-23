@@ -26,8 +26,8 @@ export class AuthService {
       throw new Error('Email already registered. Please use a different email or login.');
     }
     
-    // Generate approval token
-    const approvalToken = crypto.randomBytes(32).toString('hex');
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
     
     const password_hash = await bcrypt.hash(data.password, 10);
     
@@ -43,40 +43,25 @@ export class AuthService {
       latitude: data.latitude,
       longitude: data.longitude,
       role: 'user',
-      email_verified: true, // No email verification needed
-      status: 'pending', // New users start as pending, waiting for admin approval only
-      approval_token: approvalToken,
+      email_verified: false, // Needs email verification
+      status: 'approved', // Auto-approved, just needs email verification
+      verification_token: verificationToken,
     });
     
-    // Send submission confirmation to user
+    // Send verification email to user
     try {
-      await emailService.sendSubmissionConfirmation(user.email, user.name);
+      await emailService.sendVerificationEmail(user.email, user.name, verificationToken);
     } catch (error) {
-      console.error('Failed to send submission confirmation:', error);
-    }
-    
-    // Send notification to admin
-    try {
-      await emailService.sendAdminNotification(
-        user.name,
-        user.email,
-        user.phone,
-        user.address,
-        user.city,
-        user.zip_code,
-        user.country,
-        approvalToken
-      );
-    } catch (error) {
-      console.error('Failed to send admin notification:', error);
+      console.error('Failed to send verification email:', error);
+      throw new Error('Failed to send verification email. Please try again.');
     }
     
     // Return user without sensitive data and without tokens
-    const { password_hash: _, approval_token: __, ...userWithoutSensitive } = user;
+    const { password_hash: _, verification_token: __, ...userWithoutSensitive } = user;
     
     return { 
       user: userWithoutSensitive, 
-      message: 'Your registration request has been submitted successfully. You will receive an email confirmation once your account is approved by our admin team.'
+      message: 'Registration successful! Please check your email to verify your account.'
     };
   }
   
@@ -92,17 +77,9 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
     
-    // Check approval status
-    if (user.status === 'pending') {
-      throw new Error('Your account is pending approval. Please wait for admin confirmation. You will receive an email once approved.');
-    }
-    
-    if (user.status === 'rejected') {
-      throw new Error('Your account registration was not approved. Please contact support for more information.');
-    }
-    
-    if (user.status !== 'approved') {
-      throw new Error('Account access denied. Please contact support.');
+    // Check email verification
+    if (!user.email_verified) {
+      throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.');
     }
     
     const tokens = generateTokenPair({
@@ -145,6 +122,66 @@ export class AuthService {
   
   async logout(refreshToken: string): Promise<void> {
     await RefreshToken.deleteOne({ token: refreshToken });
+  }
+
+  async verifyEmail(verificationToken: string): Promise<{ user: IUser; tokens: TokenPair }> {
+    const supabase = (await import('../config/database')).getSupabase();
+    
+    // Find user with this verification token
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('verification_token', verificationToken)
+      .limit(1);
+    
+    if (error || !users || users.length === 0) {
+      throw new Error('Invalid or expired verification token');
+    }
+    
+    const user = users[0] as IUser;
+    
+    if (user.email_verified) {
+      throw new Error('Email already verified. You can log in now.');
+    }
+    
+    // Update user: verify email and clear token
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        email_verified: true,
+        verification_token: null,
+      })
+      .eq('id', user.id);
+    
+    if (updateError) {
+      console.error('Update error details:', updateError);
+      throw new Error(`Failed to verify email: ${updateError.message}`);
+    }
+    
+    // Get updated user
+    const verifiedUser: IUser = { ...user, email_verified: true, verification_token: undefined };
+    
+    // Generate tokens for auto-login
+    const tokens = generateTokenPair({
+      id: verifiedUser.id,
+      email: verifiedUser.email,
+      role: verifiedUser.role,
+    });
+    
+    await RefreshToken.create({
+      user_id: verifiedUser.id,
+      token: tokens.refreshToken,
+      expires_at: getRefreshTokenExpiry().toISOString(),
+    });
+    
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(verifiedUser.email, verifiedUser.name);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+    }
+    
+    return { user: verifiedUser, tokens };
   }
 
   async approveUser(approvalToken: string, adminId?: string): Promise<{ message: string }> {

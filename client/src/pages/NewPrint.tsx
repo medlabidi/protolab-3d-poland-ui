@@ -50,20 +50,20 @@ const NewPrint = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       {isLoggedIn && <DashboardSidebar />}
       
       {!isLoggedIn && (
-        <header className="fixed top-0 left-0 right-0 border-b border-border bg-card/50 backdrop-blur-sm z-50">
+        <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
             >
-              <Box className="w-6 h-6" />
-              ProtoLab
+              <Box className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" />
+              <span className="gradient-text">ProtoLab</span>
             </button>
-            <Button variant="outline" onClick={() => navigate("/login")}>
+            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
               Login
             </Button>
           </div>
@@ -72,19 +72,22 @@ const NewPrint = () => {
       
       <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''}`}>
         <div className="max-w-4xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">New Print Request</h1>
-            <p className="text-muted-foreground">Upload your 3D model and configure print parameters</p>
+          <div className="animate-slide-up">
+            <h1 className="text-4xl font-bold mb-3 gradient-text">New Print Request</h1>
+            <p className="text-muted-foreground text-lg">Upload your 3D model and configure print parameters</p>
           </div>
 
           {/* File Upload */}
-          <Card>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30">
             <CardHeader>
-              <CardTitle>Upload 3D Model</CardTitle>
-              <CardDescription>Supported formats: STL, OBJ, STEP (max 50MB)</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Upload className="w-6 h-6 text-primary" />
+                Upload 3D Model
+              </CardTitle>
+              <CardDescription className="text-base">Supported formats: STL, OBJ, STEP (max 50MB)</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+              <div className="border-3 border-dashed border-primary/30 rounded-2xl p-12 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5">
                 <input
                   type="file"
                   id="file-upload"
@@ -93,27 +96,32 @@ const NewPrint = () => {
                   onChange={handleFileChange}
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <Upload className="w-10 h-10 text-white" />
+                  </div>
                   {file ? (
-                    <div>
-                      <p className="font-medium text-primary">{file.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
+                    <div className="animate-scale-in">
+                      <p className="font-bold text-xl text-primary mb-2">{file.name}</p>
+                      <p className="text-muted-foreground">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                   ) : (
                     <div>
-                      <p className="font-medium">Click to upload or drag and drop</p>
-                      <p className="text-sm text-muted-foreground mt-1">STL, OBJ, or STEP files</p>
+                      <p className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">Click to upload or drag and drop</p>
+                      <p className="text-muted-foreground">STL, OBJ, or STEP files</p>
                     </div>
                   )}
                 </label>
               </div>
               
               {file && (
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-2">3D Preview</p>
-                  <div className="aspect-square bg-background rounded border flex items-center justify-center">
+                <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
+                  <p className="text-sm font-bold mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                    3D Preview
+                  </p>
+                  <div className="aspect-square bg-gradient-to-br from-background to-muted rounded-xl border-2 border-primary/10 flex items-center justify-center shadow-inner">
                     <p className="text-muted-foreground">3D model preview placeholder</p>
                   </div>
                 </div>
@@ -122,10 +130,13 @@ const NewPrint = () => {
           </Card>
 
           {/* Configuration */}
-          <Card>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
-              <CardTitle>Print Configuration</CardTitle>
-              <CardDescription>Select your preferred print settings</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Calculator className="w-6 h-6 text-primary" />
+                Print Configuration
+              </CardTitle>
+              <CardDescription className="text-base">Select your preferred print settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -269,21 +280,27 @@ const NewPrint = () => {
           </Card>
 
           {/* Price Estimate */}
-          <Card>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle>Price Estimate</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Calculator className="w-6 h-6 text-primary" />
+                Price Estimate
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button onClick={calculatePrice} className="w-full" variant="outline">
-                <Calculator className="mr-2 h-4 w-4" />
-                Calculate Price
+              <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
+                <span className="relative z-10 flex items-center">
+                  <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                  Calculate Price
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </Button>
 
               {estimatedPrice && (
-                <div className="p-6 bg-primary/5 rounded-lg border-2 border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-1">Estimated Price</p>
-                  <p className="text-3xl font-bold text-primary">{estimatedPrice}.00 PLN</p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                <div className="p-8 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                  <p className="text-sm text-muted-foreground mb-2 font-semibold">Estimated Price</p>
+                  <p className="text-5xl font-bold gradient-text mb-3">{estimatedPrice}.00 PLN</p>
+                  <p className="text-sm text-muted-foreground">
                     + shipping cost (calculated at checkout)
                   </p>
                 </div>
@@ -292,31 +309,35 @@ const NewPrint = () => {
           </Card>
 
           {/* Shipping */}
-          <Card>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
-              <CardTitle>Shipping Method</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Send className="w-6 h-6 text-primary" />
+                Shipping Method
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted transition-colors">
-                <input type="radio" name="shipping" id="pickup" defaultChecked />
+              <div className="flex items-center space-x-3 p-5 border-2 border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
+                <input type="radio" name="shipping" id="pickup" defaultChecked className="w-5 h-5" />
                 <Label htmlFor="pickup" className="cursor-pointer flex-1">
-                  <p className="font-medium">Local Pickup</p>
+                  <p className="font-bold text-lg group-hover:text-primary transition-colors">Local Pickup</p>
                   <p className="text-sm text-muted-foreground">Free - Collect from our studio</p>
                 </Label>
+                <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-xs font-bold">FREE</div>
               </div>
 
-              <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted transition-colors">
-                <input type="radio" name="shipping" id="inpost" />
+              <div className="flex items-center space-x-3 p-5 border-2 border-border rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
+                <input type="radio" name="shipping" id="inpost" className="w-5 h-5" />
                 <Label htmlFor="inpost" className="cursor-pointer flex-1">
-                  <p className="font-medium">InPost Locker</p>
+                  <p className="font-bold text-lg group-hover:text-primary transition-colors">InPost Locker</p>
                   <p className="text-sm text-muted-foreground">From 12 PLN</p>
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted transition-colors">
-                <input type="radio" name="shipping" id="courier" />
+              <div className="flex items-center space-x-3 p-5 border-2 border-border rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
+                <input type="radio" name="shipping" id="courier" className="w-5 h-5" />
                 <Label htmlFor="courier" className="cursor-pointer flex-1">
-                  <p className="font-medium">Courier Delivery</p>
+                  <p className="font-bold text-lg group-hover:text-primary transition-colors">Courier Delivery</p>
                   <p className="text-sm text-muted-foreground">From 25 PLN</p>
                 </Label>
               </div>
@@ -324,9 +345,12 @@ const NewPrint = () => {
           </Card>
 
           {/* Submit */}
-          <Button onClick={submitOrder} size="lg" className="w-full">
-            <Send className="mr-2 h-5 w-5" />
-            Submit Print Job
+          <Button onClick={submitOrder} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
+            <span className="relative z-10 flex items-center">
+              <Send className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
+              Submit Print Job
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </Button>
         </div>
       </main>

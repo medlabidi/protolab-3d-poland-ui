@@ -7,7 +7,7 @@ export class AuthController {
     try {
       const { user, message } = await authService.register(req.body);
       
-      logger.info(`User registered (pending approval): ${user.email}`);
+      logger.info(`User registered (email verification required): ${user.email}`);
       
       res.status(201).json({
         message,
@@ -15,9 +15,72 @@ export class AuthController {
           id: user.id,
           name: user.name,
           email: user.email,
-          status: 'pending',
+          email_verified: false,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        throw new Error('Verification token is required');
+      }
+      
+      const { user, tokens } = await authService.verifyEmail(token);
+      
+      logger.info(`Email verified for user: ${user.email}`);
+      
+      // Return HTML response that redirects to frontend with tokens
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Email Verified - ProtoLab 3D Poland</title>
+          <style>
+            body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+            .icon { font-size: 64px; margin-bottom: 20px; }
+            h1 { color: #4CAF50; margin: 0 0 20px 0; }
+            p { color: #666; line-height: 1.6; margin-bottom: 20px; }
+            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+            .loader { margin: 20px 0; }
+          </style>
+          <script>
+            // Store tokens and user info in localStorage
+            localStorage.setItem('accessToken', '${tokens.accessToken}');
+            localStorage.setItem('refreshToken', '${tokens.refreshToken}');
+            localStorage.setItem('user', JSON.stringify({
+              id: '${user.id}',
+              name: '${user.name}',
+              email: '${user.email}',
+              role: '${user.role}'
+            }));
+            localStorage.setItem('isLoggedIn', 'true');
+            
+            // Redirect to dashboard
+            setTimeout(() => {
+              window.location.href = '${frontendUrl}/dashboard';
+            }, 2000);
+          </script>
+        </head>
+        <body>
+          <div class="container">
+            <div class="icon">✅</div>
+            <h1>Email Verified Successfully!</h1>
+            <p>Welcome to ProtoLab 3D Poland, <strong>${user.name}</strong>!</p>
+            <p>Your email has been verified. Redirecting to dashboard...</p>
+            <div class="loader">⏳</div>
+            <a href="${frontendUrl}/dashboard" class="button">Continue to Dashboard</a>
+          </div>
+        </body>
+        </html>
+      `);
     } catch (error) {
       next(error);
     }

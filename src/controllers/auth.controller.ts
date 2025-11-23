@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/auth.service';
-import { logger } from '../config/logger';
+import { authService } from "@/services/auth.service";
+import { logger } from "@/config/logger";
 
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {

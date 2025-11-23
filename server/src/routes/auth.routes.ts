@@ -17,7 +17,10 @@ router.post('/login', loginLimiter, validate(loginSchema), authController.login)
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 
-// Admin approval endpoints
+// Email verification endpoint
+router.get('/verify-email', authController.verifyEmail);
+
+// Admin approval endpoints (kept for backward compatibility, but not used in email verification flow)
 router.get('/approve-user', authController.approveUser);
 router.get('/reject-user', authController.rejectUser);
 

@@ -16,6 +16,10 @@ export interface IUser {
   email_verified: boolean;
   verification_token?: string;
   verification_token_expires?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approval_token?: string;
+  approved_at?: string;
+  approved_by?: string;
   created_at: string;
 }
 

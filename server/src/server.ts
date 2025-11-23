@@ -27,10 +27,14 @@ const PORT = process.env.PORT || 5000;
 const startServer = async (): Promise<void> => {
   try {
     // Connect to database
+    logger.info('Connecting to database...');
     await connectDatabase();
+    logger.info('Database connected successfully');
     
     // Create Express app
+    logger.info('Creating Express app...');
     const app = createApp();
+    logger.info('Express app created successfully');
     
     // Start server
     app.listen(PORT, () => {
@@ -40,6 +44,7 @@ const startServer = async (): Promise<void> => {
     });
   } catch (error) {
     logger.error({ err: error }, 'Failed to start server');
+    console.error('Detailed error:', error);
     process.exit(1);
   }
 };

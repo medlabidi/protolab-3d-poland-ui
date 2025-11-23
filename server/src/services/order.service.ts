@@ -6,13 +6,9 @@ import { getSupabase } from '../config/database';
 
 export class OrderService {
   async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
-    const settings = await settingsService.getSettings();
-    
-    const estimatedPrice = pricingService.estimatePrice(
-      settings.material_rate,
-      settings.time_rate,
-      settings.service_fee
-    );
+    // Use default/estimated values for initial order creation
+    // Actual price will be calculated after file analysis
+    const estimatedPrice = 0; // Placeholder, will be updated after file analysis
     
     const order = await Order.create({
       user_id: userId,
@@ -101,13 +97,16 @@ export class OrderService {
       updates.print_time = printTime;
     }
     
-    updates.price = pricingService.calculatePrice({
-      materialWeight: materialWeight ?? order.material_weight,
-      printTime: printTime ?? order.print_time,
-      materialRate: settings.material_rate,
-      timeRate: settings.time_rate,
-      serviceFee: settings.service_fee,
+    const pricingResult = pricingService.calculatePrice({
+      materialType: order.material,
+      color: order.color,
+      materialWeightGrams: (materialWeight ?? order.material_weight ?? 0) * 1000,
+      printTimeHours: (printTime ?? order.print_time ?? 0) / 60,
+      laborTimeMinutes: 20,
+      deliveryFee: 0,
     });
+    
+    updates.price = pricingResult.totalPrice;
     
     return await Order.updateById(orderId, updates);
   }

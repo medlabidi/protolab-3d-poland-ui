@@ -12,6 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
   const { t } = useLanguage();
 
   // Login form state
@@ -32,13 +33,20 @@ const Login = () => {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
-  const API_URL = "http://localhost:5000/api";
+  // Use proxy configured in vite.config.ts to avoid CORS issues
+  const API_URL = "/api";
 
   // Auto-detect location on component mount (optional)
   useEffect(() => {
     // Only attempt geolocation if available and user hasn't filled address yet
     if (!navigator.geolocation) {
       console.log('Geolocation not supported');
+      return;
+    }
+
+    // Check if we're in a secure context (HTTPS or localhost)
+    if (!window.isSecureContext) {
+      console.log('Geolocation requires a secure context (HTTPS or localhost)');
       return;
     }
     
@@ -203,13 +211,14 @@ const Login = () => {
         return;
       }
 
-      // Store tokens and user info
-      localStorage.setItem("accessToken", data.tokens.accessToken);
-      localStorage.setItem("refreshToken", data.tokens.refreshToken);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("isLoggedIn", "true");
-
-      toast.success("Account created successfully!");
+      // Show success message - user needs to verify email
+      toast.success("✅ " + (data.message || "Registration successful! Please check your email to verify your account."), {
+        duration: 6000,
+      });
+      
+      toast.info("📧 Check your inbox for the verification link", {
+        duration: 5000,
+      });
       
       // Clear signup form
       setSignupName("");
@@ -224,7 +233,10 @@ const Login = () => {
       setLatitude(null);
       setLongitude(null);
 
-      navigate("/dashboard");
+      // Switch to login tab after 2 seconds
+      setTimeout(() => {
+        setActiveTab("login");
+      }, 2000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Connection error");
     } finally {
@@ -245,7 +257,7 @@ const Login = () => {
           <CardDescription>{t.login.subtitle}</CardDescription>
         </CardHeader>
 
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mx-6">
             <TabsTrigger value="login">{t.login.signIn}</TabsTrigger>
             <TabsTrigger value="signup">{t.login.signUp}</TabsTrigger>

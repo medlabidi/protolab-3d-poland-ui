@@ -19,12 +19,22 @@ const createApp = (): Application => {
   app.use(helmet());
   
   // CORS configuration - Allow both ports 8080 and 8081
+  const allowedOrigins = ['http://localhost:8080', 'http://localhost:8081'];
+  if (process.env.CORS_ORIGIN) {
+    allowedOrigins.push(process.env.CORS_ORIGIN);
+  }
+  
   app.use(cors({
-    origin: ['http://localhost:8080', 'http://localhost:8081', process.env.CORS_ORIGIN].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   }));
+
+  // Handle OPTIONS preflight requests explicitly
+  app.options('*', cors());
   
   // Rate limiting
   const limiter = rateLimit({
