@@ -10,7 +10,7 @@ import {
   EstimationResult,
 } from '../services/file-analysis.service';
 import { getPrintParameters, MATERIAL_DENSITY } from '../config/print-parameters';
-import { calculatePrintPrice } from '../services/pricing-calculator';
+import { pricingService } from '../services/pricing.service';
 import { createPrintJob, updateJob } from '../services/print-job.service';
 import { getColorPrice } from '../config/material-colors';
 
@@ -87,8 +87,8 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
       colorInfo || 1.24
     );
 
-    // Calculate price using new pricing calculator
-    const pricing = calculatePrintPrice({
+    // Calculate price using pricing service
+    const pricing = pricingService.calculatePrice({
       materialType: material,
       color,
       materialWeightGrams: estimations.material_weight_g,
@@ -144,7 +144,7 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
     );
 
     // Calculate price
-    const pricing = calculatePrintPrice({
+    const pricing = pricingService.calculatePrice({
       materialType: material,
       color,
       materialWeightGrams: estimations.material_weight_g,

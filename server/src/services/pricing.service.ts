@@ -1,73 +1,71 @@
-import { PricingParams, PricingBreakdown } from '../types';
-import {
-  BASE_MATERIAL_COSTS,
-  LABOR_RATES,
-  PRICING_CONFIG,
-  QUALITY_MULTIPLIER,
-  PURPOSE_MULTIPLIER,
-} from '../config/pricing';
-import { getColorPrice } from '../config/material-colors';
+import { PricingParams, PricingResult } from '../types/pricing';
+import { getMaterialPrice } from '../config/material-prices';
+
+// Constants
+const MACHINE_POWER_KW = 0.27; // 270W in kW
+const ENERGY_PRICE_PLN = 0.914; // PLN per kWh (Krakow)
+const HOURLY_LABOR_RATE_PLN = 31.4; // PLN per hour
+const DEFAULT_LABOR_TIME_MINUTES = 20;
+const MACHINE_COST_PLN = 3483.39;
+const MACHINE_LIFESPAN_HOURS = 5000;
+const MAINTENANCE_MULTIPLIER = 0.03;
+const VAT_RATE = 0.23; // 23% VAT in Poland
 
 export class PricingService {
-  calculatePrice(params: PricingParams): PricingBreakdown {
+  calculatePrice(params: PricingParams): PricingResult {
     const {
-      materialWeight,
-      printTime,
       materialType,
       color,
-      quality,
-      purpose,
+      materialWeightGrams,
+      printTimeHours,
+      laborTimeMinutes = DEFAULT_LABOR_TIME_MINUTES,
+      deliveryFee = 0,
     } = params;
 
-    // Get color price multiplier
-    const colorInfo = getColorPrice(materialType, color);
+    // 1. Material Cost
+    const materialPricePerKg = getMaterialPrice(materialType, color);
+    const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
 
-    // Material cost (base cost × color multiplier)
-    const baseMaterialRate =
-      BASE_MATERIAL_COSTS[materialType as keyof typeof BASE_MATERIAL_COSTS] ||
-      0.02;
-    const baseMaterialCost = materialWeight * baseMaterialRate;
-    const colorSurcharge = baseMaterialCost * (colorInfo.priceMultiplier - 1);
-    const materialCost = baseMaterialCost + colorSurcharge;
+    // 2. Energy Cost
+    // Cenergy = T * W * Pe
+    const Cenergy = printTimeHours * MACHINE_POWER_KW * ENERGY_PRICE_PLN;
 
-    // Labor cost (print time in minutes × labor rate per minute)
-    const laborRate =
-      LABOR_RATES[quality as keyof typeof LABOR_RATES] || 0.75;
-    const baseLaborCost = (printTime / 60) * laborRate * 60; // printTime is in minutes
+    // 3. Labor Cost
+    // Clabor = R * L (where L is in hours)
+    const laborTimeHours = laborTimeMinutes / 60;
+    const Clabor = HOURLY_LABOR_RATE_PLN * laborTimeHours;
 
-    // Apply quality and purpose multipliers
-    const qualityMult =
-      QUALITY_MULTIPLIER[quality as keyof typeof QUALITY_MULTIPLIER] || 1.0;
-    const purposeMult =
-      PURPOSE_MULTIPLIER[purpose as keyof typeof PURPOSE_MULTIPLIER] || 1.0;
+    // 4. Machine Depreciation
+    // Cdepreciation = (machineCost / lifespanHours) * printTimeHours
+    const Cdepreciation =
+      (MACHINE_COST_PLN / MACHINE_LIFESPAN_HOURS) * printTimeHours;
 
-    const laborCost = baseLaborCost * qualityMult * purposeMult;
+    // 5. Maintenance Cost
+    // Cmaintenance = Cdepreciation * 0.03
+    const Cmaintenance = Cdepreciation * MAINTENANCE_MULTIPLIER;
 
-    // Service fee
-    const serviceFee = PRICING_CONFIG.serviceFee;
+    // 6. Total Internal Cost
+    const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
 
-    // Subtotal before markup
-    const subtotal = materialCost + laborCost + serviceFee;
+    // 7. VAT (23%)
+    const vat = Cinternal * VAT_RATE;
 
-    // Apply markup
-    const markup = subtotal * (PRICING_CONFIG.markupPercent / 100);
+    // 8. Price without delivery
+    const priceWithoutDelivery = Cinternal + vat;
 
-    // Total
-    let total = subtotal + markup;
-
-    // Apply minimum price
-    if (total < PRICING_CONFIG.minPrice) {
-      total = PRICING_CONFIG.minPrice;
-    }
+    // 9. Total price with delivery
+    const totalPrice = priceWithoutDelivery + deliveryFee;
 
     return {
-      materialCost: Math.round(baseMaterialCost * 100) / 100,
-      colorSurcharge: Math.round(colorSurcharge * 100) / 100,
-      laborCost: Math.round(laborCost * 100) / 100,
-      serviceFee,
-      subtotal: Math.round(subtotal * 100) / 100,
-      markup: Math.round(markup * 100) / 100,
-      total: Math.round(total * 100) / 100,
+      Cmaterial: Math.round(Cmaterial * 100) / 100,
+      Cenergy: Math.round(Cenergy * 100) / 100,
+      Clabor: Math.round(Clabor * 100) / 100,
+      Cdepreciation: Math.round(Cdepreciation * 100) / 100,
+      Cmaintenance: Math.round(Cmaintenance * 100) / 100,
+      Cinternal: Math.round(Cinternal * 100) / 100,
+      vat: Math.round(vat * 100) / 100,
+      priceWithoutDelivery: Math.round(priceWithoutDelivery * 100) / 100,
+      totalPrice: Math.round(totalPrice * 100) / 100,
     };
   }
 }

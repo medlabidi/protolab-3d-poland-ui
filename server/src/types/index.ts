@@ -57,3 +57,6 @@ export interface OrderCreateInput {
   quantity: number;
   shippingMethod: ShippingMethod;
 }
+
+// Re-export pricing types for backward compatibility
+export type { PricingParams, PricingResult } from './pricing';
