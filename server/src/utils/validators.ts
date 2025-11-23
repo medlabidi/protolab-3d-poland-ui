@@ -77,7 +77,41 @@ export const isValidFileType = (mimetype: string): boolean => {
     mimetype === 'application/octet-stream';
 };
 
-export const isValidFileExtension = (filename: string): boolean => {
-  const ext = filename.toLowerCase().split('.').pop();
-  return ['stl', 'obj', 'step', 'stp'].includes(ext || '');
-};
+/**
+ * Validate file extension against allowed 3D file types
+ */
+export function isValidFileExtension(filename: string): boolean {
+  const allowedExtensions = ['.stl', '.obj', '.3mf'];
+  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  return allowedExtensions.includes(ext);
+}
+
+/**
+ * Validate email format
+ */
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validate password strength
+ * Requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+ */
+export function isValidPassword(password: string): boolean {
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  return passwordRegex.test(password);
+}
+
+/**
+ * Sanitize user input to prevent XSS
+ */
+export function sanitizeInput(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}

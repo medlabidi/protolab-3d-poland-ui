@@ -101,7 +101,6 @@ export const PricingBreakdown: React.FC<PricingBreakdownProps> = ({
                   fontWeight: 'bold',
                   color: '#1b5e20',
                   borderTop: '2px solid #2e7d32',
-                  paddingTop: '12px',
                 }}
               >
                 <span>Total Price:</span>

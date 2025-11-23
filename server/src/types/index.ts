@@ -59,4 +59,4 @@ export interface OrderCreateInput {
 }
 
 // Re-export pricing types for backward compatibility
-export type { PricingParams, PricingResult } from './pricing';
+export type { PricingResult } from './pricing';

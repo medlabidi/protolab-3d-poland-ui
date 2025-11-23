@@ -12,6 +12,10 @@ interface UploadResponse {
   details?: ValidationError;
   result?: any;
   pricing?: any;
+  validation?: {
+    isValid: boolean;
+    warnings: string[];
+  };
 }
 
 export const FileUploadValidator: React.FC = () => {
