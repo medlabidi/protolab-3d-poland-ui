@@ -28,7 +28,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             
-            {/* Public route - no authentication required */}
+            {/* Public route - no authentication required 
+            */}
             <Route path="/new-print" element={<NewPrint />} />
             
             {/* Protected Routes - Require Authentication */}
