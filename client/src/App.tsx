@@ -12,7 +12,6 @@ import NewPrint from "./pages/NewPrint";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
 import Settings from "./pages/Settings";
-import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
