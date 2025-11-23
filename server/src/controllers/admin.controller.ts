@@ -22,7 +22,7 @@ export class AdminController {
       
       const order = await orderService.updateOrderStatus(id, status);
       
-      logger.info(`Order status updated: ${order._id} -> ${status}`);
+      logger.info(`Order status updated: ${order.id} -> ${status}`);
       
       res.json({ message: 'Order status updated successfully', order });
     } catch (error) {
@@ -37,7 +37,7 @@ export class AdminController {
       
       const order = await orderService.updateOrderPricing(id, materialWeight, printTime);
       
-      logger.info(`Order pricing updated: ${order._id}`);
+      logger.info(`Order pricing updated: ${order.id}`);
       
       res.json({
         message: 'Order pricing updated successfully',
@@ -56,7 +56,7 @@ export class AdminController {
       
       const order = await orderService.updateOrderTracking(id, trackingCode);
       
-      logger.info(`Tracking code added to order: ${order._id}`);
+      logger.info(`Tracking code added to order: ${order.id}`);
       
       res.json({ message: 'Tracking code updated successfully', order });
     } catch (error) {
