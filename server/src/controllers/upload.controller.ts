@@ -1,8 +1,16 @@
 import { Request, Response } from 'express';
-import { uploadTempFile, downloadTempFile, moveFileToJob } from '../services/storage.service';
-import { analyzeFile, estimatePrintJob, EstimationResult } from '../services/file-analysis.service';
+import {
+  uploadTempFile,
+  downloadTempFile,
+  moveFileToJob,
+} from '../services/storage.service';
+import {
+  analyzeFile,
+  estimatePrintJob,
+  EstimationResult,
+} from '../services/file-analysis.service';
 import { getPrintParameters, MATERIAL_DENSITY } from '../config/print-parameters';
-import { pricingService } from '../services/pricing.service';
+import { calculatePrintPrice } from '../services/pricing-calculator';
 import { createPrintJob, updateJob } from '../services/print-job.service';
 import { getColorPrice } from '../config/material-colors';
 
@@ -61,19 +69,6 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
       return;
     }
 
-    if (!MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY]) {
-      res.status(400).json({ error: `Invalid material. Supported: ${Object.keys(MATERIAL_DENSITY).join(', ')}` });
-      return;
-    }
-
-    // Validate color
-    try {
-      getColorPrice(material, color);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-
     // Download temp file
     const fileBuffer = await downloadTempFile(sessionId, filename);
 
@@ -83,23 +78,23 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
     // Get print parameters
     const parameters = getPrintParameters(quality as any, purpose as any);
 
-    // Estimate print job (use color's density)
-    const colorInfo = getColorPrice(material, color);
+    // Estimate print job
+    const colorInfo = MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
     const estimations = estimatePrintJob(
       metadata,
       parameters,
       material as any,
-      colorInfo.density
+      colorInfo || 1.24
     );
 
-    // Calculate pricing
-    const pricing = pricingService.calculatePrice({
-      materialWeight: estimations.material_weight_g,
-      printTime: estimations.print_time_minutes,
+    // Calculate price using new pricing calculator
+    const pricing = calculatePrintPrice({
       materialType: material,
       color,
-      quality,
-      purpose,
+      materialWeightGrams: estimations.material_weight_g,
+      printTimeHours: estimations.print_time_minutes / 60,
+      laborTimeMinutes: 20, // Default 20 minutes
+      deliveryFee: 0,
     });
 
     const result: EstimationResult = {
@@ -121,20 +116,12 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
 // POST /finalize-print-job
 export async function handleFinalizePrintJob(req: Request, res: Response): Promise<void> {
   try {
-    const { filename, sessionId, quality, material, color, purpose, metadata } = req.body;
+    const { filename, sessionId, quality, material, color, purpose, metadata, deliveryFee } = req.body;
 
     if (!filename || !sessionId || !quality || !material || !color || !purpose) {
       res.status(400).json({
         error: 'filename, sessionId, quality, material, color, purpose required',
       });
-      return;
-    }
-
-    // Validate color
-    try {
-      getColorPrice(material, color);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
       return;
     }
 
@@ -148,22 +135,22 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
 
     // Get parameters and estimations
     const parameters = getPrintParameters(quality as any, purpose as any);
-    const colorInfo = getColorPrice(material, color);
+    const colorInfo = MATERIAL_DENSITY[material as keyof typeof MATERIAL_DENSITY];
     const estimations = estimatePrintJob(
       metadata,
       parameters,
       material as any,
-      colorInfo.density
+      colorInfo || 1.24
     );
 
-    // Calculate pricing
-    const pricing = pricingService.calculatePrice({
-      materialWeight: estimations.material_weight_g,
-      printTime: estimations.print_time_minutes,
+    // Calculate price
+    const pricing = calculatePrintPrice({
       materialType: material,
       color,
-      quality,
-      purpose,
+      materialWeightGrams: estimations.material_weight_g,
+      printTimeHours: estimations.print_time_minutes / 60,
+      laborTimeMinutes: 20,
+      deliveryFee: deliveryFee || 0,
     });
 
     // Update job
