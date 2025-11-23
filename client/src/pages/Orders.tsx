@@ -2,7 +2,7 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
-import { Eye } from "lucide-react";
+import { Eye, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Orders = () => {

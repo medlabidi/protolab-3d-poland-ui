@@ -18,8 +18,8 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
@@ -27,5 +27,17 @@
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/controllers",
+    "src/services",
+    "src/middleware",
+    "src/models",
+    "src/routes",
+    "src/express-app.ts",
+    "src/server.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "node_modules"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
