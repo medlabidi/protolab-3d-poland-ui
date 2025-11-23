@@ -20,7 +20,7 @@ export class OrderController {
         fileUrl,
       });
       
-      logger.info(`Order created: ${order._id}`);
+      logger.info(`Order created: ${order.id}`);
       
       res.status(201).json({
         message: 'Order created successfully',
@@ -64,7 +64,7 @@ export class OrderController {
       
       const order = await orderService.addReview(id, req.user!.id, review);
       
-      logger.info(`Review added to order: ${order._id}`);
+      logger.info(`Review added to order: ${order.id}`);
       
       res.json({ message: 'Review added successfully', order });
     } catch (error) {
