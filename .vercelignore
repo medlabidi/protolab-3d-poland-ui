@@ -1,0 +1,68 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Environment files (add via Vercel dashboard instead)
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Build outputs
+dist
+.next
+out
+build
+
+# Testing
+coverage
+.nyc_output
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation (not needed for deployment)
+docs/
+*.md
+!README.md
+
+# Scripts
+scripts/
+
+# SQL files
+SQL/
+
+# Development files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+jest.config.js
+nodemon.json
+
+# Server source (we use compiled version in api/)
+server/src/
+server/nodemon.json
+server/tsconfig.json
+
+# Lock files (Vercel handles dependencies)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb

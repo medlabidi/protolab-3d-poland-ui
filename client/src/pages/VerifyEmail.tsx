@@ -4,14 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_URL } from '@/config/api';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-
-  const API_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     const token = searchParams.get('token');
