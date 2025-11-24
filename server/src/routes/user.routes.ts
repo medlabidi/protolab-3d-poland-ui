@@ -1,19 +1,16 @@
 import { Router } from 'express';
 import { userController } from '../controllers/user.controller';
 import { authenticate } from '../middleware/auth';
-import { requireAdmin } from '../middleware/roleGuard';
-import { validate } from '../middleware/validate';
-import { updateUserSchema } from '../utils/validators';
 
 const router = Router();
 
-router.use(authenticate);
+// User routes (authenticated)
+router.get('/me', authenticate, (req, res) => userController.getMe(req, res));
+router.put('/me', authenticate, (req, res) => userController.updateMe(req, res));
+router.delete('/me', authenticate, (req, res) => userController.deleteMe(req, res));
 
-router.get('/me', userController.getMe);
-router.patch('/me', validate(updateUserSchema), userController.updateMe);
-router.delete('/me', userController.deleteMe);
-
-router.get('/', requireAdmin, userController.getAllUsers);
-router.delete('/:id', requireAdmin, userController.deleteUser);
+// Admin routes
+router.get('/admin/all', authenticate, (req, res) => userController.getAllUsers(req, res));
+router.delete('/admin/:id', authenticate, (req, res) => userController.deleteUser(req, res));
 
 export default router;
