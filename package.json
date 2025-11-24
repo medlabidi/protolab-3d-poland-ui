@@ -14,7 +14,7 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "cd server && npm install && npm run build",
     "build:client": "cd client && npm install && npm run build",
-    "vercel-build": "npm install && cd server && npm install && npm run build && cd ..",
+    "vercel-build": "npm install && npm --prefix=server install && npm --prefix=server run build",
     "start": "cd server && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install && cd ..",
     "verify-db": "ts-node verify-db.ts",
