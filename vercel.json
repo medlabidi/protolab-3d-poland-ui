@@ -1,6 +1,3 @@
 {
-  "version": 2,
-  "installCommand": "npm install && npm --prefix=server install",
-  "buildCommand": "npm run build:server",
-  "outputDirectory": "server/dist"
+  "version": 2
 }
