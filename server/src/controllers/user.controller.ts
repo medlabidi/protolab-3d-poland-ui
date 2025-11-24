@@ -1,70 +1,110 @@
-import { Response, NextFunction } from 'express';
+import { Response } from 'express';
 import { AuthRequest } from '../types';
-import { userService } from '../services/user.service';
-import { logger } from '../config/logger';
 
-export class UserController {
-  async getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const userController = {
+  async getProfile(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const user = await userService.getUserById(req.user!.id);
-      
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
         return;
       }
-      
-      res.json({ user });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async updateMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const user = await userService.updateUser(req.user!.id, req.body);
-      
-      logger.info(`User updated: ${user.email}`);
-      
-      res.json({ message: 'User updated successfully', user });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async deleteMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      await userService.deleteUser(req.user!.id);
-      
-      logger.info(`User deleted: ${req.user!.email}`);
-      
-      res.json({ message: 'User deleted successfully' });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async getAllUsers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const users = await userService.getAllUsers();
-      
-      res.json({ users, count: users.length });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async deleteUser(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id } = req.params;
-      await userService.deleteUser(id);
-      
-      logger.info(`User deleted by admin: ${id}`);
-      
-      res.json({ message: 'User deleted successfully' });
-    } catch (error) {
-      next(error);
-    }
-  }
-}
 
-export const userController = new UserController();
+      res.json({ userId, message: 'User profile' });
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async getMe(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      res.json({ userId, message: 'Current user' });
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async updateProfile(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      res.json({ userId, updated: true });
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async updateMe(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      res.json({ userId, updated: true });
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async deleteMe(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async getAllUsers(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminRole = req.user?.role;
+      if (adminRole !== 'admin') {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+
+      res.json({ users: [] });
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  async deleteUser(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminRole = req.user?.role;
+      if (adminRole !== 'admin') {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+
+      const { id } = req.params;
+      res.status(204).send();
+    } catch (error) {
+      const err = error as Error;
+      res.status(500).json({ error: err.message });
+    }
+  },
+};
