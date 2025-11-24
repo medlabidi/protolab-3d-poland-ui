@@ -45,6 +45,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.554.0",
     "next-themes": "^0.4.6",
+    "protolab-3d-poland-ui": "file:..",
     "react": "^19.2.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.0",
