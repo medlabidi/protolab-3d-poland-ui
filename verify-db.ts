@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { createClient } from '@supabase/supabase-js';
-import { logger } from './src/config/logger';
+import { logger } from './server/src/config/logger';
 
 const verifyConnection = async (): Promise<void> => {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -90,8 +90,6 @@ const verifyConnection = async (): Promise<void> => {
     
     console.log('\n🎉 All tests passed! Supabase is ready.\n');
     console.log('==========================================\n');
-    
-    logger.info('Supabase connection verification completed successfully');
   } catch (error) {
     console.error('\n❌ Supabase Connection Failed!\n');
     console.error('Error Details:');
@@ -104,7 +102,6 @@ const verifyConnection = async (): Promise<void> => {
     console.error('4. Check if required tables exist in your database');
     console.error('5. Verify internet connection\n');
     
-    logger.error({ err: error }, 'Supabase connection verification failed');
     process.exit(1);
   }
 };
