@@ -2,13 +2,18 @@ import { Resend } from 'resend';
 import { logger } from '../config/logger';
 
 // Email configuration
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_5uvYahPi_CXKRTzv5UWZMMG7r7zsHsC44';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_dev_key';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8081';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'protolablogin@proton.me';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@protolab.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@protolab.local';
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Create Resend client
-const resend = new Resend(RESEND_API_KEY);
+// Create Resend client only if API key is valid (not a dev key)
+const resend = NODE_ENV === 'production' && !RESEND_API_KEY.includes('dev') 
+  ? new Resend(RESEND_API_KEY) 
+  : null;
+
+const isProduction = NODE_ENV === 'production' && resend !== null;
 
 export class EmailService {
   async sendVerificationEmail(
@@ -97,7 +102,19 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Verification email would be sent to ${toEmail}`);
+        logger.info(`🔗 Verification link: ${verificationLink}`);
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 EMAIL TO: ${toEmail}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(`Subject: Verify Your ProtoLab Account`);
+        console.log(`Verification Link: ${verificationLink}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
         subject: 'Verify Your ProtoLab Account',
@@ -185,7 +202,12 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Submission confirmation would be sent to ${toEmail}`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
         subject: mailOptions.subject,
@@ -326,7 +348,12 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Admin notification would be sent for ${userEmail}`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab Registration System <${FROM_EMAIL}>`,
         to: ADMIN_EMAIL,
         subject: mailOptions.subject,
@@ -420,7 +447,12 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Approval email would be sent to ${toEmail}`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
         subject: mailOptions.subject,
@@ -496,7 +528,12 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Rejection email would be sent to ${toEmail}`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
         subject: mailOptions.subject,
@@ -561,7 +598,12 @@ export class EmailService {
     };
 
     try {
-      await resend.emails.send({
+      if (!isProduction) {
+        logger.info(`📧 [DEV MODE] Welcome email would be sent to ${toEmail}`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
         subject: mailOptions.subject,
