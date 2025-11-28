@@ -284,6 +284,8 @@ const Login = () => {
   const handleGoogleError = () => {
     toast.error("Google login failed");
   };
+  
+  return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-3 text-center">
