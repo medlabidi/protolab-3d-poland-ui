@@ -2,58 +2,104 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
-import { Package, DollarSign, Clock, Eye } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/config/api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    activeOrders: 0,
+    completedPrints: 0,
+    totalSpent: "0 PLN",
+  });
 
-  const stats = [
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // Fetch user orders
+      const response = await fetch(`${API_URL}/orders/my`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const userOrders = data.orders || [];
+        setOrders(userOrders.slice(0, 5)); // Get recent 5 orders
+
+        // Calculate stats from real data
+        const active = userOrders.filter((o: any) => 
+          ['pending', 'processing', 'printing', 'in-queue'].includes(o.status)
+        ).length;
+        
+        const completed = userOrders.filter((o: any) => 
+          o.status === 'finished' || o.status === 'delivered'
+        ).length;
+        
+        const total = userOrders.reduce((sum: number, o: any) => 
+          sum + (parseFloat(o.total_price) || 0), 0
+        );
+
+        setStats({
+          activeOrders: active,
+          completedPrints: completed,
+          totalSpent: `${total.toFixed(2)} PLN`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statsConfig = [
     {
       title: t.dashboard.activeOrders,
-      value: "3",
+      value: stats.activeOrders.toString(),
       icon: Clock,
       description: "Currently in progress",
     },
     {
       title: t.dashboard.completedPrints,
-      value: "12",
+      value: stats.completedPrints.toString(),
       icon: Package,
       description: "Successfully delivered",
     },
     {
       title: t.dashboard.totalSpent,
-      value: "1,245 PLN",
+      value: stats.totalSpent,
       icon: DollarSign,
       description: "Lifetime spending",
     },
   ];
 
-  const recentOrders = [
-    {
-      id: "ORD-001",
-      status: "printing" as OrderStatus,
-      date: "2024-01-15",
-      material: "PLA",
-      price: "89.00 PLN",
-    },
-    {
-      id: "ORD-002",
-      status: "in-queue" as OrderStatus,
-      date: "2024-01-14",
-      material: "ABS",
-      price: "125.50 PLN",
-    },
-    {
-      id: "ORD-003",
-      status: "finished" as OrderStatus,
-      date: "2024-01-12",
-      material: "PETG",
-      price: "67.00 PLN",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+        <DashboardSidebar />
+        <main className="flex-1 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
@@ -68,7 +114,7 @@ const Dashboard = () => {
 
           {/* Stats Grid */}
           <div className="grid md:grid-cols-3 gap-6">
-            {stats.map((stat, index) => (
+            {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
                 className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50 shadow-lg animate-scale-in"
@@ -107,31 +153,47 @@ const Dashboard = () => {
                   <div>Material</div>
                   <div className="text-right">Actions</div>
                 </div>
-                {recentOrders.map((order, index) => (
-                  <div 
-                    key={order.id} 
-                    className="grid grid-cols-5 gap-4 items-center py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    <div className="font-bold text-primary">{order.id}</div>
-                    <div>
-                      <StatusBadge status={order.status} />
-                    </div>
-                    <div className="text-sm text-muted-foreground">{order.date}</div>
-                    <div className="text-sm font-medium">{order.material}</div>
-                    <div className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/orders/${order.id}`)}
-                        className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </Button>
-                    </div>
+                {orders.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg mb-2">No orders yet</p>
+                    <p className="text-sm">Start by creating your first 3D print order!</p>
+                    <Button
+                      onClick={() => navigate('/orders')}
+                      className="mt-4"
+                    >
+                      View Orders
+                    </Button>
                   </div>
-                ))}
+                ) : (
+                  orders.map((order, index) => (
+                    <div 
+                      key={order.id} 
+                      className="grid grid-cols-5 gap-4 items-center py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="font-bold text-primary">{order.order_number || order.id}</div>
+                      <div>
+                        <StatusBadge status={order.status as OrderStatus} />
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm font-medium">{order.material || 'N/A'}</div>
+                      <div className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/orders/${order.id}`)}
+                          className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

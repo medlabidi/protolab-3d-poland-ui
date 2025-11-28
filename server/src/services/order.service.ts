@@ -20,6 +20,7 @@ export class OrderService {
       infill: data.infill,
       quantity: data.quantity,
       shipping_method: data.shippingMethod,
+      shipping_address: data.shippingAddress,
       price: estimatedPrice,
       status: 'submitted',
     });

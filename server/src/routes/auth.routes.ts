@@ -1,27 +1,34 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validate';
 import { registerSchema, loginSchema } from '../utils/validators';
 import rateLimit from 'express-rate-limit';
 
+// Async handler wrapper
+const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
 const router = Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20, // Increased from 5 to 20 attempts per 15 minutes
   message: 'Too many login attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-router.post('/register', validate(registerSchema), authController.register);
-router.post('/login', loginLimiter, validate(loginSchema), authController.login);
-router.post('/refresh', authController.refresh);
-router.post('/logout', authController.logout);
+// Standard auth endpoints
+router.post('/register', validate(registerSchema), asyncHandler((req: Request, res: Response, next: NextFunction) => authController.register(req, res, next)));
+router.post('/login', loginLimiter, validate(loginSchema), asyncHandler((req: Request, res: Response, next: NextFunction) => authController.login(req, res, next)));
+router.post('/refresh', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.refresh(req, res, next)));
+router.post('/logout', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.logout(req, res, next)));
 
-// Email verification endpoint
-router.get('/verify-email', authController.verifyEmail);
+// Email verification
+router.get('/verify-email', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.verifyEmail(req, res, next)));
 
-// Admin approval endpoints (kept for backward compatibility, but not used in email verification flow)
-router.get('/approve-user', authController.approveUser);
-router.get('/reject-user', authController.rejectUser);
+// Google OAuth callback
+router.post('/google', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.googleCallback(req, res, next)));
 
 export default router;

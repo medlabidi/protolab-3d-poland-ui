@@ -33,10 +33,11 @@ export const updateUserSchema = z.object({
 export const createOrderSchema = z.object({
   material: z.string().min(1),
   color: z.string().min(1),
-  layerHeight: z.number().positive(),
-  infill: z.number().min(0).max(100),
-  quantity: z.number().int().positive(),
-  shippingMethod: z.enum(['pickup', 'inpost', 'courier']),
+  layerHeight: z.string().transform(val => parseFloat(val)),
+  infill: z.string().transform(val => parseInt(val)),
+  quantity: z.string().transform(val => parseInt(val)),
+  shippingMethod: z.enum(['pickup', 'inpost', 'dpd', 'courier']),
+  shippingAddress: z.string().optional(),
 });
 
 export const updateOrderStatusSchema = z.object({

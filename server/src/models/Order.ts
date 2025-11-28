@@ -7,7 +7,7 @@ export type OrderStatus =
   | 'finished' 
   | 'delivered';
 
-export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
+export type ShippingMethod = 'pickup' | 'inpost' | 'dpd' | 'courier';
 
 export interface IOrder {
   id: string;
@@ -24,6 +24,7 @@ export interface IOrder {
   print_time?: number;
   price: number;
   shipping_method: ShippingMethod;
+  shipping_address?: string;
   review?: string;
   tracking_code?: string;
   created_at: string;

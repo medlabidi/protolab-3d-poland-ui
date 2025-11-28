@@ -10,6 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Calculator, Send, Box } from "lucide-react";
 import { toast } from "sonner";
+import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
+import { LockerPickerModal } from "@/components/LockerPickerModal";
+import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DPDAddressForm";
+import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
+import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 
 const NewPrint = () => {
   const navigate = useNavigate();
@@ -17,6 +22,25 @@ const NewPrint = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [material, setMaterial] = useState("");
+  const [quality, setQuality] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  
+  // Delivery state
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<string | null>(null);
+  const [showLockerModal, setShowLockerModal] = useState(false);
+  const [selectedLocker, setSelectedLocker] = useState<{ id: string; name: string; address: string } | null>(null);
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
+    fullName: "",
+    phone: "",
+    street: "",
+    city: "",
+    postalCode: "",
+  });
+  
+  // 3D Model Analysis state
+  const [modelAnalysis, setModelAnalysis] = useState<ModelAnalysis | null>(null);
+  const [isModelLoading, setIsModelLoading] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -26,31 +50,212 @@ const NewPrint = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      toast.success("File uploaded successfully!");
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      setIsModelLoading(true);
+      setModelAnalysis(null);
+      toast.success("File uploaded successfully! Analyzing model...");
     }
+  };
+
+  const handleAnalysisComplete = (analysis: ModelAnalysis) => {
+    setModelAnalysis(analysis);
+    setIsModelLoading(false);
+    toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³, Weight: ${analysis.weightGrams.toFixed(1)}g`);
   };
 
   const calculatePrice = () => {
-    // Check if user is logged in
-    if (!isLoggedIn) {
-      toast.info("Please login to get price estimate");
-      navigate("/login");
+    // Validate inputs
+    if (!file) {
+      toast.error("Please upload a 3D model file first");
       return;
     }
     
-    // Simulate price calculation
-    const price = Math.floor(Math.random() * 200) + 50;
-    setEstimatedPrice(price);
-    toast.success("Price calculated!");
+    if (!material) {
+      toast.error("Please select a material");
+      return;
+    }
+    
+    if (!quality) {
+      toast.error("Please select print quality");
+      return;
+    }
+    
+    // MATERIAL PRICES (PLN per kg) - exact pricing
+    const materialPrices: Record<string, number> = {
+      // PLA
+      "pla-white": 39,
+      "pla-black": 39,
+      "pla-red": 49,
+      "pla-yellow": 49,
+      "pla-blue": 49,
+      // ABS
+      "abs-silver": 50,
+      "abs-transparent": 50,
+      "abs-black": 50,
+      "abs-grey": 50,
+      "abs-red": 50,
+      "abs-white": 50,
+      "abs-blue": 50,
+      "abs-green": 50,
+      // PETG
+      "petg-black": 30,
+      "petg-white": 35,
+      "petg-red": 39,
+      "petg-green": 39,
+      "petg-blue": 39,
+      "petg-yellow": 39,
+      "petg-pink": 39,
+      "petg-orange": 39,
+      "petg-silver": 39,
+    };
+    
+    // Use actual model weight if available, otherwise estimate from file size
+    const materialWeightGrams = modelAnalysis 
+      ? modelAnalysis.weightGrams 
+      : (file.size / 1024 / 1024) * 10; // Fallback: 1MB ≈ 10g
+    
+    // Show warning if using estimated weight
+    if (!modelAnalysis) {
+      toast.warning("Using estimated weight. Model is still loading...");
+    }
+    
+    // Estimate print time based on quality (hours)
+    const printTimeEstimates: Record<string, number> = {
+      draft: 2,
+      standard: 4,
+      high: 6,
+      ultra: 10,
+    };
+    const printTimeHours = printTimeEstimates[quality] || 4;
+    
+    // Material cost: Cmaterial = materialPricePerKg * (materialWeightGrams / 1000)
+    const materialPricePerKg = materialPrices[material] || 39;
+    const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
+    
+    // Energy cost: Cenergy = T * W * Pe
+    const W = 0.27; // 270W = 0.27 kW
+    const Pe = 0.914; // PLN per kWh in Krakow
+    const Cenergy = printTimeHours * W * Pe;
+    
+    // Labor cost: Clabor = R * L
+    const R = 31.40; // PLN per hour
+    const laborTimeMinutes = 0; // Default 0 for now
+    const Clabor = R * (laborTimeMinutes / 60);
+    
+    // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours
+    const machineCost = 3483.39;
+    const lifespanHours = 5000;
+    const Cdepreciation = (machineCost / lifespanHours) * printTimeHours;
+    
+    // Maintenance cost: Cmaintenance = Cdepreciation * 0.003
+    const Cmaintenance = Cdepreciation * 0.003;
+    
+    // Total internal cost
+    const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
+    
+    // VAT (23% in Poland)
+    const vat = Cinternal * 0.23;
+    
+    // Final price (without delivery)
+    const priceWithoutDelivery = Cinternal + vat;
+    const totalPrice = Math.ceil(priceWithoutDelivery * quantity);
+    
+    setEstimatedPrice(totalPrice);
+    toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${printTimeHours}h`);
   };
 
-  const submitOrder = () => {
-    toast.success("Order submitted successfully!");
+  const submitOrder = async () => {
+    // Validate file upload
+    if (!file) {
+      toast.error("Please upload a 3D model file");
+      return;
+    }
+
+    // Validate material and quality
+    if (!material || !quality) {
+      toast.error("Please select material and quality");
+      return;
+    }
+
+    // Validate price calculation
+    if (!estimatedPrice) {
+      toast.error("Please calculate the price first");
+      return;
+    }
+
+    // Validate delivery selection
+    if (!selectedDeliveryOption) {
+      toast.error("Please select a delivery method");
+      return;
+    }
+
+    // Validate locker selection for InPost
+    if (selectedDeliveryOption === "inpost" && !selectedLocker) {
+      toast.error("Please select an InPost locker");
+      return;
+    }
+
+    // Validate address for DPD
+    if (selectedDeliveryOption === "dpd" && !isAddressValid(shippingAddress)) {
+      toast.error("Please fill in all required address fields");
+      return;
+    }
+
+    try {
+      // Create FormData to send file and order details
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('material', material.split('-')[0]); // e.g., 'pla-white' -> 'pla'
+      formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
+      formData.append('layerHeight', quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
+      formData.append('quantity', quantity.toString());
+      formData.append('shippingMethod', selectedDeliveryOption);
+      
+      // Add delivery-specific details
+      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+        formData.append('shippingAddress', JSON.stringify({
+          lockerCode: selectedLocker.name,
+          lockerAddress: selectedLocker.address
+        }));
+      } else if (selectedDeliveryOption === 'dpd') {
+        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+      }
+
+      const token = localStorage.getItem('accessToken');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      const response = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create order');
+      }
+
+      const order = await response.json();
+      
+      toast.success("Order submitted successfully! We'll contact you soon.");
+      
+      // Navigate to orders page after short delay
+      setTimeout(() => {
+        navigate('/orders');
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Order submission error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to submit order. Please try again.');
+    }
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
       {isLoggedIn && <DashboardSidebar />}
       
       {!isLoggedIn && (
@@ -70,7 +275,7 @@ const NewPrint = () => {
         </header>
       )}
       
-      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''}`}>
+      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="animate-slide-up">
             <h1 className="text-4xl font-bold mb-3 gradient-text">New Print Request</h1>
@@ -117,13 +322,16 @@ const NewPrint = () => {
               
               {file && (
                 <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
-                  <p className="text-sm font-bold mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                    3D Preview
-                  </p>
-                  <div className="aspect-square bg-gradient-to-br from-background to-muted rounded-xl border-2 border-primary/10 flex items-center justify-center shadow-inner">
-                    <p className="text-muted-foreground">3D model preview placeholder</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-bold flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
+                      3D Preview {isModelLoading && "(Loading...)"}
+                    </p>
+                    {modelAnalysis && (
+                      <span className="text-xs text-green-600 font-semibold">✓ Analysis Complete</span>
+                    )}
                   </div>
+                  <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} />
                 </div>
               )}
             </CardContent>
@@ -139,59 +347,70 @@ const NewPrint = () => {
               <CardDescription className="text-base">Select your preferred print settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-1 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="material">Material</Label>
-                  <Select>
-                    <SelectTrigger id="material">
-                      <SelectValue placeholder="Select material" />
+                  <Label htmlFor="material" className="text-base font-semibold">Material & Color</Label>
+                  <Select value={material} onValueChange={setMaterial}>
+                    <SelectTrigger id="material" className="h-12">
+                      <SelectValue placeholder="Select material and color" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pla">PLA - Standard</SelectItem>
-                      <SelectItem value="abs">ABS - Durable</SelectItem>
-                      <SelectItem value="petg">PETG - Strong</SelectItem>
-                      <SelectItem value="tpu">TPU - Flexible</SelectItem>
-                      <SelectItem value="nylon">Nylon - Industrial</SelectItem>
-                      <SelectItem value="resin">Resin - High Detail</SelectItem>
+                    <SelectContent className="max-h-[400px]">
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">PLA</div>
+                      <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
+                      <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
+                      <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
+                      <SelectItem value="pla-yellow">💛 PLA - Yellow</SelectItem>
+                      <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
+                      
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">ABS</div>
+                      <SelectItem value="abs-silver">⚪ ABS - Silver</SelectItem>
+                      <SelectItem value="abs-transparent">💎 ABS - Transparent</SelectItem>
+                      <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
+                      <SelectItem value="abs-grey">🩶 ABS - Grey</SelectItem>
+                      <SelectItem value="abs-red">❤️ ABS - Red</SelectItem>
+                      <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
+                      <SelectItem value="abs-blue">💙 ABS - Blue</SelectItem>
+                      <SelectItem value="abs-green">💚 ABS - Green</SelectItem>
+                      
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">PETG</div>
+                      <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
+                      <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
+                      <SelectItem value="petg-red">❤️ PETG - Red</SelectItem>
+                      <SelectItem value="petg-green">💚 PETG - Green</SelectItem>
+                      <SelectItem value="petg-blue">💙 PETG - Blue</SelectItem>
+                      <SelectItem value="petg-yellow">💛 PETG - Yellow</SelectItem>
+                      <SelectItem value="petg-pink">💗 PETG - Pink</SelectItem>
+                      <SelectItem value="petg-orange">🧡 PETG - Orange</SelectItem>
+                      <SelectItem value="petg-silver">⚪ PETG - Silver</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Select>
-                    <SelectTrigger id="color">
-                      <SelectValue placeholder="Select color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="white">White</SelectItem>
-                      <SelectItem value="black">Black</SelectItem>
-                      <SelectItem value="red">Red</SelectItem>
-                      <SelectItem value="blue">Blue</SelectItem>
-                      <SelectItem value="green">Green</SelectItem>
-                      <SelectItem value="yellow">Yellow</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="quality">Quality</Label>
-                  <Select>
-                    <SelectTrigger id="quality">
+                  <Label htmlFor="quality" className="text-base font-semibold">Print Quality</Label>
+                  <Select value={quality} onValueChange={setQuality}>
+                    <SelectTrigger id="quality" className="h-12">
                       <SelectValue placeholder="Select quality" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">Draft - Fast</SelectItem>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="high">High Quality</SelectItem>
-                      <SelectItem value="ultra">Ultra - Finest</SelectItem>
+                      <SelectItem value="draft">⚡ Draft - Fast (~2 hours)</SelectItem>
+                      <SelectItem value="standard">✨ Standard (~4 hours)</SelectItem>
+                      <SelectItem value="high">💎 High Quality (~6 hours)</SelectItem>
+                      <SelectItem value="ultra">🏆 Ultra - Finest (~10 hours)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input id="quantity" type="number" min="1" defaultValue="1" />
+                  <Label htmlFor="quantity" className="text-base font-semibold">Quantity</Label>
+                  <Input 
+                    id="quantity" 
+                    type="number" 
+                    min="1"
+                    className="h-12 text-lg"
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  />
                 </div>
               </div>
 
@@ -288,61 +507,132 @@ const NewPrint = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
-                <span className="relative z-10 flex items-center">
-                  <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                  Calculate Price
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </Button>
+              {!isLoggedIn ? (
+                <Button
+                  onClick={() => {
+                    toast.info("Please login to calculate price");
+                    window.location.href = '/login';
+                  }}
+                  className="w-full h-12 hover-lift shadow-lg border-2 border-primary/50"
+                  variant="outline"
+                >
+                  <span className="flex items-center">
+                    🔒 Login Required to Calculate Price
+                  </span>
+                </Button>
+              ) : (
+                <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
+                  <span className="relative z-10 flex items-center">
+                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Calculate Price
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </Button>
+              )}
 
               {estimatedPrice && (
                 <div className="p-8 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
-                  <p className="text-sm text-muted-foreground mb-2 font-semibold">Estimated Price</p>
-                  <p className="text-5xl font-bold gradient-text mb-3">{estimatedPrice}.00 PLN</p>
-                  <p className="text-sm text-muted-foreground">
-                    + shipping cost (calculated at checkout)
-                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm text-muted-foreground font-semibold">Print Cost (incl. VAT 23%)</p>
+                        {modelAnalysis ? (
+                          <span className="text-xs text-green-600 font-semibold">✓ Actual weight</span>
+                        ) : (
+                          <span className="text-xs text-yellow-600 font-semibold">⚠ Estimated weight</span>
+                        )}
+                      </div>
+                      <p className="text-3xl font-bold gradient-text">{estimatedPrice}.00 PLN</p>
+                      {modelAnalysis && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Based on {modelAnalysis.weightGrams.toFixed(1)}g ({modelAnalysis.volumeCm3.toFixed(2)} cm³)
+                        </p>
+                      )}
+                    </div>
+                    
+                    {selectedDeliveryOption && (
+                      <>
+                        <div className="border-t border-primary/20 pt-3">
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Delivery Cost</p>
+                          <p className="text-2xl font-bold text-primary">
+                            {deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0}.00 PLN
+                          </p>
+                        </div>
+                        
+                        <div className="border-t border-primary/20 pt-3">
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Total Price</p>
+                          <p className="text-5xl font-bold gradient-text">
+                            {estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)}.00 PLN
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Shipping */}
+          {/* Delivery */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Send className="w-6 h-6 text-primary" />
-                Shipping Method
+                Delivery Method
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center space-x-3 p-5 border-2 border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
-                <input type="radio" name="shipping" id="pickup" defaultChecked className="w-5 h-5" />
-                <Label htmlFor="pickup" className="cursor-pointer flex-1">
-                  <p className="font-bold text-lg group-hover:text-primary transition-colors">Local Pickup</p>
-                  <p className="text-sm text-muted-foreground">Free - Collect from our studio</p>
-                </Label>
-                <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-xs font-bold">FREE</div>
-              </div>
+            <CardContent>
+              <DeliveryOptions
+                selectedOption={selectedDeliveryOption}
+                onSelectOption={(optionId) => {
+                  setSelectedDeliveryOption(optionId);
+                  if (optionId !== "inpost") {
+                    setSelectedLocker(null);
+                  }
+                  if (optionId !== "dpd") {
+                    setShippingAddress({
+                      fullName: "",
+                      phone: "",
+                      street: "",
+                      city: "",
+                      postalCode: "",
+                    });
+                  }
+                }}
+                onSelectLocker={() => setShowLockerModal(true)}
+                selectedLockerName={selectedLocker?.name}
+              />
 
-              <div className="flex items-center space-x-3 p-5 border-2 border-border rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
-                <input type="radio" name="shipping" id="inpost" className="w-5 h-5" />
-                <Label htmlFor="inpost" className="cursor-pointer flex-1">
-                  <p className="font-bold text-lg group-hover:text-primary transition-colors">InPost Locker</p>
-                  <p className="text-sm text-muted-foreground">From 12 PLN</p>
-                </Label>
-              </div>
+              {/* DPD Address Form */}
+              {selectedDeliveryOption === "dpd" && (
+                <div className="mt-4 animate-scale-in">
+                  <DPDAddressForm
+                    address={shippingAddress}
+                    onChange={setShippingAddress}
+                  />
+                </div>
+              )}
 
-              <div className="flex items-center space-x-3 p-5 border-2 border-border rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/40 transition-all hover-lift group">
-                <input type="radio" name="shipping" id="courier" className="w-5 h-5" />
-                <Label htmlFor="courier" className="cursor-pointer flex-1">
-                  <p className="font-bold text-lg group-hover:text-primary transition-colors">Courier Delivery</p>
-                  <p className="text-sm text-muted-foreground">From 25 PLN</p>
-                </Label>
-              </div>
+              {/* Selected Locker Confirmation */}
+              {selectedLocker && selectedDeliveryOption === "inpost" && (
+                <div className="mt-4 p-4 bg-primary/5 border-2 border-primary/20 rounded-lg animate-scale-in">
+                  <p className="font-bold text-sm mb-1">Selected Locker:</p>
+                  <p className="text-sm">{selectedLocker.name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedLocker.address}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Locker Picker Modal */}
+          <LockerPickerModal
+            open={showLockerModal}
+            onClose={() => setShowLockerModal(false)}
+            onSelectLocker={(locker) => {
+              setSelectedLocker(locker);
+              toast.success(`Locker ${locker.name} selected`);
+            }}
+          />
 
           {/* Submit */}
           <Button onClick={submitOrder} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>

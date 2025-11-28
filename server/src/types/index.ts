@@ -56,6 +56,7 @@ export interface OrderCreateInput {
   infill: number;
   quantity: number;
   shippingMethod: ShippingMethod;
+  shippingAddress?: string;
 }
 
 // Re-export pricing types for backward compatibility

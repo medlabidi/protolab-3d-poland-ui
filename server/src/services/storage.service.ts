@@ -102,3 +102,32 @@ export async function listTempFiles(sessionId: string): Promise<string[]> {
 
   return data?.map((f) => f.name) || [];
 }
+
+// Helper: Upload file directly to print-jobs bucket (for new orders)
+export async function uploadPrintJobFile(
+  orderId: string,
+  filename: string,
+  fileBuffer: Buffer,
+  mimeType: string
+): Promise<{ path: string; url: string }> {
+  const filePath = `${orderId}/${filename}`;
+  const bucketName = process.env.SUPABASE_BUCKET_JOBS!;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  const { data: publicUrlData } = supabaseAdmin.storage
+    .from(bucketName)
+    .getPublicUrl(data.path);
+
+  return {
+    path: data.path,
+    url: publicUrlData.publicUrl,
+  };
+}

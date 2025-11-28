@@ -1,8 +1,9 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { orderService } from '../services/order.service';
-import { s3Service } from '../services/s3.service';
+import { uploadPrintJobFile } from '../services/storage.service';
 import { logger } from '../config/logger';
+import { v4 as uuidv4 } from 'uuid';
 
 export class OrderController {
   async createOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -12,7 +13,16 @@ export class OrderController {
         return;
       }
       
-      const fileUrl = await s3Service.uploadFile(req.file);
+      // Generate a temporary order ID for storage
+      const tempOrderId = uuidv4();
+      
+      // Upload file to Supabase Storage
+      const { url: fileUrl } = await uploadPrintJobFile(
+        tempOrderId,
+        req.file.originalname,
+        req.file.buffer,
+        req.file.mimetype
+      );
       
       const order = await orderService.createOrder(req.user!.id, {
         ...req.body,
