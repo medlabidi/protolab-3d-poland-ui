@@ -5,7 +5,7 @@ import { getMaterialPrice } from '../config/material-prices';
 const MACHINE_POWER_KW = 0.27; // 270W in kW
 const ENERGY_PRICE_PLN = 0.914; // PLN per kWh (Krakow)
 const HOURLY_LABOR_RATE_PLN = 31.4; // PLN per hour
-const DEFAULT_LABOR_TIME_MINUTES = 20;
+const DEFAULT_LABOR_TIME_MINUTES = 10;
 const MACHINE_COST_PLN = 3483.39;
 const MACHINE_LIFESPAN_HOURS = 5000;
 const MAINTENANCE_MULTIPLIER = 0.03;

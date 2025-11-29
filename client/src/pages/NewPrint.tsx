@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send, Box } from "lucide-react";
+import { Upload, Calculator, Send, Box, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
 import { LockerPickerModal } from "@/components/LockerPickerModal";
@@ -16,11 +16,23 @@ import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DP
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 
+interface PriceBreakdown {
+  materialCost: number;
+  energyCost: number;
+  serviceFee: number;
+  depreciation: number;
+  maintenance: number;
+  internalCost: number;
+  vat: number;
+  totalPrice: number;
+}
+
 const NewPrint = () => {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [material, setMaterial] = useState("");
   const [quality, setQuality] = useState("");
@@ -41,6 +53,72 @@ const NewPrint = () => {
   // 3D Model Analysis state
   const [modelAnalysis, setModelAnalysis] = useState<ModelAnalysis | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(false);
+
+  // Material densities (g/cm³) - matches backend
+  const MATERIAL_DENSITIES: Record<string, number> = {
+    pla: 1.24,
+    abs: 1.04,
+    petg: 1.27,
+    tpu: 1.21,
+    resin: 1.1,
+  };
+
+  // Infill percentages by quality - matches backend
+  const INFILL_BY_QUALITY: Record<string, number> = {
+    draft: 10,
+    standard: 20,
+    high: 30,
+    ultra: 40,
+  };
+
+  // Print speed multipliers by quality (base speed in cm³/hour)
+  const PRINT_SPEED_CM3_PER_HOUR: Record<string, number> = {
+    draft: 15,      // Fastest - larger layers
+    standard: 10,   // Normal speed
+    high: 6,        // Slower for quality
+    ultra: 3,       // Slowest for finest detail
+  };
+
+  // Computed weight based on material, quality, and model volume
+  const estimatedWeight = useMemo(() => {
+    if (!modelAnalysis || !material || !quality) return null;
+    
+    const materialType = material.split('-')[0];
+    const density = MATERIAL_DENSITIES[materialType] || 1.24;
+    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    
+    // Weight = volume × density × (1 + infill%)
+    const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
+    return effectiveVolume * density;
+  }, [modelAnalysis, material, quality]);
+
+  // Computed print time based on model volume and quality
+  const estimatedPrintTime = useMemo(() => {
+    if (!modelAnalysis || !quality) return null;
+    
+    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[quality] || 10;
+    
+    // Effective volume with infill
+    const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
+    
+    // Time = volume / speed (in hours)
+    const printTimeHours = effectiveVolume / speedCm3PerHour;
+    
+    // Add setup time (15 minutes minimum)
+    return Math.max(0.25, printTimeHours);
+  }, [modelAnalysis, quality]);
+
+  // Format print time for display
+  const formatPrintTime = (hours: number | null): string => {
+    if (hours === null) return '--';
+    if (hours < 1) {
+      return `${Math.round(hours * 60)} min`;
+    }
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  };
 
   useEffect(() => {
     // Check if user is logged in
@@ -109,25 +187,26 @@ const NewPrint = () => {
       "petg-orange": 39,
       "petg-silver": 39,
     };
+
+    // Get material type from selection (e.g., "pla-white" -> "pla")
+    const materialType = material.split('-')[0];
+    const density = MATERIAL_DENSITIES[materialType] || 1.24;
+    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
     
-    // Use actual model weight if available, otherwise estimate from file size
-    const materialWeightGrams = modelAnalysis 
-      ? modelAnalysis.weightGrams 
-      : (file.size / 1024 / 1024) * 10; // Fallback: 1MB ≈ 10g
-    
-    // Show warning if using estimated weight
-    if (!modelAnalysis) {
+    // Calculate weight using volume, density, and infill factor (matches backend)
+    let materialWeightGrams: number;
+    if (modelAnalysis) {
+      const volumeCm3 = modelAnalysis.volumeCm3;
+      const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
+      materialWeightGrams = effectiveVolume * density;
+    } else {
+      // Fallback: 1MB ≈ 10g
+      materialWeightGrams = (file.size / 1024 / 1024) * 10;
       toast.warning("Using estimated weight. Model is still loading...");
     }
     
-    // Estimate print time based on quality (hours)
-    const printTimeEstimates: Record<string, number> = {
-      draft: 2,
-      standard: 4,
-      high: 6,
-      ultra: 10,
-    };
-    const printTimeHours = printTimeEstimates[quality] || 4;
+    // Calculate print time based on volume and quality
+    const printTimeHours = estimatedPrintTime || 4;
     
     // Material cost: Cmaterial = materialPricePerKg * (materialWeightGrams / 1000)
     const materialPricePerKg = materialPrices[material] || 39;
@@ -138,9 +217,9 @@ const NewPrint = () => {
     const Pe = 0.914; // PLN per kWh in Krakow
     const Cenergy = printTimeHours * W * Pe;
     
-    // Labor cost: Clabor = R * L
+    // Labor cost: Clabor = R * L (10 minutes default - matches backend)
     const R = 31.40; // PLN per hour
-    const laborTimeMinutes = 0; // Default 0 for now
+    const laborTimeMinutes = 10;
     const Clabor = R * (laborTimeMinutes / 60);
     
     // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours
@@ -148,8 +227,8 @@ const NewPrint = () => {
     const lifespanHours = 5000;
     const Cdepreciation = (machineCost / lifespanHours) * printTimeHours;
     
-    // Maintenance cost: Cmaintenance = Cdepreciation * 0.003
-    const Cmaintenance = Cdepreciation * 0.003;
+    // Maintenance cost: Cmaintenance = Cdepreciation * 0.03 (3% - matches backend)
+    const Cmaintenance = Cdepreciation * 0.03;
     
     // Total internal cost
     const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
@@ -159,10 +238,83 @@ const NewPrint = () => {
     
     // Final price (without delivery)
     const priceWithoutDelivery = Cinternal + vat;
-    const totalPrice = Math.ceil(priceWithoutDelivery * quantity);
+    const totalPrice = Math.round(priceWithoutDelivery * quantity * 100) / 100;
+    
+    // Store detailed breakdown
+    const breakdown: PriceBreakdown = {
+      materialCost: Math.round(Cmaterial * 100) / 100,
+      energyCost: Math.round(Cenergy * 100) / 100,
+      serviceFee: Math.round(Clabor * 100) / 100,
+      depreciation: Math.round(Cdepreciation * 100) / 100,
+      maintenance: Math.round(Cmaintenance * 100) / 100,
+      internalCost: Math.round(Cinternal * 100) / 100,
+      vat: Math.round(vat * 100) / 100,
+      totalPrice: totalPrice,
+    };
     
     setEstimatedPrice(totalPrice);
-    toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${printTimeHours}h`);
+    setPriceBreakdown(breakdown);
+    toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${formatPrintTime(printTimeHours)}`);
+  };
+
+  const proceedToPayment = () => {
+    // Validate file upload
+    if (!file) {
+      toast.error("Please upload a 3D model file");
+      return;
+    }
+
+    // Validate material and quality
+    if (!material || !quality) {
+      toast.error("Please select material and quality");
+      return;
+    }
+
+    // Validate price calculation
+    if (!estimatedPrice || !priceBreakdown) {
+      toast.error("Please calculate the price first");
+      return;
+    }
+
+    // Validate delivery selection
+    if (!selectedDeliveryOption) {
+      toast.error("Please select a delivery method");
+      return;
+    }
+
+    // Validate locker selection for InPost
+    if (selectedDeliveryOption === "inpost" && !selectedLocker) {
+      toast.error("Please select an InPost locker");
+      return;
+    }
+
+    // Validate address for DPD
+    if (selectedDeliveryOption === "dpd" && !isAddressValid(shippingAddress)) {
+      toast.error("Please fill in all required address fields");
+      return;
+    }
+
+    // Calculate delivery price
+    const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
+    const totalAmount = estimatedPrice + deliveryPrice;
+
+    // Navigate to payment page with order data
+    navigate('/payment', {
+      state: {
+        orderData: {
+          file,
+          material,
+          quality,
+          quantity,
+          deliveryOption: selectedDeliveryOption,
+          locker: selectedLocker,
+          shippingAddress,
+          priceBreakdown,
+          deliveryPrice,
+          totalAmount,
+        }
+      }
+    });
   };
 
   const submitOrder = async () => {
@@ -332,6 +484,30 @@ const NewPrint = () => {
                     )}
                   </div>
                   <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} />
+                  
+                  {/* Dynamic Model Stats */}
+                  {modelAnalysis && (
+                    <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                      <div className="p-3 bg-white rounded-lg border border-primary/20">
+                        <p className="text-xs text-muted-foreground">Volume</p>
+                        <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg border border-primary/20">
+                        <p className="text-xs text-muted-foreground">Est. Weight</p>
+                        <p className="text-lg font-bold text-primary">
+                          {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
+                        </p>
+                        {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
+                      </div>
+                      <div className="p-3 bg-white rounded-lg border border-primary/20">
+                        <p className="text-xs text-muted-foreground">Est. Print Time</p>
+                        <p className="text-lg font-bold text-primary">
+                          {formatPrintTime(estimatedPrintTime)}
+                        </p>
+                        {quality && <p className="text-xs text-muted-foreground">{quality} quality</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -393,10 +569,10 @@ const NewPrint = () => {
                       <SelectValue placeholder="Select quality" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">⚡ Draft - Fast (~2 hours)</SelectItem>
-                      <SelectItem value="standard">✨ Standard (~4 hours)</SelectItem>
-                      <SelectItem value="high">💎 High Quality (~6 hours)</SelectItem>
-                      <SelectItem value="ultra">🏆 Ultra - Finest (~10 hours)</SelectItem>
+                      <SelectItem value="draft">⚡ Draft - Fast</SelectItem>
+                      <SelectItem value="standard">✨ Standard</SelectItem>
+                      <SelectItem value="high">💎 High Quality</SelectItem>
+                      <SelectItem value="ultra">🏆 Ultra - Finest</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -530,40 +706,66 @@ const NewPrint = () => {
                 </Button>
               )}
 
-              {estimatedPrice && (
-                <div className="p-8 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm text-muted-foreground font-semibold">Print Cost (incl. VAT 23%)</p>
-                        {modelAnalysis ? (
-                          <span className="text-xs text-green-600 font-semibold">✓ Actual weight</span>
-                        ) : (
-                          <span className="text-xs text-yellow-600 font-semibold">⚠ Estimated weight</span>
-                        )}
+              {estimatedPrice !== null && priceBreakdown && (
+                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                  <div className="space-y-4">
+                    {/* Price Breakdown Header */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-bold">Price Breakdown</p>
+                      {modelAnalysis ? (
+                        <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ Actual weight</span>
+                      ) : (
+                        <span className="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">⚠ Estimated</span>
+                      )}
+                    </div>
+
+                    {/* Internal Costs */}
+                    <div className="flex justify-between items-center py-2 border-b border-primary/20">
+                      <span className="text-muted-foreground">Internal Costs</span>
+                      <span className="font-semibold">{priceBreakdown.internalCost.toFixed(2)} PLN</span>
+                    </div>
+
+                    {/* Service Fee */}
+                    <div className="flex justify-between items-center py-2 border-b border-primary/20">
+                      <span className="text-muted-foreground">Service Fee</span>
+                      <span className="font-semibold">{priceBreakdown.serviceFee.toFixed(2)} PLN</span>
+                    </div>
+
+                    {/* VAT */}
+                    <div className="flex justify-between items-center py-2 border-b border-primary/20">
+                      <span className="text-muted-foreground">VAT (23%)</span>
+                      <span className="font-semibold">{priceBreakdown.vat.toFixed(2)} PLN</span>
+                    </div>
+
+                    {/* Print Cost Total */}
+                    <div className="pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold">Print Cost {quantity > 1 ? `(×${quantity})` : ''}</span>
+                        <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} PLN</span>
                       </div>
-                      <p className="text-3xl font-bold gradient-text">{estimatedPrice}.00 PLN</p>
-                      {modelAnalysis && (
+                      {modelAnalysis && estimatedWeight && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Based on {modelAnalysis.weightGrams.toFixed(1)}g ({modelAnalysis.volumeCm3.toFixed(2)} cm³)
+                          {estimatedWeight.toFixed(1)}g • {modelAnalysis.volumeCm3.toFixed(2)} cm³ • {formatPrintTime(estimatedPrintTime)}
                         </p>
                       )}
                     </div>
                     
                     {selectedDeliveryOption && (
                       <>
-                        <div className="border-t border-primary/20 pt-3">
-                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Delivery Cost</p>
-                          <p className="text-2xl font-bold text-primary">
-                            {deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0}.00 PLN
-                          </p>
+                        <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
+                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="font-semibold text-primary">
+                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} PLN
+                          </span>
                         </div>
                         
-                        <div className="border-t border-primary/20 pt-3">
-                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Total Price</p>
-                          <p className="text-5xl font-bold gradient-text">
-                            {estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)}.00 PLN
-                          </p>
+                        <div className="border-t-2 border-primary/30 pt-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold">Total Price</span>
+                            <span className="text-4xl font-bold gradient-text">
+                              {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
+                            </span>
+                          </div>
                         </div>
                       </>
                     )}
@@ -635,10 +837,10 @@ const NewPrint = () => {
           />
 
           {/* Submit */}
-          <Button onClick={submitOrder} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
+          <Button onClick={proceedToPayment} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
             <span className="relative z-10 flex items-center">
-              <Send className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
-              Submit Print Job
+              <CreditCard className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
+              Proceed to Payment
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </Button>

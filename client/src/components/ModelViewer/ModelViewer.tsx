@@ -202,14 +202,10 @@ export const ModelViewer = ({ file, onAnalysisComplete }: ModelViewerProps) => {
         </div>
 
         {analysis && (
-          <div className="p-4 bg-muted border-t grid grid-cols-2 gap-4">
+          <div className="p-4 bg-muted border-t grid grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Volume</p>
               <p className="font-bold">{analysis.volumeCm3.toFixed(2)} cm³</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Est. Weight</p>
-              <p className="font-bold">{analysis.weightGrams.toFixed(1)} g</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">Dimensions (cm)</p>
