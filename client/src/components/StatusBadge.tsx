@@ -31,7 +31,7 @@ const statusConfig = {
 };
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || statusConfig.new;
   
   return (
     <Badge className={cn("font-medium", config.className)}>

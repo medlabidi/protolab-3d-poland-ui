@@ -122,18 +122,23 @@ export class AuthService {
   
   async refresh(refreshToken: string): Promise<TokenPair> {
     try {
+      console.log('Attempting token refresh...');
       const payload = verifyRefreshToken(refreshToken);
+      console.log('Token verified, payload:', { id: payload.id, email: payload.email });
       
       // Find and delete old token
       const storedToken = await RefreshToken.findOne({ token: refreshToken });
       if (!storedToken) {
+        console.log('Stored token not found in database');
         throw new Error('Invalid refresh token');
       }
+      console.log('Found stored token, deleting...');
       
       await RefreshToken.deleteOne({ token: refreshToken });
       
       // Generate new tokens
       const newTokens = generateTokenPair(payload);
+      console.log('Generated new tokens');
       
       // Store new refresh token
       await RefreshToken.create({
@@ -141,9 +146,11 @@ export class AuthService {
         token: newTokens.refreshToken,
         expires_at: getRefreshTokenExpiry().toISOString(),
       });
+      console.log('Stored new refresh token');
       
       return newTokens;
     } catch (error) {
+      console.error('Refresh token error:', error);
       throw new Error('Invalid or expired refresh token');
     }
   }
@@ -309,6 +316,80 @@ export class AuthService {
       }
       
       throw new Error('Failed to verify Google token: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  async updateProfile(userId: string, data: {
+    name?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    zipCode?: string;
+    country?: string;
+  }): Promise<IUser> {
+    try {
+      const supabase = (await import('../config/database')).getSupabase();
+      
+      const updateData: any = {};
+      if (data.name) updateData.name = data.name;
+      if (data.phone) updateData.phone = data.phone;
+      if (data.address) updateData.address = data.address;
+      if (data.city) updateData.city = data.city;
+      if (data.zipCode) updateData.zip_code = data.zipCode;
+      if (data.country) updateData.country = data.country;
+
+      const { data: updatedUser, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error || !updatedUser) {
+        throw new Error(`Failed to update profile: ${error?.message || 'Unknown error'}`);
+      }
+
+      return updatedUser as IUser;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to update profile');
+    }
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      const supabase = (await import('../config/database')).getSupabase();
+      
+      // Get user with current password hash
+      const { data: user, error: findError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (findError || !user) {
+        throw new Error('User not found');
+      }
+
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!isValidPassword) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ password_hash: newPasswordHash })
+        .eq('id', userId);
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+    } catch (error) {
+      throw error;
     }
   }
 }

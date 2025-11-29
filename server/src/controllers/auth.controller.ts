@@ -69,6 +69,11 @@ export class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          zip_code: user.zip_code,
+          country: user.country,
         },
         tokens,
       });
@@ -129,8 +134,86 @@ export class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          zip_code: user.zip_code,
+          country: user.country,
         },
         tokens,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const { name, phone, address, city, zipCode, country } = req.body;
+      
+      const updatedUser = await authService.updateProfile(userId, {
+        name,
+        phone,
+        address,
+        city,
+        zipCode,
+        country,
+      });
+
+      logger.info(`Profile updated for user: ${updatedUser.email}`);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          address: updatedUser.address,
+          city: updatedUser.city,
+          zip_code: updatedUser.zip_code,
+          country: updatedUser.country,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ error: 'Current password and new password are required' });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({ error: 'New password must be at least 6 characters' });
+        return;
+      }
+
+      await authService.changePassword(userId, currentPassword, newPassword);
+
+      logger.info(`Password changed for user: ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully',
       });
     } catch (error) {
       next(error);

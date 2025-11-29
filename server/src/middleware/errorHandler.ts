@@ -33,6 +33,16 @@ export const errorHandler = (
     return;
   }
 
+  if (err.message === 'Current password is incorrect') {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+
+  if (err.message.includes('refresh token') || err.message.includes('Invalid or expired')) {
+    res.status(401).json({ error: err.message });
+    return;
+  }
+
   if (err.message.includes('verify your email') || err.message.includes('verification')) {
     res.status(403).json({ error: err.message });
     return;

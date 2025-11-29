@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validate';
+import { authenticate } from '../middleware/auth';
 import { registerSchema, loginSchema } from '../utils/validators';
 import rateLimit from 'express-rate-limit';
 
@@ -27,6 +28,12 @@ router.post('/logout', asyncHandler((req: Request, res: Response, next: NextFunc
 
 // Email verification
 router.get('/verify-email', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.verifyEmail(req, res, next)));
+
+// Profile update (protected route)
+router.put('/profile', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.updateProfile(req, res, next)));
+
+// Change password (protected route)
+router.post('/change-password', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.changePassword(req, res, next)));
 
 // Google OAuth callback
 router.post('/google', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.googleCallback(req, res, next)));

@@ -6,20 +6,26 @@ export default async function handler(
   res: VercelResponse
 ) {
   try {
-    // Handle different HTTP methods
-    switch (req.method) {
-      case 'GET':
-        // Get user's orders
-        await orderController.getMyOrders(req as any, res as any, () => {});
-        break;
-      
-      case 'POST':
-        // Create new order
-        await orderController.createOrder(req as any, res as any, () => {});
-        break;
-      
-      default:
-        res.status(405).json({ error: 'Method not allowed' });
+    // Route based on path
+    if (req.url?.includes('/my')) {
+      // Get user's orders
+      await orderController.getMyOrders(req as any, res as any, () => {});
+    } else {
+      // Handle different HTTP methods
+      switch (req.method) {
+        case 'GET':
+          // Get all orders (or user orders depending on implementation)
+          await orderController.getMyOrders(req as any, res as any, () => {});
+          break;
+        
+        case 'POST':
+          // Create new order
+          await orderController.createOrder(req as any, res as any, () => {});
+          break;
+        
+        default:
+          res.status(405).json({ error: 'Method not allowed' });
+      }
     }
   } catch (error: any) {
     console.error('Orders API error:', error);

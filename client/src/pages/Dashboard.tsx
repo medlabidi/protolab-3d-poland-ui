@@ -38,30 +38,34 @@ const Dashboard = () => {
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const userOrders = data.orders || [];
-        setOrders(userOrders.slice(0, 5)); // Get recent 5 orders
-
-        // Calculate stats from real data
-        const active = userOrders.filter((o: any) => 
-          ['pending', 'processing', 'printing', 'in-queue'].includes(o.status)
-        ).length;
-        
-        const completed = userOrders.filter((o: any) => 
-          o.status === 'finished' || o.status === 'delivered'
-        ).length;
-        
-        const total = userOrders.reduce((sum: number, o: any) => 
-          sum + (parseFloat(o.total_price) || 0), 0
-        );
-
-        setStats({
-          activeOrders: active,
-          completedPrints: completed,
-          totalSpent: `${total.toFixed(2)} PLN`,
-        });
+      if (!response.ok) {
+        console.error('Failed to fetch orders:', response.status, response.statusText);
+        setLoading(false);
+        return;
       }
+
+      const data = await response.json();
+      const userOrders = data.orders || [];
+      setOrders(userOrders.slice(0, 5)); // Get recent 5 orders
+
+      // Calculate stats from real data
+      const active = userOrders.filter((o: any) => 
+        ['pending', 'processing', 'printing', 'in-queue'].includes(o.status)
+      ).length;
+      
+      const completed = userOrders.filter((o: any) => 
+        o.status === 'finished' || o.status === 'delivered'
+      ).length;
+      
+      const total = userOrders.reduce((sum: number, o: any) => 
+        sum + (parseFloat(o.total_price) || 0), 0
+      );
+
+      setStats({
+        activeOrders: active,
+        completedPrints: completed,
+        totalSpent: `${total.toFixed(2)} PLN`,
+      });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
