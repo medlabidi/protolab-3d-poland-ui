@@ -1,0 +1,15 @@
+oauth client google sigin : client id: 4912795884-eo8udmlmgn695klkm7v3rhboafaiup97.apps.googleusercontent.com
+client secret: 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
+resend api key: re_5V7x8ts1_K7e2thXJQ729zXtSLtNSbuw6NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqYXVxcXBhdG1xYnh4aGJta3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMzQ4MTEsImV4cCI6MjA3OTYxMDgxMX0.8YyeFRXCljXaUdKBDiBBxg3hjwP3haAyNitSLrq-duc"
+NEXT_PUBLIC_SUPABASE_URL="https://ejauqqpatmqbxxhbmkzp.supabase.co"
+POSTGRES_DATABASE="postgres"
+POSTGRES_HOST="db.ejauqqpatmqbxxhbmkzp.supabase.co"
+POSTGRES_PASSWORD="HbAnjmJe41T9mnEQ"
+POSTGRES_PRISMA_URL="postgres://postgres.ejauqqpatmqbxxhbmkzp:HbAnjmJe41T9mnEQ@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true"
+POSTGRES_URL="postgres://postgres.ejauqqpatmqbxxhbmkzp:HbAnjmJe41T9mnEQ@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x"
+POSTGRES_URL_NON_POOLING="postgres://postgres.ejauqqpatmqbxxhbmkzp:HbAnjmJe41T9mnEQ@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+POSTGRES_USER="postgres"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqYXVxcXBhdG1xYnh4aGJta3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMzQ4MTEsImV4cCI6MjA3OTYxMDgxMX0.8YyeFRXCljXaUdKBDiBBxg3hjwP3haAyNitSLrq-duc"
+SUPABASE_JWT_SECRET="B0LpT9uu3ViAfGNqNDxoquPuSNxMAEp/OUni33eQm+Y5WzodaRhp8e/T3GlKUbHFdutkHGoG+BPl6GBgYMHWxA=="
+SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqYXVxcXBhdG1xYnh4aGJta3pwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAzNDgxMSwiZXhwIjoyMDc5NjEwODExfQ.OM9oLqcUKOT9aDbboXYV_XRaDRWkWrjBm7E0vZbQQEo"
+SUPABASE_URL="https://ejauqqpatmqbxxhbmkzp.supabase.co"
