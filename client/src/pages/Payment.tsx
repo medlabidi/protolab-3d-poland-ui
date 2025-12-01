@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch, apiFormData } from "@/lib/api";
 
 interface OrderData {
   file: File;
@@ -116,9 +117,6 @@ const Payment = () => {
     setIsProcessing(true);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
       if (isUpgradePayment && upgradeData) {
         // Handle upgrade payment - update existing order
         const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
@@ -138,12 +136,8 @@ const Payment = () => {
           paid_amount: upgradeData.totalAmount,
         };
 
-        const response = await fetch(`${API_URL}/orders/${upgradeData.orderId}`, {
+        const response = await apiFetch(`/orders/${upgradeData.orderId}`, {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(updatesWithPayment),
         });
 
@@ -185,13 +179,7 @@ const Payment = () => {
           }));
         }
 
-        const response = await fetch(`${API_URL}/orders`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
+        const response = await apiFormData('/orders', formData);
 
         if (!response.ok) {
           const error = await response.json();

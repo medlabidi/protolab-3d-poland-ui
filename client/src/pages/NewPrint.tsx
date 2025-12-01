@@ -15,6 +15,7 @@ import { LockerPickerModal } from "@/components/LockerPickerModal";
 import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DPDAddressForm";
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
+import { apiFormData } from "@/lib/api";
 
 interface PriceBreakdown {
   materialCost: number;
@@ -459,16 +460,7 @@ const NewPrint = () => {
         formData.append('shippingAddress', JSON.stringify(shippingAddress));
       }
 
-      const token = localStorage.getItem('accessToken');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      
-      const response = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      const response = await apiFormData('/orders', formData);
 
       if (!response.ok) {
         const error = await response.json();
