@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,10 @@ const NewPrint = () => {
   // 3D Model Analysis state
   const [modelAnalysis, setModelAnalysis] = useState<ModelAnalysis | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
 
   // Material densities (g/cm³) - matches backend
   const MATERIAL_DENSITIES: Record<string, number> = {
@@ -132,20 +136,87 @@ const NewPrint = () => {
       setFile(selectedFile);
       setIsModelLoading(true);
       setModelAnalysis(null);
+      setModelError(null);
       toast.success("File uploaded successfully! Analyzing model...");
     }
   };
 
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      const droppedFile = droppedFiles[0];
+      const fileName = droppedFile.name.toLowerCase();
+      
+      // Check file extension
+      if (fileName.endsWith('.stl') || fileName.endsWith('.obj') || fileName.endsWith('.step')) {
+        setFile(droppedFile);
+        setIsModelLoading(true);
+        setModelAnalysis(null);
+        setModelError(null);
+        toast.success("File uploaded successfully! Analyzing model...");
+      } else {
+        toast.error("Invalid file type. Please upload STL, OBJ, or STEP files.");
+      }
+    }
+  }, []);
+
   const handleAnalysisComplete = (analysis: ModelAnalysis) => {
     setModelAnalysis(analysis);
     setIsModelLoading(false);
+    setModelError(null);
     toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³, Weight: ${analysis.weightGrams.toFixed(1)}g`);
+  };
+
+  const handleModelError = (error: string | null) => {
+    setModelError(error);
+    setIsModelLoading(false);
+    if (error) {
+      // Show a more user-friendly toast based on error type
+      if (error.toLowerCase().includes('empty') || error.toLowerCase().includes('no valid')) {
+        toast.error("The uploaded file appears to be empty or contains no valid 3D geometry.");
+      } else if (error.toLowerCase().includes('volume') || error.toLowerCase().includes('too small')) {
+        toast.error("The model is too small to print. Please check the dimensions.");
+      } else if (error.toLowerCase().includes('corrupted')) {
+        toast.error("The file appears to be corrupted. Please try a different file.");
+      } else if (error.toLowerCase().includes('size') && error.toLowerCase().includes('large')) {
+        toast.error("The file is too large. Maximum size is 50MB.");
+      } else {
+        toast.error(error);
+      }
+    }
   };
 
   const calculatePrice = () => {
     // Validate inputs
     if (!file) {
       toast.error("Please upload a 3D model file first");
+      return;
+    }
+    
+    if (modelError) {
+      toast.error("Please fix the model issues before calculating price");
       return;
     }
     
@@ -264,6 +335,12 @@ const NewPrint = () => {
       return;
     }
 
+    // Validate model is valid (no errors)
+    if (modelError) {
+      toast.error("Please fix the model issues before proceeding");
+      return;
+    }
+
     // Validate material and quality
     if (!material || !quality) {
       toast.error("Please select material and quality");
@@ -321,6 +398,12 @@ const NewPrint = () => {
     // Validate file upload
     if (!file) {
       toast.error("Please upload a 3D model file");
+      return;
+    }
+
+    // Validate model is valid (no errors)
+    if (modelError) {
+      toast.error("Please fix the model issues before submitting");
       return;
     }
 
@@ -445,7 +528,17 @@ const NewPrint = () => {
               <CardDescription className="text-base">Supported formats: STL, OBJ, STEP (max 50MB)</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border-3 border-dashed border-primary/30 rounded-2xl p-12 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5">
+              <div 
+                className={`border-3 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                  isDragging 
+                    ? 'border-primary bg-primary/10 scale-[1.02]' 
+                    : 'border-primary/30 hover:border-primary hover:bg-primary/5'
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
                 <input
                   type="file"
                   id="file-upload"
@@ -454,7 +547,9 @@ const NewPrint = () => {
                   onChange={handleFileChange}
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                  <div className={`w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transition-all duration-300 ${
+                    isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
+                  }`}>
                     <Upload className="w-10 h-10 text-white" />
                   </div>
                   {file ? (
@@ -466,7 +561,9 @@ const NewPrint = () => {
                     </div>
                   ) : (
                     <div>
-                      <p className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">Click to upload or drag and drop</p>
+                      <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                        {isDragging ? 'Drop your file here!' : 'Click to upload or drag and drop'}
+                      </p>
                       <p className="text-muted-foreground">STL, OBJ, or STEP files</p>
                     </div>
                   )}
@@ -484,7 +581,7 @@ const NewPrint = () => {
                       <span className="text-xs text-green-600 font-semibold">✓ Analysis Complete</span>
                     )}
                   </div>
-                  <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} />
+                  <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} onError={handleModelError} />
                   
                   {/* Dynamic Model Stats */}
                   {modelAnalysis && (

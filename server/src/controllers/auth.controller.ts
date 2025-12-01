@@ -253,6 +253,42 @@ export class AuthController {
       next(error);
     }
   }
+
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ error: 'Email is required' });
+        return;
+      }
+
+      const result = await authService.forgotPassword(email);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        res.status(400).json({ error: 'Token and password are required' });
+        return;
+      }
+
+      const result = await authService.resetPassword(token, password);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Invalid or expired')) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

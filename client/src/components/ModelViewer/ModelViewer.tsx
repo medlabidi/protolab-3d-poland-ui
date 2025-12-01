@@ -3,15 +3,39 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 import { loadModel } from './loaders';
 import { useModelAnalysis, ModelAnalysis } from './useModelAnalysis';
-import { Loader2, Box as BoxIcon } from 'lucide-react';
+import { Loader2, Box as BoxIcon, AlertTriangle, FileX, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ModelViewerProps {
   file: File | null;
   onAnalysisComplete?: (analysis: ModelAnalysis) => void;
+  onError?: (error: string | null) => void;
 }
 
-export const ModelViewer = ({ file, onAnalysisComplete }: ModelViewerProps) => {
+// Categorize errors for better UI
+const getErrorInfo = (errorMessage: string): { icon: typeof AlertTriangle; title: string; color: string } => {
+  const lowerError = errorMessage.toLowerCase();
+  
+  if (lowerError.includes('empty') || lowerError.includes('no valid 3d geometry')) {
+    return { icon: FileX, title: 'Empty or Invalid File', color: 'text-orange-500' };
+  }
+  if (lowerError.includes('volume') || lowerError.includes('too small')) {
+    return { icon: AlertTriangle, title: 'Geometry Too Small', color: 'text-yellow-500' };
+  }
+  if (lowerError.includes('corrupted') || lowerError.includes('failed to parse')) {
+    return { icon: AlertCircle, title: 'Corrupted File', color: 'text-red-500' };
+  }
+  if (lowerError.includes('size') && (lowerError.includes('large') || lowerError.includes('exceeds'))) {
+    return { icon: AlertTriangle, title: 'File Too Large', color: 'text-orange-500' };
+  }
+  if (lowerError.includes('unsupported') || lowerError.includes('format')) {
+    return { icon: FileX, title: 'Unsupported Format', color: 'text-yellow-500' };
+  }
+  
+  return { icon: BoxIcon, title: 'Failed to Load Model', color: 'text-destructive' };
+};
+
+export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -115,6 +139,8 @@ export const ModelViewer = ({ file, onAnalysisComplete }: ModelViewerProps) => {
     loadModel(file)
       .then((loadedGeometry) => {
         setGeometry(loadedGeometry);
+        setError(null);
+        onError?.(null);
 
         // Remove old mesh
         if (meshRef.current && sceneRef.current) {
@@ -154,7 +180,9 @@ export const ModelViewer = ({ file, onAnalysisComplete }: ModelViewerProps) => {
       })
       .catch((err) => {
         console.error('Error loading model:', err);
-        setError(err.message || 'Failed to load model');
+        const errorMessage = err.message || 'Failed to load model';
+        setError(errorMessage);
+        onError?.(errorMessage);
         setLoading(false);
       });
   }, [file]);
@@ -184,9 +212,17 @@ export const ModelViewer = ({ file, onAnalysisComplete }: ModelViewerProps) => {
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <div className="text-center max-w-md p-6">
-                <BoxIcon className="w-12 h-12 text-destructive mx-auto mb-2" />
-                <p className="text-sm font-bold text-destructive mb-1">Failed to load model</p>
-                <p className="text-xs text-muted-foreground">{error}</p>
+                {(() => {
+                  const errorInfo = getErrorInfo(error);
+                  const IconComponent = errorInfo.icon;
+                  return (
+                    <>
+                      <IconComponent className={`w-12 h-12 ${errorInfo.color} mx-auto mb-2`} />
+                      <p className={`text-sm font-bold ${errorInfo.color} mb-1`}>{errorInfo.title}</p>
+                      <p className="text-xs text-muted-foreground">{error}</p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}

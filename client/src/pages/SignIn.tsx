@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Box, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Box, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,6 +17,12 @@ const SignIn = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Forgot password state
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
 
   const API_URL = "/api";
 
@@ -101,6 +108,40 @@ const SignIn = () => {
     toast.error("Google login failed");
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send reset email");
+      }
+
+      setForgotSuccess(true);
+      toast.success("Password reset email sent!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to send reset email");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const resetForgotPasswordDialog = () => {
+    setForgotEmail("");
+    setForgotSuccess(false);
+    setForgotLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-6">
       {/* Animated Background Elements */}
@@ -146,9 +187,79 @@ const SignIn = () => {
                 className="h-12 border-2 focus:border-primary transition-all"
               />
             </div>
-            <Button type="button" variant="link" className="px-0 text-sm text-primary hover:text-primary/80">
+            <Button type="button" variant="link" className="px-0 text-sm text-primary hover:text-primary/80" onClick={() => setForgotPasswordOpen(true)}>
               Forgot password?
             </Button>
+            
+            {/* Forgot Password Dialog */}
+            <Dialog open={forgotPasswordOpen} onOpenChange={(open) => {
+              setForgotPasswordOpen(open);
+              if (!open) resetForgotPasswordDialog();
+            }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    {forgotSuccess ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        Check Your Email
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-5 h-5 text-primary" />
+                        Reset Password
+                      </>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {forgotSuccess 
+                      ? "We've sent a password reset link to your email address. Please check your inbox and follow the instructions."
+                      : "Enter your email address and we'll send you a link to reset your password."
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                
+                {!forgotSuccess ? (
+                  <form onSubmit={handleForgotPassword}>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="forgot-email">Email Address</Label>
+                        <Input 
+                          id="forgot-email" 
+                          type="email" 
+                          placeholder="your@email.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={forgotLoading}>
+                        {forgotLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                ) : (
+                  <DialogFooter>
+                    <Button onClick={() => setForgotPasswordOpen(false)} className="w-full">
+                      Got it
+                    </Button>
+                  </DialogFooter>
+                )}
+              </DialogContent>
+            </Dialog>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-2">
             <Button 

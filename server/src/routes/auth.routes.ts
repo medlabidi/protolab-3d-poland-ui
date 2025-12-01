@@ -38,6 +38,12 @@ router.get('/me', authenticate, asyncHandler((req: Request, res: Response, next:
 // Change password (protected route)
 router.post('/change-password', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.changePassword(req, res, next)));
 
+// Forgot password (public)
+router.post('/forgot-password', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.forgotPassword(req, res, next)));
+
+// Reset password (public)
+router.post('/reset-password', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.resetPassword(req, res, next)));
+
 // Google OAuth callback
 router.post('/google', asyncHandler((req: Request, res: Response, next: NextFunction) => authController.googleCallback(req, res, next)));
 

@@ -459,6 +459,74 @@ export class AuthService {
       };
     });
   }
+
+  /**
+   * Request password reset - generates token and sends email
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Find user by email
+    const user = await User.findByEmail(normalizedEmail);
+    
+    // Always return success message to prevent email enumeration
+    if (!user) {
+      return { message: 'If an account with that email exists, we have sent a password reset link.' };
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    // Store reset token in database
+    await User.updateById(user.id, {
+      verification_token: resetTokenHash,
+      verification_token_expires: resetTokenExpires,
+    });
+
+    // Send password reset email
+    await emailService.sendPasswordResetEmail(user.email, user.name, resetToken);
+
+    return { message: 'If an account with that email exists, we have sent a password reset link.' };
+  }
+
+  /**
+   * Reset password using token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    // Hash the token to compare with stored hash
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with valid reset token
+    const users = await User.find({});
+    const user = users.find(u => 
+      u.verification_token === tokenHash && 
+      u.verification_token_expires && 
+      new Date(u.verification_token_expires) > new Date()
+    );
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Validate new password
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset token
+    await User.updateById(user.id, {
+      password_hash: passwordHash,
+      verification_token: undefined,
+      verification_token_expires: undefined,
+    });
+
+    return { message: 'Password has been reset successfully. You can now log in with your new password.' };
+  }
 }
 
 export const authService = new AuthService();

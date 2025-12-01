@@ -330,6 +330,107 @@ export class EmailService {
       // Don't throw - not critical
     }
   }
+
+  async sendPasswordResetEmail(toEmail: string, userName: string, resetToken: string): Promise<void> {
+    const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    const mailOptions = {
+      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
+      to: toEmail,
+      subject: 'Reset Your Password - ProtoLab 3D Poland',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+            .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔐 Password Reset Request</h1>
+            </div>
+            <div class="content">
+              <p>Hello <strong>${userName}</strong>,</p>
+              
+              <p>We received a request to reset your password for your ProtoLab 3D Poland account.</p>
+              
+              <p style="text-align: center;">
+                <a href="${resetUrl}" class="button">Reset My Password</a>
+              </p>
+              
+              <div class="warning">
+                <strong>⚠️ Important:</strong>
+                <ul>
+                  <li>This link will expire in <strong>1 hour</strong></li>
+                  <li>If you didn't request this, please ignore this email</li>
+                  <li>Your password will remain unchanged until you create a new one</li>
+                </ul>
+              </div>
+              
+              <p>If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #666; font-size: 12px;">${resetUrl}</p>
+              
+              <div class="footer">
+                <p>This email was sent by ProtoLab 3D Poland</p>
+                <p>If you didn't request a password reset, you can safely ignore this email.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Password Reset Request - ProtoLab 3D Poland
+
+        Hello ${userName},
+
+        We received a request to reset your password for your ProtoLab 3D Poland account.
+
+        Click the link below to reset your password:
+        ${resetUrl}
+
+        This link will expire in 1 hour.
+
+        If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+
+        Best regards,
+        ProtoLab 3D Poland Team
+      `,
+    };
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 PASSWORD RESET EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(`Subject: ${mailOptions.subject}`);
+        console.log(`Reset URL: ${resetUrl}`);
+        console.log(`Token: ${resetToken}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      });
+      logger.info(`Password reset email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send password reset email to ${toEmail}`);
+      throw new Error('Failed to send password reset email');
+    }
+  }
 }
 
 export const emailService = new EmailService();
