@@ -5,7 +5,15 @@ export type OrderStatus =
   | 'in_queue' 
   | 'printing' 
   | 'finished' 
-  | 'delivered';
+  | 'delivered'
+  | 'on_hold'
+  | 'suspended';
+
+export type PaymentStatus = 
+  | 'paid'
+  | 'on_hold'
+  | 'refunding'
+  | 'refunded';
 
 export type ShippingMethod = 'pickup' | 'inpost' | 'dpd' | 'courier';
 
@@ -21,6 +29,8 @@ export interface IOrder {
   infill: number;
   quantity: number;
   status: OrderStatus;
+  payment_status: PaymentStatus;
+  paid_amount: number;
   material_weight?: number;
   print_time?: number;
   price: number;

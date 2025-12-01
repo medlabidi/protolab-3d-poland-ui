@@ -1,4 +1,4 @@
-import { Order, IOrder, OrderStatus } from '../models/Order';
+import { Order, IOrder, OrderStatus, PaymentStatus } from '../models/Order';
 import { OrderCreateInput } from '../types';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
@@ -21,7 +21,9 @@ export class OrderService {
       shipping_method: data.shippingMethod,
       shipping_address: data.shippingAddress,
       price: orderPrice,
+      paid_amount: orderPrice,
       status: 'submitted',
+      payment_status: 'paid',
     });
     
     return order;
@@ -140,6 +142,144 @@ export class OrderService {
     }
     
     return await Order.updateById(orderId, { review });
+  }
+
+  async updateOrder(orderId: string, userId: string, updates: {
+    material?: string;
+    color?: string;
+    layer_height?: string;
+    infill?: string;
+    quantity?: number;
+    shipping_method?: string;
+    shipping_address?: string;
+    price?: number;
+    status?: OrderStatus;
+    payment_status?: PaymentStatus;
+    paid_amount?: number;
+  }): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    // Check status-based restrictions
+    const status = order.status;
+    const canEditPrintParams = ['submitted', 'in_queue'].includes(status);
+    const canEditShipping = !['finished', 'delivered', 'suspended'].includes(status);
+    
+    // Filter out undefined values and only include allowed fields based on status
+    const allowedUpdates: Record<string, unknown> = {};
+    
+    // Print parameters can only be edited if status is submitted or in_queue
+    if (canEditPrintParams) {
+      if (updates.material !== undefined) allowedUpdates.material = updates.material;
+      if (updates.color !== undefined) allowedUpdates.color = updates.color;
+      if (updates.layer_height !== undefined) allowedUpdates.layer_height = updates.layer_height;
+      if (updates.infill !== undefined) allowedUpdates.infill = updates.infill;
+      if (updates.quantity !== undefined) allowedUpdates.quantity = updates.quantity;
+      if (updates.price !== undefined) allowedUpdates.price = updates.price;
+    }
+    
+    // Shipping can be edited unless status is finished or delivered
+    if (canEditShipping) {
+      if (updates.shipping_method !== undefined) allowedUpdates.shipping_method = updates.shipping_method;
+      if (updates.shipping_address !== undefined) allowedUpdates.shipping_address = updates.shipping_address;
+    }
+    
+    // Status and payment fields can always be updated (system operations)
+    if (updates.payment_status !== undefined) allowedUpdates.payment_status = updates.payment_status;
+    if (updates.paid_amount !== undefined) allowedUpdates.paid_amount = updates.paid_amount;
+    if (updates.status !== undefined) allowedUpdates.status = updates.status;
+    
+    // If no valid updates, throw error
+    if (Object.keys(allowedUpdates).length === 0) {
+      throw new Error('No valid updates provided');
+    }
+    
+    const updatedOrder = await Order.updateById(orderId, allowedUpdates);
+    
+    if (!updatedOrder) {
+      throw new Error('Failed to update order');
+    }
+    
+    return updatedOrder;
+  }
+
+  async updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus, paidAmount?: number): Promise<IOrder> {
+    const updates: Record<string, unknown> = { payment_status: paymentStatus };
+    if (paidAmount !== undefined) {
+      updates.paid_amount = paidAmount;
+    }
+    
+    const order = await Order.updateById(orderId, updates);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    return order;
+  }
+
+  async cancelOrder(orderId: string, userId: string): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    // Only allow cancellation for orders that haven't started printing
+    if (!['submitted', 'in_queue'].includes(order.status)) {
+      throw new Error('This order cannot be cancelled');
+    }
+    
+    // Update status to suspended and payment status to refunding
+    const updatedOrder = await Order.updateById(orderId, {
+      status: 'suspended',
+      payment_status: 'refunding',
+    });
+    
+    if (!updatedOrder) {
+      throw new Error('Failed to cancel order');
+    }
+    
+    return updatedOrder;
+  }
+
+  async processRefund(orderId: string, refundCompleted: boolean = true): Promise<IOrder> {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    
+    const updates: Record<string, unknown> = {
+      payment_status: refundCompleted ? 'refunded' : 'refunding',
+    };
+    
+    if (refundCompleted) {
+      updates.paid_amount = 0;
+    }
+    
+    const updatedOrder = await Order.updateById(orderId, updates);
+    if (!updatedOrder) {
+      throw new Error('Failed to process refund');
+    }
+    
+    return updatedOrder;
   }
 }
 

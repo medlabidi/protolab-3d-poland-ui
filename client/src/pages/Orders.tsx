@@ -1,7 +1,7 @@
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
+import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface Order {
   id: string;
   status: OrderStatus;
+  payment_status?: PaymentStatus;
+  paid_amount?: number;
   created_at: string;
   material: string;
   color: string;
@@ -161,9 +163,10 @@ const Orders = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-4 px-4">
+                  <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-4 px-4">
                     <div>File Name</div>
                     <div>Status</div>
+                    <div>Payment</div>
                     <div>Date</div>
                     <div>Material</div>
                     <div>Price</div>
@@ -173,7 +176,7 @@ const Orders = () => {
                   {orders.map((order, index) => (
                     <div
                       key={order.id}
-                      className="grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 animate-scale-in"
+                      className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 animate-scale-in"
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <div className="font-bold text-primary truncate" title={order.file_name}>
@@ -181,6 +184,11 @@ const Orders = () => {
                       </div>
                       <div>
                         <StatusBadge status={order.status} />
+                      </div>
+                      <div>
+                        {order.payment_status && (
+                          <PaymentStatusBadge status={order.payment_status} />
+                        )}
                       </div>
                       <div className="text-sm text-muted-foreground">{formatDate(order.created_at)}</div>
                       <div className="text-sm">

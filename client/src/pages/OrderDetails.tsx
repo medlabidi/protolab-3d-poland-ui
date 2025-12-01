@@ -2,7 +2,7 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
+import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { ArrowLeft, Star, Loader2 } from "lucide-react";
@@ -15,6 +15,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface Order {
   id: string;
   status: OrderStatus;
+  payment_status?: PaymentStatus;
+  paid_amount?: number;
   created_at: string;
   material: string;
   color: string;
@@ -221,8 +223,14 @@ const OrderDetails = () => {
               <h1 className="text-3xl font-bold">Order #{order.id.slice(0, 8)}</h1>
               <p className="text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2">
               <StatusBadge status={order.status} />
+              {order.payment_status && (
+                <PaymentStatusBadge 
+                  status={order.payment_status} 
+                  amount={order.paid_amount}
+                />
+              )}
             </div>
           </div>
 

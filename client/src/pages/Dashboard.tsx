@@ -94,16 +94,21 @@ const Dashboard = () => {
 
       // Calculate stats from real data
       const active = userOrders.filter((o: any) => 
-        ['submitted', 'in_queue', 'printing'].includes(o.status)
+        ['submitted', 'in_queue', 'printing', 'on_hold'].includes(o.status)
       ).length;
       
       const completed = userOrders.filter((o: any) => 
         o.status === 'finished' || o.status === 'delivered'
       ).length;
       
-      const total = userOrders.reduce((sum: number, o: any) => 
-        sum + (parseFloat(o.price) || 0), 0
-      );
+      // Calculate total spent, excluding cancelled/suspended orders
+      // Use paid_amount if available, otherwise use price
+      const total = userOrders
+        .filter((o: any) => o.status !== 'suspended' && o.payment_status !== 'refunded')
+        .reduce((sum: number, o: any) => {
+          const amount = parseFloat(o.paid_amount) || parseFloat(o.price) || 0;
+          return sum + amount;
+        }, 0);
 
       setStats({
         activeOrders: active,

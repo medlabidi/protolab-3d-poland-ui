@@ -1,10 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type OrderStatus = "submitted" | "in_queue" | "printing" | "finished" | "delivered";
+export type OrderStatus = "submitted" | "in_queue" | "printing" | "finished" | "delivered" | "on_hold" | "suspended";
+export type PaymentStatus = "paid" | "on_hold" | "refunding" | "refunded";
 
 interface StatusBadgeProps {
   status: OrderStatus;
+}
+
+interface PaymentStatusBadgeProps {
+  status: PaymentStatus;
+  amount?: number;
 }
 
 const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
@@ -28,6 +34,33 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
     label: "Delivered",
     className: "bg-status-delivered text-white hover:bg-status-delivered/90",
   },
+  on_hold: {
+    label: "On Hold",
+    className: "bg-amber-500 text-white hover:bg-amber-500/90",
+  },
+  suspended: {
+    label: "Suspended",
+    className: "bg-red-500 text-white hover:bg-red-500/90",
+  },
+};
+
+const paymentStatusConfig: Record<PaymentStatus, { label: string; className: string }> = {
+  paid: {
+    label: "Paid",
+    className: "bg-green-600 text-white hover:bg-green-600/90",
+  },
+  on_hold: {
+    label: "On Hold",
+    className: "bg-amber-500 text-white hover:bg-amber-500/90",
+  },
+  refunding: {
+    label: "Refunding",
+    className: "bg-orange-500 text-white hover:bg-orange-500/90",
+  },
+  refunded: {
+    label: "Refunded",
+    className: "bg-gray-500 text-white hover:bg-gray-500/90",
+  },
 };
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
@@ -36,6 +69,17 @@ export const StatusBadge = ({ status }: StatusBadgeProps) => {
   return (
     <Badge className={cn("font-medium", config.className)}>
       {config.label}
+    </Badge>
+  );
+};
+
+export const PaymentStatusBadge = ({ status, amount }: PaymentStatusBadgeProps) => {
+  const config = paymentStatusConfig[status] || paymentStatusConfig.paid;
+  
+  return (
+    <Badge className={cn("font-medium", config.className)}>
+      {config.label}
+      {amount !== undefined && status === 'paid' && ` (${amount.toFixed(2)} PLN)`}
     </Badge>
   );
 };

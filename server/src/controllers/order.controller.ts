@@ -84,6 +84,52 @@ export class OrderController {
       next(error);
     }
   }
+
+  async updateOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      // First check if order exists and belongs to user
+      const existingOrder = await orderService.getOrderById(id, userId);
+      
+      if (!existingOrder) {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+      
+      // Check if request only contains status/payment updates (allowed for any order)
+      const { status, payment_status, paid_amount, ...otherUpdates } = req.body;
+      const hasStatusUpdates = status !== undefined || payment_status !== undefined || paid_amount !== undefined;
+      const hasOtherUpdates = Object.keys(otherUpdates).length > 0;
+      
+      // If there are non-status updates, check status-based restrictions
+      if (hasOtherUpdates) {
+        // finished/delivered/suspended orders cannot have non-status fields edited
+        if (['finished', 'delivered', 'suspended'].includes(existingOrder.status)) {
+          res.status(400).json({ 
+            error: 'This order cannot be modified.' 
+          });
+          return;
+        }
+      }
+      
+      // If there are no updates at all
+      if (!hasStatusUpdates && !hasOtherUpdates) {
+        res.status(400).json({ error: 'No updates provided' });
+        return;
+      }
+      
+      // Delegate the detailed field-level restrictions to the service
+      const order = await orderService.updateOrder(id, userId, req.body);
+      
+      logger.info(`Order updated: ${order.id}`);
+      
+      res.json({ message: 'Order updated successfully', order });
+    } catch (error) {
+      next(error);
+    }
+  }
   
   async getOrderFile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {

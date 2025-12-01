@@ -32,10 +32,21 @@ interface OrderData {
   totalAmount: number;
 }
 
+interface UpgradeData {
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  isUpgrade: true;
+  totalAmount: number;
+  previousPrice?: number;
+}
+
 const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [orderData, setOrderData] = useState<OrderData | null>(null);
+  const [upgradeData, setUpgradeData] = useState<UpgradeData | null>(null);
+  const [isUpgradePayment, setIsUpgradePayment] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [blikCode, setBlikCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,8 +58,12 @@ const Payment = () => {
   });
 
   useEffect(() => {
-    // Get order data from navigation state
-    if (location.state?.orderData) {
+    // Check if this is an upgrade payment
+    if (location.state?.isUpgrade) {
+      setIsUpgradePayment(true);
+      setUpgradeData(location.state as UpgradeData);
+    } else if (location.state?.orderData) {
+      // Regular new order payment
       setOrderData(location.state.orderData);
     } else {
       toast.error("No order data found. Please start again.");
@@ -101,55 +116,94 @@ const Payment = () => {
     setIsProcessing(true);
 
     try {
-      // Create FormData to send file and order details
-      const formData = new FormData();
-      formData.append('file', orderData!.file);
-      formData.append('material', orderData!.material.split('-')[0]);
-      formData.append('color', orderData!.material.split('-')[1] || 'white');
-      formData.append('layerHeight', orderData!.quality === 'draft' ? '0.3' : orderData!.quality === 'standard' ? '0.2' : orderData!.quality === 'high' ? '0.15' : '0.1');
-      formData.append('infill', orderData!.quality === 'draft' ? '10' : orderData!.quality === 'standard' ? '20' : orderData!.quality === 'high' ? '50' : '100');
-      formData.append('quantity', orderData!.quantity.toString());
-      formData.append('shippingMethod', orderData!.deliveryOption);
-      formData.append('paymentMethod', selectedPayment);
-      formData.append('price', orderData!.totalAmount.toString());
-
-      // Add delivery-specific details
-      if (orderData!.deliveryOption === 'inpost' && orderData!.locker) {
-        formData.append('shippingAddress', JSON.stringify({
-          lockerCode: orderData!.locker.name,
-          lockerAddress: orderData!.locker.address
-        }));
-      } else if (orderData!.deliveryOption === 'dpd' && orderData!.shippingAddress) {
-        formData.append('shippingAddress', JSON.stringify(orderData!.shippingAddress));
-      } else if (orderData!.deliveryOption === 'pickup') {
-        formData.append('shippingAddress', JSON.stringify({
-          type: 'pickup',
-          address: 'Zielonogórska 13, 30-406 Kraków'
-        }));
-      }
-
       const token = localStorage.getItem('accessToken');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-      const response = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      if (isUpgradePayment && upgradeData) {
+        // Handle upgrade payment - update existing order
+        const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
+        if (!pendingUpdate) {
+          throw new Error('No pending order update found');
+        }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create order');
+        const updateData = JSON.parse(pendingUpdate);
+
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Update the order with new details and set payment status to paid with new amount
+        const updatesWithPayment = {
+          ...updateData.updates,
+          payment_status: 'paid',
+          paid_amount: upgradeData.totalAmount,
+        };
+
+        const response = await fetch(`${API_URL}/orders/${upgradeData.orderId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatesWithPayment),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to update order');
+        }
+
+        // Clear the pending update from session storage
+        sessionStorage.removeItem('pendingOrderUpdate');
+
+        toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Your order has been updated.`);
+        navigate(`/orders/${upgradeData.orderId}`);
+      } else if (orderData) {
+        // Handle new order payment
+        const formData = new FormData();
+        formData.append('file', orderData.file);
+        formData.append('material', orderData.material.split('-')[0]);
+        formData.append('color', orderData.material.split('-')[1] || 'white');
+        formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
+        formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
+        formData.append('quantity', orderData.quantity.toString());
+        formData.append('shippingMethod', orderData.deliveryOption);
+        formData.append('paymentMethod', selectedPayment);
+        formData.append('price', orderData.totalAmount.toString());
+
+        // Add delivery-specific details
+        if (orderData.deliveryOption === 'inpost' && orderData.locker) {
+          formData.append('shippingAddress', JSON.stringify({
+            lockerCode: orderData.locker.name,
+            lockerAddress: orderData.locker.address
+          }));
+        } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
+          formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
+        } else if (orderData.deliveryOption === 'pickup') {
+          formData.append('shippingAddress', JSON.stringify({
+            type: 'pickup',
+            address: 'Zielonogórska 13, 30-406 Kraków'
+          }));
+        }
+
+        const response = await fetch(`${API_URL}/orders`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to create order');
+        }
+
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        toast.success("Payment successful! Your order has been placed.");
+        navigate('/orders');
       }
-
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      toast.success("Payment successful! Your order has been placed.");
-      navigate('/orders');
-
     } catch (error) {
       console.error('Payment error:', error);
       toast.error(error instanceof Error ? error.message : 'Payment failed. Please try again.');
@@ -158,13 +212,23 @@ const Payment = () => {
     }
   };
 
-  if (!orderData) {
+  // Show loading for both new order and upgrade payment scenarios
+  if (!orderData && !upgradeData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Loading...</p>
       </div>
     );
   }
+
+  // Calculate display amount based on payment type
+  const displayAmount = isUpgradePayment && upgradeData 
+    ? upgradeData.amount 
+    : orderData?.totalAmount || 0;
+
+  const displayTitle = isUpgradePayment 
+    ? `Extra Payment for Order #${upgradeData?.orderNumber || ''}` 
+    : 'Complete Your Order';
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
@@ -176,14 +240,18 @@ const Payment = () => {
           <div className="animate-slide-up">
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/new-print')}
+              onClick={() => isUpgradePayment ? navigate(`/orders/${upgradeData?.orderId}/edit`) : navigate('/new-print')}
               className="mb-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Order
+              {isUpgradePayment ? 'Back to Edit Order' : 'Back to Order'}
             </Button>
-            <h1 className="text-4xl font-bold mb-3 gradient-text">Payment</h1>
-            <p className="text-muted-foreground text-lg">Complete your order securely</p>
+            <h1 className="text-4xl font-bold mb-3 gradient-text">
+              {isUpgradePayment ? displayTitle : 'Payment'}
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              {isUpgradePayment ? 'Pay the difference for your updated order' : 'Complete your order securely'}
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -358,51 +426,88 @@ const Payment = () => {
             <div className="space-y-6">
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in sticky top-8">
                 <CardHeader>
-                  <CardTitle className="text-xl">Order Summary</CardTitle>
+                  <CardTitle className="text-xl">
+                    {isUpgradePayment ? 'Upgrade Payment' : 'Order Summary'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Material</span>
-                      <span className="font-medium">{orderData.material}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quality</span>
-                      <span className="font-medium capitalize">{orderData.quality}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quantity</span>
-                      <span className="font-medium">×{orderData.quantity}</span>
-                    </div>
-                  </div>
+                  {isUpgradePayment && upgradeData ? (
+                    // Upgrade payment summary
+                    <>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Order</span>
+                          <span className="font-medium">#{upgradeData.orderNumber}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Previous Price</span>
+                          <span className="font-medium">{upgradeData.previousPrice?.toFixed(2) || '0.00'} PLN</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">New Price</span>
+                          <span className="font-medium">{upgradeData.totalAmount?.toFixed(2) || '0.00'} PLN</span>
+                        </div>
+                      </div>
 
-                  <div className="border-t pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Internal Costs</span>
-                      <span>{orderData.priceBreakdown.internalCost.toFixed(2)} PLN</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Service Fee</span>
-                      <span>{orderData.priceBreakdown.serviceFee.toFixed(2)} PLN</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">VAT (23%)</span>
-                      <span>{orderData.priceBreakdown.vat.toFixed(2)} PLN</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Delivery</span>
-                      <span>{orderData.deliveryPrice.toFixed(2)} PLN</span>
-                    </div>
-                  </div>
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-lg">Extra Payment</span>
+                          <span className="text-3xl font-bold gradient-text">
+                            {upgradeData.amount.toFixed(2)} PLN
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          This is the difference between your new and previous order total
+                        </p>
+                      </div>
+                    </>
+                  ) : orderData ? (
+                    // New order summary
+                    <>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Material</span>
+                          <span className="font-medium">{orderData.material}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Quality</span>
+                          <span className="font-medium capitalize">{orderData.quality}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Quantity</span>
+                          <span className="font-medium">×{orderData.quantity}</span>
+                        </div>
+                      </div>
 
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-lg">Total</span>
-                      <span className="text-3xl font-bold gradient-text">
-                        {orderData.totalAmount.toFixed(2)} PLN
-                      </span>
-                    </div>
-                  </div>
+                      <div className="border-t pt-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Internal Costs</span>
+                          <span>{orderData.priceBreakdown.internalCost.toFixed(2)} PLN</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Service Fee</span>
+                          <span>{orderData.priceBreakdown.serviceFee.toFixed(2)} PLN</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">VAT (23%)</span>
+                          <span>{orderData.priceBreakdown.vat.toFixed(2)} PLN</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Delivery</span>
+                          <span>{orderData.deliveryPrice.toFixed(2)} PLN</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-lg">Total</span>
+                          <span className="text-3xl font-bold gradient-text">
+                            {orderData.totalAmount.toFixed(2)} PLN
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
 
                   <Button
                     onClick={handlePayment}
@@ -421,7 +526,7 @@ const Payment = () => {
                     ) : (
                       <span className="flex items-center">
                         <CheckCircle2 className="mr-2 h-5 w-5" />
-                        Pay {orderData.totalAmount.toFixed(2)} PLN
+                        Pay {displayAmount.toFixed(2)} PLN
                       </span>
                     )}
                   </Button>

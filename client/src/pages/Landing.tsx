@@ -1,13 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Upload, Settings, Truck, Package, Palette, Zap, Box, Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Upload, Settings, Truck, Package, Palette, Zap, Box, Mail, Phone, MapPin, Clock, Send, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Landing = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  
+  // Check if user is logged in
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('accessToken');
 
   const steps = [
     {
@@ -71,12 +74,21 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-              {t.landing.login}
-            </Button>
-            <Button onClick={() => navigate("/new-print")} className="hover-lift shadow-lg hover:shadow-xl">
-              {t.landing.getStarted}
-            </Button>
+            {isLoggedIn ? (
+              <Button onClick={() => navigate("/dashboard")} className="hover-lift shadow-lg hover:shadow-xl">
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+                {t.dashboard?.overview || 'Dashboard'}
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
+                  {t.landing.login}
+                </Button>
+                <Button onClick={() => navigate("/new-print")} className="hover-lift shadow-lg hover:shadow-xl">
+                  {t.landing.getStarted}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
