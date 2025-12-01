@@ -392,6 +392,73 @@ export class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Get user by ID (for admin/profile endpoints)
+   */
+  async getUserById(userId: string): Promise<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    phone?: string;
+    address?: string;
+    createdAt: Date;
+  } | null> {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return null;
+    }
+
+    // Parse name into first and last name
+    const nameParts = (user.name || '').split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName,
+      lastName,
+      role: user.role,
+      phone: user.phone,
+      address: user.address,
+      createdAt: new Date(user.created_at)
+    };
+  }
+
+  /**
+   * Get all users (for admin)
+   */
+  async getAllUsers(): Promise<Array<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    phone?: string;
+    createdAt: Date;
+  }>> {
+    const users = await User.find({});
+
+    return users.map((user) => {
+      const nameParts = (user.name || '').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      return {
+        id: user.id,
+        email: user.email,
+        firstName,
+        lastName,
+        role: user.role,
+        phone: user.phone,
+        createdAt: new Date(user.created_at)
+      };
+    });
+  }
 }
 
 export const authService = new AuthService();

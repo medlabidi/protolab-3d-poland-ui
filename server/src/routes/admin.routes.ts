@@ -20,6 +20,8 @@ router.patch('/orders/:id/status', validate(updateOrderStatusSchema), adminContr
 router.patch('/orders/:id/pricing', validate(updateOrderPricingSchema), adminController.updateOrderPricing);
 router.patch('/orders/:id/tracking', validate(updateOrderTrackingSchema), adminController.updateOrderTracking);
 
+router.get('/users', adminController.getAllUsers);
+
 router.get('/settings', adminController.getSettings);
 router.patch('/settings', validate(updateSettingsSchema), adminController.updateSettings);
 

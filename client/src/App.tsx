@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import Landing from "./pages/Landing";
 import AboutUs from "./pages/AboutUs";
 import SignIn from "./pages/SignIn";
@@ -19,6 +20,10 @@ import Settings from "./pages/Settings";
 import Payment from "./pages/Payment";
 import Refund from "./pages/Refund";
 import NotFound from "./pages/NotFound";
+
+// Admin pages
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
@@ -47,6 +52,10 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
               <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

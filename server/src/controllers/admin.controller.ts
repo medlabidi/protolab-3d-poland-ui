@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { orderService } from '../services/order.service';
 import { settingsService } from '../services/settings.service';
+import { authService } from '../services/auth.service';
 import { logger } from '../config/logger';
 
 export class AdminController {
@@ -81,6 +82,16 @@ export class AdminController {
       logger.info('Settings updated');
       
       res.json({ message: 'Settings updated successfully', settings });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllUsers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const users = await authService.getAllUsers();
+      
+      res.json({ users, count: users.length });
     } catch (error) {
       next(error);
     }

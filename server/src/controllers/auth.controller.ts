@@ -219,6 +219,40 @@ export class AuthController {
       next(error);
     }
   }
+
+  async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const user = await authService.getUserById(userId);
+      
+      if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          address: user.address,
+          createdAt: user.createdAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

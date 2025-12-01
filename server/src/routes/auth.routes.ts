@@ -32,6 +32,9 @@ router.get('/verify-email', asyncHandler((req: Request, res: Response, next: Nex
 // Profile update (protected route)
 router.put('/profile', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.updateProfile(req, res, next)));
 
+// Get current user (protected route)
+router.get('/me', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.getCurrentUser(req, res, next)));
+
 // Change password (protected route)
 router.post('/change-password', authenticate, asyncHandler((req: Request, res: Response, next: NextFunction) => authController.changePassword(req, res, next)));
 
