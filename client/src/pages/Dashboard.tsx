@@ -2,7 +2,15 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
-import { Package, DollarSign, Clock, Eye, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
@@ -23,20 +31,56 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const refreshAccessToken = async (): Promise<string | null> => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return null;
+
     try {
-      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.tokens.accessToken);
+        localStorage.setItem('refreshToken', data.tokens.refreshToken);
+        return data.tokens.accessToken;
+      }
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+    }
+    
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    navigate('/login');
+    return null;
+  };
+
+  const fetchDashboardData = async (retry = true) => {
+    try {
+      let token = localStorage.getItem('accessToken');
       if (!token) {
         navigate('/login');
         return;
       }
 
       // Fetch user orders
-      const response = await fetch(`${API_URL}/orders/my`, {
+      let response = await fetch(`${API_URL}/orders/my`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      // If unauthorized, try to refresh token
+      if (response.status === 401 && retry) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchDashboardData(false);
+        }
+        return;
+      }
 
       if (!response.ok) {
         console.error('Failed to fetch orders:', response.status, response.statusText);
@@ -50,7 +94,7 @@ const Dashboard = () => {
 
       // Calculate stats from real data
       const active = userOrders.filter((o: any) => 
-        ['pending', 'processing', 'printing', 'in-queue'].includes(o.status)
+        ['submitted', 'in_queue', 'printing'].includes(o.status)
       ).length;
       
       const completed = userOrders.filter((o: any) => 
@@ -58,7 +102,7 @@ const Dashboard = () => {
       ).length;
       
       const total = userOrders.reduce((sum: number, o: any) => 
-        sum + (parseFloat(o.total_price) || 0), 0
+        sum + (parseFloat(o.price) || 0), 0
       );
 
       setStats({
@@ -151,7 +195,7 @@ const Dashboard = () => {
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <div className="grid grid-cols-5 gap-4 text-sm font-bold text-muted-foreground pb-4 px-4">
-                  <div>Order ID</div>
+                  <div>File Name</div>
                   <div>Status</div>
                   <div>Date</div>
                   <div>Material</div>
@@ -176,7 +220,7 @@ const Dashboard = () => {
                       className="grid grid-cols-5 gap-4 items-center py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
-                      <div className="font-bold text-primary">{order.order_number || order.id}</div>
+                      <div className="font-bold text-primary truncate" title={order.file_name}>{order.file_name || 'Unnamed'}</div>
                       <div>
                         <StatusBadge status={order.status as OrderStatus} />
                       </div>
@@ -185,15 +229,46 @@ const Dashboard = () => {
                       </div>
                       <div className="text-sm font-medium">{order.material || 'N/A'}</div>
                       <div className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/orders/${order.id}`)}
-                          className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit Order
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              navigator.clipboard.writeText(order.id);
+                              toast.success('Order ID copied to clipboard');
+                            }}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy Order ID
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download File
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => toast.error('Delete functionality coming soon')}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Order
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))

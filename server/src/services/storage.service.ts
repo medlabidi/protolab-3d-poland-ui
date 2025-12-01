@@ -117,17 +117,43 @@ export async function uploadPrintJobFile(
     .from(bucketName)
     .upload(filePath, fileBuffer, {
       contentType: mimeType,
-      upsert: false,
+      upsert: true, // Allow overwrite if file exists
     });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
-  const { data: publicUrlData } = supabaseAdmin.storage
+  // Generate a signed URL that expires in 1 year (for long-term access)
+  const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
     .from(bucketName)
-    .getPublicUrl(data.path);
+    .createSignedUrl(data.path, 60 * 60 * 24 * 365); // 1 year expiry
+
+  if (signedUrlError) {
+    // Fallback to public URL if signed URL fails
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(bucketName)
+      .getPublicUrl(data.path);
+    
+    return {
+      path: data.path,
+      url: publicUrlData.publicUrl,
+    };
+  }
 
   return {
     path: data.path,
-    url: publicUrlData.publicUrl,
+    url: signedUrlData.signedUrl,
   };
+}
+
+// Helper: Get a fresh signed URL for a file (for viewing existing orders)
+export async function getSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
+  const bucketName = process.env.SUPABASE_BUCKET_JOBS!;
+  
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .createSignedUrl(filePath, expiresIn);
+
+  if (error) throw new Error(`Failed to create signed URL: ${error.message}`);
+  
+  return data.signedUrl;
 }

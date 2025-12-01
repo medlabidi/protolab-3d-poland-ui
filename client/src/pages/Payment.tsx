@@ -111,7 +111,7 @@ const Payment = () => {
       formData.append('quantity', orderData!.quantity.toString());
       formData.append('shippingMethod', orderData!.deliveryOption);
       formData.append('paymentMethod', selectedPayment);
-      formData.append('totalAmount', orderData!.totalAmount.toString());
+      formData.append('price', orderData!.totalAmount.toString());
 
       // Add delivery-specific details
       if (orderData!.deliveryOption === 'inpost' && orderData!.locker) {

@@ -19,6 +19,7 @@ router.post(
 
 router.get('/my', orderController.getMyOrders);
 router.get('/:id', orderController.getOrderById);
+router.get('/:id/file', orderController.getOrderFile);
 router.patch('/:id/review', validate(addReviewSchema), orderController.addReview);
 
 export default router;

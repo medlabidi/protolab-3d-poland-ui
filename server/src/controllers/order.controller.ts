@@ -24,8 +24,11 @@ export class OrderController {
         req.file.mimetype
       );
       
+      logger.info(`Creating order with price: ${req.body.price}, parsed: ${parseFloat(req.body.price) || 0}`);
+      
       const order = await orderService.createOrder(req.user!.id, {
         ...req.body,
+        price: parseFloat(req.body.price) || 0,
         fileName: req.file.originalname,
         fileUrl,
       });
@@ -77,6 +80,26 @@ export class OrderController {
       logger.info(`Review added to order: ${order.id}`);
       
       res.json({ message: 'Review added successfully', order });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  async getOrderFile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.getOrderById(id, req.user!.id);
+      
+      if (!order) {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+      
+      if (order.file_url) {
+        res.redirect(order.file_url);
+      } else {
+        res.status(404).json({ error: 'File not found' });
+      }
     } catch (error) {
       next(error);
     }

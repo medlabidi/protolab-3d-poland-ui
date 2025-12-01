@@ -6,9 +6,8 @@ import { getSupabase } from '../config/database';
 
 export class OrderService {
   async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
-    // Use default/estimated values for initial order creation
-    // Actual price will be calculated after file analysis
-    const estimatedPrice = 0; // Placeholder, will be updated after file analysis
+    // Use price from client calculation, or default to 0 if not provided
+    const orderPrice = data.price || 0;
     
     const order = await Order.create({
       user_id: userId,
@@ -21,7 +20,7 @@ export class OrderService {
       quantity: data.quantity,
       shipping_method: data.shippingMethod,
       shipping_address: data.shippingAddress,
-      price: estimatedPrice,
+      price: orderPrice,
       status: 'submitted',
     });
     

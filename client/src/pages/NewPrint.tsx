@@ -364,6 +364,7 @@ const NewPrint = () => {
       formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
       formData.append('quantity', quantity.toString());
       formData.append('shippingMethod', selectedDeliveryOption);
+      formData.append('price', estimatedPrice.toString());
       
       // Add delivery-specific details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {

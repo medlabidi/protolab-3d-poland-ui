@@ -2,7 +2,15 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
-import { Eye, Package, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -28,16 +36,58 @@ const Orders = () => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
+  const refreshAccessToken = async (): Promise<string | null> => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return null;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.tokens.accessToken);
+        localStorage.setItem('refreshToken', data.tokens.refreshToken);
+        return data.tokens.accessToken;
+      }
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+    }
+    
+    // Refresh failed, redirect to login
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    navigate('/login');
+    return null;
+  };
+
+  const fetchOrders = async (retry = true) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
+      let token = localStorage.getItem('accessToken');
       
-      const response = await fetch(`${API_URL}/orders/my`, {
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      
+      let response = await fetch(`${API_URL}/orders/my`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      // If unauthorized, try to refresh token
+      if (response.status === 401 && retry) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchOrders(false); // Retry with new token
+        }
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
@@ -139,15 +189,46 @@ const Orders = () => {
                       </div>
                       <div className="font-bold gradient-text">{formatPrice(order.price)}</div>
                       <div className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/orders/${order.id}`)}
-                          className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50 group"
-                        >
-                          <Eye className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                          Details
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit Order
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              navigator.clipboard.writeText(order.id);
+                              toast.success('Order ID copied to clipboard');
+                            }}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy Order ID
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download File
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => toast.error('Delete functionality coming soon')}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Order
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))}

@@ -50,6 +50,7 @@ export interface PricingBreakdown {
 export interface OrderCreateInput {
   fileName: string;
   fileUrl: string;
+  filePath?: string;
   material: string;
   color: string;
   layerHeight: number;
@@ -57,6 +58,7 @@ export interface OrderCreateInput {
   quantity: number;
   shippingMethod: ShippingMethod;
   shippingAddress?: string;
+  price?: number;
 }
 
 // Re-export pricing types for backward compatibility

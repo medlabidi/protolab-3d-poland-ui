@@ -1,18 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type OrderStatus = "new" | "in-queue" | "printing" | "finished" | "delivered";
+export type OrderStatus = "submitted" | "in_queue" | "printing" | "finished" | "delivered";
 
 interface StatusBadgeProps {
   status: OrderStatus;
 }
 
-const statusConfig = {
-  new: {
+const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
+  submitted: {
     label: "Submitted",
     className: "bg-status-new text-white hover:bg-status-new/90",
   },
-  "in-queue": {
+  in_queue: {
     label: "In Queue",
     className: "bg-status-queue text-white hover:bg-status-queue/90",
   },
@@ -31,7 +31,7 @@ const statusConfig = {
 };
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const config = statusConfig[status] || statusConfig.new;
+  const config = statusConfig[status] || statusConfig.submitted;
   
   return (
     <Badge className={cn("font-medium", config.className)}>

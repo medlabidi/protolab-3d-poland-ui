@@ -24,12 +24,17 @@
     "test:file-analysis": "jest file-analysis.test.ts",
     "test:integration": "jest full-estimation.test.ts",
     "test:all": "jest --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:report": "npx playwright show-report",
     "lint": "cd client && npm run lint && cd ../server && npm run lint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "clean": "rm -rf node_modules client/node_modules server/node_modules && npm install",
     "health-check": "npm run verify-db && npm run lint"
   },
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.14",
     "@types/multer": "^1.4.7",

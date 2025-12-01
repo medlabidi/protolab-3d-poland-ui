@@ -7,16 +7,16 @@ interface OrderTimelineProps {
 }
 
 const steps: { status: OrderStatus; label: string }[] = [
-  { status: "new", label: "Submitted" },
-  { status: "in-queue", label: "In Queue" },
+  { status: "submitted", label: "Submitted" },
+  { status: "in_queue", label: "In Queue" },
   { status: "printing", label: "Printing" },
   { status: "finished", label: "Finished" },
   { status: "delivered", label: "Delivered" },
 ];
 
 const statusOrder: Record<OrderStatus, number> = {
-  new: 0,
-  "in-queue": 1,
+  submitted: 0,
+  in_queue: 1,
   printing: 2,
   finished: 3,
   delivered: 4,
