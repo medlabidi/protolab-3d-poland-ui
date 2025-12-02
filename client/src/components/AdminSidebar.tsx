@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Logo } from "@/components/Logo";
 
 const menuItems = [
   {
@@ -93,14 +94,9 @@ export const AdminSidebar = () => {
       {/* Logo */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">P</span>
-          </div>
+          <Logo size={collapsed ? "md" : "lg"} showText={!collapsed} textClassName="text-white" />
           {!collapsed && (
-            <div>
-              <h1 className="font-bold text-white text-lg">ProtoLab</h1>
-              <p className="text-xs text-gray-500">Admin Panel</p>
-            </div>
+            <p className="text-xs text-gray-500">Admin Panel</p>
           )}
         </div>
       </div>

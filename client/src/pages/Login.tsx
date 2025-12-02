@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Box, Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { GoogleLogin } from "@react-oauth/google";
+import { Logo } from "@/components/Logo";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -290,9 +291,7 @@ const Login = () => {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-3 text-center">
           <div className="flex justify-center">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <Box className="w-7 h-7 text-primary-foreground" />
-            </div>
+            <Logo size="lg" showText={false} />
           </div>
           <CardTitle className="text-2xl">{t.login.welcome}</CardTitle>
           <CardDescription>{t.login.subtitle}</CardDescription>

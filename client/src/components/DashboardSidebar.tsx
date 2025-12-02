@@ -1,10 +1,11 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Box } from "lucide-react";
+import { LayoutDashboard, Plus, Package, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
+import { Logo } from "@/components/Logo";
 
 export const DashboardSidebar = () => {
   const { t } = useLanguage();
@@ -35,10 +36,7 @@ export const DashboardSidebar = () => {
     <aside className="w-72 bg-gradient-to-b from-card to-muted/20 border-r border-border/50 min-h-screen p-6 flex flex-col shadow-xl">
       <div className="mb-12 animate-slide-up">
         <NavLink to="/" className="flex items-center gap-3 text-xl font-bold group">
-          <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-            <Box className="w-7 h-7 text-white" />
-          </div>
-          <span className="gradient-text">{t.common.protolab}</span>
+          <Logo size="lg" textClassName="text-xl" />
         </NavLink>
       </div>
 

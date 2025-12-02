@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Box, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { GoogleLogin } from "@react-oauth/google";
+import { Logo } from "@/components/Logo";
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -153,9 +154,7 @@ const SignIn = () => {
       <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 animate-scale-in bg-gradient-to-br from-white to-gray-50/50">
         <CardHeader className="space-y-4 text-center pb-8">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-xl animate-pulse-glow">
-              <Box className="w-9 h-9 text-white" />
-            </div>
+            <Logo size="xl" showText={false} />
           </div>
           <CardTitle className="text-3xl gradient-text">{t.login.welcome}</CardTitle>
           <CardDescription className="text-base">{t.login.subtitle}</CardDescription>

@@ -2,6 +2,7 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,9 +161,15 @@ const Dashboard = () => {
       
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-2 gradient-text">{t.dashboard.overview}</h1>
-            <p className="text-muted-foreground text-lg">{t.dashboard.welcome}</p>
+          {/* Header with Title and Notifications */}
+          <div className="flex items-start justify-between animate-slide-up">
+            <div>
+              <h1 className="text-4xl font-bold mb-2 gradient-text">{t.dashboard.overview}</h1>
+              <p className="text-muted-foreground text-lg">{t.dashboard.welcome}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationDropdown />
+            </div>
           </div>
 
           {/* Stats Grid */}

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Box, Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { Logo } from "@/components/Logo";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -134,9 +135,7 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 bg-gradient-to-br from-white to-gray-50/50">
         <CardHeader className="space-y-4 text-center pb-8">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-xl">
-              <Box className="w-9 h-9 text-white" />
-            </div>
+            <Logo size="xl" showText={false} />
           </div>
           <CardTitle className="text-3xl gradient-text">Reset Password</CardTitle>
           <CardDescription className="text-base">

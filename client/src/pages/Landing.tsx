@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Upload, Settings, Truck, Package, Palette, Zap, Box, Mail, Phone, MapPin, Clock, Send, LayoutDashboard } from "lucide-react";
+import { Upload, Settings, Truck, Package, Palette, Zap, Mail, Phone, MapPin, Clock, Send, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Logo } from "@/components/Logo";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -69,8 +70,7 @@ const Landing = () => {
       <header className="border-b border-border glass-effect sticky top-0 z-50 animate-slide-up">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer">
-            <Box className="w-6 h-6 transition-transform group-hover:rotate-180 duration-500" />
-            <span className="gradient-text">{t.common.protolab}</span>
+            <Logo size="sm" textClassName="text-xl" />
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
@@ -421,8 +421,7 @@ const Landing = () => {
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-2 text-xl font-bold mb-6 group cursor-pointer">
-                <Box className="w-6 h-6 text-primary transition-transform group-hover:rotate-180 duration-500" />
-                <span className="gradient-text">ProtoLab</span>
+                <Logo size="sm" textClassName="text-xl" />
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 Professional 3D printing services in Poland

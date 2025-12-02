@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send, Box, CreditCard } from "lucide-react";
+import { Upload, Calculator, Send, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
 import { LockerPickerModal } from "@/components/LockerPickerModal";
@@ -16,6 +16,7 @@ import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DP
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 import { apiFormData } from "@/lib/api";
+import { Logo } from "@/components/Logo";
 
 interface PriceBreakdown {
   materialCost: number;
@@ -493,8 +494,7 @@ const NewPrint = () => {
               onClick={() => navigate("/")}
               className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
             >
-              <Box className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" />
-              <span className="gradient-text">ProtoLab</span>
+              <Logo size="sm" textClassName="text-xl" />
             </button>
             <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
               Login

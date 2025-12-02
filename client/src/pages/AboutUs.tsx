@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Box, Target, Users, Award, Sparkles, Heart, Globe, Zap, Package, Shield } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 const AboutUs = () => {
   const navigate = useNavigate();
@@ -110,8 +111,7 @@ const AboutUs = () => {
             onClick={() => navigate("/")}
             className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer"
           >
-            <Box className="w-6 h-6 transition-transform group-hover:rotate-180 duration-500" />
-            <span className="gradient-text">{t.common.protolab}</span>
+            <Logo size="sm" textClassName="text-xl" />
           </button>
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
@@ -321,8 +321,7 @@ const AboutUs = () => {
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-2 text-xl font-bold mb-6 group cursor-pointer">
-                <Box className="w-6 h-6 text-primary transition-transform group-hover:rotate-180 duration-500" />
-                <span className="gradient-text">ProtoLab</span>
+                <Logo size="sm" textClassName="text-xl" />
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 Professional 3D printing services in Poland
