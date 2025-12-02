@@ -23,4 +23,8 @@ router.get('/:id/file', orderController.getOrderFile);
 router.patch('/:id', orderController.updateOrder);
 router.patch('/:id/review', validate(addReviewSchema), orderController.addReview);
 
+// Email notification endpoints
+router.post('/email/payment-confirmation', orderController.sendPaymentConfirmationEmail);
+router.post('/email/refund-request', orderController.sendRefundRequestEmail);
+
 export default router;

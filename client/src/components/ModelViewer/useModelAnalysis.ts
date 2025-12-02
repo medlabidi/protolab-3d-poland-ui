@@ -5,7 +5,7 @@ export interface ModelAnalysis {
   volumeCm3: number;
   boundingBox: { x: number; y: number; z: number };
   surfaceArea: number;
-  weightGrams: number;
+  weightGrams: number | null;
 }
 
 const calculateVolume = (geometry: THREE.BufferGeometry): number => {
@@ -89,15 +89,14 @@ export const useModelAnalysis = (geometry: THREE.BufferGeometry | null): ModelAn
     const surfaceAreaMm2 = calculateSurfaceArea(geometry);
     const surfaceAreaCm2 = surfaceAreaMm2 / 100;
 
-    // Calculate weight using PLA density (1.24 g/cm³)
-    const densityPLA = 1.24;
-    const weightGrams = volumeCm3 * densityPLA;
+    // Weight is not calculated here - it depends on material selection
+    // Will be calculated in the price calculation when parameters are set
 
     return {
       volumeCm3,
       boundingBox,
       surfaceArea: surfaceAreaCm2,
-      weightGrams,
+      weightGrams: null, // Weight depends on material, calculated later
     };
   }, [geometry]);
 };

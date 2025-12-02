@@ -431,6 +431,298 @@ export class EmailService {
       throw new Error('Failed to send password reset email');
     }
   }
+
+  async sendPaymentConfirmationEmail(
+    toEmail: string,
+    userName: string,
+    orderDetails: {
+      orderNumber?: string;
+      projectName?: string;
+      totalAmount: number;
+      itemCount: number;
+      paymentMethod: string;
+    }
+  ): Promise<void> {
+    const isProject = orderDetails.itemCount > 1;
+    const orderIdentifier = orderDetails.projectName || orderDetails.orderNumber || 'your order';
+    
+    const mailOptions = {
+      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
+      to: toEmail,
+      subject: `Payment Confirmed - ${isProject ? orderDetails.projectName : 'Order'} | ProtoLab 3D Poland`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+            .success-box { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .order-summary { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .summary-row:last-child { border-bottom: none; font-weight: bold; font-size: 1.1em; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ Payment Successful!</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName}!</h2>
+              
+              <div class="success-box">
+                <p><strong>Your payment has been confirmed!</strong></p>
+                <p>We've received your payment and your ${isProject ? 'project' : 'order'} is now being processed.</p>
+              </div>
+
+              <div class="order-summary">
+                <h3 style="margin-top: 0;">Order Summary</h3>
+                <div class="summary-row">
+                  <span>${isProject ? 'Project' : 'Order'}:</span>
+                  <span>${orderIdentifier}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Items:</span>
+                  <span>${orderDetails.itemCount} ${orderDetails.itemCount === 1 ? 'file' : 'files'}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Payment Method:</span>
+                  <span>${orderDetails.paymentMethod}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Total Amount:</span>
+                  <span>${orderDetails.totalAmount.toFixed(2)} PLN</span>
+                </div>
+              </div>
+
+              <div class="info-box">
+                <p><strong>📦 What's Next?</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                  <li>Our team will review your order and prepare it for printing</li>
+                  <li>You'll receive updates as your order progresses</li>
+                  <li>Track your order status anytime in your dashboard</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${FRONTEND_URL}/orders" class="button">Track Your Order</a>
+              </div>
+
+              <p>If you have any questions, feel free to contact us at <strong>${ADMIN_EMAIL}</strong></p>
+            </div>
+            <div class="footer">
+              <p>Thank you for choosing ProtoLab 3D Poland!</p>
+              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Payment Confirmed - ProtoLab 3D Poland
+
+        Hello ${userName}!
+
+        Your payment has been confirmed! We've received your payment and your ${isProject ? 'project' : 'order'} is now being processed.
+
+        Order Summary:
+        - ${isProject ? 'Project' : 'Order'}: ${orderIdentifier}
+        - Items: ${orderDetails.itemCount} ${orderDetails.itemCount === 1 ? 'file' : 'files'}
+        - Payment Method: ${orderDetails.paymentMethod}
+        - Total Amount: ${orderDetails.totalAmount.toFixed(2)} PLN
+
+        What's Next?
+        - Our team will review your order and prepare it for printing
+        - You'll receive updates as your order progresses
+        - Track your order status anytime: ${FRONTEND_URL}/orders
+
+        Questions? Contact us at ${ADMIN_EMAIL}
+
+        Thank you for choosing ProtoLab 3D Poland!
+      `,
+    };
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 PAYMENT CONFIRMATION EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(`Subject: ${mailOptions.subject}`);
+        console.log(`Order: ${orderIdentifier}`);
+        console.log(`Amount: ${orderDetails.totalAmount.toFixed(2)} PLN`);
+        console.log(`Items: ${orderDetails.itemCount}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      });
+      logger.info(`Payment confirmation email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send payment confirmation email to ${toEmail}`);
+      // Don't throw - not critical
+    }
+  }
+
+  async sendRefundRequestEmail(
+    toEmail: string,
+    userName: string,
+    refundDetails: {
+      orderNumber: string;
+      refundAmount: number;
+      reason: string;
+      refundMethod: string;
+    }
+  ): Promise<void> {
+    const reasonText = refundDetails.reason === 'cancellation' 
+      ? 'Order Cancellation' 
+      : refundDetails.reason === 'price_reduction' 
+        ? 'Order Modification (Price Reduction)' 
+        : 'Order Modification';
+
+    const mailOptions = {
+      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
+      to: toEmail,
+      subject: `Refund Request Received - Order #${refundDetails.orderNumber} | ProtoLab 3D Poland`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+            .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .refund-summary { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .summary-row:last-child { border-bottom: none; font-weight: bold; font-size: 1.1em; color: #28a745; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>💸 Refund Request Received</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName}!</h2>
+              
+              <div class="info-box">
+                <p><strong>We've received your refund request!</strong></p>
+                <p>Our team is processing your request and you'll receive your refund soon.</p>
+              </div>
+
+              <div class="refund-summary">
+                <h3 style="margin-top: 0;">Refund Details</h3>
+                <div class="summary-row">
+                  <span>Order Number:</span>
+                  <span>#${refundDetails.orderNumber}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Reason:</span>
+                  <span>${reasonText}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Refund Method:</span>
+                  <span>${refundDetails.refundMethod === 'original' ? 'Original Payment Method' : refundDetails.refundMethod === 'bank' ? 'Bank Transfer' : 'Store Credit (+5% bonus)'}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Refund Amount:</span>
+                  <span>${refundDetails.refundAmount.toFixed(2)} PLN</span>
+                </div>
+              </div>
+
+              <div class="warning-box">
+                <p><strong>⏰ Processing Time:</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                  <li><strong>Original Payment Method:</strong> 3-5 business days</li>
+                  <li><strong>Bank Transfer:</strong> 2-3 business days</li>
+                  <li><strong>Store Credit:</strong> Instant (added to your account)</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${FRONTEND_URL}/orders" class="button">View Your Orders</a>
+              </div>
+
+              <p>If you have any questions about your refund, please contact us at <strong>${ADMIN_EMAIL}</strong></p>
+            </div>
+            <div class="footer">
+              <p>Thank you for your patience!</p>
+              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Refund Request Received - ProtoLab 3D Poland
+
+        Hello ${userName}!
+
+        We've received your refund request and our team is processing it.
+
+        Refund Details:
+        - Order Number: #${refundDetails.orderNumber}
+        - Reason: ${reasonText}
+        - Refund Method: ${refundDetails.refundMethod === 'original' ? 'Original Payment Method' : refundDetails.refundMethod === 'bank' ? 'Bank Transfer' : 'Store Credit (+5% bonus)'}
+        - Refund Amount: ${refundDetails.refundAmount.toFixed(2)} PLN
+
+        Processing Time:
+        - Original Payment Method: 3-5 business days
+        - Bank Transfer: 2-3 business days
+        - Store Credit: Instant
+
+        View your orders: ${FRONTEND_URL}/orders
+
+        Questions? Contact us at ${ADMIN_EMAIL}
+
+        Thank you for your patience!
+        ProtoLab 3D Poland Team
+      `,
+    };
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 REFUND REQUEST EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(`Subject: ${mailOptions.subject}`);
+        console.log(`Order: #${refundDetails.orderNumber}`);
+        console.log(`Refund Amount: ${refundDetails.refundAmount.toFixed(2)} PLN`);
+        console.log(`Reason: ${reasonText}`);
+        console.log(`Method: ${refundDetails.refundMethod}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      });
+      logger.info(`Refund request email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send refund request email to ${toEmail}`);
+      // Don't throw - not critical
+    }
+  }
 }
 
 export const emailService = new EmailService();

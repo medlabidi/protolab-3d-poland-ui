@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Bell, Package, CheckCircle2, AlertCircle, Clock, X, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Bell, Package, CheckCircle2, AlertCircle, Clock, X, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,66 +9,12 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
-
-interface Notification {
-  id: string;
-  type: "order_update" | "order_complete" | "order_shipped" | "system" | "payment";
-  title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-  orderId?: string;
-}
-
-// Mock notifications - in production, these would come from an API
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "order_complete",
-    title: "Order Completed",
-    message: "Your order #ORD-001 has been completed and is ready for shipping.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-    read: false,
-    orderId: "ord-001",
-  },
-  {
-    id: "2",
-    type: "order_shipped",
-    title: "Order Shipped",
-    message: "Your order #ORD-002 has been shipped via InPost.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    read: false,
-    orderId: "ord-002",
-  },
-  {
-    id: "3",
-    type: "order_update",
-    title: "Printing Started",
-    message: "Your order #ORD-003 is now being printed.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    read: true,
-    orderId: "ord-003",
-  },
-  {
-    id: "4",
-    type: "payment",
-    title: "Payment Received",
-    message: "We've received your payment of 45.50 PLN.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    read: true,
-  },
-  {
-    id: "5",
-    type: "system",
-    title: "Welcome to ProtoLab!",
-    message: "Start by uploading your first 3D model.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-    read: true,
-  },
-];
+import { useNotifications, Notification } from "@/contexts/NotificationContext";
 
 const getNotificationIcon = (type: Notification["type"]) => {
   switch (type) {
+    case "order_created":
+      return <Upload className="w-5 h-5 text-primary" />;
     case "order_complete":
       return <CheckCircle2 className="w-5 h-5 text-green-500" />;
     case "order_shipped":
@@ -100,24 +46,19 @@ const formatTimeAgo = (date: Date): string => {
 
 export const NotificationDropdown = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification, 
+    clearAllNotifications 
+  } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const deleteNotification = (id: string, e: React.MouseEvent) => {
+  const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    deleteNotification(id);
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -126,10 +67,6 @@ export const NotificationDropdown = () => {
       navigate(`/orders/${notification.orderId}`);
       setIsOpen(false);
     }
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
   };
 
   return (
@@ -195,7 +132,7 @@ export const NotificationDropdown = () => {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={(e) => deleteNotification(notification.id, e)}
+                          onClick={(e) => handleDeleteNotification(notification.id, e)}
                         >
                           <X className="w-3 h-3" />
                         </Button>

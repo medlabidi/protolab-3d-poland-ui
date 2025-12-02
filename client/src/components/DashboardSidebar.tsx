@@ -4,12 +4,14 @@ import { LayoutDashboard, Plus, Package, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 
 export const DashboardSidebar = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { clearAllNotifications } = useNotifications();
   
   const handleLogout = () => {
     // Clear all auth data from localStorage
@@ -17,6 +19,9 @@ export const DashboardSidebar = () => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('isLoggedIn');
+    
+    // Clear notifications
+    clearAllNotifications();
     
     // Show success message
     toast.success(t.dashboard.logoutSuccess || 'Logged out successfully');

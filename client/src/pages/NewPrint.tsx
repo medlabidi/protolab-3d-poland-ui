@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send, CreditCard } from "lucide-react";
+import { Upload, Calculator, Send, CreditCard, FileText, FolderOpen, X, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
 import { LockerPickerModal } from "@/components/LockerPickerModal";
@@ -17,6 +17,8 @@ import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 import { apiFormData } from "@/lib/api";
 import { Logo } from "@/components/Logo";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface PriceBreakdown {
   materialCost: number;
@@ -29,8 +31,51 @@ interface PriceBreakdown {
   totalPrice: number;
 }
 
+interface ProjectFile {
+  id: string;
+  file: File;
+  material: string;
+  quality: string;
+  quantity: number;
+  modelAnalysis: ModelAnalysis | null;
+  isLoading: boolean;
+  error: string | null;
+  isExpanded: boolean;
+  estimatedPrice: number | null;
+  priceBreakdown: PriceBreakdown | null;
+}
+
+// Memoized ModelViewer wrapper to prevent re-renders when other project file properties change
+const MemoizedModelViewer = memo(({ 
+  file, 
+  fileId,
+  onAnalysisComplete, 
+  onError 
+}: { 
+  file: File; 
+  fileId: string;
+  onAnalysisComplete: (id: string, analysis: ModelAnalysis) => void; 
+  onError: (id: string, error: string | null) => void;
+}) => {
+  return (
+    <ModelViewer 
+      file={file} 
+      onAnalysisComplete={(analysis) => onAnalysisComplete(fileId, analysis)}
+      onError={(error) => onError(fileId, error)}
+    />
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if the file itself changes
+  return prevProps.file === nextProps.file && prevProps.fileId === nextProps.fileId;
+});
+
 const NewPrint = () => {
   const navigate = useNavigate();
+  
+  // Upload mode: 'single' or 'project'
+  const [uploadMode, setUploadMode] = useState<'single' | 'project'>('single');
+  
+  // Single file state
   const [file, setFile] = useState<File | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
@@ -39,6 +84,10 @@ const NewPrint = () => {
   const [material, setMaterial] = useState("");
   const [quality, setQuality] = useState("");
   const [quantity, setQuantity] = useState(1);
+  
+  // Project (multi-file) state
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [projectName, setProjectName] = useState("");
   
   // Delivery state
   const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<string | null>(null);
@@ -188,7 +237,7 @@ const NewPrint = () => {
     setModelAnalysis(analysis);
     setIsModelLoading(false);
     setModelError(null);
-    toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³, Weight: ${analysis.weightGrams.toFixed(1)}g`);
+    toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³`);
   };
 
   const handleModelError = (error: string | null) => {
@@ -209,6 +258,164 @@ const NewPrint = () => {
       }
     }
   };
+
+  // Project file handling functions
+  const addProjectFiles = (files: FileList) => {
+    const newFiles: ProjectFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const fileName = f.name.toLowerCase();
+      if (fileName.endsWith('.stl') || fileName.endsWith('.obj') || fileName.endsWith('.step')) {
+        newFiles.push({
+          id: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+          file: f,
+          material: "",
+          quality: "",
+          quantity: 1,
+          modelAnalysis: null,
+          isLoading: false,
+          error: null,
+          isExpanded: false,
+          estimatedPrice: null,
+          priceBreakdown: null,
+        });
+      }
+    }
+    if (newFiles.length > 0) {
+      setProjectFiles(prev => [...prev, ...newFiles]);
+      toast.success(`${newFiles.length} file(s) added to project`);
+    } else {
+      toast.error("No valid 3D files found. Please upload STL, OBJ, or STEP files.");
+    }
+  };
+
+  const removeProjectFile = (id: string) => {
+    setProjectFiles(prev => prev.filter(f => f.id !== id));
+    toast.success("File removed from project");
+  };
+
+  const updateProjectFile = useCallback((id: string, updates: Partial<ProjectFile>) => {
+    setProjectFiles(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+  }, []);
+
+  const handleProjectFileAnalysis = useCallback((id: string, analysis: ModelAnalysis) => {
+    setProjectFiles(prev => prev.map(f => f.id === id ? { ...f, modelAnalysis: analysis, isLoading: false, error: null } : f));
+  }, []);
+
+  const handleProjectFileError = useCallback((id: string, error: string | null) => {
+    setProjectFiles(prev => prev.map(f => f.id === id ? { ...f, error, isLoading: false } : f));
+  }, []);
+
+  const toggleFileExpanded = useCallback((id: string) => {
+    setProjectFiles(prev => prev.map(f => {
+      if (f.id === id) {
+        const newExpanded = !f.isExpanded;
+        return { 
+          ...f, 
+          isExpanded: newExpanded,
+          isLoading: newExpanded && !f.modelAnalysis && !f.error
+        };
+      }
+      return f;
+    }));
+  }, []);
+
+  const handleProjectDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      addProjectFiles(droppedFiles);
+    }
+  }, []);
+
+  const handleProjectFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addProjectFiles(e.target.files);
+    }
+  };
+
+  // Calculate price for a single project file
+  const calculateProjectFilePrice = (projectFile: ProjectFile): PriceBreakdown | null => {
+    if (!projectFile.material || !projectFile.quality || !projectFile.modelAnalysis) {
+      return null;
+    }
+
+    const materialType = projectFile.material.split('-')[0];
+    const density = MATERIAL_DENSITIES[materialType] || 1.24;
+    const infillPercent = INFILL_BY_QUALITY[projectFile.quality] || 20;
+    
+    const volumeCm3 = projectFile.modelAnalysis.volumeCm3;
+    const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
+    const materialWeightGrams = effectiveVolume * density;
+    
+    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10;
+    const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
+    
+    const materialPrices: Record<string, number> = {
+      "pla-white": 39, "pla-black": 39, "pla-red": 49, "pla-yellow": 49, "pla-blue": 49,
+      "abs-silver": 50, "abs-transparent": 50, "abs-black": 50, "abs-grey": 50,
+      "abs-red": 50, "abs-white": 50, "abs-blue": 50, "abs-green": 50,
+      "petg-black": 30, "petg-white": 35, "petg-red": 39, "petg-green": 39,
+      "petg-blue": 39, "petg-yellow": 39, "petg-pink": 39, "petg-orange": 39, "petg-silver": 39,
+    };
+
+    const materialPricePerKg = materialPrices[projectFile.material] || 39;
+    const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
+    const Cenergy = printTimeHours * 0.27 * 0.914;
+    const Clabor = 31.40 * (10 / 60);
+    const Cdepreciation = (3483.39 / 5000) * printTimeHours;
+    const Cmaintenance = Cdepreciation * 0.03;
+    const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
+    const vat = Cinternal * 0.23;
+    const totalPrice = Math.round((Cinternal + vat) * projectFile.quantity * 100) / 100;
+
+    return {
+      materialCost: Math.round(Cmaterial * 100) / 100,
+      energyCost: Math.round(Cenergy * 100) / 100,
+      serviceFee: Math.round(Clabor * 100) / 100,
+      depreciation: Math.round(Cdepreciation * 100) / 100,
+      maintenance: Math.round(Cmaintenance * 100) / 100,
+      internalCost: Math.round(Cinternal * 100) / 100,
+      vat: Math.round(vat * 100) / 100,
+      totalPrice,
+    };
+  };
+
+  const calculateAllProjectPrices = () => {
+    let hasErrors = false;
+    const updatedFiles = projectFiles.map(pf => {
+      if (!pf.material || !pf.quality) {
+        hasErrors = true;
+        return pf;
+      }
+      if (pf.error) {
+        hasErrors = true;
+        return pf;
+      }
+      if (!pf.modelAnalysis) {
+        hasErrors = true;
+        return pf;
+      }
+      const breakdown = calculateProjectFilePrice(pf);
+      return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown?.totalPrice || null };
+    });
+
+    if (hasErrors) {
+      toast.error("Please ensure all files have material and quality selected, and no errors");
+      return;
+    }
+
+    setProjectFiles(updatedFiles);
+    toast.success("All prices calculated!");
+  };
+
+  // Total project price
+  const totalProjectPrice = useMemo(() => {
+    return projectFiles.reduce((sum, pf) => sum + (pf.estimatedPrice || 0), 0);
+  }, [projectFiles]);
 
   const calculatePrice = () => {
     // Validate inputs
@@ -331,7 +538,102 @@ const NewPrint = () => {
   };
 
   const proceedToPayment = () => {
-    // Validate file upload
+    // Check which mode we're in
+    if (uploadMode === 'project') {
+      // Project mode validation
+      if (projectFiles.length === 0) {
+        toast.error("Please upload at least one 3D model file");
+        return;
+      }
+
+      // Check if all files have been analyzed successfully
+      const filesWithErrors = projectFiles.filter(pf => pf.error);
+      if (filesWithErrors.length > 0) {
+        toast.error(`${filesWithErrors.length} file(s) have errors. Please remove them before proceeding.`);
+        return;
+      }
+
+      // Check if all files are still loading
+      const filesStillLoading = projectFiles.filter(pf => pf.isLoading && !pf.modelAnalysis);
+      if (filesStillLoading.length > 0) {
+        toast.error("Please wait for all files to finish loading");
+        return;
+      }
+
+      // Check if all files have material and quality set
+      const filesWithoutConfig = projectFiles.filter(pf => !pf.material || !pf.quality);
+      if (filesWithoutConfig.length > 0) {
+        toast.error(`${filesWithoutConfig.length} file(s) need material and quality selected`);
+        return;
+      }
+
+      // Check if all files have model analysis
+      const filesWithoutAnalysis = projectFiles.filter(pf => !pf.modelAnalysis);
+      if (filesWithoutAnalysis.length > 0) {
+        toast.error("Please expand each file to load its 3D preview before proceeding");
+        return;
+      }
+
+      // Validate delivery selection
+      if (!selectedDeliveryOption) {
+        toast.error("Please select a delivery method");
+        return;
+      }
+
+      // Validate locker selection for InPost
+      if (selectedDeliveryOption === "inpost" && !selectedLocker) {
+        toast.error("Please select an InPost locker");
+        return;
+      }
+
+      // Validate address for DPD
+      if (selectedDeliveryOption === "dpd" && !isAddressValid(shippingAddress)) {
+        toast.error("Please fill in all required address fields");
+        return;
+      }
+
+      // Calculate total price for project
+      const projectTotal = projectFiles.reduce((sum, pf) => {
+        const breakdown = calculateProjectFilePrice(pf);
+        return sum + (breakdown?.totalPrice || 0);
+      }, 0);
+
+      if (projectTotal <= 0) {
+        toast.error("Please ensure all files have valid prices calculated");
+        return;
+      }
+
+      // Calculate delivery price
+      const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
+      const totalAmount = projectTotal + deliveryPrice;
+
+      // Navigate to payment page with project order data
+      navigate('/payment', {
+        state: {
+          orderData: {
+            isProject: true,
+            projectName: projectName || 'Untitled Project',
+            files: projectFiles.map(pf => ({
+              file: pf.file,
+              material: pf.material,
+              quality: pf.quality,
+              quantity: pf.quantity,
+              modelAnalysis: pf.modelAnalysis,
+              estimatedPrice: calculateProjectFilePrice(pf)?.totalPrice || 0,
+            })),
+            deliveryOption: selectedDeliveryOption,
+            locker: selectedLocker,
+            shippingAddress,
+            projectTotal,
+            deliveryPrice,
+            totalAmount,
+          }
+        }
+      });
+      return;
+    }
+
+    // Single file mode validation
     if (!file) {
       toast.error("Please upload a 3D model file");
       return;
@@ -510,7 +812,7 @@ const NewPrint = () => {
             <p className="text-muted-foreground text-lg">Upload your 3D model and configure print parameters</p>
           </div>
 
-          {/* File Upload */}
+          {/* Upload Mode Selection */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
@@ -520,90 +822,329 @@ const NewPrint = () => {
               <CardDescription className="text-base">Supported formats: STL, OBJ, STEP (max 50MB)</CardDescription>
             </CardHeader>
             <CardContent>
-              <div 
-                className={`border-3 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
-                  isDragging 
-                    ? 'border-primary bg-primary/10 scale-[1.02]' 
-                    : 'border-primary/30 hover:border-primary hover:bg-primary/5'
-                }`}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              >
-                <input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  accept=".stl,.obj,.step"
-                  onChange={handleFileChange}
-                />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className={`w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transition-all duration-300 ${
-                    isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
-                  }`}>
-                    <Upload className="w-10 h-10 text-white" />
+              <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'single' | 'project')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="single" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Single File
+                  </TabsTrigger>
+                  <TabsTrigger value="project" className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4" />
+                    Project (Multiple Files)
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Single File Upload */}
+                <TabsContent value="single">
+                  <div 
+                    className={`border-3 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                      isDragging 
+                        ? 'border-primary bg-primary/10 scale-[1.02]' 
+                        : 'border-primary/30 hover:border-primary hover:bg-primary/5'
+                    }`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
+                    <input
+                      type="file"
+                      id="file-upload"
+                      className="hidden"
+                      accept=".stl,.obj,.step"
+                      onChange={handleFileChange}
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <div className={`w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transition-all duration-300 ${
+                        isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
+                      }`}>
+                        <Upload className="w-10 h-10 text-white" />
+                      </div>
+                      {file ? (
+                        <div className="animate-scale-in">
+                          <p className="font-bold text-xl text-primary mb-2">{file.name}</p>
+                          <p className="text-muted-foreground">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                            {isDragging ? 'Drop your file here!' : 'Click to upload or drag and drop'}
+                          </p>
+                          <p className="text-muted-foreground">STL, OBJ, or STEP files</p>
+                        </div>
+                      )}
+                    </label>
                   </div>
-                  {file ? (
-                    <div className="animate-scale-in">
-                      <p className="font-bold text-xl text-primary mb-2">{file.name}</p>
-                      <p className="text-muted-foreground">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
-                        {isDragging ? 'Drop your file here!' : 'Click to upload or drag and drop'}
-                      </p>
-                      <p className="text-muted-foreground">STL, OBJ, or STEP files</p>
+                  
+                  {file && (
+                    <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm font-bold flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
+                          3D Preview {isModelLoading && "(Loading...)"}
+                        </p>
+                        {modelAnalysis && (
+                          <span className="text-xs text-green-600 font-semibold">✓ Analysis Complete</span>
+                        )}
+                      </div>
+                      <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} onError={handleModelError} />
+                      
+                      {/* Dynamic Model Stats */}
+                      {modelAnalysis && (
+                        <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                            <p className="text-xs text-muted-foreground">Volume</p>
+                            <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                          </div>
+                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                            <p className="text-xs text-muted-foreground">Est. Weight</p>
+                            <p className="text-lg font-bold text-primary">
+                              {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
+                            </p>
+                            {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
+                          </div>
+                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                            <p className="text-xs text-muted-foreground">Est. Print Time</p>
+                            <p className="text-lg font-bold text-primary">
+                              {formatPrintTime(estimatedPrintTime)}
+                            </p>
+                            {quality && <p className="text-xs text-muted-foreground">{quality} quality</p>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                </label>
-              </div>
-              
-              {file && (
-                <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm font-bold flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
-                      3D Preview {isModelLoading && "(Loading...)"}
-                    </p>
-                    {modelAnalysis && (
-                      <span className="text-xs text-green-600 font-semibold">✓ Analysis Complete</span>
+                </TabsContent>
+
+                {/* Project (Multiple Files) Upload */}
+                <TabsContent value="project">
+                  <div className="space-y-4">
+                    {/* Project Name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="project-name" className="text-base font-semibold">Project Name</Label>
+                      <Input 
+                        id="project-name"
+                        placeholder="My 3D Print Project"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        className="h-12"
+                      />
+                    </div>
+
+                    {/* Drop zone for multiple files */}
+                    <div 
+                      className={`border-3 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                        isDragging 
+                          ? 'border-primary bg-primary/10 scale-[1.02]' 
+                          : 'border-primary/30 hover:border-primary hover:bg-primary/5'
+                      }`}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleProjectDrop}
+                    >
+                      <input
+                        type="file"
+                        id="project-file-upload"
+                        className="hidden"
+                        accept=".stl,.obj,.step"
+                        multiple
+                        onChange={handleProjectFileChange}
+                      />
+                      <label htmlFor="project-file-upload" className="cursor-pointer">
+                        <div className={`w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-all duration-300 ${
+                          isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
+                        }`}>
+                          <Plus className="w-8 h-8 text-white" />
+                        </div>
+                        <p className={`font-bold text-lg mb-1 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                          {isDragging ? 'Drop files here!' : 'Add files to project'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Click or drag multiple STL, OBJ, or STEP files</p>
+                      </label>
+                    </div>
+
+                    {/* Project Files List */}
+                    {projectFiles.length > 0 && (
+                      <div className="space-y-4 mt-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-lg">{projectFiles.length} File{projectFiles.length > 1 ? 's' : ''} in Project</h3>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const input = document.getElementById('project-file-upload') as HTMLInputElement;
+                              input?.click();
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-1" /> Add More
+                          </Button>
+                        </div>
+
+                        {projectFiles.map((pf, index) => (
+                          <Collapsible key={pf.id} open={pf.isExpanded} onOpenChange={() => toggleFileExpanded(pf.id)}>
+                            <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-white">
+                              <CollapsibleTrigger className="w-full">
+                                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+                                      <FileText className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="font-semibold">{pf.file.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {(pf.file.size / 1024 / 1024).toFixed(2)} MB
+                                        {pf.modelAnalysis && ` • ${pf.modelAnalysis.volumeCm3.toFixed(2)} cm³`}
+                                        {pf.estimatedPrice && ` • ${pf.estimatedPrice.toFixed(2)} PLN`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {pf.isLoading && <span className="text-xs text-yellow-600">Loading...</span>}
+                                    {pf.error && <span className="text-xs text-red-600">Error</span>}
+                                    {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeProjectFile(pf.id);
+                                      }}
+                                    >
+                                      <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
+                                    </Button>
+                                    {pf.isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </div>
+                                </div>
+                              </CollapsibleTrigger>
+                              
+                              <CollapsibleContent>
+                                <div className="p-4 pt-0 space-y-4 border-t border-primary/10">
+                                  {/* 3D Preview - Only render when expanded */}
+                                  <div className="h-48 bg-muted/30 rounded-lg overflow-hidden">
+                                    {pf.isExpanded && (
+                                      <MemoizedModelViewer 
+                                        file={pf.file}
+                                        fileId={pf.id}
+                                        onAnalysisComplete={handleProjectFileAnalysis}
+                                        onError={handleProjectFileError}
+                                      />
+                                    )}
+                                  </div>
+
+                                  {/* File Configuration */}
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-1">
+                                      <Label className="text-sm">Material & Color</Label>
+                                      <Select 
+                                        value={pf.material} 
+                                        onValueChange={(v) => updateProjectFile(pf.id, { material: v })}
+                                      >
+                                        <SelectTrigger className="h-10">
+                                          <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[300px]">
+                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">PLA</div>
+                                          <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
+                                          <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
+                                          <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
+                                          <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
+                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">ABS</div>
+                                          <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
+                                          <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
+                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">PETG</div>
+                                          <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
+                                          <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <Label className="text-sm">Quality</Label>
+                                      <Select 
+                                        value={pf.quality} 
+                                        onValueChange={(v) => updateProjectFile(pf.id, { quality: v })}
+                                      >
+                                        <SelectTrigger className="h-10">
+                                          <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="draft">⚡ Draft</SelectItem>
+                                          <SelectItem value="standard">✨ Standard</SelectItem>
+                                          <SelectItem value="high">💎 High</SelectItem>
+                                          <SelectItem value="ultra">🏆 Ultra</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <Label className="text-sm">Quantity</Label>
+                                      <Input 
+                                        type="number" 
+                                        min="1"
+                                        value={pf.quantity}
+                                        onChange={(e) => updateProjectFile(pf.id, { quantity: parseInt(e.target.value) || 1 })}
+                                        className="h-10"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* File Stats */}
+                                  {pf.modelAnalysis && (
+                                    <div className="grid grid-cols-3 gap-3 text-center">
+                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Volume</p>
+                                        <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                                      </div>
+                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Est. Weight</p>
+                                        <p className="font-bold text-primary">
+                                          {pf.material && pf.quality ? (() => {
+                                            const materialType = pf.material.split('-')[0];
+                                            const density = MATERIAL_DENSITIES[materialType] || 1.24;
+                                            const infillPercent = INFILL_BY_QUALITY[pf.quality] || 20;
+                                            const effectiveVolume = pf.modelAnalysis!.volumeCm3 * (1 + (infillPercent / 100));
+                                            return `${(effectiveVolume * density).toFixed(1)}g`;
+                                          })() : '--'}
+                                        </p>
+                                      </div>
+                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Price</p>
+                                        <p className="font-bold text-primary">
+                                          {pf.estimatedPrice ? `${pf.estimatedPrice.toFixed(2)} PLN` : '--'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        ))}
+
+                        {/* Project Total */}
+                        {projectFiles.length > 0 && (
+                          <div className="p-4 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/30">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-lg">Project Total ({projectFiles.length} items)</span>
+                              <span className="text-2xl font-bold gradient-text">
+                                {totalProjectPrice > 0 ? `${totalProjectPrice.toFixed(2)} PLN` : '--'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} onError={handleModelError} />
-                  
-                  {/* Dynamic Model Stats */}
-                  {modelAnalysis && (
-                    <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                      <div className="p-3 bg-white rounded-lg border border-primary/20">
-                        <p className="text-xs text-muted-foreground">Volume</p>
-                        <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
-                      </div>
-                      <div className="p-3 bg-white rounded-lg border border-primary/20">
-                        <p className="text-xs text-muted-foreground">Est. Weight</p>
-                        <p className="text-lg font-bold text-primary">
-                          {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
-                        </p>
-                        {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
-                      </div>
-                      <div className="p-3 bg-white rounded-lg border border-primary/20">
-                        <p className="text-xs text-muted-foreground">Est. Print Time</p>
-                        <p className="text-lg font-bold text-primary">
-                          {formatPrintTime(estimatedPrintTime)}
-                        </p>
-                        {quality && <p className="text-xs text-muted-foreground">{quality} quality</p>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
-          {/* Configuration */}
+          {/* Configuration - Only show for single file mode */}
+          {uploadMode === 'single' && (
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
@@ -763,6 +1304,7 @@ const NewPrint = () => {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Price Estimate */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.2s' }}>
@@ -786,7 +1328,7 @@ const NewPrint = () => {
                     🔒 Login Required to Calculate Price
                   </span>
                 </Button>
-              ) : (
+              ) : uploadMode === 'single' ? (
                 <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
                   <span className="relative z-10 flex items-center">
                     <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
@@ -794,9 +1336,18 @@ const NewPrint = () => {
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
+              ) : (
+                <Button onClick={calculateAllProjectPrices} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default" disabled={projectFiles.length === 0}>
+                  <span className="relative z-10 flex items-center">
+                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Calculate All Prices ({projectFiles.length} files)
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </Button>
               )}
 
-              {estimatedPrice !== null && priceBreakdown && (
+              {/* Single file price breakdown */}
+              {uploadMode === 'single' && estimatedPrice !== null && priceBreakdown && (
                 <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
                   <div className="space-y-4">
                     {/* Price Breakdown Header */}
@@ -854,6 +1405,60 @@ const NewPrint = () => {
                             <span className="text-lg font-bold">Total Price</span>
                             <span className="text-4xl font-bold gradient-text">
                               {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Project mode price summary */}
+              {uploadMode === 'project' && projectFiles.length > 0 && totalProjectPrice > 0 && (
+                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-bold">Project Price Summary</p>
+                      <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">
+                        {projectFiles.length} file{projectFiles.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Individual file costs */}
+                    {projectFiles.map((pf, index) => (
+                      <div key={pf.id} className="flex justify-between items-center py-2 border-b border-primary/20">
+                        <span className="text-muted-foreground text-sm truncate max-w-[200px]">
+                          {index + 1}. {pf.file.name}
+                        </span>
+                        <span className="font-semibold">
+                          {pf.estimatedPrice ? `${pf.estimatedPrice.toFixed(2)} PLN` : '--'}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Subtotal */}
+                    <div className="pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold">Print Cost (All Files)</span>
+                        <span className="text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} PLN</span>
+                      </div>
+                    </div>
+                    
+                    {selectedDeliveryOption && (
+                      <>
+                        <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
+                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="font-semibold text-primary">
+                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} PLN
+                          </span>
+                        </div>
+                        
+                        <div className="border-t-2 border-primary/30 pt-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold">Total Project Price</span>
+                            <span className="text-4xl font-bold gradient-text">
+                              {(totalProjectPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
                             </span>
                           </div>
                         </div>

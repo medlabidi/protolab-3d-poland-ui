@@ -5,11 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, apiFormData } from "@/lib/api";
+import { useNotifications } from "@/contexts/NotificationContext";
 
-interface OrderData {
+// Single file order data
+interface SingleOrderData {
+  isProject?: false;
   file: File;
   material: string;
   quality: string;
@@ -33,6 +36,34 @@ interface OrderData {
   totalAmount: number;
 }
 
+// Project (multi-file) order data
+interface ProjectOrderData {
+  isProject: true;
+  projectName: string;
+  files: Array<{
+    file: File;
+    material: string;
+    quality: string;
+    quantity: number;
+    modelAnalysis: any;
+    estimatedPrice: number;
+  }>;
+  deliveryOption: string;
+  locker?: { id: string; name: string; address: string };
+  shippingAddress?: {
+    fullName: string;
+    phone: string;
+    street: string;
+    city: string;
+    postalCode: string;
+  };
+  projectTotal: number;
+  deliveryPrice: number;
+  totalAmount: number;
+}
+
+type OrderData = SingleOrderData | ProjectOrderData;
+
 interface UpgradeData {
   orderId: string;
   orderNumber: string;
@@ -45,6 +76,7 @@ interface UpgradeData {
 const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { addNotification } = useNotifications();
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [upgradeData, setUpgradeData] = useState<UpgradeData | null>(null);
   const [isUpgradePayment, setIsUpgradePayment] = useState(false);
@@ -149,48 +181,164 @@ const Payment = () => {
         // Clear the pending update from session storage
         sessionStorage.removeItem('pendingOrderUpdate');
 
+        // Send payment confirmation email for upgrade
+        try {
+          await apiFetch('/orders/email/payment-confirmation', {
+            method: 'POST',
+            body: JSON.stringify({
+              orderNumber: upgradeData.orderNumber,
+              totalAmount: upgradeData.amount,
+              itemCount: 1,
+              paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send payment confirmation email:', emailError);
+        }
+
+        // Add notification for order update
+        addNotification({
+          type: "order_update",
+          title: "Order Updated",
+          message: `Your order #${upgradeData.orderNumber} has been updated with new specifications.`,
+          orderId: upgradeData.orderId,
+        });
+
         toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Your order has been updated.`);
         navigate(`/orders/${upgradeData.orderId}`);
       } else if (orderData) {
         // Handle new order payment
-        const formData = new FormData();
-        formData.append('file', orderData.file);
-        formData.append('material', orderData.material.split('-')[0]);
-        formData.append('color', orderData.material.split('-')[1] || 'white');
-        formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
-        formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
-        formData.append('quantity', orderData.quantity.toString());
-        formData.append('shippingMethod', orderData.deliveryOption);
-        formData.append('paymentMethod', selectedPayment);
-        formData.append('price', orderData.totalAmount.toString());
+        if (orderData.isProject) {
+          // Project (multi-file) order
+          // For project orders, we need to create multiple order items or a single project order
+          // For now, we'll create separate orders for each file
+          for (const projectFile of orderData.files) {
+            const formData = new FormData();
+            formData.append('file', projectFile.file);
+            formData.append('material', projectFile.material.split('-')[0]);
+            formData.append('color', projectFile.material.split('-')[1] || 'white');
+            formData.append('layerHeight', projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
+            formData.append('infill', projectFile.quality === 'draft' ? '10' : projectFile.quality === 'standard' ? '20' : projectFile.quality === 'high' ? '50' : '100');
+            formData.append('quantity', projectFile.quantity.toString());
+            formData.append('shippingMethod', orderData.deliveryOption);
+            formData.append('paymentMethod', selectedPayment);
+            formData.append('price', projectFile.estimatedPrice.toString());
+            formData.append('projectName', orderData.projectName);
 
-        // Add delivery-specific details
-        if (orderData.deliveryOption === 'inpost' && orderData.locker) {
-          formData.append('shippingAddress', JSON.stringify({
-            lockerCode: orderData.locker.name,
-            lockerAddress: orderData.locker.address
-          }));
-        } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
-          formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
-        } else if (orderData.deliveryOption === 'pickup') {
-          formData.append('shippingAddress', JSON.stringify({
-            type: 'pickup',
-            address: 'Zielonogórska 13, 30-406 Kraków'
-          }));
+            // Add delivery-specific details
+            if (orderData.deliveryOption === 'inpost' && orderData.locker) {
+              formData.append('shippingAddress', JSON.stringify({
+                lockerCode: orderData.locker.name,
+                lockerAddress: orderData.locker.address
+              }));
+            } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
+              formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
+            } else if (orderData.deliveryOption === 'pickup') {
+              formData.append('shippingAddress', JSON.stringify({
+                type: 'pickup',
+                address: 'Zielonogórska 13, 30-406 Kraków'
+              }));
+            }
+
+            const response = await apiFormData('/orders', formData);
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.message || 'Failed to create order');
+            }
+          }
+
+          // Simulate payment processing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Send payment confirmation email
+          try {
+            await apiFetch('/orders/email/payment-confirmation', {
+              method: 'POST',
+              body: JSON.stringify({
+                projectName: orderData.projectName,
+                totalAmount: orderData.totalAmount,
+                itemCount: orderData.files.length,
+                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+            // Don't fail the payment if email fails
+          }
+
+          // Add notification for project order
+          addNotification({
+            type: "order_created",
+            title: "Project Submitted",
+            message: `Your project "${orderData.projectName}" with ${orderData.files.length} file(s) has been submitted successfully.`,
+          });
+
+          toast.success(`Payment successful! ${orderData.files.length} orders have been placed.`);
+          navigate('/orders');
+        } else {
+          // Single file order
+          const formData = new FormData();
+          formData.append('file', orderData.file);
+          formData.append('material', orderData.material.split('-')[0]);
+          formData.append('color', orderData.material.split('-')[1] || 'white');
+          formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
+          formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
+          formData.append('quantity', orderData.quantity.toString());
+          formData.append('shippingMethod', orderData.deliveryOption);
+          formData.append('paymentMethod', selectedPayment);
+          formData.append('price', orderData.totalAmount.toString());
+
+          // Add delivery-specific details
+          if (orderData.deliveryOption === 'inpost' && orderData.locker) {
+            formData.append('shippingAddress', JSON.stringify({
+              lockerCode: orderData.locker.name,
+              lockerAddress: orderData.locker.address
+            }));
+          } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
+            formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
+          } else if (orderData.deliveryOption === 'pickup') {
+            formData.append('shippingAddress', JSON.stringify({
+              type: 'pickup',
+              address: 'Zielonogórska 13, 30-406 Kraków'
+            }));
+          }
+
+          const response = await apiFormData('/orders', formData);
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create order');
+          }
+
+          // Simulate payment processing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Send payment confirmation email
+          try {
+            await apiFetch('/orders/email/payment-confirmation', {
+              method: 'POST',
+              body: JSON.stringify({
+                totalAmount: orderData.totalAmount,
+                itemCount: 1,
+                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+            // Don't fail the payment if email fails
+          }
+
+          // Add notification for single order
+          addNotification({
+            type: "order_created",
+            title: "Order Submitted",
+            message: `Your print order for "${orderData.file.name}" has been submitted successfully.`,
+          });
+
+          toast.success("Payment successful! Your order has been placed.");
+          navigate('/orders');
         }
-
-        const response = await apiFormData('/orders', formData);
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to create order');
-        }
-
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        toast.success("Payment successful! Your order has been placed.");
-        navigate('/orders');
       }
     } catch (error) {
       console.error('Payment error:', error);
@@ -449,8 +597,57 @@ const Payment = () => {
                         </p>
                       </div>
                     </>
+                  ) : orderData?.isProject ? (
+                    // Project (multi-file) order summary
+                    <>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Project</span>
+                          <span className="font-medium">{orderData.projectName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Files</span>
+                          <span className="font-medium">{orderData.files.length} items</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4 space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">FILES IN PROJECT</p>
+                        <div className="max-h-32 overflow-y-auto space-y-2">
+                          {orderData.files.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded-lg">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                                <span className="truncate text-xs">{file.file.name}</span>
+                              </div>
+                              <span className="font-medium text-xs flex-shrink-0 ml-2">{file.estimatedPrice.toFixed(2)} PLN</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>{orderData.projectTotal.toFixed(2)} PLN</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Delivery</span>
+                          <span>{orderData.deliveryPrice.toFixed(2)} PLN</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-lg">Total</span>
+                          <span className="text-3xl font-bold gradient-text">
+                            {orderData.totalAmount.toFixed(2)} PLN
+                          </span>
+                        </div>
+                      </div>
+                    </>
                   ) : orderData ? (
-                    // New order summary
+                    // Single file order summary
                     <>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">

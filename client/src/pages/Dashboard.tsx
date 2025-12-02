@@ -10,11 +10,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { API_URL } from "@/config/api";
 
 const Dashboard = () => {
@@ -22,6 +43,7 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
   const [stats, setStats] = useState({
     activeOrders: 0,
     completedPrints: 0,
@@ -91,7 +113,8 @@ const Dashboard = () => {
 
       const data = await response.json();
       const userOrders = data.orders || [];
-      setOrders(userOrders.slice(0, 5)); // Get recent 5 orders
+      setAllOrders(userOrders); // Store all orders for operations
+      setOrders(userOrders.slice(0, 5)); // Display only recent 5 orders
 
       // Calculate stats from real data
       const active = userOrders.filter((o: any) => 
@@ -121,6 +144,156 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Group orders by project (use allOrders for complete project data)
+  const groupedOrders = useMemo(() => {
+    const allProjects: Record<string, any[]> = {};
+    const standaloneOrders: any[] = [];
+
+    // Group ALL orders for project operations
+    allOrders.forEach(order => {
+      if (order.project_name) {
+        if (!allProjects[order.project_name]) {
+          allProjects[order.project_name] = [];
+        }
+        allProjects[order.project_name].push(order);
+      }
+    });
+
+    // Only show recent standalone orders (from the limited set)
+    orders.forEach(order => {
+      if (!order.project_name) {
+        standaloneOrders.push(order);
+      }
+    });
+
+    // Sort projects by most recent order and limit to 5 for display
+    const sortedProjectEntries = Object.entries(allProjects)
+      .sort((a, b) => {
+        const aDate = new Date(a[1][0]?.created_at || 0).getTime();
+        const bDate = new Date(b[1][0]?.created_at || 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, 5);
+    
+    const displayProjects: Record<string, any[]> = {};
+    sortedProjectEntries.forEach(([name, orders]) => {
+      displayProjects[name] = orders;
+    });
+
+    return { projects: displayProjects, allProjects, standaloneOrders };
+  }, [orders, allOrders]);
+
+  // Get project status based on its orders
+  const getProjectStatus = (projectOrders: any[]): OrderStatus => {
+    const statuses = projectOrders.map(o => o.status);
+    if (statuses.every(s => s === 'delivered')) return 'delivered';
+    if (statuses.every(s => s === 'finished' || s === 'delivered')) return 'finished';
+    if (statuses.some(s => s === 'printing')) return 'printing';
+    if (statuses.some(s => s === 'in_queue')) return 'in_queue';
+    if (statuses.some(s => s === 'on_hold')) return 'on_hold';
+    if (statuses.every(s => s === 'suspended')) return 'suspended';
+    return 'submitted';
+  };
+
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const toggleProject = (projectName: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectName)) {
+        newSet.delete(projectName);
+      } else {
+        newSet.add(projectName);
+      }
+      return newSet;
+    });
+  };
+
+  const handleRenameProject = async () => {
+    if (!selectedProject || !newProjectName.trim()) return;
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      // Use allProjects to get all orders in the project
+      const projectOrders = groupedOrders.allProjects[selectedProject] || groupedOrders.projects[selectedProject];
+      
+      if (!projectOrders || projectOrders.length === 0) {
+        toast.error('Project not found');
+        return;
+      }
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Update all orders in the project with the new name
+      for (const order of projectOrders) {
+        const response = await fetch(`${API_URL}/orders/${order.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ project_name: newProjectName.trim() }),
+        });
+        
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+          const error = await response.json();
+          console.error('Failed to update order:', order.id, error);
+        }
+      }
+      
+      if (failCount > 0 && successCount === 0) {
+        toast.error('Failed to rename project. Please make sure you have the latest database schema.');
+      } else if (failCount > 0) {
+        toast.warning(`Partially renamed: ${successCount} succeeded, ${failCount} failed`);
+      } else {
+        toast.success(`Project renamed to "${newProjectName.trim()}"`);
+      }
+      
+      setRenameDialogOpen(false);
+      setSelectedProject(null);
+      setNewProjectName('');
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Rename error:', error);
+      toast.error('Failed to rename project');
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+    
+    toast.error('Delete project functionality coming soon');
+    setDeleteDialogOpen(false);
+    setSelectedProject(null);
+  };
+
+  const handleAddPartToProject = (projectName: string) => {
+    navigate('/new-print', { state: { projectName, addToProject: true } });
+  };
+
+  const handleDuplicateProject = async (projectName: string) => {
+    toast.info('Duplicate project functionality coming soon');
+  };
+
+  const handleDownloadAllFiles = async (projectName: string) => {
+    const projectOrders = groupedOrders.allProjects[projectName] || groupedOrders.projects[projectName];
+    if (!projectOrders) return;
+    for (const order of projectOrders) {
+      if (order.file_url) {
+        window.open(order.file_url, '_blank');
+      }
+    }
+    toast.success(`Downloading ${projectOrders.length} files...`);
   };
 
   const statsConfig = [
@@ -196,7 +369,7 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Recent Orders */}
+          {/* Recent Orders & Projects */}
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-white to-gray-50/30">
             <CardHeader className="border-b">
               <CardTitle className="text-2xl flex items-center gap-2">
@@ -206,13 +379,6 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-5 gap-4 text-sm font-bold text-muted-foreground pb-4 px-4">
-                  <div>File Name</div>
-                  <div>Status</div>
-                  <div>Date</div>
-                  <div>Material</div>
-                  <div className="text-right">Actions</div>
-                </div>
                 {orders.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Package className="w-16 h-16 mx-auto mb-4 opacity-20" />
@@ -226,69 +392,246 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  orders.map((order, index) => (
-                    <div 
-                      key={order.id} 
-                      className="grid grid-cols-5 gap-4 items-center py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <div className="font-bold text-primary truncate" title={order.file_name}>{order.file_name || 'Unnamed'}</div>
-                      <div>
-                        <StatusBadge status={order.status as OrderStatus} />
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="text-sm font-medium">{order.material || 'N/A'}</div>
-                      <div className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Edit Order
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              navigator.clipboard.writeText(order.id);
-                              toast.success('Order ID copied to clipboard');
-                            }}>
-                              <Copy className="w-4 h-4 mr-2" />
-                              Copy Order ID
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download File
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => toast.error('Delete functionality coming soon')}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete Order
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))
+                  <>
+                    {/* Projects */}
+                    {Object.entries(groupedOrders.projects).map(([projectName, projectOrders], index) => (
+                      <Collapsible 
+                        key={projectName} 
+                        open={expandedProjects.has(projectName)}
+                        onOpenChange={() => toggleProject(projectName)}
+                      >
+                        <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-purple-50/50 to-primary/5 mb-2">
+                          <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors">
+                              <CollapsibleTrigger className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+                                    <FolderOpen className="w-5 h-5 text-primary" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-bold text-primary">{projectName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {projectOrders.length} file{projectOrders.length > 1 ? 's' : ''} • 
+                                      {new Date(projectOrders[0].created_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              </CollapsibleTrigger>
+                              <div className="flex items-center gap-3">
+                                <StatusBadge status={getProjectStatus(projectOrders)} />
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="outline" size="sm" className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50">
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedProject(projectName);
+                                      setNewProjectName(projectName);
+                                      setRenameDialogOpen(true);
+                                    }}>
+                                      <Pencil className="w-4 h-4 mr-2" />
+                                      Rename Project
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddPartToProject(projectName);
+                                    }}>
+                                      <Plus className="w-4 h-4 mr-2" />
+                                      Add Part
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDuplicateProject(projectName);
+                                    }}>
+                                      <Files className="w-4 h-4 mr-2" />
+                                      Duplicate Project
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadAllFiles(projectName);
+                                    }}>
+                                      <Download className="w-4 h-4 mr-2" />
+                                      Download All Files
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedProject(projectName);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Project
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                <CollapsibleTrigger>
+                                  {expandedProjects.has(projectName) ? (
+                                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                  )}
+                                </CollapsibleTrigger>
+                              </div>
+                            </div>
+                          <CollapsibleContent>
+                            <div className="border-t border-primary/10 p-2 space-y-1">
+                              {projectOrders.map((order) => (
+                                <div 
+                                  key={order.id}
+                                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white/50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <FileText className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-sm font-medium truncate max-w-[200px]">{order.file_name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <StatusBadge status={order.status as OrderStatus} />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => navigate(`/orders/${order.id}`)}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ))}
+
+                    {/* Standalone Orders */}
+                    {groupedOrders.standaloneOrders.length > 0 && (
+                      <>
+                        {Object.keys(groupedOrders.projects).length > 0 && (
+                          <div className="text-xs font-semibold text-muted-foreground py-2 px-4">INDIVIDUAL ORDERS</div>
+                        )}
+                        {groupedOrders.standaloneOrders.map((order, index) => (
+                          <div 
+                            key={order.id} 
+                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
+                            style={{ animationDelay: `${index * 0.1}s` }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-muted/50 rounded-lg flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-primary truncate max-w-[200px]">{order.file_name || 'Unnamed'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {order.material || 'N/A'} • {new Date(order.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <StatusBadge status={order.status as OrderStatus} />
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Edit Order
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    navigator.clipboard.writeText(order.id);
+                                    toast.success('Order ID copied to clipboard');
+                                  }}>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Copy Order ID
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download File
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => toast.error('Delete functionality coming soon')}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Order
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Rename Project Dialog */}
+        <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Rename Project</DialogTitle>
+              <DialogDescription>
+                Enter a new name for your project.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="projectName">Project Name</Label>
+                <Input
+                  id="projectName"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Enter project name"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRenameProject} disabled={!newProjectName.trim()}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Project Confirmation */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will delete all orders in the project "{selectedProject}". This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

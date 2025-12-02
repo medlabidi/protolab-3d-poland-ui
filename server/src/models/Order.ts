@@ -38,6 +38,7 @@ export interface IOrder {
   shipping_address?: string;
   review?: string;
   tracking_code?: string;
+  project_name?: string;
   created_at: string;
 }
 

@@ -59,6 +59,7 @@ export interface OrderCreateInput {
   shippingMethod: ShippingMethod;
   shippingAddress?: string;
   price?: number;
+  projectName?: string;
 }
 
 // Re-export pricing types for backward compatibility

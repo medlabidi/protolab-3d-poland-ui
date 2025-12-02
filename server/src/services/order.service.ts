@@ -24,6 +24,7 @@ export class OrderService {
       paid_amount: orderPrice,
       status: 'submitted',
       payment_status: 'paid',
+      project_name: data.projectName,
     });
     
     return order;
@@ -34,7 +35,7 @@ export class OrderService {
     
     let query = supabase
       .from('orders')
-      .select('*, users(name, email)')
+      .select('*')
       .eq('id', orderId);
     
     if (userId) {
@@ -156,6 +157,7 @@ export class OrderService {
     status?: OrderStatus;
     payment_status?: PaymentStatus;
     paid_amount?: number;
+    project_name?: string;
   }): Promise<IOrder> {
     const supabase = getSupabase();
     
@@ -194,6 +196,9 @@ export class OrderService {
       if (updates.shipping_method !== undefined) allowedUpdates.shipping_method = updates.shipping_method;
       if (updates.shipping_address !== undefined) allowedUpdates.shipping_address = updates.shipping_address;
     }
+    
+    // Project name can always be updated
+    if (updates.project_name !== undefined) allowedUpdates.project_name = updates.project_name;
     
     // Status and payment fields can always be updated (system operations)
     if (updates.payment_status !== undefined) allowedUpdates.payment_status = updates.payment_status;

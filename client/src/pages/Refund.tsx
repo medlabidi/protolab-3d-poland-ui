@@ -153,6 +153,26 @@ const Refund = () => {
         console.log('Refund endpoint not available, order status updated');
       }
 
+      // Send refund request confirmation email
+      try {
+        await fetch(`${API_URL}/orders/email/refund-request`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderNumber: refundData?.orderNumber,
+            refundAmount: refundData?.refundAmount,
+            reason: refundData?.reason,
+            refundMethod: selectedMethod,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Failed to send refund request email:', emailError);
+        // Don't fail the refund if email fails
+      }
+
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 1000));
 

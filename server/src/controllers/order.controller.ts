@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { orderService } from '../services/order.service';
 import { uploadPrintJobFile } from '../services/storage.service';
+import { emailService } from '../services/email.service';
 import { logger } from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -90,20 +91,24 @@ export class OrderController {
       const { id } = req.params;
       const userId = req.user!.id;
       
+      logger.info(`Updating order ${id} for user ${userId}, body: ${JSON.stringify(req.body)}`);
+      
       // First check if order exists and belongs to user
       const existingOrder = await orderService.getOrderById(id, userId);
       
       if (!existingOrder) {
+        logger.warn(`Order ${id} not found for user ${userId}`);
         res.status(404).json({ error: 'Order not found' });
         return;
       }
       
-      // Check if request only contains status/payment updates (allowed for any order)
-      const { status, payment_status, paid_amount, ...otherUpdates } = req.body;
+      // Check if request only contains status/payment/project_name updates (allowed for any order)
+      const { status, payment_status, paid_amount, project_name, ...otherUpdates } = req.body;
       const hasStatusUpdates = status !== undefined || payment_status !== undefined || paid_amount !== undefined;
+      const hasProjectNameUpdate = project_name !== undefined;
       const hasOtherUpdates = Object.keys(otherUpdates).length > 0;
       
-      // If there are non-status updates, check status-based restrictions
+      // If there are non-status updates (excluding project_name), check status-based restrictions
       if (hasOtherUpdates) {
         // finished/delivered/suspended orders cannot have non-status fields edited
         if (['finished', 'delivered', 'suspended'].includes(existingOrder.status)) {
@@ -115,7 +120,7 @@ export class OrderController {
       }
       
       // If there are no updates at all
-      if (!hasStatusUpdates && !hasOtherUpdates) {
+      if (!hasStatusUpdates && !hasOtherUpdates && !hasProjectNameUpdate) {
         res.status(400).json({ error: 'No updates provided' });
         return;
       }
@@ -146,6 +151,61 @@ export class OrderController {
       } else {
         res.status(404).json({ error: 'File not found' });
       }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendPaymentConfirmationEmail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { orderNumber, projectName, totalAmount, itemCount, paymentMethod } = req.body;
+      const user = req.user!;
+      
+      // Extract name from email (part before @) as a fallback
+      const userName = user.email.split('@')[0] || 'Customer';
+      
+      await emailService.sendPaymentConfirmationEmail(
+        user.email,
+        userName,
+        {
+          orderNumber,
+          projectName,
+          totalAmount: parseFloat(totalAmount) || 0,
+          itemCount: parseInt(itemCount) || 1,
+          paymentMethod: paymentMethod || 'Card',
+        }
+      );
+      
+      logger.info(`Payment confirmation email sent for user ${user.id}`);
+      
+      res.json({ message: 'Payment confirmation email sent' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendRefundRequestEmail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { orderNumber, refundAmount, reason, refundMethod } = req.body;
+      const user = req.user!;
+      
+      // Extract name from email (part before @) as a fallback
+      const userName = user.email.split('@')[0] || 'Customer';
+      
+      await emailService.sendRefundRequestEmail(
+        user.email,
+        userName,
+        {
+          orderNumber: orderNumber || 'N/A',
+          refundAmount: parseFloat(refundAmount) || 0,
+          reason: reason || 'order_modification',
+          refundMethod: refundMethod || 'original',
+        }
+      );
+      
+      logger.info(`Refund request email sent for user ${user.id}, order ${orderNumber}`);
+      
+      res.json({ message: 'Refund request email sent' });
     } catch (error) {
       next(error);
     }
