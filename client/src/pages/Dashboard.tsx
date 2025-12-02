@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -44,6 +44,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [creditBalance, setCreditBalance] = useState<number>(0);
   const [stats, setStats] = useState({
     activeOrders: 0,
     completedPrints: 0,
@@ -52,6 +53,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchCreditBalance();
   }, []);
 
   const refreshAccessToken = async (): Promise<string | null> => {
@@ -143,6 +145,26 @@ const Dashboard = () => {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCreditBalance = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/credits/balance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCreditBalance(data.balance || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch credit balance:', error);
     }
   };
 
@@ -315,6 +337,13 @@ const Dashboard = () => {
       icon: DollarSign,
       description: "Lifetime spending",
     },
+    {
+      title: "Store Credits",
+      value: `${creditBalance.toFixed(2)} PLN`,
+      icon: Wallet,
+      description: "Available balance",
+      isCredit: true,
+    },
   ];
 
   if (loading) {
@@ -346,24 +375,30 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-4 gap-6">
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
-                className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50 shadow-lg animate-scale-in"
+                className={`hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50 shadow-lg animate-scale-in ${(stat as any).isCredit ? 'cursor-pointer' : ''}`}
                 style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={(stat as any).isCredit ? () => navigate('/credits') : undefined}
               >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                    <stat.icon className="w-5 h-5 text-primary" />
+                  <div className={`p-2 rounded-lg transition-colors ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <stat.icon className={`w-5 h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold mb-2 gradient-text">{stat.value}</div>
-                  <p className="text-sm text-muted-foreground">{stat.description}</p>
+                  <div className={`text-3xl font-bold mb-2 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
+                  <p className="text-sm text-muted-foreground">
+                    {stat.description}
+                    {(stat as any).isCredit && (
+                      <span className="ml-2 text-primary hover:underline">Get more →</span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
             ))}

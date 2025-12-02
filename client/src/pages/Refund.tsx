@@ -13,8 +13,11 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface RefundData {
-  orderId: string;
-  orderNumber: string;
+  orderId?: string;
+  orderNumber?: string;
+  projectName?: string;
+  isProject?: boolean;
+  orderCount?: number;
   originalPrice: number;
   newPrice: number;
   refundAmount: number;
@@ -36,7 +39,18 @@ const Refund = () => {
   useEffect(() => {
     // Data is passed directly in state, not nested under refundData
     const state = location.state;
-    if (state?.orderId && state?.refundAmount !== undefined) {
+    if (state?.isProject && state?.projectName && state?.refundAmount !== undefined) {
+      // Project-level refund
+      setRefundData({
+        projectName: state.projectName,
+        isProject: true,
+        orderCount: state.orderCount || 0,
+        originalPrice: state.originalPrice || 0,
+        newPrice: state.newPrice || 0,
+        refundAmount: state.refundAmount,
+        reason: state.reason === 'order_modification' ? 'price_reduction' : state.reason || 'price_reduction',
+      });
+    } else if (state?.orderId && state?.refundAmount !== undefined) {
       setRefundData({
         orderId: state.orderId,
         orderNumber: state.orderNumber || '',
@@ -91,97 +105,171 @@ const Refund = () => {
     try {
       const token = localStorage.getItem('accessToken');
       
-      // First, get pending order updates from session storage (if price reduction)
-      const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
-      
-      // Determine what statuses to set based on refund reason
-      const isCancellation = refundData?.reason === 'cancellation';
-      const newOrderStatus = isCancellation ? 'suspended' : 'on_hold';
-      const newPaymentStatus = isCancellation ? 'refunding' : 'on_hold';
-      
-      // Update the order with new statuses and apply any pending updates
-      let updatePayload: Record<string, unknown> = {
-        status: newOrderStatus,
-        payment_status: newPaymentStatus,
-      };
-      
-      // If there are pending updates (price reduction), merge them
-      if (pendingUpdate && !isCancellation) {
-        const parsedUpdate = JSON.parse(pendingUpdate);
-        updatePayload = {
-          ...parsedUpdate.updates,
+      // Check if this is a project refund or single order refund
+      if (refundData?.isProject) {
+        // Handle project-level refund
+        const pendingUpdate = sessionStorage.getItem('pendingProjectUpdate');
+        
+        const isCancellation = refundData?.reason === 'cancellation';
+        const newOrderStatus = isCancellation ? 'suspended' : 'on_hold';
+        const newPaymentStatus = isCancellation ? 'refunding' : 'on_hold';
+        
+        let successCount = 0;
+        let failCount = 0;
+
+        if (pendingUpdate) {
+          const projectUpdateData = JSON.parse(pendingUpdate);
+          
+          // Update all orders in the project
+          for (const orderUpdate of projectUpdateData.updates) {
+            const updatePayload = {
+              ...orderUpdate.updates,
+              status: newOrderStatus,
+              payment_status: newPaymentStatus,
+            };
+
+            const response = await fetch(`${API_URL}/orders/${orderUpdate.orderId}`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(updatePayload),
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
+          
+          // Clear pending update from session storage
+          sessionStorage.removeItem('pendingProjectUpdate');
+        }
+
+        // Send refund request confirmation email
+        try {
+          await fetch(`${API_URL}/orders/email/refund-request`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              projectName: refundData?.projectName,
+              refundAmount: refundData?.refundAmount,
+              reason: refundData?.reason,
+              refundMethod: selectedMethod,
+              orderCount: refundData?.orderCount,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send refund request email:', emailError);
+        }
+
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        if (failCount > 0) {
+          toast.warning(`Refund request submitted. ${successCount} orders updated, ${failCount} failed.`);
+        } else {
+          toast.success("Refund request submitted successfully!");
+        }
+        
+        navigate('/orders');
+      } else {
+        // Handle single order refund
+        const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
+        
+        // Determine what statuses to set based on refund reason
+        const isCancellation = refundData?.reason === 'cancellation';
+        const newOrderStatus = isCancellation ? 'suspended' : 'on_hold';
+        const newPaymentStatus = isCancellation ? 'refunding' : 'on_hold';
+        
+        // Update the order with new statuses and apply any pending updates
+        let updatePayload: Record<string, unknown> = {
           status: newOrderStatus,
           payment_status: newPaymentStatus,
         };
-      }
-      
-      // Update the order
-      const updateResponse = await fetch(`${API_URL}/orders/${refundData?.orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatePayload),
-      });
-
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json();
-        throw new Error(errorData.message || 'Failed to update order status');
-      }
-      
-      // Clear pending update from session storage
-      sessionStorage.removeItem('pendingOrderUpdate');
-
-      // Submit refund request
-      try {
-        await fetch(`${API_URL}/orders/${refundData?.orderId}/refund`, {
-          method: 'POST',
+        
+        // If there are pending updates (price reduction), merge them
+        if (pendingUpdate && !isCancellation) {
+          const parsedUpdate = JSON.parse(pendingUpdate);
+          updatePayload = {
+            ...parsedUpdate.updates,
+            status: newOrderStatus,
+            payment_status: newPaymentStatus,
+          };
+        }
+        
+        // Update the order
+        const updateResponse = await fetch(`${API_URL}/orders/${refundData?.orderId}`, {
+          method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            refundMethod: selectedMethod,
-            refundAmount: refundData?.refundAmount,
-            reason: refundData?.reason,
-            bankDetails: selectedMethod === 'bank' ? bankDetails : undefined,
-          }),
+          body: JSON.stringify(updatePayload),
         });
-      } catch {
-        // Refund endpoint may not exist yet, continue anyway
-        console.log('Refund endpoint not available, order status updated');
-      }
 
-      // Send refund request confirmation email
-      try {
-        await fetch(`${API_URL}/orders/email/refund-request`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderNumber: refundData?.orderNumber,
-            refundAmount: refundData?.refundAmount,
-            reason: refundData?.reason,
-            refundMethod: selectedMethod,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Failed to send refund request email:', emailError);
-        // Don't fail the refund if email fails
-      }
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          throw new Error(errorData.message || 'Failed to update order status');
+        }
+        
+        // Clear pending update from session storage
+        sessionStorage.removeItem('pendingOrderUpdate');
 
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+        // Submit refund request
+        try {
+          await fetch(`${API_URL}/orders/${refundData?.orderId}/refund`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              refundMethod: selectedMethod,
+              refundAmount: refundData?.refundAmount,
+              reason: refundData?.reason,
+              bankDetails: selectedMethod === 'bank' ? bankDetails : undefined,
+            }),
+          });
+        } catch {
+          // Refund endpoint may not exist yet, continue anyway
+          console.log('Refund endpoint not available, order status updated');
+        }
 
-      toast.success("Refund request submitted successfully!");
-      
-      if (isCancellation) {
-        navigate('/orders');
-      } else {
-        navigate(`/orders/${refundData?.orderId}`);
+        // Send refund request confirmation email
+        try {
+          await fetch(`${API_URL}/orders/email/refund-request`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderNumber: refundData?.orderNumber,
+              refundAmount: refundData?.refundAmount,
+              reason: refundData?.reason,
+              refundMethod: selectedMethod,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send refund request email:', emailError);
+        }
+
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        toast.success("Refund request submitted successfully!");
+        
+        if (isCancellation) {
+          navigate('/orders');
+        } else {
+          navigate(`/orders/${refundData?.orderId}`);
+        }
       }
     } catch (error) {
       console.error('Refund error:', error);
@@ -253,7 +341,10 @@ const Refund = () => {
                 Refund Summary
               </CardTitle>
               <CardDescription>
-                Order #{refundData.orderNumber}
+                {refundData.isProject 
+                  ? `Project: ${refundData.projectName} (${refundData.orderCount} parts)`
+                  : `Order #${refundData.orderNumber}`
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">

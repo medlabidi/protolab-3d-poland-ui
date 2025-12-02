@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files } from "lucide-react";
+import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
@@ -378,6 +378,13 @@ const Orders = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/projects/${encodeURIComponent(projectName)}/edit`);
+                                    }}>
+                                      <Settings2 className="w-4 h-4 mr-2" />
+                                      Edit Project
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedProject(projectName);

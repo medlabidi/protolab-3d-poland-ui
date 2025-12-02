@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -34,6 +34,7 @@ export const DashboardSidebar = () => {
     { icon: LayoutDashboard, label: t.dashboard.overview, path: "/dashboard" },
     { icon: Plus, label: t.dashboard.newPrint, path: "/new-print" },
     { icon: Package, label: t.dashboard.orders, path: "/orders" },
+    { icon: Wallet, label: "Credits", path: "/credits" },
     { icon: Settings, label: t.dashboard.settings, path: "/settings" },
   ];
 

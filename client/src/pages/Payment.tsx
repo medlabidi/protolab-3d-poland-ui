@@ -65,8 +65,11 @@ interface ProjectOrderData {
 type OrderData = SingleOrderData | ProjectOrderData;
 
 interface UpgradeData {
-  orderId: string;
-  orderNumber: string;
+  orderId?: string;
+  orderNumber?: string;
+  projectName?: string;
+  isProject?: boolean;
+  orderCount?: number;
   amount: number;
   isUpgrade: true;
   totalAmount: number;
@@ -150,62 +153,131 @@ const Payment = () => {
 
     try {
       if (isUpgradePayment && upgradeData) {
-        // Handle upgrade payment - update existing order
-        const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
-        if (!pendingUpdate) {
-          throw new Error('No pending order update found');
-        }
+        // Check if this is a project upgrade or single order upgrade
+        if (upgradeData.isProject) {
+          // Handle project upgrade payment
+          const pendingUpdate = sessionStorage.getItem('pendingProjectUpdate');
+          if (!pendingUpdate) {
+            throw new Error('No pending project update found');
+          }
 
-        const updateData = JSON.parse(pendingUpdate);
+          const projectUpdateData = JSON.parse(pendingUpdate);
 
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+          // Simulate payment processing
+          await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Update the order with new details and set payment status to paid with new amount
-        const updatesWithPayment = {
-          ...updateData.updates,
-          payment_status: 'paid',
-          paid_amount: upgradeData.totalAmount,
-        };
+          // Update all orders in the project
+          let successCount = 0;
+          let failCount = 0;
 
-        const response = await apiFetch(`/orders/${upgradeData.orderId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(updatesWithPayment),
-        });
+          for (const orderUpdate of projectUpdateData.updates) {
+            const updatesWithPayment = {
+              ...orderUpdate.updates,
+              payment_status: 'paid',
+              paid_amount: orderUpdate.newPrice,
+            };
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to update order');
-        }
+            const response = await apiFetch(`/orders/${orderUpdate.orderId}`, {
+              method: 'PATCH',
+              body: JSON.stringify(updatesWithPayment),
+            });
 
-        // Clear the pending update from session storage
-        sessionStorage.removeItem('pendingOrderUpdate');
+            if (response.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
 
-        // Send payment confirmation email for upgrade
-        try {
-          await apiFetch('/orders/email/payment-confirmation', {
-            method: 'POST',
-            body: JSON.stringify({
-              orderNumber: upgradeData.orderNumber,
-              totalAmount: upgradeData.amount,
-              itemCount: 1,
-              paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-            }),
+          // Clear the pending update from session storage
+          sessionStorage.removeItem('pendingProjectUpdate');
+
+          // Send payment confirmation email for project upgrade
+          try {
+            await apiFetch('/orders/email/payment-confirmation', {
+              method: 'POST',
+              body: JSON.stringify({
+                projectName: upgradeData.projectName,
+                totalAmount: upgradeData.amount,
+                itemCount: upgradeData.orderCount || projectUpdateData.updates.length,
+                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+          }
+
+          // Add notification for project update
+          addNotification({
+            type: "order_update",
+            title: "Project Updated",
+            message: `Your project "${upgradeData.projectName}" has been updated with new specifications.`,
           });
-        } catch (emailError) {
-          console.error('Failed to send payment confirmation email:', emailError);
+
+          if (failCount > 0) {
+            toast.warning(`Payment successful! ${successCount} orders updated, ${failCount} failed.`);
+          } else {
+            toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Project has been updated.`);
+          }
+          navigate('/orders');
+        } else {
+          // Handle single order upgrade payment
+          const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
+          if (!pendingUpdate) {
+            throw new Error('No pending order update found');
+          }
+
+          const updateData = JSON.parse(pendingUpdate);
+
+          // Simulate payment processing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Update the order with new details and set payment status to paid with new amount
+          const updatesWithPayment = {
+            ...updateData.updates,
+            payment_status: 'paid',
+            paid_amount: upgradeData.totalAmount,
+          };
+
+          const response = await apiFetch(`/orders/${upgradeData.orderId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(updatesWithPayment),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to update order');
+          }
+
+          // Clear the pending update from session storage
+          sessionStorage.removeItem('pendingOrderUpdate');
+
+          // Send payment confirmation email for upgrade
+          try {
+            await apiFetch('/orders/email/payment-confirmation', {
+              method: 'POST',
+              body: JSON.stringify({
+                orderNumber: upgradeData.orderNumber,
+                totalAmount: upgradeData.amount,
+                itemCount: 1,
+                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+          }
+
+          // Add notification for order update
+          addNotification({
+            type: "order_update",
+            title: "Order Updated",
+            message: `Your order #${upgradeData.orderNumber} has been updated with new specifications.`,
+            orderId: upgradeData.orderId,
+          });
+
+          toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Your order has been updated.`);
+          navigate(`/orders/${upgradeData.orderId}`);
         }
-
-        // Add notification for order update
-        addNotification({
-          type: "order_update",
-          title: "Order Updated",
-          message: `Your order #${upgradeData.orderNumber} has been updated with new specifications.`,
-          orderId: upgradeData.orderId,
-        });
-
-        toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Your order has been updated.`);
-        navigate(`/orders/${upgradeData.orderId}`);
       } else if (orderData) {
         // Handle new order payment
         if (orderData.isProject) {

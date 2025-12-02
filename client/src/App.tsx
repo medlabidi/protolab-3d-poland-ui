@@ -18,9 +18,11 @@ import NewPrint from "./pages/NewPrint";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
 import EditOrder from "./pages/EditOrder";
+import EditProject from "./pages/EditProject";
 import Settings from "./pages/Settings";
 import Payment from "./pages/Payment";
 import Refund from "./pages/Refund";
+import Credits from "./pages/Credits";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -53,9 +55,11 @@ const App = () => (
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />
+                <Route path="/projects/:projectName/edit" element={<ProtectedRoute><EditProject /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
+                <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
