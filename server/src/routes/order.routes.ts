@@ -23,8 +23,15 @@ router.get('/:id/file', orderController.getOrderFile);
 router.patch('/:id', orderController.updateOrder);
 router.patch('/:id/review', validate(addReviewSchema), orderController.addReview);
 
+// Archive, restore, and delete operations
+router.patch('/:id/archive', orderController.archiveOrder);
+router.patch('/:id/restore', orderController.restoreOrder);
+router.delete('/:id/soft', orderController.softDeleteOrder);
+router.delete('/:id/permanent', orderController.permanentDeleteOrder);
+
 // Email notification endpoints
 router.post('/email/payment-confirmation', orderController.sendPaymentConfirmationEmail);
 router.post('/email/refund-request', orderController.sendRefundRequestEmail);
+router.post('/email/invoice', orderController.sendInvoiceEmail);
 
 export default router;

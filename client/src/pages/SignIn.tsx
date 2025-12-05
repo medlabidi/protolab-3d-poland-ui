@@ -151,7 +151,7 @@ const SignIn = () => {
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 animate-scale-in bg-gradient-to-br from-white to-gray-50/50">
+      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 animate-scale-in bg-gradient-to-br from-card to-muted/50">
         <CardHeader className="space-y-4 text-center pb-8">
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />

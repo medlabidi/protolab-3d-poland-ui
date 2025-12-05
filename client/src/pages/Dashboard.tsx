@@ -373,7 +373,7 @@ const Dashboard = () => {
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
-                className={`hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/50 shadow-lg animate-scale-in ${(stat as any).isCredit ? 'cursor-pointer' : ''}`}
+                className={`hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/50 shadow-lg animate-scale-in ${(stat as any).isCredit ? 'cursor-pointer' : ''}`}
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={(stat as any).isCredit ? () => navigate('/credits') : undefined}
               >
@@ -399,7 +399,7 @@ const Dashboard = () => {
           </div>
 
           {/* Recent Orders & Projects */}
-          <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-white to-gray-50/30">
+          <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
             <CardHeader className="border-b">
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Package className="w-6 h-6 text-primary" />
@@ -429,7 +429,7 @@ const Dashboard = () => {
                         open={expandedProjects.has(projectName)}
                         onOpenChange={() => toggleProject(projectName)}
                       >
-                        <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-purple-50/50 to-primary/5 mb-2">
+                        <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10 mb-2">
                           <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors">
                               <CollapsibleTrigger className="flex-1">
                                 <div className="flex items-center gap-3">
@@ -512,7 +512,7 @@ const Dashboard = () => {
                               {projectOrders.map((order) => (
                                 <div 
                                   key={order.id}
-                                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white/50 transition-colors"
+                                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                 >
                                   <div className="flex items-center gap-3">
                                     <FileText className="w-4 h-4 text-muted-foreground" />

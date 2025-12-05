@@ -346,12 +346,12 @@ export const LockerPickerModal = ({ open, onClose, onSelectLocker }: LockerPicke
                   />
                 </div>
                 <div className="p-4 bg-background border-t space-y-3">
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-3 rounded">
                     <div className="flex items-start gap-2">
-                      <span className="text-yellow-600 text-lg">⚠️</span>
+                      <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
                       <div>
-                        <p className="text-sm font-semibold text-yellow-800">API Unavailable - Map Search Mode</p>
-                        <p className="text-xs text-yellow-700 mt-1">
+                        <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">API Unavailable - Map Search Mode</p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
                           1. Find a Paczkomat on the map above<br/>
                           2. Note its code (e.g., "KRA01M")<br/>
                           3. Enter it below to load details
@@ -480,9 +480,9 @@ export const LockerPickerModal = ({ open, onClose, onSelectLocker }: LockerPicke
                   Use the map to find a locker and enter its code.
                 </p>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left space-y-2">
-                <p className="text-xs font-semibold text-blue-900">📝 How to use:</p>
-                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left space-y-2">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-300">📝 How to use:</p>
+                <ol className="text-xs text-blue-800 dark:text-blue-400 space-y-1 list-decimal list-inside">
                   <li>Look at the map for InPost Paczkomat locations</li>
                   <li>Click on a marker to see the locker code</li>
                   <li>Enter the code (e.g., KRA01M) in the input field</li>

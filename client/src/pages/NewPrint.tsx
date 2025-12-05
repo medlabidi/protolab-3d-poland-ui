@@ -813,7 +813,7 @@ const NewPrint = () => {
           </div>
 
           {/* Upload Mode Selection */}
-          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30">
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Upload className="w-6 h-6 text-primary" />
@@ -894,18 +894,18 @@ const NewPrint = () => {
                       {/* Dynamic Model Stats */}
                       {modelAnalysis && (
                         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                          <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">Volume</p>
                             <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                           </div>
-                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                          <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">Est. Weight</p>
                             <p className="text-lg font-bold text-primary">
                               {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
                             </p>
                             {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
                           </div>
-                          <div className="p-3 bg-white rounded-lg border border-primary/20">
+                          <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">Est. Print Time</p>
                             <p className="text-lg font-bold text-primary">
                               {formatPrintTime(estimatedPrintTime)}
@@ -985,7 +985,7 @@ const NewPrint = () => {
 
                         {projectFiles.map((pf, index) => (
                           <Collapsible key={pf.id} open={pf.isExpanded} onOpenChange={() => toggleFileExpanded(pf.id)}>
-                            <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-white">
+                            <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-card">
                               <CollapsibleTrigger className="w-full">
                                 <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                                   <div className="flex items-center gap-3">
@@ -1145,7 +1145,7 @@ const NewPrint = () => {
 
           {/* Configuration - Only show for single file mode */}
           {uploadMode === 'single' && (
-          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.1s' }}>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
@@ -1307,7 +1307,7 @@ const NewPrint = () => {
           )}
 
           {/* Price Estimate */}
-          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.2s' }}>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
@@ -1471,7 +1471,7 @@ const NewPrint = () => {
           </Card>
 
           {/* Delivery */}
-          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-white to-gray-50/30" style={{ animationDelay: '0.3s' }}>
+          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Send className="w-6 h-6 text-primary" />

@@ -70,6 +70,102 @@ export class OrderService {
   async getUserOrders(userId: string): Promise<IOrder[]> {
     return await Order.findByUserId(userId);
   }
+
+  async getUserOrdersFiltered(userId: string, filter: 'active' | 'archived' | 'deleted'): Promise<IOrder[]> {
+    return await Order.findByUserIdFiltered(userId, filter);
+  }
+
+  async archiveOrder(orderId: string, userId: string): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    const updatedOrder = await Order.updateById(orderId, { is_archived: true });
+    if (!updatedOrder) {
+      throw new Error('Failed to archive order');
+    }
+    
+    return updatedOrder;
+  }
+
+  async restoreOrder(orderId: string, userId: string): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    const updatedOrder = await Order.updateById(orderId, { 
+      is_archived: false, 
+      deleted_at: null 
+    });
+    if (!updatedOrder) {
+      throw new Error('Failed to restore order');
+    }
+    
+    return updatedOrder;
+  }
+
+  async softDeleteOrder(orderId: string, userId: string): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    const updatedOrder = await Order.updateById(orderId, { 
+      deleted_at: new Date().toISOString() 
+    });
+    if (!updatedOrder) {
+      throw new Error('Failed to delete order');
+    }
+    
+    return updatedOrder;
+  }
+
+  async permanentDeleteOrder(orderId: string, userId: string): Promise<void> {
+    const supabase = getSupabase();
+    
+    // Verify order belongs to user
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !order) {
+      throw new Error('Order not found');
+    }
+    
+    await Order.deleteById(orderId);
+  }
   
   async getAllOrders(): Promise<IOrder[]> {
     const supabase = getSupabase();

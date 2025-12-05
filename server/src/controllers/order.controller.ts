@@ -47,9 +47,68 @@ export class OrderController {
   
   async getMyOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const orders = await orderService.getUserOrders(req.user!.id);
+      const filter = req.query.filter as 'active' | 'archived' | 'deleted' | undefined;
+      
+      let orders;
+      if (filter && ['active', 'archived', 'deleted'].includes(filter)) {
+        orders = await orderService.getUserOrdersFiltered(req.user!.id, filter);
+      } else {
+        orders = await orderService.getUserOrders(req.user!.id);
+      }
       
       res.json({ orders, count: orders.length });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async archiveOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.archiveOrder(id, req.user!.id);
+      
+      logger.info(`Order archived: ${order.id}`);
+      
+      res.json({ message: 'Order archived successfully', order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async restoreOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.restoreOrder(id, req.user!.id);
+      
+      logger.info(`Order restored: ${order.id}`);
+      
+      res.json({ message: 'Order restored successfully', order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async softDeleteOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.softDeleteOrder(id, req.user!.id);
+      
+      logger.info(`Order soft deleted: ${order.id}`);
+      
+      res.json({ message: 'Order moved to trash', order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async permanentDeleteOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      await orderService.permanentDeleteOrder(id, req.user!.id);
+      
+      logger.info(`Order permanently deleted: ${id}`);
+      
+      res.json({ message: 'Order permanently deleted' });
     } catch (error) {
       next(error);
     }
@@ -206,6 +265,99 @@ export class OrderController {
       logger.info(`Refund request email sent for user ${user.id}, order ${orderNumber}`);
       
       res.json({ message: 'Refund request email sent' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendInvoiceEmail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { 
+        orderNumber, 
+        projectName, 
+        items, 
+        subtotal, 
+        deliveryPrice,
+        totalAmount, 
+        paymentMethod,
+        billingInfo 
+      } = req.body;
+      const user = req.user!;
+      
+      // Extract name from email (part before @) as a fallback
+      const userName = user.email.split('@')[0] || 'Customer';
+      
+      // Generate invoice number: INV-YYYYMMDD-XXXX
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const invoiceNumber = `INV-${dateStr}-${randomPart}`;
+      
+      // Format dates
+      const invoiceDate = now.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      const dueDate = invoiceDate; // Already paid
+      
+      // Calculate VAT (23% in Poland)
+      const vatRate = 23;
+      const netAmount = parseFloat(totalAmount) / 1.23; // Assuming prices include VAT
+      const vatAmount = parseFloat(totalAmount) - netAmount;
+      
+      // Format items for invoice
+      const formattedItems = items.map((item: any) => ({
+        description: item.description || item.name || 'Print Service',
+        quantity: parseInt(item.quantity) || 1,
+        unitPrice: parseFloat(item.unitPrice) || parseFloat(item.price) || 0,
+        total: parseFloat(item.total) || parseFloat(item.price) || 0,
+      }));
+      
+      // Add delivery as a line item if present
+      if (deliveryPrice && parseFloat(deliveryPrice) > 0) {
+        formattedItems.push({
+          description: 'Delivery',
+          quantity: 1,
+          unitPrice: parseFloat(deliveryPrice),
+          total: parseFloat(deliveryPrice),
+        });
+      }
+      
+      const result = await emailService.sendInvoiceEmail(
+        user.email,
+        userName,
+        {
+          invoiceNumber,
+          invoiceDate,
+          dueDate,
+          orderNumber,
+          projectName,
+          items: formattedItems,
+          subtotal: parseFloat(subtotal) || netAmount,
+          vatRate,
+          vatAmount,
+          totalAmount: parseFloat(totalAmount) || 0,
+          paymentMethod: paymentMethod || 'Card',
+          billingInfo: {
+            companyName: billingInfo.companyName || '',
+            taxId: billingInfo.taxId || billingInfo.nip || '',
+            vatNumber: billingInfo.vatNumber || '',
+            address: billingInfo.billingAddress || billingInfo.address || '',
+            city: billingInfo.billingCity || billingInfo.city || '',
+            zipCode: billingInfo.billingZipCode || billingInfo.zipCode || '',
+            country: billingInfo.billingCountry || billingInfo.country || 'Poland',
+          },
+        }
+      );
+      
+      logger.info(`Invoice email sent for user ${user.id}, invoice ${invoiceNumber}`);
+      
+      res.json({ 
+        message: 'Invoice email sent',
+        invoiceNumber: result.invoiceNumber,
+        success: result.success,
+      });
     } catch (error) {
       next(error);
     }

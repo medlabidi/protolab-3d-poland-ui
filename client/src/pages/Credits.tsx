@@ -27,6 +27,16 @@ interface Transaction {
   created_at: string;
 }
 
+// Saved payment method interface (from Settings)
+interface SavedPaymentMethod {
+  id: string;
+  type: 'card';
+  name: string;
+  last4?: string;
+  expiryDate?: string;
+  isDefault: boolean;
+}
+
 const Credits = () => {
   const navigate = useNavigate();
   const [creditBalance, setCreditBalance] = useState(0);
@@ -37,6 +47,7 @@ const Credits = () => {
   const [blikCode, setBlikCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
 
   const creditPackages: CreditPackage[] = [
     { id: "small", amount: 50, price: 50, bonus: 0 },
@@ -53,6 +64,22 @@ const Credits = () => {
 
   useEffect(() => {
     fetchCreditsData();
+    
+    // Load saved payment methods from localStorage
+    const savedMethods = localStorage.getItem("paymentMethods");
+    if (savedMethods) {
+      try {
+        const methods = JSON.parse(savedMethods) as SavedPaymentMethod[];
+        setSavedPaymentMethods(methods);
+        // Auto-select default saved card if exists
+        const defaultMethod = methods.find(m => m.isDefault);
+        if (defaultMethod) {
+          setSelectedPayment(`saved_${defaultMethod.id}`);
+        }
+      } catch (error) {
+        console.error("Failed to parse saved payment methods:", error);
+      }
+    }
   }, []);
 
   const fetchCreditsData = async () => {
@@ -99,7 +126,10 @@ const Credits = () => {
       return;
     }
 
-    if (selectedPayment === "blik" && blikCode.length !== 6) {
+    // Handle saved card payment - no additional validation needed
+    if (selectedPayment.startsWith("saved_")) {
+      // Saved card - proceed
+    } else if (selectedPayment === "blik" && blikCode.length !== 6) {
       toast.error("Please enter a valid 6-digit BLIK code");
       return;
     }
@@ -194,20 +224,20 @@ const Credits = () => {
           </div>
 
           {/* Current Balance Card */}
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-xl animate-scale-in">
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 shadow-xl animate-scale-in">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="p-4 bg-green-500/10 rounded-2xl">
-                    <Wallet className="w-10 h-10 text-green-600" />
+                    <Wallet className="w-10 h-10 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-green-700 font-medium">Current Balance</p>
-                    <p className="text-4xl font-bold text-green-800">{creditBalance.toFixed(2)} PLN</p>
+                    <p className="text-sm text-green-700 dark:text-green-400 font-medium">Current Balance</p>
+                    <p className="text-4xl font-bold text-green-800 dark:text-green-300">{creditBalance.toFixed(2)} PLN</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-green-600">Credits are used automatically at checkout</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">Credits are used automatically at checkout</p>
                 </div>
               </div>
             </CardContent>
@@ -290,6 +320,47 @@ const Credits = () => {
                   {(selectedPackage || customAmount) && (
                     <div className="space-y-4 pt-4 border-t animate-slide-up">
                       <Label>Select Payment Method</Label>
+                      
+                      {/* Saved Cards */}
+                      {savedPaymentMethods.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Saved Cards</p>
+                          <div className="grid gap-2">
+                            {savedPaymentMethods.map((method) => (
+                              <div
+                                key={method.id}
+                                className={`flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                                  selectedPayment === `saved_${method.id}`
+                                    ? "border-primary bg-primary/5"
+                                    : "border-border hover:border-primary/40"
+                                }`}
+                                onClick={() => setSelectedPayment(`saved_${method.id}`)}
+                              >
+                                <div className={`p-2 rounded-lg mr-3 ${selectedPayment === `saved_${method.id}` ? 'bg-primary text-white' : 'bg-muted'}`}>
+                                  <CreditCard className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">•••• {method.last4}</p>
+                                  <p className="text-xs text-muted-foreground">{method.expiryDate}</p>
+                                </div>
+                                {method.isDefault && (
+                                  <Badge variant="outline" className="text-xs">Default</Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="relative py-2">
+                            <div className="absolute inset-0 flex items-center">
+                              <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs">
+                              <span className="bg-card px-2 text-muted-foreground">or</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Standard Payment Methods */}
                       <div className="grid grid-cols-3 gap-3">
                         {paymentMethods.map((method) => (
                           <div
@@ -311,8 +382,8 @@ const Credits = () => {
 
                       {/* BLIK Code */}
                       {selectedPayment === "blik" && (
-                        <div className="p-4 bg-pink-50 border border-pink-200 rounded-xl animate-scale-in">
-                          <Label className="text-pink-800">Enter BLIK Code</Label>
+                        <div className="p-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl animate-scale-in">
+                          <Label className="text-pink-800 dark:text-pink-300">Enter BLIK Code</Label>
                           <Input
                             type="text"
                             placeholder="000000"

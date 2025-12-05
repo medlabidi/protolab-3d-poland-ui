@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,6 +14,20 @@ export const DashboardSidebar = () => {
   const { clearAllNotifications } = useNotifications();
   
   const handleLogout = () => {
+    // Log activity before clearing localStorage
+    const logoutActivity = {
+      id: `activity_${Date.now()}`,
+      type: 'logout',
+      title: 'Logout',
+      description: 'Logged out of your account',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        device: navigator.platform || 'Unknown',
+      },
+    };
+    const existingLog = JSON.parse(localStorage.getItem("activityLog") || "[]");
+    localStorage.setItem("activityLog", JSON.stringify([logoutActivity, ...existingLog].slice(0, 100)));
+
     // Clear all auth data from localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -36,6 +50,7 @@ export const DashboardSidebar = () => {
     { icon: Package, label: t.dashboard.orders, path: "/orders" },
     { icon: MessageSquare, label: "Conversations", path: "/conversations" },
     { icon: Wallet, label: "Credits", path: "/credits" },
+    { icon: Building2, label: "Business", path: "/business" },
     { icon: Settings, label: t.dashboard.settings, path: "/settings" },
   ];
 

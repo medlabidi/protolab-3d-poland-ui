@@ -88,11 +88,11 @@ export const DeliveryOptions = ({
           {/* Show locker selector for InPost */}
           {selectedOption === "inpost" && option.id === "inpost" && (
             <div className="mt-3 ml-8 space-y-3 animate-scale-in">
-              <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800 font-medium flex items-center gap-2">
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium flex items-center gap-2">
                   ⏳ Waiting for service integration
                 </p>
-                <p className="text-xs text-yellow-700 mt-1">
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
                   InPost business registration in progress. Locker selection will be available soon.
                 </p>
               </div>
@@ -114,18 +114,18 @@ export const DeliveryOptions = ({
           {/* Show lab address and map for Local Pickup */}
           {selectedOption === "pickup" && option.id === "pickup" && (
             <div className="mt-3 ml-8 space-y-3 animate-scale-in">
-              <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                <p className="text-sm text-green-800 font-medium flex items-center gap-2">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg">
+                <p className="text-sm text-green-800 dark:text-green-300 font-medium flex items-center gap-2">
                   <Store className="w-4 h-4" />
                   Pickup Location
                 </p>
-                <p className="text-base font-semibold text-green-900 mt-2">
+                <p className="text-base font-semibold text-green-900 dark:text-green-200 mt-2">
                   Zielonogórska 13
                 </p>
-                <p className="text-sm text-green-800">
+                <p className="text-sm text-green-800 dark:text-green-300">
                   30-406 Kraków, Poland
                 </p>
-                <p className="text-xs text-green-700 mt-2">
+                <p className="text-xs text-green-700 dark:text-green-400 mt-2">
                   Mon-Fri: 9:00 - 17:00 | Sat: 10:00 - 14:00
                 </p>
               </div>

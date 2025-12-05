@@ -170,7 +170,7 @@ const AboutUs = () => {
             {stats.map((stat, index) => (
               <Card 
                 key={index}
-                className="text-center hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in"
+                className="text-center hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="pt-8 pb-8">
@@ -197,7 +197,7 @@ const AboutUs = () => {
             {values.map((value, index) => (
               <Card 
                 key={index}
-                className="hover-lift group border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in"
+                className="hover-lift group border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="pt-8 pb-8">
@@ -236,7 +236,7 @@ const AboutUs = () => {
                   style={{ animationDelay: `${index * 0.2}s` }}
                 >
                   <div className={`flex-1 ${index % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
-                    <Card className="hover-lift border-2 border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg">
+                    <Card className="hover-lift border-2 border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg">
                       <CardContent className="pt-6 pb-6">
                         <div className="text-3xl font-bold gradient-text mb-2">{milestone.year}</div>
                         <h3 className="text-xl font-bold mb-2">{milestone.title}</h3>
@@ -264,7 +264,7 @@ const AboutUs = () => {
             {team.map((member, index) => (
               <Card 
                 key={index}
-                className="hover-lift text-center border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in"
+                className="hover-lift text-center border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="pt-8 pb-8">

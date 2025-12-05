@@ -132,7 +132,7 @@ const ResetPassword = () => {
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 bg-gradient-to-br from-white to-gray-50/50">
+      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 bg-gradient-to-br from-card to-muted/50">
         <CardHeader className="space-y-4 text-center pb-8">
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
@@ -146,7 +146,7 @@ const ResetPassword = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
                 {error}
               </div>
             )}

@@ -594,7 +594,7 @@ const EditProject = () => {
                     <AccordionItem 
                       key={order.id} 
                       value={order.id}
-                      className="border-2 rounded-xl overflow-hidden bg-white shadow-lg animate-scale-in"
+                      className="border-2 rounded-xl overflow-hidden bg-card shadow-lg animate-scale-in"
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
                       <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30">
@@ -638,7 +638,7 @@ const EditProject = () => {
                           {/* Parameters */}
                           <div className="space-y-4">
                             {!canEdit && (
-                              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-700">
+                              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
                                 <AlertTriangle className="w-4 h-4 inline mr-2" />
                                 Print parameters locked - order is {order.status}
                               </div>
@@ -797,7 +797,7 @@ const EditProject = () => {
           </Tabs>
 
           {/* Price Summary */}
-          <Card className="shadow-xl border-2 animate-scale-in sticky bottom-4 bg-white/95 backdrop-blur">
+          <Card className="shadow-xl border-2 animate-scale-in sticky bottom-4 bg-card/95 backdrop-blur">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />

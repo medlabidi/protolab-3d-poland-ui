@@ -153,7 +153,7 @@ const Landing = () => {
             {steps.map((step, index) => (
               <Card 
                 key={index} 
-                className="border-none shadow-lg hover-lift group relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 animate-scale-in"
+                className="border-none shadow-lg hover-lift group relative overflow-hidden bg-gradient-to-br from-card to-muted/50 animate-scale-in"
                 style={{ animationDelay: `${index * 0.2}s` }}
               >
                 <CardContent className="pt-8 text-center relative z-10">
@@ -184,7 +184,7 @@ const Landing = () => {
             {materials.map((material, index) => (
               <Card 
                 key={index} 
-                className="hover-lift group border-2 border-transparent hover:border-primary/20 transition-all duration-300 bg-gradient-to-br from-white to-gray-50/30"
+                className="hover-lift group border-2 border-transparent hover:border-primary/20 transition-all duration-300 bg-gradient-to-br from-card to-muted/30"
               >
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-3">
@@ -268,7 +268,7 @@ const Landing = () => {
 
           <div className="grid md:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <Card className="shadow-xl border-2 border-primary/10 bg-gradient-to-br from-white to-gray-50/30 animate-scale-in">
+            <Card className="shadow-xl border-2 border-primary/10 bg-gradient-to-br from-card to-muted/30 animate-scale-in">
               <CardContent className="pt-8 pb-8">
                 <form className="space-y-6">
                   <div className="space-y-2">
@@ -332,7 +332,7 @@ const Landing = () => {
             {/* Map and Contact Info */}
             <div className="space-y-6">
               {/* Google Maps */}
-              <Card className="shadow-xl border-2 border-primary/10 bg-gradient-to-br from-white to-gray-50/30 overflow-hidden animate-scale-in" style={{ animationDelay: '0.1s' }}>
+              <Card className="shadow-xl border-2 border-primary/10 bg-gradient-to-br from-card to-muted/30 overflow-hidden animate-scale-in" style={{ animationDelay: '0.1s' }}>
                 <CardContent className="p-0">
                   <div className="aspect-video w-full">
                     <iframe
@@ -351,7 +351,7 @@ const Landing = () => {
 
               {/* Contact Details */}
               <div className="grid gap-4">
-                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.2s' }}>
+                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.2s' }}>
                   <CardContent className="pt-6 pb-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -366,7 +366,7 @@ const Landing = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.3s' }}>
+                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.3s' }}>
                   <CardContent className="pt-6 pb-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -381,7 +381,7 @@ const Landing = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.4s' }}>
+                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.4s' }}>
                   <CardContent className="pt-6 pb-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -396,7 +396,7 @@ const Landing = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-white to-gray-50/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.5s' }}>
+                <Card className="hover-lift border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg animate-scale-in" style={{ animationDelay: '0.5s' }}>
                   <CardContent className="pt-6 pb-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">

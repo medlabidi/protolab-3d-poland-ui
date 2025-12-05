@@ -73,6 +73,20 @@ export const AdminSidebar = () => {
   const location = useLocation();
 
   const handleLogout = () => {
+    // Log activity before clearing localStorage
+    const logoutActivity = {
+      id: `activity_${Date.now()}`,
+      type: 'logout',
+      title: 'Admin Logout',
+      description: 'Logged out of admin panel',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        device: navigator.platform || 'Unknown',
+      },
+    };
+    const existingLog = JSON.parse(localStorage.getItem("activityLog") || "[]");
+    localStorage.setItem("activityLog", JSON.stringify([logoutActivity, ...existingLog].slice(0, 100)));
+
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('isLoggedIn');

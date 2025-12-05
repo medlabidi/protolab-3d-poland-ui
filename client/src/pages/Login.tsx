@@ -144,6 +144,20 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
 
+      // Log activity
+      const loginActivity = {
+        id: `activity_${Date.now()}`,
+        type: 'login',
+        title: 'Login',
+        description: 'Successfully logged in to your account',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          device: navigator.platform || 'Unknown',
+        },
+      };
+      const existingLog = JSON.parse(localStorage.getItem("activityLog") || "[]");
+      localStorage.setItem("activityLog", JSON.stringify([loginActivity, ...existingLog].slice(0, 100)));
+
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {
@@ -272,6 +286,20 @@ const Login = () => {
       localStorage.setItem("refreshToken", data.tokens.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
+
+      // Log activity
+      const loginActivity = {
+        id: `activity_${Date.now()}`,
+        type: 'login',
+        title: 'Google Login',
+        description: 'Successfully logged in with Google',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          device: navigator.platform || 'Unknown',
+        },
+      };
+      const existingLog = JSON.parse(localStorage.getItem("activityLog") || "[]");
+      localStorage.setItem("activityLog", JSON.stringify([loginActivity, ...existingLog].slice(0, 100)));
 
       toast.success("Google login successful!");
       navigate("/dashboard");

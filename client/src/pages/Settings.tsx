@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/config/api";
+import { useTheme } from "@/components/ThemeProvider";
 import { 
   User, 
   Monitor, 
@@ -23,8 +25,55 @@ import {
   Eye,
   Trash2,
   Download,
-  FileText
+  FileText,
+  Plus,
+  Wallet,
+  Building,
+  CheckCircle2,
+  Laptop,
+  Globe,
+  MapPin,
+  Clock,
+  LogOut,
+  Sun,
+  Moon,
+  MonitorSmartphone
 } from "lucide-react";
+
+interface SavedPaymentMethod {
+  id: string;
+  type: 'card';
+  name: string;
+  last4?: string;
+  expiryDate?: string;
+  isDefault: boolean;
+}
+
+interface Session {
+  id: string;
+  device: string;
+  deviceType: 'desktop' | 'mobile' | 'tablet';
+  browser: string;
+  location: string;
+  ipAddress: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
+
+interface ActivityLogItem {
+  id: string;
+  type: 'login' | 'logout' | 'password_change' | 'profile_update' | 'order_created' | 'payment' | 'settings_change' | 'security';
+  title: string;
+  description: string;
+  timestamp: string;
+  metadata?: {
+    ip?: string;
+    device?: string;
+    location?: string;
+    orderId?: string;
+    amount?: number;
+  };
+}
 
 // Helper to get valid access token (refreshes only if the current token fails)
 const getValidAccessToken = async (): Promise<string | null> => {
@@ -82,6 +131,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 const Settings = () => {
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>("general");
   const [formData, setFormData] = useState({
@@ -100,14 +150,50 @@ const Settings = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // Payment methods state
+  const [paymentMethods, setPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [showAddPaymentDialog, setShowAddPaymentDialog] = useState(false);
+  const [newCardData, setNewCardData] = useState({
+    cardNumber: '',
+    expiryDate: '',
+    cardholderName: '',
+  });
+
+  // Sessions state
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionToTerminate, setSessionToTerminate] = useState<string | null>(null);
+  const [showTerminateAllDialog, setShowTerminateAllDialog] = useState(false);
+
+  // Activity log state
+  const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
+  const [showActivityLogDialog, setShowActivityLogDialog] = useState(false);
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState({
+    // Billing & Payment notifications
+    paymentConfirmation: true,
+    paymentFailed: true,
+    refundProcessed: true,
+    invoiceReady: true,
+    // Order & Shipping notifications
+    orderConfirmation: true,
+    orderStatusChange: true,
+    printStarted: true,
+    printCompleted: true,
+    shippingUpdate: true,
+    deliveryConfirmation: true,
+    // Marketing
+    marketingEmails: true,
+    promotions: true,
+  });
+
   // Settings menu items
   const menuItems = [
     { id: "general", label: "General", icon: User, description: "Name, email, and contact info" },
     { id: "display", label: "Display", icon: Monitor, description: "Theme and appearance" },
     { id: "security", label: "Security", icon: Shield, description: "Password and authentication" },
-    { id: "payment", label: "Payment", icon: CreditCard, description: "Payment methods and billing" },
+    { id: "payment", label: "Payment", icon: CreditCard, description: "Payment methods" },
     { id: "notifications", label: "Notifications", icon: Bell, description: "Email and push notifications" },
-    { id: "business", label: "ProtoLab for Business", icon: Building2, description: "Business account features" },
     { id: "privacy", label: "Privacy & Data", icon: Lock, description: "Data management and privacy" },
   ];
 
@@ -131,7 +217,353 @@ const Settings = () => {
         console.error("Failed to parse user data:", error);
       }
     }
+
+    // Load payment methods from localStorage
+    const savedMethods = localStorage.getItem("paymentMethods");
+    if (savedMethods) {
+      try {
+        setPaymentMethods(JSON.parse(savedMethods));
+      } catch (error) {
+        console.error("Failed to parse payment methods:", error);
+      }
+    }
+
+    // Load notification settings from localStorage
+    const savedNotificationSettings = localStorage.getItem("notificationSettings");
+    if (savedNotificationSettings) {
+      try {
+        const saved = JSON.parse(savedNotificationSettings);
+        // Check if saved settings have the new keys, otherwise use defaults
+        if ('paymentConfirmation' in saved) {
+          setNotificationSettings(prev => ({ ...prev, ...saved }));
+        } else {
+          // Old format detected, clear and use defaults
+          localStorage.removeItem("notificationSettings");
+        }
+      } catch (error) {
+        console.error("Failed to parse notification settings:", error);
+      }
+    }
+
+    // Initialize sessions - detect current session and load saved sessions
+    initializeSessions();
+
+    // Load activity log from localStorage
+    loadActivityLog();
   }, []);
+
+  // Activity log functions
+  const loadActivityLog = () => {
+    const savedLog = localStorage.getItem("activityLog");
+    if (savedLog) {
+      try {
+        const log = JSON.parse(savedLog);
+        setActivityLog(log);
+      } catch (error) {
+        console.error("Failed to parse activity log:", error);
+      }
+    }
+  };
+
+  const addActivityLogEntry = (entry: Omit<ActivityLogItem, 'id' | 'timestamp'>) => {
+    const newEntry: ActivityLogItem = {
+      ...entry,
+      id: `activity_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    };
+    
+    setActivityLog(prev => {
+      const updated = [newEntry, ...prev].slice(0, 100); // Keep last 100 entries
+      localStorage.setItem("activityLog", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearActivityLog = () => {
+    setActivityLog([]);
+    localStorage.removeItem("activityLog");
+    toast.success("Activity log cleared");
+  };
+
+  const getActivityIcon = (type: ActivityLogItem['type']) => {
+    switch (type) {
+      case 'login': return '🔓';
+      case 'logout': return '🔒';
+      case 'password_change': return '🔑';
+      case 'profile_update': return '👤';
+      case 'order_created': return '📦';
+      case 'payment': return '💳';
+      case 'settings_change': return '⚙️';
+      case 'security': return '🛡️';
+      default: return '📝';
+    }
+  };
+
+  // Session management
+  const initializeSessions = () => {
+    const savedSessions = localStorage.getItem("userSessions");
+    let existingSessions: Session[] = [];
+    
+    if (savedSessions) {
+      try {
+        existingSessions = JSON.parse(savedSessions);
+      } catch (error) {
+        console.error("Failed to parse sessions:", error);
+      }
+    }
+
+    // Detect current session info
+    const currentSessionId = localStorage.getItem("currentSessionId") || `session_${Date.now()}`;
+    localStorage.setItem("currentSessionId", currentSessionId);
+
+    const userAgent = navigator.userAgent;
+    const deviceType = /Mobile|Android|iPhone|iPad/.test(userAgent) 
+      ? (/iPad|Tablet/.test(userAgent) ? 'tablet' : 'mobile') 
+      : 'desktop';
+    
+    const browser = detectBrowser(userAgent);
+    const device = detectDevice(userAgent);
+
+    // Check if current session exists
+    const currentSessionExists = existingSessions.some(s => s.id === currentSessionId);
+    
+    if (!currentSessionExists) {
+      // Add current session
+      const currentSession: Session = {
+        id: currentSessionId,
+        device,
+        deviceType,
+        browser,
+        location: "Current Location",
+        ipAddress: "Your IP",
+        lastActive: new Date().toISOString(),
+        isCurrent: true,
+      };
+
+      // If this is the first time (no saved sessions), add some demo sessions
+      if (existingSessions.length === 0) {
+        const demoSessions: Session[] = [
+          {
+            id: `session_demo_1`,
+            device: "iPhone",
+            deviceType: 'mobile',
+            browser: "Safari",
+            location: "Warsaw, Poland",
+            ipAddress: "192.168.1.x",
+            lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+            isCurrent: false,
+          },
+          {
+            id: `session_demo_2`,
+            device: "Windows PC",
+            deviceType: 'desktop',
+            browser: "Firefox",
+            location: "Krakow, Poland",
+            ipAddress: "192.168.2.x",
+            lastActive: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+            isCurrent: false,
+          },
+        ];
+        existingSessions = [currentSession, ...demoSessions];
+      } else {
+        existingSessions = [currentSession, ...existingSessions.map(s => ({ ...s, isCurrent: false }))];
+      }
+    } else {
+      // Update current session's last active time
+      existingSessions = existingSessions.map(s => 
+        s.id === currentSessionId 
+          ? { ...s, lastActive: new Date().toISOString(), isCurrent: true }
+          : { ...s, isCurrent: false }
+      );
+    }
+
+    setSessions(existingSessions);
+    localStorage.setItem("userSessions", JSON.stringify(existingSessions));
+  };
+
+  const detectBrowser = (userAgent: string): string => {
+    if (userAgent.includes("Firefox")) return "Firefox";
+    if (userAgent.includes("Edg")) return "Microsoft Edge";
+    if (userAgent.includes("Chrome")) return "Chrome";
+    if (userAgent.includes("Safari")) return "Safari";
+    if (userAgent.includes("Opera") || userAgent.includes("OPR")) return "Opera";
+    return "Unknown Browser";
+  };
+
+  const detectDevice = (userAgent: string): string => {
+    if (/iPhone/.test(userAgent)) return "iPhone";
+    if (/iPad/.test(userAgent)) return "iPad";
+    if (/Android/.test(userAgent)) return "Android Device";
+    if (/Windows/.test(userAgent)) return "Windows PC";
+    if (/Mac/.test(userAgent)) return "Mac";
+    if (/Linux/.test(userAgent)) return "Linux PC";
+    return "Unknown Device";
+  };
+
+  const openTerminateSessionDialog = (sessionId: string) => {
+    setSessionToTerminate(sessionId);
+  };
+
+  const confirmTerminateSession = () => {
+    if (!sessionToTerminate) return;
+    
+    const session = sessions.find(s => s.id === sessionToTerminate);
+    if (session?.isCurrent) {
+      toast.error("Cannot terminate current session. Use logout instead.");
+      setSessionToTerminate(null);
+      return;
+    }
+
+    const updatedSessions = sessions.filter(s => s.id !== sessionToTerminate);
+    setSessions(updatedSessions);
+    localStorage.setItem("userSessions", JSON.stringify(updatedSessions));
+    toast.success("Session terminated successfully");
+    setSessionToTerminate(null);
+  };
+
+  const openTerminateAllDialog = () => {
+    setShowTerminateAllDialog(true);
+  };
+
+  const confirmTerminateAllOtherSessions = () => {
+    const currentSession = sessions.find(s => s.isCurrent);
+    if (currentSession) {
+      const updatedSessions = [currentSession];
+      setSessions(updatedSessions);
+      localStorage.setItem("userSessions", JSON.stringify(updatedSessions));
+      toast.success("All other sessions have been terminated");
+    }
+    setShowTerminateAllDialog(false);
+  };
+
+  const formatLastActive = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getSessionIcon = (deviceType: string) => {
+    switch (deviceType) {
+      case 'mobile': return <Smartphone className="w-5 h-5" />;
+      case 'tablet': return <Monitor className="w-5 h-5" />;
+      default: return <Laptop className="w-5 h-5" />;
+    }
+  };
+
+  // Notification settings handlers
+  const handleNotificationChange = (setting: keyof typeof notificationSettings, value: boolean) => {
+    const updatedSettings = { ...notificationSettings, [setting]: value };
+    setNotificationSettings(updatedSettings);
+    localStorage.setItem("notificationSettings", JSON.stringify(updatedSettings));
+    
+    const settingLabels: Record<string, string> = {
+      // Billing & Payment
+      paymentConfirmation: "Payment confirmation emails",
+      paymentFailed: "Payment failed alerts",
+      refundProcessed: "Refund notifications",
+      invoiceReady: "Invoice ready notifications",
+      // Order & Shipping
+      orderConfirmation: "Order confirmation emails",
+      orderStatusChange: "Order status updates",
+      printStarted: "Print started notifications",
+      printCompleted: "Print completed notifications",
+      shippingUpdate: "Shipping updates",
+      deliveryConfirmation: "Delivery confirmations",
+      // Marketing
+      marketingEmails: "Marketing emails",
+      promotions: "Promotional offers",
+    };
+    
+    toast.success(`${settingLabels[setting]} ${value ? 'enabled' : 'disabled'}`);
+  };
+
+  // Payment methods handlers
+  const savePaymentMethodsToStorage = (methods: SavedPaymentMethod[]) => {
+    localStorage.setItem("paymentMethods", JSON.stringify(methods));
+  };
+
+  const handleAddPaymentMethod = () => {
+    const id = `pm_${Date.now()}`;
+
+    if (!newCardData.cardNumber || !newCardData.expiryDate || !newCardData.cardholderName) {
+      toast.error("Please fill in all card details");
+      return;
+    }
+    
+    const last4 = newCardData.cardNumber.replace(/\s/g, '').slice(-4);
+    const newMethod: SavedPaymentMethod = {
+      id,
+      type: 'card',
+      name: newCardData.cardholderName,
+      last4,
+      expiryDate: newCardData.expiryDate,
+      isDefault: paymentMethods.length === 0,
+    };
+
+    const updatedMethods = [...paymentMethods, newMethod];
+    setPaymentMethods(updatedMethods);
+    savePaymentMethodsToStorage(updatedMethods);
+    
+    setShowAddPaymentDialog(false);
+    setNewCardData({ cardNumber: '', expiryDate: '', cardholderName: '' });
+    addActivityLogEntry({ type: 'payment', title: 'Payment Method Added', description: `Added card ending in ${last4}` });
+    toast.success("Card added successfully");
+  };
+
+  const handleRemovePaymentMethod = (id: string) => {
+    const methodToRemove = paymentMethods.find(m => m.id === id);
+    const updatedMethods = paymentMethods.filter(m => m.id !== id);
+    
+    // If we removed the default, set the first remaining as default
+    if (methodToRemove?.isDefault && updatedMethods.length > 0) {
+      updatedMethods[0].isDefault = true;
+    }
+    
+    setPaymentMethods(updatedMethods);
+    savePaymentMethodsToStorage(updatedMethods);
+    addActivityLogEntry({ type: 'payment', title: 'Payment Method Removed', description: `Removed card ending in ${methodToRemove?.last4 || 'unknown'}` });
+    toast.success("Payment method removed");
+  };
+
+  const handleSetDefaultPaymentMethod = (id: string) => {
+    const method = paymentMethods.find(m => m.id === id);
+    const updatedMethods = paymentMethods.map(m => ({
+      ...m,
+      isDefault: m.id === id,
+    }));
+    setPaymentMethods(updatedMethods);
+    savePaymentMethodsToStorage(updatedMethods);
+    addActivityLogEntry({ type: 'payment', title: 'Default Payment Updated', description: `Set card ending in ${method?.last4 || 'unknown'} as default` });
+    toast.success("Default payment method updated");
+  };
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    return parts.length ? parts.join(' ') : value;
+  };
+
+  const formatExpiryDate = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.substring(0, 2) + '/' + v.substring(2, 4);
+    }
+    return v;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -212,6 +644,7 @@ const Settings = () => {
         throw new Error(errorData.error || 'Failed to update profile on server');
       }
       
+      addActivityLogEntry({ type: 'profile_update', title: 'Profile Updated', description: 'You updated your profile information' });
       toast.success("Profile updated successfully!");
     } catch (error) {
       toast.error("Failed to update profile");
@@ -269,6 +702,7 @@ const Settings = () => {
         confirmNewPassword: "",
       });
       
+      addActivityLogEntry({ type: 'password_change', title: 'Password Changed', description: 'You changed your account password' });
       toast.success("Password changed successfully!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to change password");
@@ -278,6 +712,7 @@ const Settings = () => {
 
   const handleDeleteAccount = async () => {
     try {
+      addActivityLogEntry({ type: 'security', title: 'Account Deleted', description: 'You deleted your account' });
       // Clear localStorage and redirect to login
       localStorage.clear();
       window.location.href = '/login';
@@ -450,20 +885,76 @@ const Settings = () => {
                     <CardDescription>Customize how ProtoLab looks and feels</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    {/* Theme Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-muted rounded-lg">
                           <Monitor className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="font-medium">Theme</p>
-                          <p className="text-sm text-muted-foreground">Choose between light and dark mode</p>
+                          <p className="text-sm text-muted-foreground">Choose your preferred appearance</p>
                         </div>
                       </div>
-                      <Button variant="outline" onClick={() => toast.info("Theme settings coming soon!")}>
-                        Configure
-                      </Button>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <button
+                          onClick={() => {
+                            setTheme("light");
+                            addActivityLogEntry({ type: 'settings_change', title: 'Theme Changed', description: 'Changed theme to Light mode' });
+                          }}
+                          className={`flex flex-col items-center gap-2 p-4 border rounded-lg transition-all hover:border-primary ${
+                            theme === "light" ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border"
+                          }`}
+                        >
+                          <div className={`p-3 rounded-full ${theme === "light" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                            <Sun className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium">Light</span>
+                          {theme === "light" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setTheme("dark");
+                            addActivityLogEntry({ type: 'settings_change', title: 'Theme Changed', description: 'Changed theme to Dark mode' });
+                          }}
+                          className={`flex flex-col items-center gap-2 p-4 border rounded-lg transition-all hover:border-primary ${
+                            theme === "dark" ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border"
+                          }`}
+                        >
+                          <div className={`p-3 rounded-full ${theme === "dark" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                            <Moon className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium">Dark</span>
+                          {theme === "dark" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setTheme("system");
+                            addActivityLogEntry({ type: 'settings_change', title: 'Theme Changed', description: 'Changed theme to System default' });
+                          }}
+                          className={`flex flex-col items-center gap-2 p-4 border rounded-lg transition-all hover:border-primary ${
+                            theme === "system" ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border"
+                          }`}
+                        >
+                          <div className={`p-3 rounded-full ${theme === "system" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                            <MonitorSmartphone className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium">System</span>
+                          {theme === "system" && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                        </button>
+                      </div>
+
+                      {theme === "system" && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          Currently using {resolvedTheme} mode based on your system settings
+                        </p>
+                      )}
                     </div>
+
+                    <Separator />
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
@@ -538,38 +1029,80 @@ const Settings = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Shield className="w-5 h-5" />
-                        Two-Factor Authentication
+                        <Globe className="w-5 h-5" />
+                        Active Sessions
                       </CardTitle>
-                      <CardDescription>Add an extra layer of security to your account</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-muted rounded-lg">
-                            <Smartphone className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Authenticator App</p>
-                            <p className="text-sm text-muted-foreground">Use an authenticator app for 2FA</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" onClick={() => toast.info("2FA coming soon!")}>
-                          Setup
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Active Sessions</CardTitle>
                       <CardDescription>Manage devices where you're logged in</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <Button variant="outline" onClick={() => toast.info("Session management coming soon!")}>
-                        View All Sessions
-                      </Button>
+                    <CardContent className="space-y-4">
+                      {sessions.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <Globe className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No active sessions</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-3">
+                            {sessions.map((session) => (
+                              <div 
+                                key={session.id} 
+                                className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
+                                  session.isCurrent ? 'border-primary/50 bg-primary/5' : 'hover:bg-muted/50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className={`p-2.5 rounded-lg ${session.isCurrent ? 'bg-primary/10' : 'bg-muted'}`}>
+                                    {getSessionIcon(session.deviceType)}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{session.device}</p>
+                                      {session.isCurrent && (
+                                        <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                                          Current
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                      {session.browser}
+                                    </p>
+                                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {formatLastActive(session.lastActive)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {!session.isCurrent && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => openTerminateSessionDialog(session.id)}
+                                  >
+                                    <LogOut className="w-4 h-4 mr-1" />
+                                    Terminate
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {sessions.length > 1 && (
+                            <div className="pt-2 border-t">
+                              <Button 
+                                variant="outline" 
+                                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={openTerminateAllDialog}
+                              >
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Terminate All Other Sessions
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </>
@@ -577,134 +1110,252 @@ const Settings = () => {
 
               {/* Payment Settings */}
               {activeSection === "payment" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="w-5 h-5" />
-                      Payment Settings
-                    </CardTitle>
-                    <CardDescription>Manage your payment methods and billing</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-muted rounded-lg">
-                          <CreditCard className="w-5 h-5" />
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Payment Methods
+                      </CardTitle>
+                      <CardDescription>Manage your saved payment methods</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {paymentMethods.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p className="font-medium">No payment methods saved</p>
+                          <p className="text-sm">Add a payment method for faster checkout</p>
                         </div>
-                        <div>
-                          <p className="font-medium">Payment Methods</p>
-                          <p className="text-sm text-muted-foreground">Add or remove payment methods</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {paymentMethods.map((method) => (
+                            <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${method.isDefault ? 'bg-primary/10' : 'bg-muted'}`}>
+                                  <CreditCard className={`w-5 h-5 ${method.isDefault ? 'text-primary' : ''}`} />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">
+                                      •••• •••• •••• {method.last4}
+                                    </p>
+                                    {method.isDefault && (
+                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Default</span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {method.name} • Expires {method.expiryDate}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {!method.isDefault && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleSetDefaultPaymentMethod(method.id)}
+                                  >
+                                    Set Default
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleRemovePaymentMethod(method.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                      <Button variant="outline" onClick={() => toast.info("Payment methods coming soon!")}>
-                        Manage
+                      )}
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full mt-4"
+                        onClick={() => setShowAddPaymentDialog(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Card
                       </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-muted rounded-lg">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Billing History</p>
-                          <p className="text-sm text-muted-foreground">View and download invoices</p>
-                        </div>
-                      </div>
-                      <Button variant="outline" onClick={() => toast.info("Billing history coming soon!")}>
-                        View
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </>
               )}
 
               {/* Notification Settings */}
               {activeSection === "notifications" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bell className="w-5 h-5" />
-                      Notification Settings
-                    </CardTitle>
-                    <CardDescription>Choose how you want to be notified</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Email Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive updates about your orders via email</p>
+                <>
+                  {/* Billing & Payment Notifications */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Billing & Payment
+                      </CardTitle>
+                      <CardDescription>Notifications about payments, invoices, and refunds</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Payment Confirmation</p>
+                          <p className="text-sm text-muted-foreground">Email when a payment is successfully processed</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.paymentConfirmation} 
+                          onCheckedChange={(checked) => handleNotificationChange('paymentConfirmation', checked)} 
+                        />
                       </div>
-                      <Switch defaultChecked onCheckedChange={() => toast.info("Notification settings coming soon!")} />
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Order Updates</p>
-                        <p className="text-sm text-muted-foreground">Get notified when your order status changes</p>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Payment Failed</p>
+                          <p className="text-sm text-muted-foreground">Alert when a payment attempt fails</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.paymentFailed} 
+                          onCheckedChange={(checked) => handleNotificationChange('paymentFailed', checked)} 
+                        />
                       </div>
-                      <Switch defaultChecked onCheckedChange={() => toast.info("Notification settings coming soon!")} />
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Marketing Emails</p>
-                        <p className="text-sm text-muted-foreground">Receive news, offers, and updates from ProtoLab</p>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Refund Processed</p>
+                          <p className="text-sm text-muted-foreground">Notification when a refund is completed</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.refundProcessed} 
+                          onCheckedChange={(checked) => handleNotificationChange('refundProcessed', checked)} 
+                        />
                       </div>
-                      <Switch onCheckedChange={() => toast.info("Notification settings coming soon!")} />
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Push Notifications</p>
-                        <p className="text-sm text-muted-foreground">Receive push notifications in your browser</p>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Invoice Ready</p>
+                          <p className="text-sm text-muted-foreground">Email when your invoice is available for download</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.invoiceReady} 
+                          onCheckedChange={(checked) => handleNotificationChange('invoiceReady', checked)} 
+                        />
                       </div>
-                      <Switch onCheckedChange={() => toast.info("Notification settings coming soon!")} />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
 
-              {/* Business Settings */}
-              {activeSection === "business" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="w-5 h-5" />
-                      ProtoLab for Business
-                    </CardTitle>
-                    <CardDescription>Unlock features designed for businesses and teams</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/20">
-                      <h3 className="text-xl font-bold mb-2">Upgrade to Business</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Get access to bulk ordering, team management, priority support, and invoicing features.
-                      </p>
-                      <ul className="space-y-2 mb-6">
-                        <li className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          Volume discounts on orders
-                        </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          Team member accounts
-                        </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          Priority production queue
-                        </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          Dedicated account manager
-                        </li>
-                      </ul>
-                      <Button onClick={() => toast.info("Business features coming soon!")}>
-                        Contact Sales
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  {/* Order & Shipping Notifications */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Bell className="w-5 h-5" />
+                        Order & Shipping Updates
+                      </CardTitle>
+                      <CardDescription>Notifications about your print jobs and deliveries</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Order Confirmation</p>
+                          <p className="text-sm text-muted-foreground">Email confirming your order has been received</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.orderConfirmation} 
+                          onCheckedChange={(checked) => handleNotificationChange('orderConfirmation', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Order Status Change</p>
+                          <p className="text-sm text-muted-foreground">Updates when your order moves to a new status</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.orderStatusChange} 
+                          onCheckedChange={(checked) => handleNotificationChange('orderStatusChange', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Print Started</p>
+                          <p className="text-sm text-muted-foreground">Notification when your print job begins</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.printStarted} 
+                          onCheckedChange={(checked) => handleNotificationChange('printStarted', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Print Completed</p>
+                          <p className="text-sm text-muted-foreground">Email when your print is finished and ready</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.printCompleted} 
+                          onCheckedChange={(checked) => handleNotificationChange('printCompleted', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Shipping Updates</p>
+                          <p className="text-sm text-muted-foreground">Tracking updates and shipping status changes</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.shippingUpdate} 
+                          onCheckedChange={(checked) => handleNotificationChange('shippingUpdate', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Delivery Confirmation</p>
+                          <p className="text-sm text-muted-foreground">Email when your order has been delivered</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.deliveryConfirmation} 
+                          onCheckedChange={(checked) => handleNotificationChange('deliveryConfirmation', checked)} 
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Marketing Notifications */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Marketing & Promotions
+                      </CardTitle>
+                      <CardDescription>Optional emails about news and special offers</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Marketing Emails</p>
+                          <p className="text-sm text-muted-foreground">News, tips, and updates from ProtoLab</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.marketingEmails} 
+                          onCheckedChange={(checked) => handleNotificationChange('marketingEmails', checked)} 
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-medium">Promotional Offers</p>
+                          <p className="text-sm text-muted-foreground">Discounts, deals, and special promotions</p>
+                        </div>
+                        <Switch 
+                          checked={notificationSettings.promotions} 
+                          onCheckedChange={(checked) => handleNotificationChange('promotions', checked)} 
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
               )}
 
               {/* Privacy & Data Settings */}
@@ -741,10 +1392,10 @@ const Settings = () => {
                           </div>
                           <div>
                             <p className="font-medium">Activity Log</p>
-                            <p className="text-sm text-muted-foreground">View your account activity history</p>
+                            <p className="text-sm text-muted-foreground">View your account activity history ({activityLog.length} events)</p>
                           </div>
                         </div>
-                        <Button variant="outline" onClick={() => toast.info("Activity log coming soon!")}>
+                        <Button variant="outline" onClick={() => setShowActivityLogDialog(true)}>
                           View
                         </Button>
                       </div>
@@ -791,6 +1442,196 @@ const Settings = () => {
             </div>
           </div>
         </div>
+
+        {/* Add Payment Method Dialog */}
+        <Dialog open={showAddPaymentDialog} onOpenChange={setShowAddPaymentDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add Card</DialogTitle>
+              <DialogDescription>
+                Add a credit or debit card for faster checkout
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Input
+                      id="cardNumber"
+                      placeholder="1234 5678 9012 3456"
+                      value={newCardData.cardNumber}
+                      onChange={(e) => setNewCardData(prev => ({
+                        ...prev,
+                        cardNumber: formatCardNumber(e.target.value)
+                      }))}
+                      maxLength={19}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expiryDate">Expiry Date</Label>
+                      <Input
+                        id="expiryDate"
+                        placeholder="MM/YY"
+                        value={newCardData.expiryDate}
+                        onChange={(e) => setNewCardData(prev => ({
+                          ...prev,
+                          expiryDate: formatExpiryDate(e.target.value)
+                        }))}
+                        maxLength={5}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cardholderName">Cardholder Name</Label>
+                      <Input
+                        id="cardholderName"
+                        placeholder="John Doe"
+                        value={newCardData.cardholderName}
+                        onChange={(e) => setNewCardData(prev => ({
+                          ...prev,
+                          cardholderName: e.target.value
+                        }))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Your card details are securely stored
+                  </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddPaymentMethod}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Card
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Terminate Session Confirmation Dialog */}
+        <AlertDialog open={!!sessionToTerminate} onOpenChange={(open) => !open && setSessionToTerminate(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Terminate Session</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to terminate this session? The device will be logged out and will need to sign in again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setSessionToTerminate(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmTerminateSession}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Terminate Session
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Terminate All Sessions Confirmation Dialog */}
+        <AlertDialog open={showTerminateAllDialog} onOpenChange={setShowTerminateAllDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Terminate All Other Sessions</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to terminate all other sessions? All devices except this one will be logged out and will need to sign in again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowTerminateAllDialog(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmTerminateAllOtherSessions}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Terminate All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Activity Log Dialog */}
+        <Dialog open={showActivityLogDialog} onOpenChange={setShowActivityLogDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Activity Log
+              </DialogTitle>
+              <DialogDescription>
+                Your recent account activity and security events
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto max-h-[50vh] space-y-3 pr-2">
+              {activityLog.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium">No activity recorded yet</p>
+                  <p className="text-sm">Your account activity will appear here</p>
+                </div>
+              ) : (
+                activityLog.map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="text-2xl">{getActivityIcon(activity.type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-sm">{activity.title}</p>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(activity.timestamp).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{activity.description}</p>
+                      {activity.metadata && (
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {activity.metadata.device && (
+                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                              {activity.metadata.device}
+                            </span>
+                          )}
+                          {activity.metadata.location && (
+                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                              📍 {activity.metadata.location}
+                            </span>
+                          )}
+                          {activity.metadata.ip && (
+                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                              IP: {activity.metadata.ip}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <DialogFooter className="flex-row justify-between sm:justify-between">
+              {activityLog.length > 0 && (
+                <Button variant="outline" size="sm" onClick={clearActivityLog}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear Log
+                </Button>
+              )}
+              <Button onClick={() => setShowActivityLogDialog(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

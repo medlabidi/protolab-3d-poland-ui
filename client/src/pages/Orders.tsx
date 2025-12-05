@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -30,10 +31,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Settings2 } from "lucide-react";
+import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Settings2, Archive, ArchiveRestore, Trash, Search, Filter, X, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -49,16 +52,31 @@ interface Order {
   file_name: string;
   file_url?: string;
   project_name?: string;
+  is_archived?: boolean;
+  deleted_at?: string | null;
 }
+
+type OrderTab = 'active' | 'archived' | 'deleted';
 
 const Orders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
+  const [deletedOrders, setDeletedOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<OrderTab>('active');
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [materialFilter, setMaterialFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    fetchOrders();
+    fetchAllOrders();
   }, []);
 
   const refreshAccessToken = async (): Promise<string | null> => {
@@ -89,9 +107,21 @@ const Orders = () => {
     return null;
   };
 
-  const fetchOrders = async (retry = true) => {
+  const fetchAllOrders = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      await Promise.all([
+        fetchOrders('active'),
+        fetchOrders('archived'),
+        fetchOrders('deleted'),
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOrders = async (filter: OrderTab, retry = true) => {
+    try {
       let token = localStorage.getItem('accessToken');
       
       if (!token) {
@@ -99,7 +129,7 @@ const Orders = () => {
         return;
       }
       
-      let response = await fetch(`${API_URL}/orders/my`, {
+      let response = await fetch(`${API_URL}/orders/my?filter=${filter}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -109,7 +139,7 @@ const Orders = () => {
       if (response.status === 401 && retry) {
         const newToken = await refreshAccessToken();
         if (newToken) {
-          return fetchOrders(false); // Retry with new token
+          return fetchOrders(filter, false); // Retry with new token
         }
         return;
       }
@@ -119,21 +149,114 @@ const Orders = () => {
       }
 
       const data = await response.json();
-      setOrders(data.orders || []);
+      
+      if (filter === 'active') {
+        setOrders(data.orders || []);
+      } else if (filter === 'archived') {
+        setArchivedOrders(data.orders || []);
+      } else if (filter === 'deleted') {
+        setDeletedOrders(data.orders || []);
+      }
     } catch (err) {
-      console.error('Error fetching orders:', err);
+      console.error(`Error fetching ${filter} orders:`, err);
       setError(err instanceof Error ? err.message : 'Failed to load orders');
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleArchiveOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${orderId}/archive`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive order');
+      }
+
+      toast.success('Order moved to archive');
+      fetchAllOrders();
+    } catch (err) {
+      console.error('Error archiving order:', err);
+      toast.error('Failed to archive order');
+    }
+  };
+
+  const handleRestoreOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${orderId}/restore`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to restore order');
+      }
+
+      toast.success('Order restored');
+      fetchAllOrders();
+    } catch (err) {
+      console.error('Error restoring order:', err);
+      toast.error('Failed to restore order');
+    }
+  };
+
+  const handleSoftDeleteOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${orderId}/soft`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete order');
+      }
+
+      toast.success('Order moved to trash');
+      fetchAllOrders();
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      toast.error('Failed to delete order');
+    }
+  };
+
+  const handlePermanentDeleteOrder = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${orderId}/permanent`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to permanently delete order');
+      }
+
+      toast.success('Order permanently deleted');
+      fetchAllOrders();
+    } catch (err) {
+      console.error('Error permanently deleting order:', err);
+      toast.error('Failed to permanently delete order');
     }
   };
 
   // Group orders by project
-  const groupedOrders = useMemo(() => {
+  const groupOrdersByProject = (orderList: Order[]) => {
     const projects: Record<string, Order[]> = {};
     const standaloneOrders: Order[] = [];
 
-    orders.forEach(order => {
+    orderList.forEach(order => {
       if (order.project_name) {
         if (!projects[order.project_name]) {
           projects[order.project_name] = [];
@@ -145,7 +268,93 @@ const Orders = () => {
     });
 
     return { projects, standaloneOrders };
-  }, [orders]);
+  };
+
+  // Filter orders based on search and filters
+  const filterOrders = (orderList: Order[]) => {
+    return orderList.filter(order => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          order.id.toLowerCase().includes(query) ||
+          order.file_name?.toLowerCase().includes(query) ||
+          order.project_name?.toLowerCase().includes(query) ||
+          order.material?.toLowerCase().includes(query) ||
+          order.color?.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all' && order.status !== statusFilter) {
+        return false;
+      }
+
+      // Material filter
+      if (materialFilter !== 'all' && order.material !== materialFilter) {
+        return false;
+      }
+
+      // Payment filter
+      if (paymentFilter !== 'all' && order.payment_status !== paymentFilter) {
+        return false;
+      }
+
+      // Date filter
+      if (dateFilter !== 'all') {
+        const orderDate = new Date(order.created_at);
+        const now = new Date();
+        const daysDiff = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        switch (dateFilter) {
+          case 'today':
+            if (daysDiff > 0) return false;
+            break;
+          case 'week':
+            if (daysDiff > 7) return false;
+            break;
+          case 'month':
+            if (daysDiff > 30) return false;
+            break;
+          case 'quarter':
+            if (daysDiff > 90) return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  // Get unique materials from all orders for filter dropdown
+  const uniqueMaterials = useMemo(() => {
+    const materials = new Set<string>();
+    [...orders, ...archivedOrders, ...deletedOrders].forEach(order => {
+      if (order.material) materials.add(order.material);
+    });
+    return Array.from(materials).sort();
+  }, [orders, archivedOrders, deletedOrders]);
+
+  // Check if any filters are active
+  const hasActiveFilters = statusFilter !== 'all' || materialFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' || searchQuery !== '';
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setMaterialFilter('all');
+    setPaymentFilter('all');
+    setDateFilter('all');
+  };
+
+  // Filtered and grouped orders
+  const filteredOrders = useMemo(() => filterOrders(orders), [orders, searchQuery, statusFilter, materialFilter, paymentFilter, dateFilter]);
+  const filteredArchivedOrders = useMemo(() => filterOrders(archivedOrders), [archivedOrders, searchQuery, statusFilter, materialFilter, paymentFilter, dateFilter]);
+  const filteredDeletedOrders = useMemo(() => filterOrders(deletedOrders), [deletedOrders, searchQuery, statusFilter, materialFilter, paymentFilter, dateFilter]);
+
+  const groupedOrders = useMemo(() => groupOrdersByProject(filteredOrders), [filteredOrders]);
+  const groupedArchivedOrders = useMemo(() => groupOrdersByProject(filteredArchivedOrders), [filteredArchivedOrders]);
+  const groupedDeletedOrders = useMemo(() => groupOrdersByProject(filteredDeletedOrders), [filteredDeletedOrders]);
 
   // Get project status based on its orders
   const getProjectStatus = (projectOrders: Order[]): OrderStatus => {
@@ -247,9 +456,72 @@ const Orders = () => {
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
     
-    toast.error('Delete project functionality coming soon');
-    setDeleteDialogOpen(false);
-    setSelectedProject(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const projectOrders = groupedOrders.projects[selectedProject];
+      
+      if (!projectOrders || projectOrders.length === 0) {
+        toast.error('Project not found');
+        return;
+      }
+      
+      // Check if any orders are still active
+      const activeOrders = projectOrders.filter(o => 
+        ['submitted', 'in_queue', 'printing'].includes(o.status)
+      );
+      
+      if (activeOrders.length > 0) {
+        toast.error(`Cannot delete project: ${activeOrders.length} order(s) are still active`);
+        setDeleteDialogOpen(false);
+        setSelectedProject(null);
+        return;
+      }
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Soft delete all orders in the project
+      for (const order of projectOrders) {
+        const response = await fetch(`${API_URL}/orders/${order.id}/soft`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+          console.error('Failed to delete order:', order.id);
+        }
+      }
+      
+      if (failCount > 0 && successCount === 0) {
+        toast.error('Failed to delete project');
+      } else if (failCount > 0) {
+        toast.warning(`Partially deleted: ${successCount} succeeded, ${failCount} failed`);
+      } else {
+        toast.success(`Project "${selectedProject}" moved to trash`);
+      }
+      
+      setDeleteDialogOpen(false);
+      setSelectedProject(null);
+      fetchAllOrders();
+    } catch (error) {
+      toast.error('Failed to delete project');
+    }
+  };
+
+  // Helper to check if an order can be deleted/archived (not actively processing)
+  const canDeleteOrder = (status: OrderStatus): boolean => {
+    const activeStatuses = ['submitted', 'in_queue', 'printing'];
+    return !activeStatuses.includes(status);
+  };
+
+  // Helper to check if a project can be deleted (all orders are non-active)
+  const canDeleteProject = (projectOrders: Order[]): boolean => {
+    return projectOrders.every(order => canDeleteOrder(order.status));
   };
 
   const handleAddPartToProject = (projectName: string) => {
@@ -297,12 +569,168 @@ const Orders = () => {
             <p className="text-muted-foreground text-lg">Track and manage your 3D printing orders</p>
           </div>
 
-          <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-white to-gray-50/30">
+          <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
             <CardHeader className="border-b">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Package className="w-6 h-6 text-primary" />
-                All Orders
-              </CardTitle>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Package className="w-6 h-6 text-primary" />
+                    All Orders
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={showFilters ? 'bg-primary/10' : ''}
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                    {hasActiveFilters && (
+                      <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {[statusFilter !== 'all', materialFilter !== 'all', paymentFilter !== 'all', dateFilter !== 'all'].filter(Boolean).length}
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by order ID, file name, project, material..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filters */}
+                {showFilters && (
+                  <div className="flex flex-wrap gap-3 p-4 bg-muted/30 rounded-lg animate-slide-up">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[140px] h-9">
+                          <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="submitted">Submitted</SelectItem>
+                          <SelectItem value="in_queue">In Queue</SelectItem>
+                          <SelectItem value="printing">Printing</SelectItem>
+                          <SelectItem value="finished">Finished</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="on_hold">On Hold</SelectItem>
+                          <SelectItem value="suspended">Suspended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-muted-foreground">Material</Label>
+                      <Select value={materialFilter} onValueChange={setMaterialFilter}>
+                        <SelectTrigger className="w-[140px] h-9">
+                          <SelectValue placeholder="All Materials" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Materials</SelectItem>
+                          {uniqueMaterials.map(material => (
+                            <SelectItem key={material} value={material}>{material}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-muted-foreground">Payment</Label>
+                      <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                        <SelectTrigger className="w-[140px] h-9">
+                          <SelectValue placeholder="All Payments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Payments</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="refunded">Refunded</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs text-muted-foreground">Date</Label>
+                      <Select value={dateFilter} onValueChange={setDateFilter}>
+                        <SelectTrigger className="w-[140px] h-9">
+                          <SelectValue placeholder="All Time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Time</SelectItem>
+                          <SelectItem value="today">Today</SelectItem>
+                          <SelectItem value="week">Last 7 Days</SelectItem>
+                          <SelectItem value="month">Last 30 Days</SelectItem>
+                          <SelectItem value="quarter">Last 90 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {hasActiveFilters && (
+                      <div className="flex items-end">
+                        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+                          <X className="w-4 h-4 mr-1" />
+                          Clear All
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Active Filters Summary */}
+                {hasActiveFilters && !showFilters && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Active filters:</span>
+                    {searchQuery && (
+                      <Badge variant="secondary" className="gap-1">
+                        Search: "{searchQuery}"
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
+                      </Badge>
+                    )}
+                    {statusFilter !== 'all' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Status: {statusFilter}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
+                      </Badge>
+                    )}
+                    {materialFilter !== 'all' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Material: {materialFilter}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => setMaterialFilter('all')} />
+                      </Badge>
+                    )}
+                    {paymentFilter !== 'all' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Payment: {paymentFilter}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => setPaymentFilter('all')} />
+                      </Badge>
+                    )}
+                    {dateFilter !== 'all' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Date: {dateFilter}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => setDateFilter('all')} />
+                      </Badge>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               {loading ? (
@@ -313,21 +741,52 @@ const Orders = () => {
               ) : error ? (
                 <div className="text-center py-12 text-destructive">
                   <p>{error}</p>
-                  <Button onClick={fetchOrders} variant="outline" className="mt-4">
+                  <Button onClick={fetchAllOrders} variant="outline" className="mt-4">
                     Try Again
                   </Button>
                 </div>
-              ) : orders.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-semibold">No orders yet</p>
-                  <p className="mt-2">Start by creating your first 3D print order!</p>
-                  <Button onClick={() => navigate('/new-print')} className="mt-4">
-                    Create New Order
-                  </Button>
-                </div>
               ) : (
-                <div className="space-y-4">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OrderTab)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="active" className="flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Orders ({filteredOrders.length}{hasActiveFilters ? `/${orders.length}` : ''})
+                    </TabsTrigger>
+                    <TabsTrigger value="archived" className="flex items-center gap-2">
+                      <Archive className="w-4 h-4" />
+                      Archived ({filteredArchivedOrders.length}{hasActiveFilters ? `/${archivedOrders.length}` : ''})
+                    </TabsTrigger>
+                    <TabsTrigger value="deleted" className="flex items-center gap-2">
+                      <Trash className="w-4 h-4" />
+                      Deleted ({filteredDeletedOrders.length}{hasActiveFilters ? `/${deletedOrders.length}` : ''})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Active Orders Tab */}
+                  <TabsContent value="active">
+                    {filteredOrders.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        {hasActiveFilters ? (
+                          <>
+                            <p className="text-lg font-semibold">No orders match your filters</p>
+                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <Button onClick={clearFilters} variant="outline" className="mt-4">
+                              Clear Filters
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-semibold">No orders yet</p>
+                            <p className="mt-2">Start by creating your first 3D print order!</p>
+                            <Button onClick={() => navigate('/new-print')} className="mt-4">
+                              Create New Order
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
                   {/* Projects Section */}
                   {Object.keys(groupedOrders.projects).length > 0 && (
                     <div className="space-y-3">
@@ -342,7 +801,7 @@ const Orders = () => {
                           open={expandedProjects.has(projectName)}
                           onOpenChange={() => toggleProject(projectName)}
                         >
-                          <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-purple-50/50 to-primary/5">
+                          <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10">
                             <div className="grid grid-cols-7 gap-4 items-center p-4 hover:bg-primary/5 transition-colors">
                               <CollapsibleTrigger className="flex items-center gap-3 col-span-1">
                                 <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -417,15 +876,23 @@ const Orders = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
-                                      className="text-destructive focus:text-destructive"
+                                      className={canDeleteProject(projectOrders) ? "text-destructive focus:text-destructive" : "text-muted-foreground cursor-not-allowed"}
+                                      disabled={!canDeleteProject(projectOrders)}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setSelectedProject(projectName);
-                                        setDeleteDialogOpen(true);
+                                        if (canDeleteProject(projectOrders)) {
+                                          setSelectedProject(projectName);
+                                          setDeleteDialogOpen(true);
+                                        } else {
+                                          toast.error('Cannot delete: project has active orders');
+                                        }
                                       }}
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
                                       Delete Project
+                                      {!canDeleteProject(projectOrders) && (
+                                        <span className="text-xs ml-auto">(active)</span>
+                                      )}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -439,7 +906,7 @@ const Orders = () => {
                               </div>
                             </div>
                             <CollapsibleContent>
-                              <div className="border-t border-primary/10 bg-white/50">
+                              <div className="border-t border-primary/10 bg-muted/50">
                                 <div className="grid grid-cols-7 gap-4 text-xs font-bold text-muted-foreground py-2 px-4 bg-muted/30">
                                   <div className="pl-14">File Name</div>
                                   <div>Status</div>
@@ -498,6 +965,25 @@ const Orders = () => {
                                           <DropdownMenuItem>
                                             <Download className="w-4 h-4 mr-2" />
                                             Download File
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem 
+                                            className={canDeleteOrder(order.status) ? "" : "text-muted-foreground cursor-not-allowed"}
+                                            disabled={!canDeleteOrder(order.status)}
+                                            onClick={() => canDeleteOrder(order.status) && handleArchiveOrder(order.id)}
+                                          >
+                                            <Archive className="w-4 h-4 mr-2" />
+                                            Move to Archive
+                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            className={canDeleteOrder(order.status) ? "text-destructive focus:text-destructive" : "text-muted-foreground cursor-not-allowed"}
+                                            disabled={!canDeleteOrder(order.status)}
+                                            onClick={() => canDeleteOrder(order.status) && handleSoftDeleteOrder(order.id)}
+                                          >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete Order
+                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -588,11 +1074,22 @@ const Orders = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => toast.error('Delete functionality coming soon')}
+                                  className={canDeleteOrder(order.status) ? "" : "text-muted-foreground cursor-not-allowed"}
+                                  disabled={!canDeleteOrder(order.status)}
+                                  onClick={() => canDeleteOrder(order.status) && handleArchiveOrder(order.id)}
+                                >
+                                  <Archive className="w-4 h-4 mr-2" />
+                                  Move to Archive
+                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className={canDeleteOrder(order.status) ? "text-destructive focus:text-destructive" : "text-muted-foreground cursor-not-allowed"}
+                                  disabled={!canDeleteOrder(order.status)}
+                                  onClick={() => canDeleteOrder(order.status) && handleSoftDeleteOrder(order.id)}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete Order
+                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -601,7 +1098,182 @@ const Orders = () => {
                       ))}
                     </div>
                   )}
-                </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Archived Orders Tab */}
+                  <TabsContent value="archived">
+                    {filteredArchivedOrders.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Archive className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        {hasActiveFilters ? (
+                          <>
+                            <p className="text-lg font-semibold">No archived orders match your filters</p>
+                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <Button onClick={clearFilters} variant="outline" className="mt-4">
+                              Clear Filters
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-semibold">No archived orders</p>
+                            <p className="mt-2">Orders you archive will appear here</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                          <div>File Name</div>
+                          <div>Status</div>
+                          <div>Payment</div>
+                          <div>Date</div>
+                          <div>Material</div>
+                          <div>Price</div>
+                          <div className="text-right">Actions</div>
+                        </div>
+                        
+                        {filteredArchivedOrders.map((order, index) => (
+                          <div
+                            key={order.id}
+                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <div className="font-medium text-muted-foreground truncate" title={order.file_name}>
+                              {order.file_name}
+                            </div>
+                            <div>
+                              <StatusBadge status={order.status} />
+                            </div>
+                            <div>
+                              {order.payment_status && (
+                                <PaymentStatusBadge status={order.payment_status} />
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{formatDate(order.created_at)}</div>
+                            <div className="text-sm">
+                              <span className="font-semibold">{capitalizeFirst(order.material)}</span>
+                              <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
+                            </div>
+                            <div className="font-bold text-muted-foreground">{formatPrice(order.price)}</div>
+                            <div className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}>
+                                    <ArchiveRestore className="w-4 h-4 mr-2" />
+                                    Restore Order
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handleSoftDeleteOrder(order.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Order
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Deleted Orders Tab */}
+                  <TabsContent value="deleted">
+                    {filteredDeletedOrders.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Trash className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        {hasActiveFilters ? (
+                          <>
+                            <p className="text-lg font-semibold">No deleted orders match your filters</p>
+                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <Button onClick={clearFilters} variant="outline" className="mt-4">
+                              Clear Filters
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-semibold">Trash is empty</p>
+                            <p className="mt-2">Deleted orders will appear here for 30 days</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                          <div>File Name</div>
+                          <div>Status</div>
+                          <div>Payment</div>
+                          <div>Date</div>
+                          <div>Material</div>
+                          <div>Price</div>
+                          <div className="text-right">Actions</div>
+                        </div>
+                        
+                        {filteredDeletedOrders.map((order, index) => (
+                          <div
+                            key={order.id}
+                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <div className="font-medium text-muted-foreground truncate line-through" title={order.file_name}>
+                              {order.file_name}
+                            </div>
+                            <div>
+                              <StatusBadge status={order.status} />
+                            </div>
+                            <div>
+                              {order.payment_status && (
+                                <PaymentStatusBadge status={order.payment_status} />
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{formatDate(order.created_at)}</div>
+                            <div className="text-sm">
+                              <span className="font-semibold">{capitalizeFirst(order.material)}</span>
+                              <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
+                            </div>
+                            <div className="font-bold text-muted-foreground">{formatPrice(order.price)}</div>
+                            <div className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}>
+                                    <ArchiveRestore className="w-4 h-4 mr-2" />
+                                    Restore Order
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handlePermanentDeleteOrder(order.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Permanently
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               )}
             </CardContent>
           </Card>
@@ -644,13 +1316,13 @@ const Orders = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Project?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will delete all orders in the project "{selectedProject}". This action cannot be undone.
+                This will move all {selectedProject && groupedOrders.projects[selectedProject]?.length || 0} orders in the project "{selectedProject}" to trash. You can restore them later from the Deleted tab.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
+                Move to Trash
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

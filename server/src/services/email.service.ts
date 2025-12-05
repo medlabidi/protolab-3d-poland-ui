@@ -723,6 +723,227 @@ export class EmailService {
       // Don't throw - not critical
     }
   }
+
+  async sendInvoiceEmail(
+    toEmail: string,
+    userName: string,
+    invoiceDetails: {
+      invoiceNumber: string;
+      invoiceDate: string;
+      dueDate: string;
+      orderNumber?: string;
+      projectName?: string;
+      items: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+      subtotal: number;
+      vatRate: number;
+      vatAmount: number;
+      totalAmount: number;
+      paymentMethod: string;
+      billingInfo: {
+        companyName: string;
+        taxId: string;
+        vatNumber?: string;
+        address: string;
+        city: string;
+        zipCode: string;
+        country: string;
+      };
+    }
+  ): Promise<{ invoiceNumber: string; success: boolean }> {
+    const itemsHtml = invoiceDetails.items.map(item => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${item.unitPrice.toFixed(2)} PLN</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${item.total.toFixed(2)} PLN</td>
+      </tr>
+    `).join('');
+
+    const mailOptions = {
+      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
+      to: toEmail,
+      subject: `Invoice ${invoiceDetails.invoiceNumber} - ProtoLab 3D Poland`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+            .invoice-box { background: white; padding: 30px; border: 1px solid #ddd; }
+            .invoice-header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #667eea; padding-bottom: 20px; }
+            .company-info { text-align: right; }
+            .invoice-details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .billing-info, .invoice-info { width: 48%; }
+            .billing-info h4, .invoice-info h4 { color: #667eea; margin-bottom: 10px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            .items-table th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #667eea; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+            .items-table td { padding: 12px; border-bottom: 1px solid #eee; }
+            .totals { text-align: right; margin-top: 20px; }
+            .totals-row { display: flex; justify-content: flex-end; padding: 8px 0; }
+            .totals-label { width: 150px; text-align: right; margin-right: 20px; }
+            .totals-value { width: 120px; text-align: right; }
+            .grand-total { font-size: 1.3em; font-weight: bold; color: #667eea; border-top: 2px solid #667eea; padding-top: 15px; margin-top: 10px; }
+            .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+            .payment-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }
+            .stamp { color: #28a745; font-weight: bold; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">🧾 INVOICE</h1>
+            </div>
+            <div class="invoice-box">
+              <div class="invoice-header">
+                <div>
+                  <h2 style="margin: 0; color: #667eea;">ProtoLab 3D Poland</h2>
+                  <p style="margin: 5px 0; color: #666;">Professional 3D Printing Services</p>
+                  <p style="margin: 5px 0; font-size: 14px;">Zielonogórska 13</p>
+                  <p style="margin: 5px 0; font-size: 14px;">30-406 Kraków, Poland</p>
+                  <p style="margin: 5px 0; font-size: 14px;">NIP: PL1234567890</p>
+                </div>
+                <div class="company-info">
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>Invoice No:</strong> ${invoiceDetails.invoiceNumber}</p>
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>Date:</strong> ${invoiceDetails.invoiceDate}</p>
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>Due Date:</strong> ${invoiceDetails.dueDate}</p>
+                  <p class="stamp" style="margin-top: 15px;">✓ PAID</p>
+                </div>
+              </div>
+
+              <div class="invoice-details">
+                <div class="billing-info">
+                  <h4>Bill To</h4>
+                  <p style="margin: 5px 0;"><strong>${invoiceDetails.billingInfo.companyName}</strong></p>
+                  <p style="margin: 5px 0; font-size: 14px;">${invoiceDetails.billingInfo.address}</p>
+                  <p style="margin: 5px 0; font-size: 14px;">${invoiceDetails.billingInfo.zipCode} ${invoiceDetails.billingInfo.city}</p>
+                  <p style="margin: 5px 0; font-size: 14px;">${invoiceDetails.billingInfo.country}</p>
+                  <p style="margin: 5px 0; font-size: 14px;">NIP: ${invoiceDetails.billingInfo.taxId}</p>
+                  ${invoiceDetails.billingInfo.vatNumber ? `<p style="margin: 5px 0; font-size: 14px;">VAT: ${invoiceDetails.billingInfo.vatNumber}</p>` : ''}
+                </div>
+                <div class="invoice-info">
+                  <h4>Order Details</h4>
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>${invoiceDetails.projectName ? 'Project' : 'Order'}:</strong> ${invoiceDetails.projectName || invoiceDetails.orderNumber || 'N/A'}</p>
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>Payment Method:</strong> ${invoiceDetails.paymentMethod}</p>
+                  <p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> <span style="color: #28a745;">Paid</span></p>
+                </div>
+              </div>
+
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Unit Price</th>
+                    <th style="text-align: right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+
+              <div class="totals">
+                <div class="totals-row">
+                  <span class="totals-label">Subtotal:</span>
+                  <span class="totals-value">${invoiceDetails.subtotal.toFixed(2)} PLN</span>
+                </div>
+                <div class="totals-row">
+                  <span class="totals-label">VAT (${invoiceDetails.vatRate}%):</span>
+                  <span class="totals-value">${invoiceDetails.vatAmount.toFixed(2)} PLN</span>
+                </div>
+                <div class="totals-row grand-total">
+                  <span class="totals-label">Total:</span>
+                  <span class="totals-value">${invoiceDetails.totalAmount.toFixed(2)} PLN</span>
+                </div>
+              </div>
+
+              <div class="payment-info">
+                <p style="margin: 0;"><strong>Payment received on ${invoiceDetails.invoiceDate}</strong></p>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Thank you for your business!</p>
+              </div>
+            </div>
+
+            <div class="footer">
+              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
+              <p>Questions? Contact us at ${ADMIN_EMAIL}</p>
+              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        INVOICE - ProtoLab 3D Poland
+        ============================
+
+        Invoice No: ${invoiceDetails.invoiceNumber}
+        Date: ${invoiceDetails.invoiceDate}
+        Due Date: ${invoiceDetails.dueDate}
+        Status: PAID
+
+        BILL TO:
+        ${invoiceDetails.billingInfo.companyName}
+        ${invoiceDetails.billingInfo.address}
+        ${invoiceDetails.billingInfo.zipCode} ${invoiceDetails.billingInfo.city}
+        ${invoiceDetails.billingInfo.country}
+        NIP: ${invoiceDetails.billingInfo.taxId}
+        ${invoiceDetails.billingInfo.vatNumber ? `VAT: ${invoiceDetails.billingInfo.vatNumber}` : ''}
+
+        ORDER DETAILS:
+        ${invoiceDetails.projectName ? 'Project' : 'Order'}: ${invoiceDetails.projectName || invoiceDetails.orderNumber || 'N/A'}
+        Payment Method: ${invoiceDetails.paymentMethod}
+
+        ITEMS:
+        ${invoiceDetails.items.map(item => `- ${item.description} x${item.quantity}: ${item.total.toFixed(2)} PLN`).join('\n')}
+
+        TOTALS:
+        Subtotal: ${invoiceDetails.subtotal.toFixed(2)} PLN
+        VAT (${invoiceDetails.vatRate}%): ${invoiceDetails.vatAmount.toFixed(2)} PLN
+        Total: ${invoiceDetails.totalAmount.toFixed(2)} PLN
+
+        Payment received on ${invoiceDetails.invoiceDate}
+        Thank you for your business!
+
+        Questions? Contact us at ${ADMIN_EMAIL}
+        ProtoLab 3D Poland
+      `,
+    };
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`🧾 INVOICE EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(`Invoice No: ${invoiceDetails.invoiceNumber}`);
+        console.log(`Date: ${invoiceDetails.invoiceDate}`);
+        console.log(`Company: ${invoiceDetails.billingInfo.companyName}`);
+        console.log(`NIP: ${invoiceDetails.billingInfo.taxId}`);
+        console.log(`Total: ${invoiceDetails.totalAmount.toFixed(2)} PLN`);
+        console.log(`${'='.repeat(80)}\n`);
+        return { invoiceNumber: invoiceDetails.invoiceNumber, success: true };
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      });
+      logger.info(`Invoice email sent to ${toEmail}, Invoice: ${invoiceDetails.invoiceNumber}`);
+      return { invoiceNumber: invoiceDetails.invoiceNumber, success: true };
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send invoice email to ${toEmail}`);
+      return { invoiceNumber: invoiceDetails.invoiceNumber, success: false };
+    }
+  }
 }
 
 export const emailService = new EmailService();

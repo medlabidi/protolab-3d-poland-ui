@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ThemeProvider } from "./components/ThemeProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import Landing from "./pages/Landing";
@@ -24,6 +25,7 @@ import Payment from "./pages/Payment";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
 import Conversations from "./pages/Conversations";
+import Business from "./pages/Business";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -34,15 +36,16 @@ const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
 
 const App = () => (
-  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <NotificationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
+  <ThemeProvider defaultTheme="system" storageKey="protolab-ui-theme">
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <LanguageProvider>
+          <NotificationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/about" element={<AboutUs />} />
                 <Route path="/signin" element={<SignIn />} />
@@ -62,6 +65,7 @@ const App = () => (
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
+                <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
@@ -76,6 +80,7 @@ const App = () => (
       </LanguageProvider>
     </QueryClientProvider>
   </GoogleOAuthProvider>
+  </ThemeProvider>
 );
 
 export default App;
