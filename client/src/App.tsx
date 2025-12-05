@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import Payment from "./pages/Payment";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
+import Conversations from "./pages/Conversations";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+                <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />

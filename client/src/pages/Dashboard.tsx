@@ -332,12 +332,6 @@ const Dashboard = () => {
       description: "Successfully delivered",
     },
     {
-      title: t.dashboard.totalSpent,
-      value: stats.totalSpent,
-      icon: DollarSign,
-      description: "Lifetime spending",
-    },
-    {
       title: "Store Credits",
       value: `${creditBalance.toFixed(2)} PLN`,
       icon: Wallet,

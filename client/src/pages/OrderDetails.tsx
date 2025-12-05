@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
-import { ArrowLeft, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, Star, Loader2, MessageSquare } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewText, setReviewText] = useState("");
+  const [startingConversation, setStartingConversation] = useState(false);
 
   useEffect(() => {
     fetchOrder();
@@ -143,6 +144,38 @@ const OrderDetails = () => {
     }
   };
 
+  const handleJobConversation = async () => {
+    setStartingConversation(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/order/${orderId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          subject: `Job conversation for order #${orderId?.slice(0, 8)}` 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to open conversation');
+      }
+
+      const data = await response.json();
+      const conversationId = data.conversation?.id;
+      
+      // Navigate to conversations page with the conversation ID
+      navigate(`/conversations?open=${conversationId}`);
+    } catch (err) {
+      console.error('Error opening conversation:', err);
+      toast.error("Failed to open conversation");
+    } finally {
+      setStartingConversation(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -223,7 +256,20 @@ const OrderDetails = () => {
               <h1 className="text-3xl font-bold">Order #{order.id.slice(0, 8)}</h1>
               <p className="text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
             </div>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex gap-2 items-center">
+              <Button 
+                variant="outline" 
+                onClick={handleJobConversation}
+                disabled={startingConversation}
+                className="gap-2"
+              >
+                {startingConversation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-4 w-4" />
+                )}
+                Job Conversation
+              </Button>
               <StatusBadge status={order.status} />
               {order.payment_status && (
                 <PaymentStatusBadge 

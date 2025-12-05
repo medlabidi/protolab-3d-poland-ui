@@ -3,6 +3,8 @@ import { OrderCreateInput } from '../types';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
 import { getSupabase } from '../config/database';
+import { conversationsService } from './conversations.service';
+import { logger } from '../config/logger';
 
 export class OrderService {
   async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
@@ -26,6 +28,19 @@ export class OrderService {
       payment_status: 'paid',
       project_name: data.projectName,
     });
+    
+    // Auto-create conversation log for the order
+    try {
+      await conversationsService.getOrCreateConversation(
+        userId, 
+        order.id, 
+        `Job conversation for ${data.fileName}`
+      );
+      logger.info(`Auto-created conversation for order ${order.id}`);
+    } catch (err) {
+      // Don't fail order creation if conversation creation fails
+      logger.error({ err }, `Failed to auto-create conversation for order ${order.id}`);
+    }
     
     return order;
   }
