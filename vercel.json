@@ -5,7 +5,7 @@
       "src": "client/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "client/dist"
+        "distDir": "dist"
       }
     },
     {
@@ -16,11 +16,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index"
+      "dest": "/api/index.ts"
     },
     {
       "src": "/health",
-      "dest": "/api/health"
+      "dest": "/api/health.ts"
     },
     {
       "handle": "filesystem"
@@ -30,7 +30,11 @@
       "dest": "/client/dist/index.html"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
+  "build": {
+    "env": {
+      "VITE_API_URL": "/api",
+      "VITE_SUPABASE_URL": "https://ejauqqpatmqbxxhbmkzp.supabase.co",
+      "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqYXVxcXBhdG1xYnh4aGJta3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMzQ4MTEsImV4cCI6MjA3OTYxMDgxMX0.8YyeFRXCljXaUdKBDiBBxg3hjwP3haAyNitSLrq-duc"
+    }
   }
 }

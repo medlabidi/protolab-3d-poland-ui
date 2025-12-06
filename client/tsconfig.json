@@ -28,6 +28,10 @@
   },
   "include": ["src"],
   "exclude": [
+    "src/config/logger.ts",
+    "src/config/s3.ts",
+    "src/config/database.ts",
+    "src/utils/jwt.ts",
     "src/controllers",
     "src/services",
     "src/middleware",
