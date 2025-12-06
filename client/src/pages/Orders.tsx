@@ -37,6 +37,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -60,6 +61,7 @@ type OrderTab = 'active' | 'archived' | 'deleted';
 
 const Orders = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
   const [deletedOrders, setDeletedOrders] = useState<Order[]>([]);
@@ -409,7 +411,7 @@ const Orders = () => {
       const projectOrders = groupedOrders.projects[selectedProject];
       
       if (!projectOrders || projectOrders.length === 0) {
-        toast.error('Project not found');
+        toast.error(t('orders.toasts.projectNotFound'));
         return;
       }
       
@@ -437,11 +439,11 @@ const Orders = () => {
       }
       
       if (failCount > 0 && successCount === 0) {
-        toast.error('Failed to rename project. Please make sure you have the latest database schema.');
+        toast.error(t('orders.toasts.renameProjectFailed'));
       } else if (failCount > 0) {
-        toast.warning(`Partially renamed: ${successCount} succeeded, ${failCount} failed`);
+        toast.warning(t('orders.toasts.partiallyRenamed').replace('{success}', String(successCount)).replace('{failed}', String(failCount)));
       } else {
-        toast.success(`Project renamed to "${newProjectName.trim()}"`);
+        toast.success(t('orders.toasts.projectRenamed').replace('{name}', newProjectName.trim()));
       }
       
       setRenameDialogOpen(false);
@@ -449,7 +451,7 @@ const Orders = () => {
       setNewProjectName('');
       fetchOrders();
     } catch (error) {
-      toast.error('Failed to rename project');
+      toast.error(t('orders.toasts.renameProjectError'));
     }
   };
 
@@ -461,7 +463,7 @@ const Orders = () => {
       const projectOrders = groupedOrders.projects[selectedProject];
       
       if (!projectOrders || projectOrders.length === 0) {
-        toast.error('Project not found');
+        toast.error(t('orders.toasts.projectNotFound'));
         return;
       }
       
@@ -471,7 +473,7 @@ const Orders = () => {
       );
       
       if (activeOrders.length > 0) {
-        toast.error(`Cannot delete project: ${activeOrders.length} order(s) are still active`);
+        toast.error(t('orders.toasts.cannotDeleteActiveOrders').replace('{count}', String(activeOrders.length)));
         setDeleteDialogOpen(false);
         setSelectedProject(null);
         return;
@@ -498,18 +500,18 @@ const Orders = () => {
       }
       
       if (failCount > 0 && successCount === 0) {
-        toast.error('Failed to delete project');
+        toast.error(t('orders.toasts.deleteProjectFailed'));
       } else if (failCount > 0) {
-        toast.warning(`Partially deleted: ${successCount} succeeded, ${failCount} failed`);
+        toast.warning(t('orders.toasts.partiallyDeleted').replace('{success}', String(successCount)).replace('{failed}', String(failCount)));
       } else {
-        toast.success(`Project "${selectedProject}" moved to trash`);
+        toast.success(t('orders.toasts.projectDeleted').replace('{name}', selectedProject));
       }
       
       setDeleteDialogOpen(false);
       setSelectedProject(null);
       fetchAllOrders();
     } catch (error) {
-      toast.error('Failed to delete project');
+      toast.error(t('orders.toasts.deleteProjectError'));
     }
   };
 
@@ -529,7 +531,7 @@ const Orders = () => {
   };
 
   const handleDuplicateProject = async (projectName: string) => {
-    toast.info('Duplicate project functionality coming soon');
+    toast.info(t('orders.toasts.duplicateComingSoon'));
   };
 
   const handleDownloadAllFiles = async (projectName: string) => {
@@ -539,7 +541,7 @@ const Orders = () => {
         window.open(order.file_url, '_blank');
       }
     }
-    toast.success(`Downloading ${projectOrders.length} files...`);
+    toast.success(t('orders.toasts.downloadingFiles').replace('{count}', String(projectOrders.length)));
   };
 
   const formatDate = (dateString: string) => {
@@ -565,8 +567,8 @@ const Orders = () => {
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-2 gradient-text">My Orders</h1>
-            <p className="text-muted-foreground text-lg">Track and manage your 3D printing orders</p>
+            <h1 className="text-4xl font-bold mb-2 gradient-text">{t('orders.title')}</h1>
+            <p className="text-muted-foreground text-lg">{t('orders.subtitle')}</p>
           </div>
 
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
@@ -575,7 +577,7 @@ const Orders = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-2xl flex items-center gap-2">
                     <Package className="w-6 h-6 text-primary" />
-                    All Orders
+                    {t('orders.allOrders')}
                   </CardTitle>
                   <Button
                     variant="outline"
@@ -584,7 +586,7 @@ const Orders = () => {
                     className={showFilters ? 'bg-primary/10' : ''}
                   >
                     <Filter className="w-4 h-4 mr-2" />
-                    Filters
+                    {t('orders.filters')}
                     {hasActiveFilters && (
                       <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
                         {[statusFilter !== 'all', materialFilter !== 'all', paymentFilter !== 'all', dateFilter !== 'all'].filter(Boolean).length}
@@ -597,7 +599,7 @@ const Orders = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by order ID, file name, project, material..."
+                    placeholder={t('orders.searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 pr-10"
@@ -616,32 +618,32 @@ const Orders = () => {
                 {showFilters && (
                   <div className="flex flex-wrap gap-3 p-4 bg-muted/30 rounded-lg animate-slide-up">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Label className="text-xs text-muted-foreground">{t('orders.filters.status')}</Label>
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-[140px] h-9">
-                          <SelectValue placeholder="All Statuses" />
+                          <SelectValue placeholder={t('orders.filters.allStatuses')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="submitted">Submitted</SelectItem>
-                          <SelectItem value="in_queue">In Queue</SelectItem>
-                          <SelectItem value="printing">Printing</SelectItem>
-                          <SelectItem value="finished">Finished</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="on_hold">On Hold</SelectItem>
-                          <SelectItem value="suspended">Suspended</SelectItem>
+                          <SelectItem value="all">{t('orders.filters.allStatuses')}</SelectItem>
+                          <SelectItem value="submitted">{t('orders.statuses.submitted')}</SelectItem>
+                          <SelectItem value="in_queue">{t('orders.statuses.inQueue')}</SelectItem>
+                          <SelectItem value="printing">{t('orders.statuses.printing')}</SelectItem>
+                          <SelectItem value="finished">{t('orders.statuses.finished')}</SelectItem>
+                          <SelectItem value="delivered">{t('orders.statuses.delivered')}</SelectItem>
+                          <SelectItem value="on_hold">{t('orders.statuses.onHold')}</SelectItem>
+                          <SelectItem value="suspended">{t('orders.statuses.suspended')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-muted-foreground">Material</Label>
+                      <Label className="text-xs text-muted-foreground">{t('orders.filters.material')}</Label>
                       <Select value={materialFilter} onValueChange={setMaterialFilter}>
                         <SelectTrigger className="w-[140px] h-9">
-                          <SelectValue placeholder="All Materials" />
+                          <SelectValue placeholder={t('orders.filters.allMaterials')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Materials</SelectItem>
+                          <SelectItem value="all">{t('orders.filters.allMaterials')}</SelectItem>
                           {uniqueMaterials.map(material => (
                             <SelectItem key={material} value={material}>{material}</SelectItem>
                           ))}
@@ -650,32 +652,32 @@ const Orders = () => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-muted-foreground">Payment</Label>
+                      <Label className="text-xs text-muted-foreground">{t('orders.filters.payment')}</Label>
                       <Select value={paymentFilter} onValueChange={setPaymentFilter}>
                         <SelectTrigger className="w-[140px] h-9">
-                          <SelectValue placeholder="All Payments" />
+                          <SelectValue placeholder={t('orders.filters.allPayments')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Payments</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="refunded">Refunded</SelectItem>
+                          <SelectItem value="all">{t('orders.filters.allPayments')}</SelectItem>
+                          <SelectItem value="pending">{t('orders.paymentStatuses.pending')}</SelectItem>
+                          <SelectItem value="paid">{t('orders.paymentStatuses.paid')}</SelectItem>
+                          <SelectItem value="refunded">{t('orders.paymentStatuses.refunded')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs text-muted-foreground">Date</Label>
+                      <Label className="text-xs text-muted-foreground">{t('orders.filters.date')}</Label>
                       <Select value={dateFilter} onValueChange={setDateFilter}>
                         <SelectTrigger className="w-[140px] h-9">
-                          <SelectValue placeholder="All Time" />
+                          <SelectValue placeholder={t('orders.filters.allTime')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Time</SelectItem>
-                          <SelectItem value="today">Today</SelectItem>
-                          <SelectItem value="week">Last 7 Days</SelectItem>
-                          <SelectItem value="month">Last 30 Days</SelectItem>
-                          <SelectItem value="quarter">Last 90 Days</SelectItem>
+                          <SelectItem value="all">{t('orders.filters.allTime')}</SelectItem>
+                          <SelectItem value="today">{t('orders.filters.today')}</SelectItem>
+                          <SelectItem value="week">{t('orders.filters.last7Days')}</SelectItem>
+                          <SelectItem value="month">{t('orders.filters.last30Days')}</SelectItem>
+                          <SelectItem value="quarter">{t('orders.filters.last90Days')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -684,7 +686,7 @@ const Orders = () => {
                       <div className="flex items-end">
                         <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
                           <X className="w-4 h-4 mr-1" />
-                          Clear All
+                          {t('orders.filters.clearAll')}
                         </Button>
                       </div>
                     )}
@@ -694,39 +696,39 @@ const Orders = () => {
                 {/* Active Filters Summary */}
                 {hasActiveFilters && !showFilters && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-muted-foreground">Active filters:</span>
+                    <span className="text-sm text-muted-foreground">{t('orders.filters.activeFilters')}:</span>
                     {searchQuery && (
                       <Badge variant="secondary" className="gap-1">
-                        Search: "{searchQuery}"
+                        {t('orders.filters.searchLabel')}: "{searchQuery}"
                         <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchQuery('')} />
                       </Badge>
                     )}
                     {statusFilter !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
-                        Status: {statusFilter}
+                        {t('orders.filters.status')}: {statusFilter}
                         <X className="w-3 h-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
                       </Badge>
                     )}
                     {materialFilter !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
-                        Material: {materialFilter}
+                        {t('orders.filters.material')}: {materialFilter}
                         <X className="w-3 h-3 cursor-pointer" onClick={() => setMaterialFilter('all')} />
                       </Badge>
                     )}
                     {paymentFilter !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
-                        Payment: {paymentFilter}
+                        {t('orders.filters.payment')}: {paymentFilter}
                         <X className="w-3 h-3 cursor-pointer" onClick={() => setPaymentFilter('all')} />
                       </Badge>
                     )}
                     {dateFilter !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
-                        Date: {dateFilter}
+                        {t('orders.filters.date')}: {dateFilter}
                         <X className="w-3 h-3 cursor-pointer" onClick={() => setDateFilter('all')} />
                       </Badge>
                     )}
                     <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-xs">
-                      Clear all
+                      {t('orders.filters.clearAll')}
                     </Button>
                   </div>
                 )}
@@ -736,13 +738,13 @@ const Orders = () => {
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Loading orders...</span>
+                  <span className="ml-3 text-muted-foreground">{t('orders.loading')}</span>
                 </div>
               ) : error ? (
                 <div className="text-center py-12 text-destructive">
                   <p>{error}</p>
                   <Button onClick={fetchAllOrders} variant="outline" className="mt-4">
-                    Try Again
+                    {t('common.tryAgain')}
                   </Button>
                 </div>
               ) : (
@@ -750,15 +752,15 @@ const Orders = () => {
                   <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="active" className="flex items-center gap-2">
                       <Package className="w-4 h-4" />
-                      Orders ({filteredOrders.length}{hasActiveFilters ? `/${orders.length}` : ''})
+                      {t('orders.tabs.orders')} ({filteredOrders.length}{hasActiveFilters ? `/${orders.length}` : ''})
                     </TabsTrigger>
                     <TabsTrigger value="archived" className="flex items-center gap-2">
                       <Archive className="w-4 h-4" />
-                      Archived ({filteredArchivedOrders.length}{hasActiveFilters ? `/${archivedOrders.length}` : ''})
+                      {t('orders.tabs.archived')} ({filteredArchivedOrders.length}{hasActiveFilters ? `/${archivedOrders.length}` : ''})
                     </TabsTrigger>
                     <TabsTrigger value="deleted" className="flex items-center gap-2">
                       <Trash className="w-4 h-4" />
-                      Deleted ({filteredDeletedOrders.length}{hasActiveFilters ? `/${deletedOrders.length}` : ''})
+                      {t('orders.tabs.deleted')} ({filteredDeletedOrders.length}{hasActiveFilters ? `/${deletedOrders.length}` : ''})
                     </TabsTrigger>
                   </TabsList>
 
@@ -769,18 +771,18 @@ const Orders = () => {
                         <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
                         {hasActiveFilters ? (
                           <>
-                            <p className="text-lg font-semibold">No orders match your filters</p>
-                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.noMatchingOrders')}</p>
+                            <p className="mt-2">{t('orders.empty.tryAdjustingFilters')}</p>
                             <Button onClick={clearFilters} variant="outline" className="mt-4">
-                              Clear Filters
+                              {t('orders.filters.clearFilters')}
                             </Button>
                           </>
                         ) : (
                           <>
-                            <p className="text-lg font-semibold">No orders yet</p>
-                            <p className="mt-2">Start by creating your first 3D print order!</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.noOrdersYet')}</p>
+                            <p className="mt-2">{t('orders.empty.startByCreating')}</p>
                             <Button onClick={() => navigate('/new-print')} className="mt-4">
-                              Create New Order
+                              {t('orders.empty.createNewOrder')}
                             </Button>
                           </>
                         )}
@@ -792,7 +794,7 @@ const Orders = () => {
                     <div className="space-y-3">
                       <div className="text-sm font-bold text-muted-foreground px-4 flex items-center gap-2">
                         <FolderOpen className="w-4 h-4" />
-                        PROJECTS ({Object.keys(groupedOrders.projects).length})
+                        {t('orders.sections.projects')} ({Object.keys(groupedOrders.projects).length})
                       </div>
                       
                       {Object.entries(groupedOrders.projects).map(([projectName, projectOrders], index) => (
@@ -824,7 +826,7 @@ const Orders = () => {
                                 {formatDate(projectOrders[0].created_at)}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                Mixed
+                                {t('orders.materials.mixed')}
                               </div>
                               <div className="font-bold gradient-text">
                                 {formatPrice(getProjectTotal(projectOrders))}
@@ -842,7 +844,7 @@ const Orders = () => {
                                       navigate(`/projects/${encodeURIComponent(projectName)}/edit`);
                                     }}>
                                       <Settings2 className="w-4 h-4 mr-2" />
-                                      Edit Project
+                                      {t('orders.projectActions.editProject')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
@@ -851,28 +853,28 @@ const Orders = () => {
                                       setRenameDialogOpen(true);
                                     }}>
                                       <Pencil className="w-4 h-4 mr-2" />
-                                      Rename Project
+                                      {t('orders.projectActions.renameProject')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleAddPartToProject(projectName);
                                     }}>
                                       <Plus className="w-4 h-4 mr-2" />
-                                      Add Part
+                                      {t('orders.projectActions.addPart')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleDuplicateProject(projectName);
                                     }}>
                                       <Files className="w-4 h-4 mr-2" />
-                                      Duplicate Project
+                                      {t('orders.projectActions.duplicateProject')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleDownloadAllFiles(projectName);
                                     }}>
                                       <Download className="w-4 h-4 mr-2" />
-                                      Download All Files
+                                      {t('orders.projectActions.downloadAllFiles')}
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
@@ -884,14 +886,14 @@ const Orders = () => {
                                           setSelectedProject(projectName);
                                           setDeleteDialogOpen(true);
                                         } else {
-                                          toast.error('Cannot delete: project has active orders');
+                                          toast.error(t('orders.toasts.cannotDeleteActiveProject'));
                                         }
                                       }}
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete Project
+                                      {t('orders.projectActions.deleteProject')}
                                       {!canDeleteProject(projectOrders) && (
-                                        <span className="text-xs ml-auto">(active)</span>
+                                        <span className="text-xs ml-auto">({t('orders.projectActions.active')})</span>
                                       )}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -908,13 +910,13 @@ const Orders = () => {
                             <CollapsibleContent>
                               <div className="border-t border-primary/10 bg-muted/50">
                                 <div className="grid grid-cols-7 gap-4 text-xs font-bold text-muted-foreground py-2 px-4 bg-muted/30">
-                                  <div className="pl-14">File Name</div>
-                                  <div>Status</div>
-                                  <div>Payment</div>
-                                  <div>Date</div>
-                                  <div>Material</div>
-                                  <div>Price</div>
-                                  <div className="text-right">Actions</div>
+                                  <div className="pl-14">{t('orders.table.fileName')}</div>
+                                  <div>{t('orders.table.status')}</div>
+                                  <div>{t('orders.table.payment')}</div>
+                                  <div>{t('orders.table.date')}</div>
+                                  <div>{t('orders.table.material')}</div>
+                                  <div>{t('orders.table.price')}</div>
+                                  <div className="text-right">{t('orders.table.actions')}</div>
                                 </div>
                                 {projectOrders.map((order) => (
                                   <div
@@ -949,22 +951,22 @@ const Orders = () => {
                                         <DropdownMenuContent align="end" className="w-48">
                                           <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
                                             <Eye className="w-4 h-4 mr-2" />
-                                            View Details
+                                            {t('orders.orderActions.viewDetails')}
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
                                             <Pencil className="w-4 h-4 mr-2" />
-                                            Edit Order
+                                            {t('orders.orderActions.editOrder')}
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => {
                                             navigator.clipboard.writeText(order.id);
-                                            toast.success('Order ID copied to clipboard');
+                                            toast.success(t('orders.toasts.orderIdCopied'));
                                           }}>
                                             <Copy className="w-4 h-4 mr-2" />
-                                            Copy Order ID
+                                            {t('orders.orderActions.copyOrderId')}
                                           </DropdownMenuItem>
                                           <DropdownMenuItem>
                                             <Download className="w-4 h-4 mr-2" />
-                                            Download File
+                                            {t('orders.orderActions.downloadFile')}
                                           </DropdownMenuItem>
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem 
@@ -973,8 +975,8 @@ const Orders = () => {
                                             onClick={() => canDeleteOrder(order.status) && handleArchiveOrder(order.id)}
                                           >
                                             <Archive className="w-4 h-4 mr-2" />
-                                            Move to Archive
-                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                            {t('orders.orderActions.moveToArchive')}
+                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">({t('orders.projectActions.active')})</span>}
                                           </DropdownMenuItem>
                                           <DropdownMenuItem 
                                             className={canDeleteOrder(order.status) ? "text-destructive focus:text-destructive" : "text-muted-foreground cursor-not-allowed"}
@@ -982,8 +984,8 @@ const Orders = () => {
                                             onClick={() => canDeleteOrder(order.status) && handleSoftDeleteOrder(order.id)}
                                           >
                                             <Trash2 className="w-4 h-4 mr-2" />
-                                            Delete Order
-                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                            {t('orders.orderActions.deleteOrder')}
+                                            {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">({t('orders.projectActions.active')})</span>}
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -1004,18 +1006,18 @@ const Orders = () => {
                       {Object.keys(groupedOrders.projects).length > 0 && (
                         <div className="text-sm font-bold text-muted-foreground px-4 pt-4 flex items-center gap-2">
                           <FileText className="w-4 h-4" />
-                          INDIVIDUAL ORDERS ({groupedOrders.standaloneOrders.length})
+                          {t('orders.sections.individualOrders')} ({groupedOrders.standaloneOrders.length})
                         </div>
                       )}
                       
                       <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
-                        <div>File Name</div>
-                        <div>Status</div>
-                        <div>Payment</div>
-                        <div>Date</div>
-                        <div>Material</div>
-                        <div>Price</div>
-                        <div className="text-right">Actions</div>
+                        <div>{t('orders.table.fileName')}</div>
+                        <div>{t('orders.table.status')}</div>
+                        <div>{t('orders.table.payment')}</div>
+                        <div>{t('orders.table.date')}</div>
+                        <div>{t('orders.table.material')}</div>
+                        <div>{t('orders.table.price')}</div>
+                        <div className="text-right">{t('orders.table.actions')}</div>
                       </div>
                       
                       {groupedOrders.standaloneOrders.map((order, index) => (
@@ -1055,22 +1057,22 @@ const Orders = () => {
                               <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
                                   <Eye className="w-4 h-4 mr-2" />
-                                  View Details
+                                  {t('orders.orderActions.viewDetails')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
                                   <Pencil className="w-4 h-4 mr-2" />
-                                  Edit Order
+                                  {t('orders.orderActions.editOrder')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
                                   navigator.clipboard.writeText(order.id);
-                                  toast.success('Order ID copied to clipboard');
+                                  toast.success(t('orders.toasts.orderIdCopied'));
                                 }}>
                                   <Copy className="w-4 h-4 mr-2" />
-                                  Copy Order ID
+                                  {t('orders.orderActions.copyOrderId')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
                                   <Download className="w-4 h-4 mr-2" />
-                                  Download File
+                                  {t('orders.orderActions.downloadFile')}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
@@ -1079,8 +1081,8 @@ const Orders = () => {
                                   onClick={() => canDeleteOrder(order.status) && handleArchiveOrder(order.id)}
                                 >
                                   <Archive className="w-4 h-4 mr-2" />
-                                  Move to Archive
-                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                  {t('orders.orderActions.moveToArchive')}
+                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">({t('orders.projectActions.active')})</span>}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   className={canDeleteOrder(order.status) ? "text-destructive focus:text-destructive" : "text-muted-foreground cursor-not-allowed"}
@@ -1088,8 +1090,8 @@ const Orders = () => {
                                   onClick={() => canDeleteOrder(order.status) && handleSoftDeleteOrder(order.id)}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Order
-                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">(active)</span>}
+                                  {t('orders.orderActions.deleteOrder')}
+                                  {!canDeleteOrder(order.status) && <span className="text-xs ml-auto">({t('orders.projectActions.active')})</span>}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -1109,29 +1111,29 @@ const Orders = () => {
                         <Archive className="w-16 h-16 mx-auto mb-4 opacity-50" />
                         {hasActiveFilters ? (
                           <>
-                            <p className="text-lg font-semibold">No archived orders match your filters</p>
-                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.noMatchingArchived')}</p>
+                            <p className="mt-2">{t('orders.empty.tryAdjustingFilters')}</p>
                             <Button onClick={clearFilters} variant="outline" className="mt-4">
-                              Clear Filters
+                              {t('orders.filters.clearFilters')}
                             </Button>
                           </>
                         ) : (
                           <>
-                            <p className="text-lg font-semibold">No archived orders</p>
-                            <p className="mt-2">Orders you archive will appear here</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.noArchivedOrders')}</p>
+                            <p className="mt-2">{t('orders.empty.archivedWillAppear')}</p>
                           </>
                         )}
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
-                          <div>File Name</div>
-                          <div>Status</div>
-                          <div>Payment</div>
-                          <div>Date</div>
-                          <div>Material</div>
-                          <div>Price</div>
-                          <div className="text-right">Actions</div>
+                          <div>{t('orders.table.fileName')}</div>
+                          <div>{t('orders.table.status')}</div>
+                          <div>{t('orders.table.payment')}</div>
+                          <div>{t('orders.table.date')}</div>
+                          <div>{t('orders.table.material')}</div>
+                          <div>{t('orders.table.price')}</div>
+                          <div className="text-right">{t('orders.table.actions')}</div>
                         </div>
                         
                         {filteredArchivedOrders.map((order, index) => (
@@ -1167,11 +1169,11 @@ const Orders = () => {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
                                     <Eye className="w-4 h-4 mr-2" />
-                                    View Details
+                                    {t('orders.orderActions.viewDetails')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}>
                                     <ArchiveRestore className="w-4 h-4 mr-2" />
-                                    Restore Order
+                                    {t('orders.orderActions.restoreOrder')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
@@ -1179,7 +1181,7 @@ const Orders = () => {
                                     onClick={() => handleSoftDeleteOrder(order.id)}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Order
+                                    {t('orders.orderActions.deleteOrder')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1197,29 +1199,29 @@ const Orders = () => {
                         <Trash className="w-16 h-16 mx-auto mb-4 opacity-50" />
                         {hasActiveFilters ? (
                           <>
-                            <p className="text-lg font-semibold">No deleted orders match your filters</p>
-                            <p className="mt-2">Try adjusting your search or filters</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.noMatchingDeleted')}</p>
+                            <p className="mt-2">{t('orders.empty.tryAdjustingFilters')}</p>
                             <Button onClick={clearFilters} variant="outline" className="mt-4">
-                              Clear Filters
+                              {t('orders.filters.clearFilters')}
                             </Button>
                           </>
                         ) : (
                           <>
-                            <p className="text-lg font-semibold">Trash is empty</p>
-                            <p className="mt-2">Deleted orders will appear here for 30 days</p>
+                            <p className="text-lg font-semibold">{t('orders.empty.trashEmpty')}</p>
+                            <p className="mt-2">{t('orders.empty.deletedWillAppear')}</p>
                           </>
                         )}
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
-                          <div>File Name</div>
-                          <div>Status</div>
-                          <div>Payment</div>
-                          <div>Date</div>
-                          <div>Material</div>
-                          <div>Price</div>
-                          <div className="text-right">Actions</div>
+                          <div>{t('orders.table.fileName')}</div>
+                          <div>{t('orders.table.status')}</div>
+                          <div>{t('orders.table.payment')}</div>
+                          <div>{t('orders.table.date')}</div>
+                          <div>{t('orders.table.material')}</div>
+                          <div>{t('orders.table.price')}</div>
+                          <div className="text-right">{t('orders.table.actions')}</div>
                         </div>
                         
                         {filteredDeletedOrders.map((order, index) => (
@@ -1255,7 +1257,7 @@ const Orders = () => {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}>
                                     <ArchiveRestore className="w-4 h-4 mr-2" />
-                                    Restore Order
+                                    {t('orders.orderActions.restoreOrder')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
@@ -1263,7 +1265,7 @@ const Orders = () => {
                                     onClick={() => handlePermanentDeleteOrder(order.id)}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Permanently
+                                    {t('orders.orderActions.deletePermanently')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1283,28 +1285,28 @@ const Orders = () => {
         <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Rename Project</DialogTitle>
+              <DialogTitle>{t('orders.dialogs.renameProject')}</DialogTitle>
               <DialogDescription>
-                Enter a new name for your project.
+                {t('orders.dialogs.enterNewName')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="projectName">Project Name</Label>
+                <Label htmlFor="projectName">{t('orders.dialogs.projectName')}</Label>
                 <Input
                   id="projectName"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="Enter project name"
+                  placeholder={t('orders.dialogs.enterProjectName')}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleRenameProject} disabled={!newProjectName.trim()}>
-                Save
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1314,15 +1316,15 @@ const Orders = () => {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+              <AlertDialogTitle>{t('orders.dialogs.deleteProject')}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will move all {selectedProject && groupedOrders.projects[selectedProject]?.length || 0} orders in the project "{selectedProject}" to trash. You can restore them later from the Deleted tab.
+                {t('orders.dialogs.deleteProjectDescription').replace('{count}', String(selectedProject && groupedOrders.projects[selectedProject]?.length || 0)).replace('{name}', selectedProject || '')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Move to Trash
+                {t('orders.dialogs.moveToTrash')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

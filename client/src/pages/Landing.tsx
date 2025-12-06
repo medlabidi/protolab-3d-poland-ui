@@ -16,45 +16,45 @@ const Landing = () => {
   const steps = [
     {
       icon: Upload,
-      title: t.landing.step1Title,
-      description: t.landing.step1Desc,
+      title: t('landing.step1Title'),
+      description: t('landing.step1Desc'),
     },
     {
       icon: Settings,
-      title: t.landing.step2Title,
-      description: t.landing.step2Desc,
+      title: t('landing.step2Title'),
+      description: t('landing.step2Desc'),
     },
     {
       icon: Zap,
-      title: t.landing.step3Title,
-      description: t.landing.step3Desc,
+      title: t('landing.step3Title'),
+      description: t('landing.step3Desc'),
     },
   ];
 
   const materials = [
-    { name: "PLA", description: t.landing.material1 },
-    { name: "ABS", description: t.landing.material2 },
-    { name: "PETG", description: t.landing.material3 },
-    { name: "TPU", description: t.landing.material4 },
-    { name: "Nylon", description: t.landing.material5 },
-    { name: "Resin", description: t.landing.material6 },
+    { name: "PLA", description: t('landing.material1') },
+    { name: "ABS", description: t('landing.material2') },
+    { name: "PETG", description: t('landing.material3') },
+    { name: "TPU", description: t('landing.material4') },
+    { name: "Nylon", description: t('landing.material5') },
+    { name: "Resin", description: t('landing.material6') },
   ];
 
   const features = [
     {
       icon: Zap,
-      title: t.landing.feature1Title,
-      description: t.landing.feature1Desc,
+      title: t('landing.feature1Title'),
+      description: t('landing.feature1Desc'),
     },
     {
       icon: Package,
-      title: t.landing.feature2Title,
-      description: t.landing.feature2Desc,
+      title: t('landing.feature2Title'),
+      description: t('landing.feature2Desc'),
     },
     {
       icon: Truck,
-      title: t.landing.feature3Title,
-      description: t.landing.feature3Desc,
+      title: t('landing.feature3Title'),
+      description: t('landing.feature3Desc'),
     },
   ];
 
@@ -77,15 +77,15 @@ const Landing = () => {
             {isLoggedIn ? (
               <Button onClick={() => navigate("/dashboard")} className="hover-lift shadow-lg hover:shadow-xl">
                 <LayoutDashboard className="w-4 h-4 mr-2" />
-                {t.dashboard?.overview || 'Dashboard'}
+                {t('dashboard.overview')}
               </Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-                  {t.landing.login}
+                  {t('landing.login')}
                 </Button>
                 <Button onClick={() => navigate("/new-print")} className="hover-lift shadow-lg hover:shadow-xl">
-                  {t.landing.getStarted}
+                  {t('landing.getStarted')}
                 </Button>
               </>
             )}
@@ -97,10 +97,10 @@ const Landing = () => {
       <section className="py-20 px-6 relative animate-slide-up">
         <div className="container mx-auto text-center max-w-4xl">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
-            {t.landing.title}
+            {t('landing.title')}
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            {t.landing.subtitle}
+            {t('landing.subtitle')}
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button 
@@ -110,7 +110,7 @@ const Landing = () => {
             >
               <span className="relative z-10 flex items-center">
                 <Upload className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                {t.landing.uploadButton}
+                {t('landing.uploadButton')}
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </Button>
@@ -120,7 +120,7 @@ const Landing = () => {
               className="text-lg px-10 py-7 hover-lift"
               onClick={() => navigate("/about")}
             >
-              {t.landing.learnMore}
+              {t('landing.learnMore')}
             </Button>
           </div>
           
@@ -128,15 +128,15 @@ const Landing = () => {
           <div className="mt-16 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div className="text-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
               <div className="text-4xl font-bold gradient-text">500+</div>
-              <div className="text-sm text-muted-foreground mt-1">Projects Completed</div>
+              <div className="text-sm text-muted-foreground mt-1">{t('landing.stats.projects')}</div>
             </div>
             <div className="text-center animate-scale-in" style={{ animationDelay: '0.4s' }}>
               <div className="text-4xl font-bold gradient-text">24h</div>
-              <div className="text-sm text-muted-foreground mt-1">Average Delivery</div>
+              <div className="text-sm text-muted-foreground mt-1">{t('landing.stats.delivery')}</div>
             </div>
             <div className="text-center animate-scale-in" style={{ animationDelay: '0.6s' }}>
               <div className="text-4xl font-bold gradient-text">98%</div>
-              <div className="text-sm text-muted-foreground mt-1">Client Satisfaction</div>
+              <div className="text-sm text-muted-foreground mt-1">{t('landing.stats.satisfaction')}</div>
             </div>
           </div>
         </div>
@@ -146,8 +146,8 @@ const Landing = () => {
       <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.landing.howItWorks}</h2>
-            <p className="text-muted-foreground text-lg">Simple process, professional results</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.howItWorks')}</h2>
+            <p className="text-muted-foreground text-lg">{t('landing.howItWorksSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map((step, index) => (
@@ -177,8 +177,8 @@ const Landing = () => {
       <section className="py-20 px-6 relative">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.landing.supportedMaterials}</h2>
-            <p className="text-muted-foreground text-lg">Industry-leading material selection</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.supportedMaterials')}</h2>
+            <p className="text-muted-foreground text-lg">{t('landing.materialsSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {materials.map((material, index) => (
@@ -208,8 +208,8 @@ const Landing = () => {
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.landing.whyChooseUs}</h2>
-            <p className="text-muted-foreground text-lg">Excellence in every print</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.whyChooseUs')}</h2>
+            <p className="text-muted-foreground text-lg">{t('landing.whyChooseUsSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-12">
             {features.map((feature, index) => (
@@ -237,9 +237,9 @@ const Landing = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-accent/5"></div>
         <div className="container mx-auto text-center max-w-3xl relative z-10">
           <div className="p-12 rounded-3xl glass-effect shadow-2xl border-2 border-primary/10">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">{t.landing.readyToStart}</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">{t('landing.readyToStart')}</h2>
             <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
-              {t.landing.subtitle}
+              {t('landing.subtitle')}
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <Button 
@@ -249,7 +249,7 @@ const Landing = () => {
               >
                 <span className="relative z-10 flex items-center">
                   <Upload className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
-                  {t.landing.uploadNow}
+                  {t('landing.uploadNow')}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </Button>
@@ -262,8 +262,8 @@ const Landing = () => {
       <section id="contact" className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.landing.contactTitle}</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{t.landing.contactSubtitle}</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.contactTitle')}</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{t('landing.contactSubtitle')}</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12">
@@ -272,7 +272,7 @@ const Landing = () => {
               <CardContent className="pt-8 pb-8">
                 <form className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">{t.landing.contactName}</label>
+                    <label className="text-sm font-semibold text-foreground">{t('landing.contactName')}</label>
                     <div className="relative">
                       <input 
                         type="text" 
@@ -283,7 +283,7 @@ const Landing = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">{t.landing.contactEmail}</label>
+                    <label className="text-sm font-semibold text-foreground">{t('landing.contactEmail')}</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <input 
@@ -295,7 +295,7 @@ const Landing = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">{t.landing.contactPhone}</label>
+                    <label className="text-sm font-semibold text-foreground">{t('landing.contactPhone')}</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <input 
@@ -307,11 +307,11 @@ const Landing = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">{t.landing.contactMessage}</label>
+                    <label className="text-sm font-semibold text-foreground">{t('landing.contactMessage')}</label>
                     <textarea 
                       rows={5}
                       className="w-full px-4 py-3 border-2 border-border rounded-lg focus:border-primary focus:outline-none transition-colors bg-background resize-none"
-                      placeholder="Tell us about your project..."
+                      placeholder={t('landing.contactMessagePlaceholder')}
                     />
                   </div>
 
@@ -321,7 +321,7 @@ const Landing = () => {
                   >
                     <span className="relative z-10 flex items-center justify-center">
                       <Send className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                      {t.landing.contactSend}
+                      {t('landing.contactSend')}
                     </span>
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </Button>
@@ -358,9 +358,9 @@ const Landing = () => {
                         <MapPin className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg mb-1">{t.landing.contactAddress}</h3>
-                        <p className="text-muted-foreground">{t.landing.contactAddressLine1}</p>
-                        <p className="text-muted-foreground">{t.landing.contactAddressLine2}</p>
+                        <h3 className="font-bold text-lg mb-1">{t('landing.contactAddress')}</h3>
+                        <p className="text-muted-foreground">{t('landing.contactAddressLine1')}</p>
+                        <p className="text-muted-foreground">{t('landing.contactAddressLine2')}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -373,7 +373,7 @@ const Landing = () => {
                         <Mail className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg mb-1">Email</h3>
+                        <h3 className="font-bold text-lg mb-1">{t('landing.email')}</h3>
                         <p className="text-muted-foreground">info@protolab.pl</p>
                         <p className="text-muted-foreground">support@protolab.pl</p>
                       </div>
@@ -388,7 +388,7 @@ const Landing = () => {
                         <Phone className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg mb-1">Phone</h3>
+                        <h3 className="font-bold text-lg mb-1">{t('landing.phone')}</h3>
                         <p className="text-muted-foreground">+48 123 456 789</p>
                         <p className="text-muted-foreground">+48 987 654 321</p>
                       </div>
@@ -403,9 +403,9 @@ const Landing = () => {
                         <Clock className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg mb-1">{t.landing.contactHours}</h3>
-                        <p className="text-muted-foreground">{t.landing.contactHoursTime}</p>
-                        <p className="text-muted-foreground">Sat-Sun: Closed</p>
+                        <h3 className="font-bold text-lg mb-1">{t('landing.contactHours')}</h3>
+                        <p className="text-muted-foreground">{t('landing.contactHoursTime')}</p>
+                        <p className="text-muted-foreground">{t('landing.contactHoursWeekend')}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -424,7 +424,7 @@ const Landing = () => {
                 <Logo size="sm" textClassName="text-xl" />
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Professional 3D printing services in Poland
+                {t('landing.footerDescription')}
               </p>
               <div className="flex gap-3">
                 <div className="w-10 h-10 bg-primary/10 hover:bg-primary hover:text-white rounded-lg flex items-center justify-center cursor-pointer transition-all hover-lift">
@@ -439,33 +439,33 @@ const Landing = () => {
               </div>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Services</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerServices')}</h4>
               <ul className="space-y-3">
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">3D Printing</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Design Consultation</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Rapid Prototyping</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrinting')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerDesign')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrototyping')}</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Company</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerCompany')}</h4>
               <ul className="space-y-3">
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/about")}>About Us</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>Contact</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Privacy Policy</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/about")}>{t('landing.footerAbout')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>{t('landing.footerContact')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrivacy')}</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Contact</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerContactHeader')}</h4>
               <ul className="space-y-3 text-muted-foreground">
                 <li className="hover:text-primary transition-colors cursor-pointer">📧 info@protolab.pl</li>
                 <li className="hover:text-primary transition-colors cursor-pointer">📞 +48 123 456 789</li>
-                <li className="hover:text-primary transition-colors cursor-pointer">📍 Warsaw, Poland</li>
+                <li className="hover:text-primary transition-colors cursor-pointer">📍 {t('landing.footerLocation')}</li>
               </ul>
             </div>
           </div>
           <div className="pt-8 border-t border-border/50 text-center">
             <p className="text-muted-foreground">
-              © 2024 ProtoLab. All rights reserved. Made with ❤️ in Poland
+              {t('landing.footerCopyright')}
             </p>
           </div>
         </div>

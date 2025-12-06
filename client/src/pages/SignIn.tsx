@@ -156,14 +156,14 @@ const SignIn = () => {
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
           </div>
-          <CardTitle className="text-3xl gradient-text">{t.login.welcome}</CardTitle>
-          <CardDescription className="text-base">{t.login.subtitle}</CardDescription>
+          <CardTitle className="text-3xl gradient-text">{t('login.welcome')}</CardTitle>
+          <CardDescription className="text-base">{t('login.subtitle')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">{t.login.email}</Label>
+              <Label htmlFor="email" className="text-sm font-semibold">{t('login.email')}</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -175,7 +175,7 @@ const SignIn = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">{t.login.password}</Label>
+              <Label htmlFor="password" className="text-sm font-semibold">{t('login.password')}</Label>
               <Input 
                 id="password" 
                 type="password"
@@ -187,7 +187,7 @@ const SignIn = () => {
               />
             </div>
             <Button type="button" variant="link" className="px-0 text-sm text-primary hover:text-primary/80" onClick={() => setForgotPasswordOpen(true)}>
-              Forgot password?
+              {t('login.forgotPassword')}
             </Button>
             
             {/* Forgot Password Dialog */}
@@ -201,19 +201,19 @@ const SignIn = () => {
                     {forgotSuccess ? (
                       <>
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        Check Your Email
+                        {t('signIn.checkYourEmail')}
                       </>
                     ) : (
                       <>
                         <Mail className="w-5 h-5 text-primary" />
-                        Reset Password
+                        {t('signIn.resetPassword')}
                       </>
                     )}
                   </DialogTitle>
                   <DialogDescription>
                     {forgotSuccess 
-                      ? "We've sent a password reset link to your email address. Please check your inbox and follow the instructions."
-                      : "Enter your email address and we'll send you a link to reset your password."
+                      ? t('signIn.emailSentDescription')
+                      : t('signIn.enterEmailDescription')
                     }
                   </DialogDescription>
                 </DialogHeader>
@@ -222,7 +222,7 @@ const SignIn = () => {
                   <form onSubmit={handleForgotPassword}>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label htmlFor="forgot-email">Email Address</Label>
+                        <Label htmlFor="forgot-email">{t('signIn.emailAddress')}</Label>
                         <Input 
                           id="forgot-email" 
                           type="email" 
@@ -236,16 +236,16 @@ const SignIn = () => {
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setForgotPasswordOpen(false)}>
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                       <Button type="submit" disabled={forgotLoading}>
                         {forgotLoading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending...
+                            {t('signIn.sending')}
                           </>
                         ) : (
-                          "Send Reset Link"
+                          t('signIn.sendResetLink')
                         )}
                       </Button>
                     </DialogFooter>
@@ -253,7 +253,7 @@ const SignIn = () => {
                 ) : (
                   <DialogFooter>
                     <Button onClick={() => setForgotPasswordOpen(false)} className="w-full">
-                      Got it
+                      {t('signIn.gotIt')}
                     </Button>
                   </DialogFooter>
                 )}
@@ -269,10 +269,10 @@ const SignIn = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Signing in...
+                  {t('login.signingIn')}
                 </>
               ) : (
-                <span className="relative z-10">{t.login.signIn}</span>
+                <span className="relative z-10">{t('login.signIn')}</span>
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </Button>
@@ -281,7 +281,7 @@ const SignIn = () => {
                 <span className="w-full border-t border-border/50" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground font-semibold">Or continue with</span>
+                <span className="bg-card px-3 text-muted-foreground font-semibold">{t('login.orContinueWith')}</span>
               </div>
             </div>
             <div className="w-full flex justify-center">
@@ -292,9 +292,9 @@ const SignIn = () => {
               />
             </div>
             <div className="text-center text-sm pt-2">
-              Don't have an account?{" "}
+              {t('login.noAccount')}{" "}
               <Link to="/signup" className="text-primary hover:text-primary/80 font-bold underline-offset-4 hover:underline transition-all">
-                Sign up
+                {t('login.signUp')}
               </Link>
             </div>
           </CardFooter>

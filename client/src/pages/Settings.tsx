@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/config/api";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { languages } from "@/i18n";
+import i18n from "@/i18n";
 import { 
   User, 
   Monitor, 
@@ -132,6 +135,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
 const Settings = () => {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { t, language, setLanguage } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>("general");
   const [formData, setFormData] = useState({
@@ -189,12 +193,12 @@ const Settings = () => {
 
   // Settings menu items
   const menuItems = [
-    { id: "general", label: "General", icon: User, description: "Name, email, and contact info" },
-    { id: "display", label: "Display", icon: Monitor, description: "Theme and appearance" },
-    { id: "security", label: "Security", icon: Shield, description: "Password and authentication" },
-    { id: "payment", label: "Payment", icon: CreditCard, description: "Payment methods" },
-    { id: "notifications", label: "Notifications", icon: Bell, description: "Email and push notifications" },
-    { id: "privacy", label: "Privacy & Data", icon: Lock, description: "Data management and privacy" },
+    { id: "general", labelKey: "menu.general", descKey: "menu.generalDesc", icon: User },
+    { id: "display", labelKey: "menu.display", descKey: "menu.displayDesc", icon: Monitor },
+    { id: "security", labelKey: "menu.security", descKey: "menu.securityDesc", icon: Shield },
+    { id: "payment", labelKey: "menu.payment", descKey: "menu.paymentDesc", icon: CreditCard },
+    { id: "notifications", labelKey: "menu.notifications", descKey: "menu.notificationsDesc", icon: Bell },
+    { id: "privacy", labelKey: "menu.privacy", descKey: "menu.privacyDesc", icon: Lock },
   ];
 
   useEffect(() => {
@@ -645,9 +649,9 @@ const Settings = () => {
       }
       
       addActivityLogEntry({ type: 'profile_update', title: 'Profile Updated', description: 'You updated your profile information' });
-      toast.success("Profile updated successfully!");
+      toast.success(t('settings.toasts.profileUpdated'));
     } catch (error) {
-      toast.error("Failed to update profile");
+      toast.error(t('settings.toasts.profileUpdateFailed'));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -657,24 +661,24 @@ const Settings = () => {
   const handleChangePassword = async () => {
     try {
       if (!passwordData.currentPassword || !passwordData.newPassword) {
-        toast.error("Please fill in all password fields");
+        toast.error(t('settings.toasts.fillAllFields'));
         return;
       }
       
       if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-        toast.error("New passwords do not match");
+        toast.error(t('settings.toasts.passwordsMismatch'));
         return;
       }
       
       if (passwordData.newPassword.length < 6) {
-        toast.error("New password must be at least 6 characters");
+        toast.error(t('settings.toasts.passwordTooShort'));
         return;
       }
 
       // Call API to change password
       const token = await getValidAccessToken();
       if (!token) {
-        toast.error("Please log in again");
+        toast.error(t('settings.toasts.loginRequired'));
         return;
       }
 
@@ -692,7 +696,7 @@ const Settings = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to change password');
+        throw new Error(errorData.error || t('settings.toasts.passwordChangeFailed'));
       }
       
       // Clear password fields
@@ -703,9 +707,9 @@ const Settings = () => {
       });
       
       addActivityLogEntry({ type: 'password_change', title: 'Password Changed', description: 'You changed your account password' });
-      toast.success("Password changed successfully!");
+      toast.success(t('settings.toasts.passwordChanged'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to change password");
+      toast.error(error instanceof Error ? error.message : t('settings.toasts.passwordChangeFailed'));
       console.error(error);
     }
   };
@@ -716,9 +720,9 @@ const Settings = () => {
       // Clear localStorage and redirect to login
       localStorage.clear();
       window.location.href = '/login';
-      toast.success("Account deleted successfully");
+      toast.success(t('settings.toasts.accountDeleted'));
     } catch (error) {
-      toast.error("Failed to delete account");
+      toast.error(t('settings.toasts.deleteAccountFailed'));
       console.error(error);
     }
   };
@@ -730,8 +734,8 @@ const Settings = () => {
       <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and preferences</p>
+            <h1 className="text-3xl font-bold mb-2">{t('settings.title')}</h1>
+            <p className="text-muted-foreground">{t('settings.profile.description')}</p>
           </div>
 
           <div className="flex gap-8">
@@ -752,13 +756,13 @@ const Settings = () => {
                       >
                         <item.icon className="w-5 h-5" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{item.label}</p>
+                          <p className="font-medium text-sm">{t(`settings.${item.labelKey}`)}</p>
                           <p className={`text-xs truncate ${
                             activeSection === item.id 
                               ? "text-primary-foreground/70" 
                               : "text-muted-foreground"
                           }`}>
-                            {item.description}
+                            {t(`settings.${item.descKey}`)}
                           </p>
                         </div>
                         <ChevronRight className={`w-4 h-4 ${
@@ -779,14 +783,14 @@ const Settings = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <User className="w-5 h-5" />
-                      General Settings
+                      {t('settings.general.title')}
                     </CardTitle>
-                    <CardDescription>Update your personal details and contact information</CardDescription>
+                    <CardDescription>{t('settings.general.description')}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
+                        <Label htmlFor="name">{t('settings.general.fullName')}</Label>
                         <Input 
                           id="name" 
                           value={formData.name}
@@ -795,7 +799,7 @@ const Settings = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
+                        <Label htmlFor="email">{t('settings.general.emailAddress')}</Label>
                         <Input 
                           id="email" 
                           type="email" 
@@ -803,12 +807,12 @@ const Settings = () => {
                           onChange={handleInputChange}
                           disabled
                         />
-                        <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                        <p className="text-xs text-muted-foreground">{t('settings.general.emailCannotChange')}</p>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
+                      <Label htmlFor="phone">{t('settings.general.phoneNumber')}</Label>
                       <Input 
                         id="phone" 
                         type="tel"
@@ -821,10 +825,10 @@ const Settings = () => {
                     <Separator />
 
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Shipping Address</h3>
+                      <h3 className="text-lg font-semibold mb-4">{t('settings.general.shippingAddress')}</h3>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="address">Street Address</Label>
+                          <Label htmlFor="address">{t('settings.general.streetAddress')}</Label>
                           <Input 
                             id="address"
                             value={formData.address}
@@ -835,7 +839,7 @@ const Settings = () => {
 
                         <div className="grid md:grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="city">City</Label>
+                            <Label htmlFor="city">{t('settings.general.city')}</Label>
                             <Input 
                               id="city"
                               value={formData.city}
@@ -844,7 +848,7 @@ const Settings = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="zipCode">Postal Code</Label>
+                            <Label htmlFor="zipCode">{t('settings.general.postalCode')}</Label>
                             <Input 
                               id="zipCode"
                               value={formData.zipCode}
@@ -853,7 +857,7 @@ const Settings = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="country">Country</Label>
+                            <Label htmlFor="country">{t('settings.general.country')}</Label>
                             <Input 
                               id="country"
                               value={formData.country}
@@ -867,7 +871,7 @@ const Settings = () => {
 
                     <div className="flex justify-end">
                       <Button onClick={handleSaveProfile} disabled={isLoading}>
-                        {isLoading ? "Saving..." : "Save Changes"}
+                        {isLoading ? t('settings.general.saving') : t('settings.general.saveChanges')}
                       </Button>
                     </div>
                   </CardContent>
@@ -880,9 +884,9 @@ const Settings = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Monitor className="w-5 h-5" />
-                      Display Settings
+                      {t('settings.display.title')}
                     </CardTitle>
-                    <CardDescription>Customize how ProtoLab looks and feels</CardDescription>
+                    <CardDescription>{t('settings.display.description')}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Theme Selection */}
@@ -892,8 +896,8 @@ const Settings = () => {
                           <Monitor className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-medium">Theme</p>
-                          <p className="text-sm text-muted-foreground">Choose your preferred appearance</p>
+                          <p className="font-medium">{t('settings.display.theme')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.display.themeDescription')}</p>
                         </div>
                       </div>
                       
@@ -910,7 +914,7 @@ const Settings = () => {
                           <div className={`p-3 rounded-full ${theme === "light" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                             <Sun className="w-5 h-5" />
                           </div>
-                          <span className="text-sm font-medium">Light</span>
+                          <span className="text-sm font-medium">{t('settings.display.light')}</span>
                           {theme === "light" && <CheckCircle2 className="w-4 h-4 text-primary" />}
                         </button>
 
@@ -926,7 +930,7 @@ const Settings = () => {
                           <div className={`p-3 rounded-full ${theme === "dark" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                             <Moon className="w-5 h-5" />
                           </div>
-                          <span className="text-sm font-medium">Dark</span>
+                          <span className="text-sm font-medium">{t('settings.display.dark')}</span>
                           {theme === "dark" && <CheckCircle2 className="w-4 h-4 text-primary" />}
                         </button>
 
@@ -942,33 +946,51 @@ const Settings = () => {
                           <div className={`p-3 rounded-full ${theme === "system" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                             <MonitorSmartphone className="w-5 h-5" />
                           </div>
-                          <span className="text-sm font-medium">System</span>
+                          <span className="text-sm font-medium">{t('settings.display.system')}</span>
                           {theme === "system" && <CheckCircle2 className="w-4 h-4 text-primary" />}
                         </button>
                       </div>
 
                       {theme === "system" && (
                         <p className="text-xs text-muted-foreground text-center mt-2">
-                          Currently using {resolvedTheme} mode based on your system settings
+                          {t('settings.display.currentlyUsing')} {resolvedTheme === 'dark' ? t('settings.display.dark').toLowerCase() : t('settings.display.light').toLowerCase()} {t('settings.display.modeBasedOnSystem')}
                         </p>
                       )}
                     </div>
 
                     <Separator />
 
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    {/* Language Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-muted rounded-lg">
-                          <Eye className="w-5 h-5" />
+                          <Globe className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-medium">Language</p>
-                          <p className="text-sm text-muted-foreground">Set your preferred language</p>
+                          <p className="font-medium">{t('settings.display.language')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.display.languageDescription')}</p>
                         </div>
                       </div>
-                      <Button variant="outline" onClick={() => toast.info("Language settings coming soon!")}>
-                        Configure
-                      </Button>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        {languages.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setLanguage(lang.code as 'pl' | 'en' | 'ru');
+                              addActivityLogEntry({ type: 'settings_change', title: 'Language Changed', description: `Changed language to ${lang.name}` });
+                              toast.success(t('settings.toasts.languageChanged'));
+                            }}
+                            className={`flex flex-col items-center gap-2 p-4 border rounded-lg transition-all hover:border-primary ${
+                              language === lang.code ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border"
+                            }`}
+                          >
+                            <span className="text-2xl">{lang.flag}</span>
+                            <span className="text-sm font-medium">{lang.name}</span>
+                            {language === lang.code && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -981,13 +1003,13 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Key className="w-5 h-5" />
-                        Change Password
+                        {t('settings.security.changePassword')}
                       </CardTitle>
-                      <CardDescription>Update your password to keep your account secure</CardDescription>
+                      <CardDescription>{t('settings.security.changePasswordDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="space-y-2">
-                        <Label htmlFor="currentPassword">Current Password</Label>
+                        <Label htmlFor="currentPassword">{t('settings.security.currentPassword')}</Label>
                         <Input 
                           id="currentPassword" 
                           type="password"
@@ -998,7 +1020,7 @@ const Settings = () => {
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="newPassword">New Password</Label>
+                          <Label htmlFor="newPassword">{t('settings.security.newPassword')}</Label>
                           <Input 
                             id="newPassword" 
                             type="password"
@@ -1008,7 +1030,7 @@ const Settings = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                          <Label htmlFor="confirmNewPassword">{t('settings.security.confirmNewPassword')}</Label>
                           <Input 
                             id="confirmNewPassword" 
                             type="password"
@@ -1020,7 +1042,7 @@ const Settings = () => {
 
                       <div className="flex justify-end">
                         <Button onClick={handleChangePassword}>
-                          Update Password
+                          {t('settings.security.updatePassword')}
                         </Button>
                       </div>
                     </CardContent>
@@ -1030,15 +1052,15 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Globe className="w-5 h-5" />
-                        Active Sessions
+                        {t('settings.security.activeSessions')}
                       </CardTitle>
-                      <CardDescription>Manage devices where you're logged in</CardDescription>
+                      <CardDescription>{t('settings.security.activeSessionsDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {sessions.length === 0 ? (
                         <div className="text-center py-6 text-muted-foreground">
                           <Globe className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No active sessions</p>
+                          <p className="text-sm">{t('settings.security.noActiveSessions')}</p>
                         </div>
                       ) : (
                         <>
@@ -1059,7 +1081,7 @@ const Settings = () => {
                                       <p className="font-medium">{session.device}</p>
                                       {session.isCurrent && (
                                         <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                                          Current
+                                          {t('settings.security.current')}
                                         </span>
                                       )}
                                     </div>
@@ -1082,7 +1104,7 @@ const Settings = () => {
                                     onClick={() => openTerminateSessionDialog(session.id)}
                                   >
                                     <LogOut className="w-4 h-4 mr-1" />
-                                    Terminate
+                                    {t('settings.security.terminate')}
                                   </Button>
                                 )}
                               </div>
@@ -1097,7 +1119,7 @@ const Settings = () => {
                                 onClick={openTerminateAllDialog}
                               >
                                 <LogOut className="w-4 h-4 mr-2" />
-                                Terminate All Other Sessions
+                                {t('settings.security.terminateAllOther')}
                               </Button>
                             </div>
                           )}
@@ -1115,16 +1137,16 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5" />
-                        Payment Methods
+                        {t('settings.payment.title')}
                       </CardTitle>
-                      <CardDescription>Manage your saved payment methods</CardDescription>
+                      <CardDescription>{t('settings.payment.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {paymentMethods.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                          <p className="font-medium">No payment methods saved</p>
-                          <p className="text-sm">Add a payment method for faster checkout</p>
+                          <p className="font-medium">{t('settings.payment.noMethods')}</p>
+                          <p className="text-sm">{t('settings.payment.addMethodHint')}</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1140,11 +1162,11 @@ const Settings = () => {
                                       •••• •••• •••• {method.last4}
                                     </p>
                                     {method.isDefault && (
-                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Default</span>
+                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{t('settings.payment.default')}</span>
                                     )}
                                   </div>
                                   <p className="text-sm text-muted-foreground">
-                                    {method.name} • Expires {method.expiryDate}
+                                    {method.name} • {t('settings.payment.expires')} {method.expiryDate}
                                   </p>
                                 </div>
                               </div>
@@ -1155,7 +1177,7 @@ const Settings = () => {
                                     size="sm"
                                     onClick={() => handleSetDefaultPaymentMethod(method.id)}
                                   >
-                                    Set Default
+                                    {t('settings.payment.setDefault')}
                                   </Button>
                                 )}
                                 <Button 
@@ -1178,7 +1200,7 @@ const Settings = () => {
                         onClick={() => setShowAddPaymentDialog(true)}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Card
+                        {t('settings.payment.addCard')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1193,15 +1215,15 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5" />
-                        Billing & Payment
+                        {t('settings.notifications.billingTitle')}
                       </CardTitle>
-                      <CardDescription>Notifications about payments, invoices, and refunds</CardDescription>
+                      <CardDescription>{t('settings.notifications.billingDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Payment Confirmation</p>
-                          <p className="text-sm text-muted-foreground">Email when a payment is successfully processed</p>
+                          <p className="font-medium">{t('settings.notifications.paymentConfirmation')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.paymentConfirmationDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.paymentConfirmation} 
@@ -1211,8 +1233,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Payment Failed</p>
-                          <p className="text-sm text-muted-foreground">Alert when a payment attempt fails</p>
+                          <p className="font-medium">{t('settings.notifications.paymentFailed')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.paymentFailedDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.paymentFailed} 
@@ -1222,8 +1244,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Refund Processed</p>
-                          <p className="text-sm text-muted-foreground">Notification when a refund is completed</p>
+                          <p className="font-medium">{t('settings.notifications.refundProcessed')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.refundProcessedDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.refundProcessed} 
@@ -1233,8 +1255,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Invoice Ready</p>
-                          <p className="text-sm text-muted-foreground">Email when your invoice is available for download</p>
+                          <p className="font-medium">{t('settings.notifications.invoiceReady')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.invoiceReadyDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.invoiceReady} 
@@ -1249,15 +1271,15 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Bell className="w-5 h-5" />
-                        Order & Shipping Updates
+                        {t('settings.notifications.orderTitle')}
                       </CardTitle>
-                      <CardDescription>Notifications about your print jobs and deliveries</CardDescription>
+                      <CardDescription>{t('settings.notifications.orderDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Order Confirmation</p>
-                          <p className="text-sm text-muted-foreground">Email confirming your order has been received</p>
+                          <p className="font-medium">{t('settings.notifications.orderConfirmation')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.orderConfirmationDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.orderConfirmation} 
@@ -1267,8 +1289,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Order Status Change</p>
-                          <p className="text-sm text-muted-foreground">Updates when your order moves to a new status</p>
+                          <p className="font-medium">{t('settings.notifications.orderStatusChange')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.orderStatusChangeDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.orderStatusChange} 
@@ -1278,8 +1300,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Print Started</p>
-                          <p className="text-sm text-muted-foreground">Notification when your print job begins</p>
+                          <p className="font-medium">{t('settings.notifications.printStarted')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.printStartedDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.printStarted} 
@@ -1289,8 +1311,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Print Completed</p>
-                          <p className="text-sm text-muted-foreground">Email when your print is finished and ready</p>
+                          <p className="font-medium">{t('settings.notifications.printCompleted')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.printCompletedDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.printCompleted} 
@@ -1300,8 +1322,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Shipping Updates</p>
-                          <p className="text-sm text-muted-foreground">Tracking updates and shipping status changes</p>
+                          <p className="font-medium">{t('settings.notifications.shippingUpdates')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.shippingUpdatesDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.shippingUpdate} 
@@ -1311,8 +1333,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Delivery Confirmation</p>
-                          <p className="text-sm text-muted-foreground">Email when your order has been delivered</p>
+                          <p className="font-medium">{t('settings.notifications.deliveryConfirmation')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.deliveryConfirmationDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.deliveryConfirmation} 
@@ -1327,15 +1349,15 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5" />
-                        Marketing & Promotions
+                        {t('settings.notifications.marketingTitle')}
                       </CardTitle>
-                      <CardDescription>Optional emails about news and special offers</CardDescription>
+                      <CardDescription>{t('settings.notifications.marketingDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Marketing Emails</p>
-                          <p className="text-sm text-muted-foreground">News, tips, and updates from ProtoLab</p>
+                          <p className="font-medium">{t('settings.notifications.marketingEmails')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.marketingEmailsDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.marketingEmails} 
@@ -1345,8 +1367,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div>
-                          <p className="font-medium">Promotional Offers</p>
-                          <p className="text-sm text-muted-foreground">Discounts, deals, and special promotions</p>
+                          <p className="font-medium">{t('settings.notifications.promotionalOffers')}</p>
+                          <p className="text-sm text-muted-foreground">{t('settings.notifications.promotionalOffersDesc')}</p>
                         </div>
                         <Switch 
                           checked={notificationSettings.promotions} 
@@ -1365,9 +1387,9 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Lock className="w-5 h-5" />
-                        Privacy & Data
+                        {t('settings.privacy.title')}
                       </CardTitle>
-                      <CardDescription>Manage your data and privacy preferences</CardDescription>
+                      <CardDescription>{t('settings.privacy.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -1376,12 +1398,12 @@ const Settings = () => {
                             <Download className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-medium">Download Your Data</p>
-                            <p className="text-sm text-muted-foreground">Get a copy of all your data stored with us</p>
+                            <p className="font-medium">{t('settings.privacy.downloadData')}</p>
+                            <p className="text-sm text-muted-foreground">{t('settings.privacy.downloadDataDesc')}</p>
                           </div>
                         </div>
-                        <Button variant="outline" onClick={() => toast.info("Data export coming soon!")}>
-                          Request
+                        <Button variant="outline" onClick={() => toast.info(t('settings.toasts.dataExportComingSoon'))}>
+                          {t('settings.privacy.request')}
                         </Button>
                       </div>
 
@@ -1391,12 +1413,12 @@ const Settings = () => {
                             <Eye className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-medium">Activity Log</p>
-                            <p className="text-sm text-muted-foreground">View your account activity history ({activityLog.length} events)</p>
+                            <p className="font-medium">{t('settings.privacy.activityLog')}</p>
+                            <p className="text-sm text-muted-foreground">{t('settings.privacy.activityLogDesc')} ({activityLog.length} {t('settings.privacy.events')})</p>
                           </div>
                         </div>
                         <Button variant="outline" onClick={() => setShowActivityLogDialog(true)}>
-                          View
+                          {t('settings.privacy.view')}
                         </Button>
                       </div>
                     </CardContent>
@@ -1407,30 +1429,29 @@ const Settings = () => {
                     <CardHeader>
                       <CardTitle className="text-destructive flex items-center gap-2">
                         <Trash2 className="w-5 h-5" />
-                        Danger Zone
+                        {t('settings.privacy.dangerZone')}
                       </CardTitle>
-                      <CardDescription>Irreversible actions for your account</CardDescription>
+                      <CardDescription>{t('settings.privacy.dangerZoneDesc')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive">Delete Account</Button>
+                          <Button variant="destructive">{t('settings.privacy.deleteAccount')}</Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogTitle>{t('settings.privacy.deleteConfirmTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete your account
-                              and remove all your data from our servers, including all your orders and files.
+                              {t('settings.privacy.deleteConfirmDesc')}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t('settings.privacy.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleDeleteAccount}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              Delete Account
+                              {t('settings.privacy.deleteAccount')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -1447,16 +1468,16 @@ const Settings = () => {
         <Dialog open={showAddPaymentDialog} onOpenChange={setShowAddPaymentDialog}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add Card</DialogTitle>
+              <DialogTitle>{t('settings.payment.addCardTitle')}</DialogTitle>
               <DialogDescription>
-                Add a credit or debit card for faster checkout
+                {t('settings.payment.addCardDesc')}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Label htmlFor="cardNumber">{t('settings.payment.cardNumber')}</Label>
                     <Input
                       id="cardNumber"
                       placeholder="1234 5678 9012 3456"
@@ -1470,7 +1491,7 @@ const Settings = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="expiryDate">Expiry Date</Label>
+                      <Label htmlFor="expiryDate">{t('settings.payment.expiryDate')}</Label>
                       <Input
                         id="expiryDate"
                         placeholder="MM/YY"
@@ -1483,7 +1504,7 @@ const Settings = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="cardholderName">Cardholder Name</Label>
+                      <Label htmlFor="cardholderName">{t('settings.payment.cardholderName')}</Label>
                       <Input
                         id="cardholderName"
                         placeholder="John Doe"
@@ -1497,18 +1518,18 @@ const Settings = () => {
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Lock className="w-3 h-3" />
-                    Your card details are securely stored
+                    {t('settings.payment.cardSecure')}
                   </p>
               </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
-                Cancel
+                {t('settings.privacy.cancel')}
               </Button>
               <Button onClick={handleAddPaymentMethod}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Card
+                {t('settings.payment.addCard')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1518,18 +1539,18 @@ const Settings = () => {
         <AlertDialog open={!!sessionToTerminate} onOpenChange={(open) => !open && setSessionToTerminate(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Terminate Session</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.security.terminateSessionTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to terminate this session? The device will be logged out and will need to sign in again.
+                {t('settings.security.terminateSessionDesc')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setSessionToTerminate(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setSessionToTerminate(null)}>{t('settings.privacy.cancel')}</AlertDialogCancel>
               <AlertDialogAction 
                 onClick={confirmTerminateSession}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Terminate Session
+                {t('settings.security.terminateSession')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1539,18 +1560,18 @@ const Settings = () => {
         <AlertDialog open={showTerminateAllDialog} onOpenChange={setShowTerminateAllDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Terminate All Other Sessions</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.security.terminateAllTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to terminate all other sessions? All devices except this one will be logged out and will need to sign in again.
+                {t('settings.security.terminateAllDesc')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowTerminateAllDialog(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setShowTerminateAllDialog(false)}>{t('settings.privacy.cancel')}</AlertDialogCancel>
               <AlertDialogAction 
                 onClick={confirmTerminateAllOtherSessions}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Terminate All
+                {t('settings.security.terminateAll')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1562,18 +1583,18 @@ const Settings = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
-                Activity Log
+                {t('settings.privacy.activityLog')}
               </DialogTitle>
               <DialogDescription>
-                Your recent account activity and security events
+                {t('settings.privacy.activityLogDialogDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="overflow-y-auto max-h-[50vh] space-y-3 pr-2">
               {activityLog.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="font-medium">No activity recorded yet</p>
-                  <p className="text-sm">Your account activity will appear here</p>
+                  <p className="font-medium">{t('settings.privacy.noActivity')}</p>
+                  <p className="text-sm">{t('settings.privacy.noActivityDesc')}</p>
                 </div>
               ) : (
                 activityLog.map((activity) => (
@@ -1623,11 +1644,11 @@ const Settings = () => {
               {activityLog.length > 0 && (
                 <Button variant="outline" size="sm" onClick={clearActivityLog}>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Clear Log
+                  {t('settings.privacy.clearLog')}
                 </Button>
               )}
               <Button onClick={() => setShowActivityLogDialog(false)}>
-                Close
+                {t('settings.privacy.close')}
               </Button>
             </DialogFooter>
           </DialogContent>

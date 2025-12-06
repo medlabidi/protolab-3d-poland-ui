@@ -189,11 +189,11 @@ const Conversations = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
-      open: { label: "Open", variant: "secondary", icon: AlertCircle },
-      in_progress: { label: "In Progress", variant: "default", icon: Clock },
-      resolved: { label: "Resolved", variant: "outline", icon: CheckCircle },
-      closed: { label: "Closed", variant: "outline", icon: CheckCircle }
+    const statusConfig: Record<string, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
+      open: { labelKey: "conversations.status.open", variant: "secondary", icon: AlertCircle },
+      in_progress: { labelKey: "conversations.status.inProgress", variant: "default", icon: Clock },
+      resolved: { labelKey: "conversations.status.resolved", variant: "outline", icon: CheckCircle },
+      closed: { labelKey: "conversations.status.closed", variant: "outline", icon: CheckCircle }
     };
     const config = statusConfig[status] || statusConfig.open;
     const Icon = config.icon;
@@ -201,7 +201,7 @@ const Conversations = () => {
     return (
       <Badge variant={config.variant} className="text-xs">
         <Icon className="w-3 h-3 mr-1" />
-        {config.label}
+        {t(config.labelKey)}
       </Badge>
     );
   };
@@ -227,7 +227,7 @@ const Conversations = () => {
     if (diffDays === 0) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('conversations.yesterday');
     } else if (diffDays < 7) {
       return date.toLocaleDateString([], { weekday: 'short' });
     } else {
@@ -254,9 +254,9 @@ const Conversations = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8 animate-slide-up">
-            <h1 className="text-4xl font-bold mb-2 gradient-text">Engineering Support</h1>
+            <h1 className="text-4xl font-bold mb-2 gradient-text">{t('conversations.title')}</h1>
             <p className="text-muted-foreground text-lg">
-              Communicate with our engineering team about your print jobs
+              {t('conversations.subtitle')}
             </p>
           </div>
 
@@ -266,7 +266,7 @@ const Conversations = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <MessageSquare className="w-5 h-5 text-primary" />
-                  Conversations
+                  {t('conversations.listTitle')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 p-0">
@@ -274,8 +274,8 @@ const Conversations = () => {
                   {conversations.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">No conversations yet</p>
-                      <p className="text-sm mt-1">Start a conversation from any order's details page</p>
+                      <p className="font-medium">{t('conversations.noConversations')}</p>
+                      <p className="text-sm mt-1">{t('conversations.noConversationsHint')}</p>
                     </div>
                   ) : (
                     <div className="space-y-1 p-2">
@@ -292,7 +292,7 @@ const Conversations = () => {
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4 text-muted-foreground" />
                               <span className="font-medium text-sm truncate max-w-[150px]">
-                                {conversation.order?.project_name || conversation.order?.file_name || 'Unknown Order'}
+                                {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
                               </span>
                             </div>
                             {(conversation.unread_count || 0) > 0 && (
@@ -311,7 +311,7 @@ const Conversations = () => {
                           
                           {conversation.last_message && (
                             <p className="text-xs text-muted-foreground mt-2 truncate">
-                              {conversation.last_message.sender_type === 'user' ? 'You: ' : ''}
+                              {conversation.last_message.sender_type === 'user' ? t('conversations.you') + ': ' : ''}
                               {conversation.last_message.message}
                             </p>
                           )}
@@ -345,7 +345,7 @@ const Conversations = () => {
                             {selectedConversation.order?.project_name || selectedConversation.order?.file_name}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Order ID: {selectedConversation.order_id.slice(0, 8)}...
+                            {t('conversations.orderId')}: {selectedConversation.order_id.slice(0, 8)}...
                           </p>
                         </div>
                       </div>
@@ -386,7 +386,7 @@ const Conversations = () => {
                               )}>
                                 {message.sender_type === 'engineer' && (
                                   <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
-                                    Engineering Support
+                                    {t('conversations.engineeringSupport')}
                                   </p>
                                 )}
                                 <p className="text-sm whitespace-pre-wrap">{message.message}</p>
@@ -409,7 +409,7 @@ const Conversations = () => {
                   <div className="p-4 border-t">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Type your message..."
+                        placeholder={t('conversations.typeMessage')}
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
@@ -429,7 +429,7 @@ const Conversations = () => {
                     </div>
                     {selectedConversation.status === 'closed' && (
                       <p className="text-xs text-muted-foreground mt-2 text-center">
-                        This conversation is closed
+                        {t('conversations.conversationClosed')}
                       </p>
                     )}
                   </div>
@@ -438,9 +438,9 @@ const Conversations = () => {
                 <div className="flex-1 flex items-center justify-center text-center p-8">
                   <div>
                     <MessageSquare className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Select a Conversation</h3>
+                    <h3 className="text-lg font-medium mb-2">{t('conversations.selectConversation')}</h3>
                     <p className="text-muted-foreground text-sm max-w-sm">
-                      Choose a conversation from the list to view messages and communicate with our engineering team
+                      {t('conversations.selectConversationHint')}
                     </p>
                   </div>
                 </div>

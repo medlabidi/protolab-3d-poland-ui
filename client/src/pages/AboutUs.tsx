@@ -12,64 +12,64 @@ const AboutUs = () => {
   const values = [
     {
       icon: Target,
-      title: t.aboutUs.value1Title,
-      description: t.aboutUs.value1Desc,
+      title: t('aboutUs.value1Title'),
+      description: t('aboutUs.value1Desc'),
     },
     {
       icon: Heart,
-      title: t.aboutUs.value2Title,
-      description: t.aboutUs.value2Desc,
+      title: t('aboutUs.value2Title'),
+      description: t('aboutUs.value2Desc'),
     },
     {
       icon: Sparkles,
-      title: t.aboutUs.value3Title,
-      description: t.aboutUs.value3Desc,
+      title: t('aboutUs.value3Title'),
+      description: t('aboutUs.value3Desc'),
     },
     {
       icon: Shield,
-      title: t.aboutUs.value4Title,
-      description: t.aboutUs.value4Desc,
+      title: t('aboutUs.value4Title'),
+      description: t('aboutUs.value4Desc'),
     },
   ];
 
   const milestones = [
     {
       year: "2020",
-      title: t.aboutUs.milestone1Title,
-      description: t.aboutUs.milestone1Desc,
+      title: t('aboutUs.milestone1Title'),
+      description: t('aboutUs.milestone1Desc'),
     },
     {
       year: "2021",
-      title: t.aboutUs.milestone2Title,
-      description: t.aboutUs.milestone2Desc,
+      title: t('aboutUs.milestone2Title'),
+      description: t('aboutUs.milestone2Desc'),
     },
     {
       year: "2023",
-      title: t.aboutUs.milestone3Title,
-      description: t.aboutUs.milestone3Desc,
+      title: t('aboutUs.milestone3Title'),
+      description: t('aboutUs.milestone3Desc'),
     },
     {
       year: "2024",
-      title: t.aboutUs.milestone4Title,
-      description: t.aboutUs.milestone4Desc,
+      title: t('aboutUs.milestone4Title'),
+      description: t('aboutUs.milestone4Desc'),
     },
   ];
 
   const team = [
     {
       name: "Adam Kowalski",
-      role: t.aboutUs.teamRole1,
-      description: t.aboutUs.teamDesc1,
+      role: t('aboutUs.teamRole1'),
+      description: t('aboutUs.teamDesc1'),
     },
     {
       name: "Maria Nowak",
-      role: t.aboutUs.teamRole2,
-      description: t.aboutUs.teamDesc2,
+      role: t('aboutUs.teamRole2'),
+      description: t('aboutUs.teamDesc2'),
     },
     {
       name: "Piotr Wiśniewski",
-      role: t.aboutUs.teamRole3,
-      description: t.aboutUs.teamDesc3,
+      role: t('aboutUs.teamRole3'),
+      description: t('aboutUs.teamDesc3'),
     },
   ];
 
@@ -77,22 +77,22 @@ const AboutUs = () => {
     {
       icon: Package,
       value: "5000+",
-      label: t.aboutUs.stat1,
+      label: t('aboutUs.stat1'),
     },
     {
       icon: Users,
       value: "500+",
-      label: t.aboutUs.stat2,
+      label: t('aboutUs.stat2'),
     },
     {
       icon: Globe,
       value: "50+",
-      label: t.aboutUs.stat3,
+      label: t('aboutUs.stat3'),
     },
     {
       icon: Award,
       value: "98%",
-      label: t.aboutUs.stat4,
+      label: t('aboutUs.stat4'),
     },
   ];
 
@@ -115,10 +115,10 @@ const AboutUs = () => {
           </button>
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-              {t.landing.login}
+              {t('landing.login')}
             </Button>
             <Button onClick={() => navigate("/new-print")} className="hover-lift shadow-lg hover:shadow-xl">
-              {t.landing.getStarted}
+              {t('landing.getStarted')}
             </Button>
           </div>
         </div>
@@ -128,13 +128,13 @@ const AboutUs = () => {
       <section className="py-20 px-6 relative animate-slide-up">
         <div className="container mx-auto text-center max-w-4xl">
           {/* <div className="inline-block mb-4 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-semibold animate-pulse-glow">
-            ✨ {t.aboutUs.badge}
+            ✨ {t('aboutUs.badge')}
           </div> */}
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
-            {t.aboutUs.title}
+            {t('aboutUs.title')}
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
-            {t.aboutUs.subtitle}
+            {t('aboutUs.subtitle')}
           </p>
         </div>
       </section>
@@ -144,11 +144,11 @@ const AboutUs = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="animate-slide-up">
-              <h2 className="text-4xl font-bold mb-6 gradient-text">{t.aboutUs.storyTitle}</h2>
+              <h2 className="text-4xl font-bold mb-6 gradient-text">{t('aboutUs.storyTitle')}</h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
-                <p>{t.aboutUs.storyPara1}</p>
-                <p>{t.aboutUs.storyPara2}</p>
-                <p>{t.aboutUs.storyPara3}</p>
+                <p>{t('aboutUs.storyPara1')}</p>
+                <p>{t('aboutUs.storyPara2')}</p>
+                <p>{t('aboutUs.storyPara3')}</p>
               </div>
             </div>
             <div className="relative animate-scale-in">
@@ -190,8 +190,8 @@ const AboutUs = () => {
       <section className="py-20 px-6 bg-gradient-to-b from-background to-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.aboutUs.valuesTitle}</h2>
-            <p className="text-muted-foreground text-lg">{t.aboutUs.valuesSubtitle}</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('aboutUs.valuesTitle')}</h2>
+            <p className="text-muted-foreground text-lg">{t('aboutUs.valuesSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             {values.map((value, index) => (
@@ -221,8 +221,8 @@ const AboutUs = () => {
       <section className="py-20 px-6 relative">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.aboutUs.journeyTitle}</h2>
-            <p className="text-muted-foreground text-lg">{t.aboutUs.journeySubtitle}</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('aboutUs.journeyTitle')}</h2>
+            <p className="text-muted-foreground text-lg">{t('aboutUs.journeySubtitle')}</p>
           </div>
           <div className="relative">
             {/* Timeline Line */}
@@ -257,8 +257,8 @@ const AboutUs = () => {
       <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t.aboutUs.teamTitle}</h2>
-            <p className="text-muted-foreground text-lg">{t.aboutUs.teamSubtitle}</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('aboutUs.teamTitle')}</h2>
+            <p className="text-muted-foreground text-lg">{t('aboutUs.teamSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {team.map((member, index) => (
@@ -286,9 +286,9 @@ const AboutUs = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-accent/5"></div>
         <div className="container mx-auto text-center max-w-3xl relative z-10">
           <div className="p-12 rounded-3xl glass-effect shadow-2xl border-2 border-primary/10">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">{t.aboutUs.ctaTitle}</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">{t('aboutUs.ctaTitle')}</h2>
             <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
-              {t.aboutUs.ctaSubtitle}
+              {t('aboutUs.ctaSubtitle')}
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <Button 
@@ -298,7 +298,7 @@ const AboutUs = () => {
               >
                 <span className="relative z-10 flex items-center">
                   <Zap className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
-                  {t.aboutUs.ctaButton}
+                  {t('aboutUs.ctaButton')}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </Button>
@@ -308,7 +308,7 @@ const AboutUs = () => {
                 className="text-lg px-12 py-7 hover-lift border-2"
                 onClick={() => navigate("/login")}
               >
-                {t.landing.login}
+                {t('landing.login')}
               </Button>
             </div>
           </div>
@@ -324,37 +324,37 @@ const AboutUs = () => {
                 <Logo size="sm" textClassName="text-xl" />
               </div>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Professional 3D printing services in Poland
+                {t('landing.footerDescription')}
               </p>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Services</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerServices')}</h4>
               <ul className="space-y-3">
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">3D Printing</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Design Consultation</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Rapid Prototyping</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrinting')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerDesign')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrototyping')}</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Company</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerCompany')}</h4>
               <ul className="space-y-3">
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/about")}>About Us</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Contact</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Privacy Policy</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/about")}>{t('landing.footerAbout')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerContact')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">{t('landing.footerPrivacy')}</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold text-lg mb-4">Contact</h4>
+              <h4 className="font-bold text-lg mb-4">{t('landing.footerContactHeader')}</h4>
               <ul className="space-y-3 text-muted-foreground">
                 <li className="hover:text-primary transition-colors cursor-pointer">📧 info@protolab.pl</li>
                 <li className="hover:text-primary transition-colors cursor-pointer">📞 +48 123 456 789</li>
-                <li className="hover:text-primary transition-colors cursor-pointer">📍 Warsaw, Poland</li>
+                <li className="hover:text-primary transition-colors cursor-pointer">📍 {t('landing.footerLocation')}</li>
               </ul>
             </div>
           </div>
           <div className="pt-8 border-t border-border/50 text-center">
             <p className="text-muted-foreground">
-              © 2024 ProtoLab. All rights reserved. Made with ❤️ in Poland
+              {t('landing.footerCopyright')}
             </p>
           </div>
         </div>

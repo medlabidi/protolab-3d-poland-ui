@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const { t } = useLanguage();
   
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,21 +26,21 @@ const ResetPassword = () => {
 
   useEffect(() => {
     if (!token) {
-      setError("Invalid or missing reset token. Please request a new password reset link.");
+      setError(t('resetPassword.invalidToken'));
     }
-  }, [token]);
+  }, [token, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError(t('resetPassword.passwordTooShort'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t('resetPassword.passwordsMismatch'));
       return;
     }
 
@@ -56,19 +58,19 @@ const ResetPassword = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to reset password");
+        throw new Error(data.error || t('resetPassword.failed'));
       }
 
       setIsSuccess(true);
-      toast.success("Password reset successful!");
+      toast.success(t('resetPassword.success'));
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
         navigate("/signin");
       }, 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reset password");
-      toast.error(err instanceof Error ? err.message : "Failed to reset password");
+      setError(err instanceof Error ? err.message : t('resetPassword.failed'));
+      toast.error(err instanceof Error ? err.message : t('resetPassword.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -84,14 +86,14 @@ const ResetPassword = () => {
                 <CheckCircle2 className="w-9 h-9 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl text-green-600">Password Reset Successful!</CardTitle>
+            <CardTitle className="text-2xl text-green-600">{t('resetPassword.successTitle')}</CardTitle>
             <CardDescription>
-              Your password has been reset successfully. You will be redirected to the login page shortly.
+              {t('resetPassword.successDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Link to="/signin">
-              <Button className="w-full">Go to Login</Button>
+              <Button className="w-full">{t('resetPassword.goToLogin')}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -109,14 +111,14 @@ const ResetPassword = () => {
                 <XCircle className="w-9 h-9 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl text-red-600">Invalid Reset Link</CardTitle>
+            <CardTitle className="text-2xl text-red-600">{t('resetPassword.invalidLinkTitle')}</CardTitle>
             <CardDescription>
-              This password reset link is invalid or has expired. Please request a new one.
+              {t('resetPassword.invalidLinkDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Link to="/signin">
-              <Button className="w-full">Back to Login</Button>
+              <Button className="w-full">{t('resetPassword.backToLogin')}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -137,9 +139,9 @@ const ResetPassword = () => {
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
           </div>
-          <CardTitle className="text-3xl gradient-text">Reset Password</CardTitle>
+          <CardTitle className="text-3xl gradient-text">{t('resetPassword.title')}</CardTitle>
           <CardDescription className="text-base">
-            Enter your new password below
+            {t('resetPassword.subtitle')}
           </CardDescription>
         </CardHeader>
 
@@ -152,12 +154,12 @@ const ResetPassword = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">New Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold">{t('resetPassword.newPassword')}</Label>
               <div className="relative">
                 <Input 
                   id="password" 
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter new password"
+                  placeholder={t('resetPassword.newPasswordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required 
@@ -172,15 +174,15 @@ const ResetPassword = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+              <p className="text-xs text-gray-500">{t('resetPassword.passwordHint')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold">{t('resetPassword.confirmPassword')}</Label>
               <Input 
                 id="confirmPassword" 
                 type={showPassword ? "text" : "password"}
-                placeholder="Confirm new password"
+                placeholder={t('resetPassword.confirmPasswordPlaceholder')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
@@ -196,16 +198,16 @@ const ResetPassword = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Resetting Password...
+                  {t('resetPassword.resetting')}
                 </>
               ) : (
-                "Reset Password"
+                t('resetPassword.resetButton')
               )}
             </Button>
 
             <div className="text-center text-sm pt-2">
               <Link to="/signin" className="text-primary hover:text-primary/80 font-medium">
-                ← Back to Login
+                ← {t('resetPassword.backToLogin')}
               </Link>
             </div>
           </CardContent>

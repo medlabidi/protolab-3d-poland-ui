@@ -321,21 +321,21 @@ const Login = () => {
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <CardTitle className="text-2xl">{t.login.welcome}</CardTitle>
-          <CardDescription>{t.login.subtitle}</CardDescription>
+          <CardTitle className="text-2xl">{t('login.welcome')}</CardTitle>
+          <CardDescription>{t('login.subtitle')}</CardDescription>
         </CardHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mx-6">
-            <TabsTrigger value="login">{t.login.signIn}</TabsTrigger>
-            <TabsTrigger value="signup">{t.login.signUp}</TabsTrigger>
+            <TabsTrigger value="login">{t('login.signIn')}</TabsTrigger>
+            <TabsTrigger value="signup">{t('login.signUp')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
             <form onSubmit={handleLogin}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">{t.login.email}</Label>
+                  <Label htmlFor="email">{t('login.email')}</Label>
                   <Input 
                     id="email" 
                     type="email" 
@@ -346,7 +346,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">{t.login.password}</Label>
+                  <Label htmlFor="password">{t('login.password')}</Label>
                   <Input 
                     id="password" 
                     type="password"
@@ -356,19 +356,19 @@ const Login = () => {
                   />
                 </div>
                 <Button type="button" variant="link" className="px-0 text-sm">
-                  Forgot password?
+                  {t('login.forgotPassword')}
                 </Button>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : t.login.signIn}
+                  {isLoading ? t('login.signingIn') : t('login.signIn')}
                 </Button>
                 <div className="relative w-full">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">{t('login.orContinueWith')}</span>
                   </div>
                 </div>
                 <div className="w-full flex justify-center">
@@ -386,7 +386,7 @@ const Login = () => {
             <form onSubmit={handleSignup}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">{t.login.name}</Label>
+                  <Label htmlFor="signup-name">{t('login.name')}</Label>
                   <Input 
                     id="signup-name" 
                     placeholder="John Doe" 
@@ -396,7 +396,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">{t.login.email}</Label>
+                  <Label htmlFor="signup-email">{t('login.email')}</Label>
                   <Input 
                     id="signup-email" 
                     type="email" 
@@ -407,7 +407,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">{t.login.password}</Label>
+                  <Label htmlFor="signup-password">{t('login.password')}</Label>
                   <Input 
                     id="signup-password" 
                     type="password"
@@ -417,7 +417,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">{t.login.confirmPassword}</Label>
+                  <Label htmlFor="confirm-password">{t('login.confirmPassword')}</Label>
                   <Input 
                     id="confirm-password" 
                     type="password"
@@ -427,7 +427,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-phone">Phone (Optional)</Label>
+                  <Label htmlFor="signup-phone">{t('login.phoneOptional')}</Label>
                   <Input 
                     id="signup-phone" 
                     type="tel"
@@ -437,7 +437,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-address">Address (Optional)</Label>
+                  <Label htmlFor="signup-address">{t('login.addressOptional')}</Label>
                   <Input 
                     id="signup-address" 
                     placeholder="123 Main St, City, State 12345"
@@ -450,7 +450,7 @@ const Login = () => {
                 <div className="pt-2 border-t space-y-3">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <Label className="text-sm font-semibold">Delivery Location</Label>
+                    <Label className="text-sm font-semibold">{t('login.deliveryLocation')}</Label>
                     <Button
                       type="button"
                       variant="ghost"
@@ -494,14 +494,14 @@ const Login = () => {
                       {isDetectingLocation ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        "Detect"
+                        t('login.detect')
                       )}
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-city" className="text-xs">City</Label>
+                      <Label htmlFor="signup-city" className="text-xs">{t('login.city')}</Label>
                       <Input 
                         id="signup-city" 
                         placeholder="New York"
@@ -510,7 +510,7 @@ const Login = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signup-zipcode" className="text-xs">Zip Code</Label>
+                      <Label htmlFor="signup-zipcode" className="text-xs">{t('login.zipCode')}</Label>
                       <Input 
                         id="signup-zipcode" 
                         placeholder="10001"
@@ -521,7 +521,7 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-country" className="text-xs">Country</Label>
+                    <Label htmlFor="signup-country" className="text-xs">{t('login.country')}</Label>
                     <Input 
                       id="signup-country" 
                       placeholder="United States"
@@ -532,17 +532,17 @@ const Login = () => {
 
                   {latitude && longitude && (
                     <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                      📍 Coordinates: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                      📍 {t('login.coordinates')}: {latitude.toFixed(4)}, {longitude.toFixed(4)}
                     </div>
                   )}
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : t.login.signUp}
+                  {isLoading ? t('login.creatingAccount') : t('login.signUp')}
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  By signing up, you agree to our Terms of Service and Privacy Policy
+                  {t('login.termsAgreement')}
                 </p>
               </CardFooter>
             </form>

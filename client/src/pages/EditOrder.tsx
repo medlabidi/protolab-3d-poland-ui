@@ -17,6 +17,7 @@ import { ArrowLeft, Save, Loader2, X, Calculator, RefreshCw, AlertTriangle, Ban 
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -131,6 +132,7 @@ const shippingMethods = [
 const EditOrder = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
+  const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -388,11 +390,11 @@ const EditOrder = () => {
         throw new Error(errorData.error || 'Failed to update order');
       }
 
-      toast.success("Order updated successfully!");
+      toast.success(t('editOrder.toasts.updateSuccess'));
       navigate(`/orders/${orderId}`);
     } catch (err) {
       console.error('Error updating order:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to update order');
+      toast.error(err instanceof Error ? err.message : t('editOrder.toasts.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -428,7 +430,7 @@ const EditOrder = () => {
         <main className="flex-1 p-8">
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading order...</span>
+            <span className="ml-3 text-muted-foreground">{t('editOrder.loading')}</span>
           </div>
         </main>
       </div>
@@ -441,9 +443,9 @@ const EditOrder = () => {
         <DashboardSidebar />
         <main className="flex-1 p-8">
           <div className="max-w-5xl mx-auto text-center py-12">
-            <p className="text-destructive text-lg">{error || 'Order not found'}</p>
+            <p className="text-destructive text-lg">{error || t('editOrder.notFound')}</p>
             <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
-              Back to Orders
+              {t('editOrder.backToOrders')}
             </Button>
           </div>
         </main>
@@ -461,12 +463,12 @@ const EditOrder = () => {
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Ban className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">Cannot Edit This Order</h2>
+                  <h2 className="text-xl font-semibold mb-2">{t('editOrder.cannotEditTitle')}</h2>
                   <p className="text-muted-foreground mb-6">
-                    Orders with status "{order.status}" cannot be modified.
+                    {t('editOrder.cannotEditStatus')} "{order.status}".
                   </p>
                   <Button onClick={() => navigate(`/orders/${orderId}`)}>
-                    View Order Details
+                    {t('editOrder.viewOrderDetails')}
                   </Button>
                 </div>
               </CardContent>
@@ -489,8 +491,8 @@ const EditOrder = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold gradient-text">Edit Order #{order.order_number || order.id.slice(0, 8)}</h1>
-              <p className="text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
+              <h1 className="text-3xl font-bold gradient-text">{t('editOrder.title')} #{order.order_number || order.id.slice(0, 8)}</h1>
+              <p className="text-muted-foreground">{t('editOrder.placedOn')} {formatDate(order.created_at)}</p>
             </div>
             <div className="ml-auto flex items-center gap-4">
               <StatusBadge status={order.status} />
@@ -504,9 +506,9 @@ const EditOrder = () => {
                 <div className="flex gap-3">
                   <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-yellow-700 dark:text-yellow-400">Limited Editing Available</p>
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">{t('editOrder.limitedEditingTitle')}</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Your order is currently being printed. You can only modify shipping details.
+                      {t('editOrder.limitedEditingDescription')}
                     </p>
                   </div>
                 </div>
@@ -519,7 +521,7 @@ const EditOrder = () => {
               {/* File Preview */}
               <Card className="shadow-lg animate-scale-in">
                 <CardHeader>
-                  <CardTitle>3D Model Preview</CardTitle>
+                  <CardTitle>{t('editOrder.modelPreview')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ModelViewerUrl 
@@ -528,10 +530,10 @@ const EditOrder = () => {
                     height="300px"
                   />
                   <p className="text-sm text-muted-foreground mt-4">
-                    File: {order.file_name}
+                    {t('editOrder.file')}: {order.file_name}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Note: The 3D file cannot be changed. Create a new order if you need a different file.
+                    {t('editOrder.fileNote')}
                   </p>
                 </CardContent>
               </Card>
@@ -539,31 +541,29 @@ const EditOrder = () => {
               {/* Shipping Details */}
               <Card className="shadow-lg animate-scale-in" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
-                  <CardTitle>Shipping Details</CardTitle>
-                  <CardDescription>Update your delivery preferences</CardDescription>
+                  <CardTitle>{t('editOrder.shippingDetails')}</CardTitle>
+                  <CardDescription>{t('editOrder.shippingDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Shipping Method</Label>
+                    <Label>{t('editOrder.shippingMethod')}</Label>
                     <Select value={shippingMethod} onValueChange={setShippingMethod} disabled={!canEditShipping}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select shipping method" />
+                        <SelectValue placeholder={t('editOrder.selectShippingMethod')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {shippingMethods.map((method) => (
-                          <SelectItem key={method.value} value={method.value}>
-                            {method.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="pickup">{t('editOrder.shipping.pickup')}</SelectItem>
+                        <SelectItem value="inpost">{t('editOrder.shipping.inpost')}</SelectItem>
+                        <SelectItem value="courier">{t('editOrder.shipping.courier')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {shippingMethod && shippingMethod !== 'pickup' && (
                     <div className="space-y-2">
-                      <Label>Shipping Address</Label>
+                      <Label>{t('editOrder.shippingAddress')}</Label>
                       <Textarea
-                        placeholder="Enter your shipping address..."
+                        placeholder={t('editOrder.enterShippingAddress')}
                         value={shippingAddress}
                         onChange={(e) => setShippingAddress(e.target.value)}
                         disabled={!canEditShipping}
@@ -574,7 +574,7 @@ const EditOrder = () => {
 
                   {shippingMethod === 'pickup' && (
                     <p className="text-sm text-muted-foreground">
-                      Pickup address: Zielonogórska 13, 30-406 Kraków
+                      {t('editOrder.pickupAddress')}: Zielonogórska 13, 30-406 Kraków
                     </p>
                   )}
                 </CardContent>
@@ -585,20 +585,20 @@ const EditOrder = () => {
               {/* Print Parameters */}
               <Card className="shadow-lg animate-scale-in" style={{ animationDelay: '0.1s' }}>
                 <CardHeader>
-                  <CardTitle>Print Parameters</CardTitle>
+                  <CardTitle>{t('editOrder.printParameters')}</CardTitle>
                   <CardDescription>
                     {canEditPrintParams 
-                      ? 'Modify the printing parameters for your order' 
-                      : 'Print settings cannot be modified (order is printing)'}
+                      ? t('editOrder.printParamsDescription') 
+                      : t('editOrder.printParamsLocked')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Material</Label>
+                      <Label>{t('editOrder.material')}</Label>
                       <Select value={material} onValueChange={setMaterial} disabled={!canEditPrintParams}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select material" />
+                          <SelectValue placeholder={t('editOrder.selectMaterial')} />
                         </SelectTrigger>
                         <SelectContent>
                           {materials.map((mat) => (
@@ -611,15 +611,15 @@ const EditOrder = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Color</Label>
+                      <Label>{t('editOrder.color')}</Label>
                       <Select value={color} onValueChange={setColor} disabled={!canEditPrintParams}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select color" />
+                          <SelectValue placeholder={t('editOrder.selectColor')} />
                         </SelectTrigger>
                         <SelectContent>
                           {colors.map((c) => (
                             <SelectItem key={c.value} value={c.value}>
-                              {c.label}
+                              {t(`editOrder.colors.${c.value}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -629,40 +629,38 @@ const EditOrder = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Print Quality</Label>
+                      <Label>{t('editOrder.printQuality')}</Label>
                       <Select value={layerHeight} onValueChange={setLayerHeight} disabled={!canEditPrintParams}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select quality" />
+                          <SelectValue placeholder={t('editOrder.selectQuality')} />
                         </SelectTrigger>
                         <SelectContent>
-                          {qualities.map((q) => (
-                            <SelectItem key={q.value} value={q.value}>
-                              {q.label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="0.3">{t('editOrder.qualities.draft')}</SelectItem>
+                          <SelectItem value="0.2">{t('editOrder.qualities.standard')}</SelectItem>
+                          <SelectItem value="0.15">{t('editOrder.qualities.high')}</SelectItem>
+                          <SelectItem value="0.1">{t('editOrder.qualities.ultra')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Infill Density</Label>
+                      <Label>{t('editOrder.infillDensity')}</Label>
                       <Select value={infill} onValueChange={setInfill} disabled={!canEditPrintParams}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select infill" />
+                          <SelectValue placeholder={t('editOrder.selectInfill')} />
                         </SelectTrigger>
                         <SelectContent>
-                          {infillOptions.map((i) => (
-                            <SelectItem key={i.value} value={i.value}>
-                              {i.label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="10">{t('editOrder.infill.light')}</SelectItem>
+                          <SelectItem value="20">{t('editOrder.infill.standard')}</SelectItem>
+                          <SelectItem value="50">{t('editOrder.infill.strong')}</SelectItem>
+                          <SelectItem value="100">{t('editOrder.infill.solid')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Quantity</Label>
+                    <Label>{t('editOrder.quantity')}</Label>
                     <Input
                       type="number"
                       min={1}
@@ -679,9 +677,9 @@ const EditOrder = () => {
               {canEditPrintParams && (
                 <Card className="border-destructive/50">
                   <CardHeader>
-                    <CardTitle className="text-destructive">Cancel Order</CardTitle>
+                    <CardTitle className="text-destructive">{t('editOrder.cancelOrder')}</CardTitle>
                     <CardDescription>
-                      Cancel this order and receive a refund
+                      {t('editOrder.cancelDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -689,7 +687,7 @@ const EditOrder = () => {
                       variant="destructive" 
                       onClick={handleCancelOrder}
                     >
-                      Cancel Order & Request Refund
+                      {t('editOrder.cancelAndRefund')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -702,18 +700,18 @@ const EditOrder = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
-                Price Summary
+                {t('editOrder.priceSummary')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-4 gap-6 items-center">
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Original Price</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('editOrder.originalPrice')}</p>
                   <p className="text-2xl font-bold">{originalPrice.toFixed(2)} PLN</p>
                 </div>
                 
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">New Price</p>
+                  <p className="text-sm text-muted-foreground mb-1">{t('editOrder.newPrice')}</p>
                   <p className="text-2xl font-bold">{newPrice.toFixed(2)} PLN</p>
                 </div>
                 
@@ -725,7 +723,7 @@ const EditOrder = () => {
                       : 'bg-muted/50'
                 }`}>
                   <p className="text-sm text-muted-foreground mb-1">
-                    {priceDifference > 0.01 ? 'Extra Payment' : priceDifference < -0.01 ? 'Refund Amount' : 'Difference'}
+                    {priceDifference > 0.01 ? t('editOrder.extraPayment') : priceDifference < -0.01 ? t('editOrder.refundAmount') : t('editOrder.difference')}
                   </p>
                   <p className={`text-2xl font-bold ${
                     priceDifference > 0.01 
@@ -748,22 +746,22 @@ const EditOrder = () => {
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
+                        {t('editOrder.processing')}
                       </>
                     ) : priceDifference > 0.01 ? (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Proceed to Extra Payment
+                        {t('editOrder.proceedToExtraPayment')}
                       </>
                     ) : priceDifference < -0.01 ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Proceed to Refund
+                        {t('editOrder.proceedToRefund')}
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Save Changes
+                        {t('editOrder.saveChanges')}
                       </>
                     )}
                   </Button>
@@ -774,22 +772,22 @@ const EditOrder = () => {
                     className="w-full"
                   >
                     <X className="w-4 h-4 mr-2" />
-                    Cancel
+                    {t('editOrder.cancel')}
                   </Button>
                 </div>
               </div>
 
               {priceDifference > 0.01 && (
                 <div className="mt-4 bg-blue-500/10 p-4 rounded-lg text-sm text-blue-700 dark:text-blue-400">
-                  <strong>Note:</strong> Your updated order requires an additional payment of <strong>{priceDifference.toFixed(2)} PLN</strong>. 
-                  You'll be redirected to the payment page to complete this transaction.
+                  <strong>{t('editOrder.note')}:</strong> {t('editOrder.extraPaymentNote')} <strong>{priceDifference.toFixed(2)} PLN</strong>. 
+                  {t('editOrder.redirectToPayment')}
                 </div>
               )}
 
               {priceDifference < -0.01 && (
                 <div className="mt-4 bg-green-500/10 p-4 rounded-lg text-sm text-green-700 dark:text-green-400">
-                  <strong>Good news!</strong> Your updated order costs less. You'll receive a refund of <strong>{Math.abs(priceDifference).toFixed(2)} PLN</strong>. 
-                  You'll be redirected to complete the refund process.
+                  <strong>{t('editOrder.goodNews')}</strong> {t('editOrder.refundNote')} <strong>{Math.abs(priceDifference).toFixed(2)} PLN</strong>. 
+                  {t('editOrder.redirectToRefund')}
                 </div>
               )}
             </CardContent>

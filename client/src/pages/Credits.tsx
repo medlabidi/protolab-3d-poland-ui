@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Wallet, Plus, CreditCard, Smartphone, Building2, Gift, Clock, CheckCircle2, Sparkles, Zap, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CreditPackage {
   id: string;
@@ -39,6 +40,7 @@ interface SavedPaymentMethod {
 
 const Credits = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [creditBalance, setCreditBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -117,12 +119,12 @@ const Credits = () => {
   const handlePurchase = async () => {
     const packageDetails = getSelectedPackageDetails();
     if (!packageDetails || packageDetails.amount <= 0) {
-      toast.error("Please select a credit package or enter a valid amount");
+      toast.error(t('credits.toasts.selectPackage'));
       return;
     }
 
     if (!selectedPayment) {
-      toast.error("Please select a payment method");
+      toast.error(t('credits.toasts.selectPayment'));
       return;
     }
 
@@ -130,7 +132,7 @@ const Credits = () => {
     if (selectedPayment.startsWith("saved_")) {
       // Saved card - proceed
     } else if (selectedPayment === "blik" && blikCode.length !== 6) {
-      toast.error("Please enter a valid 6-digit BLIK code");
+      toast.error(t('credits.toasts.invalidBlik'));
       return;
     }
 
@@ -155,7 +157,7 @@ const Credits = () => {
         throw new Error("Failed to add credits");
       }
 
-      toast.success(`Successfully added ${totalCredits} PLN to your credits!`);
+      toast.success(t('credits.toasts.addedSuccess').replace('{amount}', String(totalCredits)));
       
       // Reset form
       setSelectedPackage(null);
@@ -167,7 +169,7 @@ const Credits = () => {
       fetchCreditsData();
     } catch (error) {
       console.error("Purchase error:", error);
-      toast.error("Failed to process payment. Please try again.");
+      toast.error(t('credits.toasts.paymentFailed'));
     } finally {
       setIsProcessing(false);
     }
@@ -215,11 +217,11 @@ const Credits = () => {
               className="mb-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              {t('credits.backToDashboard')}
             </Button>
-            <h1 className="text-4xl font-bold mb-3 gradient-text">Store Credits</h1>
+            <h1 className="text-4xl font-bold mb-3 gradient-text">{t('credits.title')}</h1>
             <p className="text-muted-foreground text-lg">
-              Add credits to your account for faster checkout
+              {t('credits.subtitle')}
             </p>
           </div>
 
@@ -232,12 +234,12 @@ const Credits = () => {
                     <Wallet className="w-10 h-10 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-green-700 dark:text-green-400 font-medium">Current Balance</p>
+                    <p className="text-sm text-green-700 dark:text-green-400 font-medium">{t('credits.currentBalance')}</p>
                     <p className="text-4xl font-bold text-green-800 dark:text-green-300">{creditBalance.toFixed(2)} PLN</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-green-600 dark:text-green-400">Credits are used automatically at checkout</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">{t('credits.autoCheckout')}</p>
                 </div>
               </div>
             </CardContent>
@@ -250,9 +252,9 @@ const Credits = () => {
                 <CardHeader>
                   <CardTitle className="text-2xl flex items-center gap-2">
                     <Sparkles className="w-6 h-6 text-primary" />
-                    Get Credits
+                    {t('credits.getCredits')}
                   </CardTitle>
-                  <CardDescription>Choose a credit package or enter a custom amount</CardDescription>
+                  <CardDescription>{t('credits.choosePackage')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Predefined Packages */}
@@ -272,23 +274,23 @@ const Credits = () => {
                       >
                         {pkg.popular && (
                           <Badge className="absolute -top-2 -right-2 bg-primary">
-                            <Zap className="w-3 h-3 mr-1" /> Popular
+                            <Zap className="w-3 h-3 mr-1" /> {t('credits.popular')}
                           </Badge>
                         )}
                         {pkg.bestValue && (
                           <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-500 to-orange-500">
-                            <Crown className="w-3 h-3 mr-1" /> Best Value
+                            <Crown className="w-3 h-3 mr-1" /> {t('credits.bestValue')}
                           </Badge>
                         )}
                         <div className="text-center">
                           <p className="text-3xl font-bold gradient-text">{pkg.amount} PLN</p>
                           {pkg.bonus > 0 && (
                             <p className="text-sm text-green-600 font-medium mt-1">
-                              +{pkg.bonus} PLN bonus
+                              +{pkg.bonus} PLN {t('credits.bonus')}
                             </p>
                           )}
                           <p className="text-sm text-muted-foreground mt-2">
-                            Pay {pkg.price} PLN
+                            {t('credits.pay')} {pkg.price} PLN
                           </p>
                         </div>
                       </div>
@@ -297,12 +299,12 @@ const Credits = () => {
 
                   {/* Custom Amount */}
                   <div className="space-y-2">
-                    <Label htmlFor="customAmount">Or enter custom amount</Label>
+                    <Label htmlFor="customAmount">{t('credits.customAmountLabel')}</Label>
                     <div className="flex gap-2">
                       <Input
                         id="customAmount"
                         type="number"
-                        placeholder="Enter amount in PLN"
+                        placeholder={t('credits.customAmountPlaceholder')}
                         min="10"
                         value={customAmount}
                         onChange={(e) => {
@@ -313,18 +315,18 @@ const Credits = () => {
                       />
                       <span className="flex items-center px-4 bg-muted rounded-lg font-medium">PLN</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Minimum amount: 10 PLN</p>
+                    <p className="text-xs text-muted-foreground">{t('credits.minimumAmount')}</p>
                   </div>
 
                   {/* Payment Methods */}
                   {(selectedPackage || customAmount) && (
                     <div className="space-y-4 pt-4 border-t animate-slide-up">
-                      <Label>Select Payment Method</Label>
+                      <Label>{t('credits.selectPaymentMethod')}</Label>
                       
                       {/* Saved Cards */}
                       {savedPaymentMethods.length > 0 && (
                         <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground">Saved Cards</p>
+                          <p className="text-xs text-muted-foreground">{t('credits.savedCards')}</p>
                           <div className="grid gap-2">
                             {savedPaymentMethods.map((method) => (
                               <div
@@ -344,7 +346,7 @@ const Credits = () => {
                                   <p className="text-xs text-muted-foreground">{method.expiryDate}</p>
                                 </div>
                                 {method.isDefault && (
-                                  <Badge variant="outline" className="text-xs">Default</Badge>
+                                  <Badge variant="outline" className="text-xs">{t('credits.default')}</Badge>
                                 )}
                               </div>
                             ))}
@@ -354,7 +356,7 @@ const Credits = () => {
                               <span className="w-full border-t" />
                             </div>
                             <div className="relative flex justify-center text-xs">
-                              <span className="bg-card px-2 text-muted-foreground">or</span>
+                              <span className="bg-card px-2 text-muted-foreground">{t('credits.or')}</span>
                             </div>
                           </div>
                         </div>
@@ -383,7 +385,7 @@ const Credits = () => {
                       {/* BLIK Code */}
                       {selectedPayment === "blik" && (
                         <div className="p-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl animate-scale-in">
-                          <Label className="text-pink-800 dark:text-pink-300">Enter BLIK Code</Label>
+                          <Label className="text-pink-800 dark:text-pink-300">{t('credits.enterBlikCode')}</Label>
                           <Input
                             type="text"
                             placeholder="000000"
@@ -404,20 +406,20 @@ const Credits = () => {
             <div className="space-y-6">
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in sticky top-8">
                 <CardHeader>
-                  <CardTitle className="text-xl">Purchase Summary</CardTitle>
+                  <CardTitle className="text-xl">{t('credits.purchaseSummary')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {getSelectedPackageDetails() ? (
                     <>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Credits</span>
+                          <span className="text-muted-foreground">{t('credits.creditsLabel')}</span>
                           <span className="font-medium">{getSelectedPackageDetails()!.amount} PLN</span>
                         </div>
                         {getSelectedPackageDetails()!.bonus > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span className="flex items-center gap-1">
-                              <Gift className="w-4 h-4" /> Bonus
+                              <Gift className="w-4 h-4" /> {t('credits.bonusLabel')}
                             </span>
                             <span className="font-medium">+{getSelectedPackageDetails()!.bonus} PLN</span>
                           </div>
@@ -426,13 +428,13 @@ const Credits = () => {
 
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold">Total Credits</span>
+                          <span className="font-bold">{t('credits.totalCredits')}</span>
                           <span className="text-xl font-bold text-green-600">
                             {(getSelectedPackageDetails()!.amount + (getSelectedPackageDetails()!.bonus || 0)).toFixed(2)} PLN
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="font-bold">Pay</span>
+                          <span className="font-bold">{t('credits.payLabel')}</span>
                           <span className="text-2xl font-bold gradient-text">
                             {getSelectedPackageDetails()!.price.toFixed(2)} PLN
                           </span>
@@ -451,12 +453,12 @@ const Credits = () => {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Processing...
+                            {t('credits.processing')}
                           </span>
                         ) : (
                           <span className="flex items-center">
                             <Wallet className="mr-2 h-5 w-5" />
-                            Get Credits
+                            {t('credits.getCredits')}
                           </span>
                         )}
                       </Button>
@@ -464,7 +466,7 @@ const Credits = () => {
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Wallet className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                      <p>Select a credit package to continue</p>
+                      <p>{t('credits.selectPackagePrompt')}</p>
                     </div>
                   )}
                 </CardContent>
@@ -475,7 +477,7 @@ const Credits = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="w-5 h-5" />
-                    Recent Transactions
+                    {t('credits.recentTransactions')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -498,7 +500,7 @@ const Credits = () => {
                     </div>
                   ) : (
                     <div className="text-center py-6 text-muted-foreground">
-                      <p className="text-sm">No transactions yet</p>
+                      <p className="text-sm">{t('credits.noTransactions')}</p>
                     </div>
                   )}
                 </CardContent>

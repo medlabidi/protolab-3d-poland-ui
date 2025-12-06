@@ -19,6 +19,7 @@ import { apiFormData } from "@/lib/api";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PriceBreakdown {
   materialCost: number;
@@ -71,6 +72,7 @@ const MemoizedModelViewer = memo(({
 
 const NewPrint = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // Upload mode: 'single' or 'project'
   const [uploadMode, setUploadMode] = useState<'single' | 'project'>('single');
@@ -188,7 +190,7 @@ const NewPrint = () => {
       setIsModelLoading(true);
       setModelAnalysis(null);
       setModelError(null);
-      toast.success("File uploaded successfully! Analyzing model...");
+      toast.success(t('newPrint.toasts.fileUploaded'));
     }
   };
 
@@ -701,43 +703,43 @@ const NewPrint = () => {
   const submitOrder = async () => {
     // Validate file upload
     if (!file) {
-      toast.error("Please upload a 3D model file");
+      toast.error(t('newPrint.toasts.uploadRequired'));
       return;
     }
 
     // Validate model is valid (no errors)
     if (modelError) {
-      toast.error("Please fix the model issues before submitting");
+      toast.error(t('newPrint.toasts.fixModelIssues'));
       return;
     }
 
     // Validate material and quality
     if (!material || !quality) {
-      toast.error("Please select material and quality");
+      toast.error(t('newPrint.toasts.selectMaterialQuality'));
       return;
     }
 
     // Validate price calculation
     if (!estimatedPrice) {
-      toast.error("Please calculate the price first");
+      toast.error(t('newPrint.toasts.calculatePriceFirst'));
       return;
     }
 
     // Validate delivery selection
     if (!selectedDeliveryOption) {
-      toast.error("Please select a delivery method");
+      toast.error(t('newPrint.toasts.selectDelivery'));
       return;
     }
 
     // Validate locker selection for InPost
     if (selectedDeliveryOption === "inpost" && !selectedLocker) {
-      toast.error("Please select an InPost locker");
+      toast.error(t('newPrint.toasts.selectLocker'));
       return;
     }
 
     // Validate address for DPD
     if (selectedDeliveryOption === "dpd" && !isAddressValid(shippingAddress)) {
-      toast.error("Please fill in all required address fields");
+      toast.error(t('newPrint.toasts.fillAddress'));
       return;
     }
 
@@ -772,7 +774,7 @@ const NewPrint = () => {
 
       const order = await response.json();
       
-      toast.success("Order submitted successfully! We'll contact you soon.");
+      toast.success(t('newPrint.toasts.orderSubmitted'));
       
       // Navigate to orders page after short delay
       setTimeout(() => {
@@ -799,7 +801,7 @@ const NewPrint = () => {
               <Logo size="sm" textClassName="text-xl" />
             </button>
             <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-              Login
+              {t('common.login')}
             </Button>
           </div>
         </header>
@@ -808,8 +810,8 @@ const NewPrint = () => {
       <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-3 gradient-text">New Print Request</h1>
-            <p className="text-muted-foreground text-lg">Upload your 3D model and configure print parameters</p>
+            <h1 className="text-4xl font-bold mb-3 gradient-text">{t('newPrint.title')}</h1>
+            <p className="text-muted-foreground text-lg">{t('newPrint.subtitle')}</p>
           </div>
 
           {/* Upload Mode Selection */}
@@ -817,20 +819,20 @@ const NewPrint = () => {
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Upload className="w-6 h-6 text-primary" />
-                Upload 3D Model
+                {t('newPrint.uploadTitle')}
               </CardTitle>
-              <CardDescription className="text-base">Supported formats: STL, OBJ, STEP (max 50MB)</CardDescription>
+              <CardDescription className="text-base">{t('newPrint.supportedFormats')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'single' | 'project')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="single" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    Single File
+                    {t('newPrint.singleFile')}
                   </TabsTrigger>
                   <TabsTrigger value="project" className="flex items-center gap-2">
                     <FolderOpen className="w-4 h-4" />
-                    Project (Multiple Files)
+                    {t('newPrint.projectMultiple')}
                   </TabsTrigger>
                 </TabsList>
 
@@ -870,9 +872,9 @@ const NewPrint = () => {
                       ) : (
                         <div>
                           <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
-                            {isDragging ? 'Drop your file here!' : 'Click to upload or drag and drop'}
+                            {isDragging ? t('newPrint.dropFileHere') : t('newPrint.clickToUpload')}
                           </p>
-                          <p className="text-muted-foreground">STL, OBJ, or STEP files</p>
+                          <p className="text-muted-foreground">{t('newPrint.fileFormats')}</p>
                         </div>
                       )}
                     </label>
@@ -883,10 +885,10 @@ const NewPrint = () => {
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm font-bold flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
-                          3D Preview {isModelLoading && "(Loading...)"}
+                          {t('newPrint.preview.title')} {isModelLoading && `(${t('common.loading')})`}
                         </p>
                         {modelAnalysis && (
-                          <span className="text-xs text-green-600 font-semibold">✓ Analysis Complete</span>
+                          <span className="text-xs text-green-600 font-semibold">✓ {t('newPrint.analysisComplete')}</span>
                         )}
                       </div>
                       <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} onError={handleModelError} />
@@ -895,22 +897,22 @@ const NewPrint = () => {
                       {modelAnalysis && (
                         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">Volume</p>
+                            <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
                             <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                           </div>
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">Est. Weight</p>
+                            <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
                             <p className="text-lg font-bold text-primary">
                               {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
                             </p>
                             {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
                           </div>
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">Est. Print Time</p>
+                            <p className="text-xs text-muted-foreground">{t('newPrint.estPrintTime')}</p>
                             <p className="text-lg font-bold text-primary">
                               {formatPrintTime(estimatedPrintTime)}
                             </p>
-                            {quality && <p className="text-xs text-muted-foreground">{quality} quality</p>}
+                            {quality && <p className="text-xs text-muted-foreground">{t(`newPrint.qualityOptions.${quality}`)}</p>}
                           </div>
                         </div>
                       )}
@@ -923,10 +925,10 @@ const NewPrint = () => {
                   <div className="space-y-4">
                     {/* Project Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="project-name" className="text-base font-semibold">Project Name</Label>
+                      <Label htmlFor="project-name" className="text-base font-semibold">{t('newPrint.projectName')}</Label>
                       <Input 
                         id="project-name"
-                        placeholder="My 3D Print Project"
+                        placeholder={t('newPrint.projectNamePlaceholder')}
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
                         className="h-12"
@@ -960,9 +962,9 @@ const NewPrint = () => {
                           <Plus className="w-8 h-8 text-white" />
                         </div>
                         <p className={`font-bold text-lg mb-1 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
-                          {isDragging ? 'Drop files here!' : 'Add files to project'}
+                          {isDragging ? t('newPrint.dropFilesHere') : t('newPrint.addFilesToProject')}
                         </p>
-                        <p className="text-sm text-muted-foreground">Click or drag multiple STL, OBJ, or STEP files</p>
+                        <p className="text-sm text-muted-foreground">{t('newPrint.clickOrDragMultiple')}</p>
                       </label>
                     </div>
 
@@ -970,7 +972,7 @@ const NewPrint = () => {
                     {projectFiles.length > 0 && (
                       <div className="space-y-4 mt-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-lg">{projectFiles.length} File{projectFiles.length > 1 ? 's' : ''} in Project</h3>
+                          <h3 className="font-bold text-lg">{projectFiles.length} {projectFiles.length > 1 ? t('newPrint.filesInProject') : t('newPrint.fileInProject')}</h3>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -979,7 +981,7 @@ const NewPrint = () => {
                               input?.click();
                             }}
                           >
-                            <Plus className="w-4 h-4 mr-1" /> Add More
+                            <Plus className="w-4 h-4 mr-1" /> {t('newPrint.addMore')}
                           </Button>
                         </div>
 
@@ -1002,8 +1004,8 @@ const NewPrint = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {pf.isLoading && <span className="text-xs text-yellow-600">Loading...</span>}
-                                    {pf.error && <span className="text-xs text-red-600">Error</span>}
+                                    {pf.isLoading && <span className="text-xs text-yellow-600">{t('common.loading')}</span>}
+                                    {pf.error && <span className="text-xs text-red-600">{t('common.error')}</span>}
                                     {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
                                     <Button 
                                       variant="ghost" 
@@ -1037,7 +1039,7 @@ const NewPrint = () => {
                                   {/* File Configuration */}
                                   <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-1">
-                                      <Label className="text-sm">Material & Color</Label>
+                                      <Label className="text-sm">{t('newPrint.settings.material')}</Label>
                                       <Select 
                                         value={pf.material} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { material: v })}
@@ -1062,7 +1064,7 @@ const NewPrint = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                      <Label className="text-sm">Quality</Label>
+                                      <Label className="text-sm">{t('newPrint.settings.quality')}</Label>
                                       <Select 
                                         value={pf.quality} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { quality: v })}
@@ -1080,7 +1082,7 @@ const NewPrint = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                      <Label className="text-sm">Quantity</Label>
+                                      <Label className="text-sm">{t('newPrint.settings.quantity')}</Label>
                                       <Input 
                                         type="number" 
                                         min="1"
@@ -1095,11 +1097,11 @@ const NewPrint = () => {
                                   {pf.modelAnalysis && (
                                     <div className="grid grid-cols-3 gap-3 text-center">
                                       <div className="p-2 bg-muted/50 rounded-lg">
-                                        <p className="text-xs text-muted-foreground">Volume</p>
+                                        <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
                                         <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                                       </div>
                                       <div className="p-2 bg-muted/50 rounded-lg">
-                                        <p className="text-xs text-muted-foreground">Est. Weight</p>
+                                        <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
                                         <p className="font-bold text-primary">
                                           {pf.material && pf.quality ? (() => {
                                             const materialType = pf.material.split('-')[0];
@@ -1111,7 +1113,7 @@ const NewPrint = () => {
                                         </p>
                                       </div>
                                       <div className="p-2 bg-muted/50 rounded-lg">
-                                        <p className="text-xs text-muted-foreground">Price</p>
+                                        <p className="text-xs text-muted-foreground">{t('newPrint.pricing.total')}</p>
                                         <p className="font-bold text-primary">
                                           {pf.estimatedPrice ? `${pf.estimatedPrice.toFixed(2)} PLN` : '--'}
                                         </p>
@@ -1128,7 +1130,7 @@ const NewPrint = () => {
                         {projectFiles.length > 0 && (
                           <div className="p-4 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/30">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-lg">Project Total ({projectFiles.length} items)</span>
+                              <span className="font-bold text-lg">{t('newPrint.projectTotal')} ({projectFiles.length} {t('newPrint.items')})</span>
                               <span className="text-2xl font-bold gradient-text">
                                 {totalProjectPrice > 0 ? `${totalProjectPrice.toFixed(2)} PLN` : '--'}
                               </span>
@@ -1149,17 +1151,17 @@ const NewPrint = () => {
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
-                Print Configuration
+                {t('newPrint.settings.title')}
               </CardTitle>
-              <CardDescription className="text-base">Select your preferred print settings</CardDescription>
+              <CardDescription className="text-base">{t('newPrint.selectPreferredSettings')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-1 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="material" className="text-base font-semibold">Material & Color</Label>
+                  <Label htmlFor="material" className="text-base font-semibold">{t('newPrint.material')}</Label>
                   <Select value={material} onValueChange={setMaterial}>
                     <SelectTrigger id="material" className="h-12">
-                      <SelectValue placeholder="Select material and color" />
+                      <SelectValue placeholder={t('newPrint.selectMaterial')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">PLA</div>
@@ -1194,10 +1196,10 @@ const NewPrint = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quality" className="text-base font-semibold">Print Quality</Label>
+                  <Label htmlFor="quality" className="text-base font-semibold">{t('newPrint.quality')}</Label>
                   <Select value={quality} onValueChange={setQuality}>
                     <SelectTrigger id="quality" className="h-12">
-                      <SelectValue placeholder="Select quality" />
+                      <SelectValue placeholder={t('newPrint.selectQuality')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">⚡ Draft - Fast</SelectItem>
@@ -1209,7 +1211,7 @@ const NewPrint = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quantity" className="text-base font-semibold">Quantity</Label>
+                  <Label htmlFor="quantity" className="text-base font-semibold">{t('newPrint.quantity')}</Label>
                   <Input 
                     id="quantity" 
                     type="number" 
@@ -1222,10 +1224,10 @@ const NewPrint = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="purpose">Purpose of the Part</Label>
+                <Label htmlFor="purpose">{t('newPrint.purpose')}</Label>
                 <Textarea
                   id="purpose"
-                  placeholder="Describe what this part will be used for..."
+                  placeholder={t('newPrint.notesPlaceholder')}
                   rows={3}
                 />
               </div>
@@ -1237,17 +1239,17 @@ const NewPrint = () => {
                   onCheckedChange={(checked) => setShowAdvanced(checked as boolean)}
                 />
                 <Label htmlFor="advanced" className="cursor-pointer">
-                  Show advanced settings
+                  {t('newPrint.showAdvanced')}
                 </Label>
               </div>
 
               {showAdvanced && (
                 <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted rounded-lg">
                   <div className="space-y-2">
-                    <Label htmlFor="layer-height">Layer Height (mm)</Label>
+                    <Label htmlFor="layer-height">{t('newPrint.settings.layerHeight')}</Label>
                     <Select>
                       <SelectTrigger id="layer-height">
-                        <SelectValue placeholder="Select layer height" />
+                        <SelectValue placeholder={t('newPrint.selectLayerHeight')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="0.1">0.1mm - Ultra Fine</SelectItem>
@@ -1258,10 +1260,10 @@ const NewPrint = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="infill">Infill %</Label>
+                    <Label htmlFor="infill">{t('newPrint.infill')}</Label>
                     <Select>
                       <SelectTrigger id="infill">
-                        <SelectValue placeholder="Select infill" />
+                        <SelectValue placeholder={t('newPrint.selectInfill')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="10">10% - Light</SelectItem>
@@ -1276,27 +1278,27 @@ const NewPrint = () => {
                     <Label htmlFor="pattern">Infill Pattern</Label>
                     <Select>
                       <SelectTrigger id="pattern">
-                        <SelectValue placeholder="Select pattern" />
+                        <SelectValue placeholder={t('newPrint.selectPattern')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="grid">Grid</SelectItem>
-                        <SelectItem value="honeycomb">Honeycomb</SelectItem>
-                        <SelectItem value="triangles">Triangles</SelectItem>
-                        <SelectItem value="gyroid">Gyroid</SelectItem>
+                        <SelectItem value="grid">{t('newPrint.patterns.grid')}</SelectItem>
+                        <SelectItem value="honeycomb">{t('newPrint.patterns.honeycomb')}</SelectItem>
+                        <SelectItem value="triangles">{t('newPrint.patterns.triangles')}</SelectItem>
+                        <SelectItem value="gyroid">{t('newPrint.patterns.gyroid')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="supports">Support Structures</Label>
+                    <Label htmlFor="supports">{t('newPrint.settings.supports')}</Label>
                     <Select>
                       <SelectTrigger id="supports">
-                        <SelectValue placeholder="Select supports" />
+                        <SelectValue placeholder={t('newPrint.selectSupports')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="tree">Tree Supports</SelectItem>
+                        <SelectItem value="none">{t('newPrint.supports.none')}</SelectItem>
+                        <SelectItem value="normal">{t('newPrint.supports.normal')}</SelectItem>
+                        <SelectItem value="tree">{t('newPrint.supports.tree')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1311,28 +1313,28 @@ const NewPrint = () => {
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
-                Price Estimate
+                {t('newPrint.estimatedPrice')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {!isLoggedIn ? (
                 <Button
                   onClick={() => {
-                    toast.info("Please login to calculate price");
+                    toast.info(t('newPrint.loginRequired'));
                     window.location.href = '/login';
                   }}
                   className="w-full h-12 hover-lift shadow-lg border-2 border-primary/50"
                   variant="outline"
                 >
                   <span className="flex items-center">
-                    🔒 Login Required to Calculate Price
+                    🔒 {t('newPrint.loginRequired')}
                   </span>
                 </Button>
               ) : uploadMode === 'single' ? (
                 <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
                   <span className="relative z-10 flex items-center">
                     <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Calculate Price
+                    {t('newPrint.calculatePrice')}
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
@@ -1340,7 +1342,7 @@ const NewPrint = () => {
                 <Button onClick={calculateAllProjectPrices} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default" disabled={projectFiles.length === 0}>
                   <span className="relative z-10 flex items-center">
                     <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Calculate All Prices ({projectFiles.length} files)
+                    {t('newPrint.calculateAllPrices')} ({projectFiles.length} {t('newPrint.files')})
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
@@ -1352,37 +1354,37 @@ const NewPrint = () => {
                   <div className="space-y-4">
                     {/* Price Breakdown Header */}
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">Price Breakdown</p>
+                      <p className="text-lg font-bold">{t('newPrint.pricing.title')}</p>
                       {modelAnalysis ? (
-                        <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ Actual weight</span>
+                        <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ {t('newPrint.actualWeight')}</span>
                       ) : (
-                        <span className="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">⚠ Estimated</span>
+                        <span className="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">⚠ {t('newPrint.estimated')}</span>
                       )}
                     </div>
 
                     {/* Internal Costs */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">Internal Costs</span>
-                      <span className="font-semibold">{priceBreakdown.internalCost.toFixed(2)} PLN</span>
+                      <span className="text-muted-foreground">{t('newPrint.pricing.internalCosts')}</span>
+                      <span className="font-semibold">{priceBreakdown.internalCost.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* Service Fee */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">Service Fee</span>
-                      <span className="font-semibold">{priceBreakdown.serviceFee.toFixed(2)} PLN</span>
+                      <span className="text-muted-foreground">{t('newPrint.pricing.serviceFee')}</span>
+                      <span className="font-semibold">{priceBreakdown.serviceFee.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* VAT */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">VAT (23%)</span>
-                      <span className="font-semibold">{priceBreakdown.vat.toFixed(2)} PLN</span>
+                      <span className="text-muted-foreground">{t('newPrint.pricing.vat')}</span>
+                      <span className="font-semibold">{priceBreakdown.vat.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* Print Cost Total */}
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">Print Cost {quantity > 1 ? `(×${quantity})` : ''}</span>
-                        <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} PLN</span>
+                        <span className="font-bold">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(×${quantity})` : ''}</span>
+                        <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                       {modelAnalysis && estimatedWeight && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -1394,17 +1396,17 @@ const NewPrint = () => {
                     {selectedDeliveryOption && (
                       <>
                         <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
-                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="text-muted-foreground">{t('newPrint.delivery')}</span>
                           <span className="font-semibold text-primary">
-                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} PLN
+                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} {t('common.pln')}
                           </span>
                         </div>
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">Total Price</span>
+                            <span className="text-lg font-bold">{t('newPrint.pricing.total')}</span>
                             <span className="text-4xl font-bold gradient-text">
-                              {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
+                              {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
                         </div>
@@ -1419,9 +1421,9 @@ const NewPrint = () => {
                 <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">Project Price Summary</p>
+                      <p className="text-lg font-bold">{t('newPrint.projectPriceSummary')}</p>
                       <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">
-                        {projectFiles.length} file{projectFiles.length > 1 ? 's' : ''}
+                        {projectFiles.length} {projectFiles.length > 1 ? t('newPrint.files') : t('newPrint.file')}
                       </span>
                     </div>
 
@@ -1440,25 +1442,25 @@ const NewPrint = () => {
                     {/* Subtotal */}
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">Print Cost (All Files)</span>
-                        <span className="text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} PLN</span>
+                        <span className="font-bold">{t('newPrint.pricing.printCostAllFiles')}</span>
+                        <span className="text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                     </div>
                     
                     {selectedDeliveryOption && (
                       <>
                         <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
-                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="text-muted-foreground">{t('newPrint.delivery')}</span>
                           <span className="font-semibold text-primary">
-                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} PLN
+                            {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} {t('common.pln')}
                           </span>
                         </div>
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">Total Project Price</span>
+                            <span className="text-lg font-bold">{t('newPrint.totalProjectPrice')}</span>
                             <span className="text-4xl font-bold gradient-text">
-                              {(totalProjectPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
+                              {(totalProjectPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
                         </div>
@@ -1475,7 +1477,7 @@ const NewPrint = () => {
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Send className="w-6 h-6 text-primary" />
-                Delivery Method
+                {t('delivery.title')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1513,7 +1515,7 @@ const NewPrint = () => {
               {/* Selected Locker Confirmation */}
               {selectedLocker && selectedDeliveryOption === "inpost" && (
                 <div className="mt-4 p-4 bg-primary/5 border-2 border-primary/20 rounded-lg animate-scale-in">
-                  <p className="font-bold text-sm mb-1">Selected Locker:</p>
+                  <p className="font-bold text-sm mb-1">{t('delivery.selectedLocker')}:</p>
                   <p className="text-sm">{selectedLocker.name}</p>
                   <p className="text-xs text-muted-foreground">{selectedLocker.address}</p>
                 </div>
@@ -1527,7 +1529,7 @@ const NewPrint = () => {
             onClose={() => setShowLockerModal(false)}
             onSelectLocker={(locker) => {
               setSelectedLocker(locker);
-              toast.success(`Locker ${locker.name} selected`);
+              toast.success(`${t('delivery.lockerSelected')} ${locker.name}`);
             }}
           />
 
@@ -1535,7 +1537,7 @@ const NewPrint = () => {
           <Button onClick={proceedToPayment} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
             <span className="relative z-10 flex items-center">
               <CreditCard className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
-              Proceed to Payment
+              {t('newPrint.placeOrder')}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </Button>

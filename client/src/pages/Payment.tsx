@@ -10,6 +10,7 @@ import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle
 import { toast } from "sonner";
 import { apiFetch, apiFormData } from "@/lib/api";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Single file order data
 interface SingleOrderData {
@@ -104,6 +105,7 @@ const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addNotification } = useNotifications();
+  const { t } = useLanguage();
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [upgradeData, setUpgradeData] = useState<UpgradeData | null>(null);
   const [isUpgradePayment, setIsUpgradePayment] = useState(false);
@@ -160,7 +162,7 @@ const Payment = () => {
       // Regular new order payment
       setOrderData(location.state.orderData);
     } else {
-      toast.error("No order data found. Please start again.");
+      toast.error(t('payment.toasts.noOrderData'));
       navigate("/new-print");
     }
   }, [location.state, navigate]);
@@ -170,28 +172,28 @@ const Payment = () => {
       id: "blik",
       name: "BLIK",
       icon: Smartphone,
-      description: "Pay instantly with BLIK code",
+      description: t('payment.methods.blikDesc'),
       popular: true,
     },
     {
       id: "card",
-      name: "Credit/Debit Card",
+      name: t('payment.methods.card'),
       icon: CreditCard,
-      description: "Visa, Mastercard, Maestro",
+      description: t('payment.methods.cardDesc'),
       popular: false,
     },
     {
       id: "transfer",
-      name: "Bank Transfer",
+      name: t('payment.methods.transfer'),
       icon: Building2,
-      description: "Direct bank transfer (P24)",
+      description: t('payment.methods.transferDesc'),
       popular: false,
     },
   ];
 
   const handlePayment = async () => {
     if (!selectedPayment) {
-      toast.error("Please select a payment method");
+      toast.error(t('payment.toasts.selectPayment'));
       return;
     }
 
@@ -199,13 +201,13 @@ const Payment = () => {
     if (selectedPayment.startsWith("saved_")) {
       // Saved card - no additional validation needed
     } else if (selectedPayment === "blik" && blikCode.length !== 6) {
-      toast.error("Please enter a valid 6-digit BLIK code");
+      toast.error(t('payment.toasts.invalidBlik'));
       return;
     }
 
     if (selectedPayment === "card") {
       if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name) {
-        toast.error("Please fill in all card details");
+        toast.error(t('payment.toasts.fillCardDetails'));
         return;
       }
     }
@@ -303,7 +305,7 @@ const Payment = () => {
                   type: 'invoice',
                 });
                 localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success('Invoice generated and sent to your email!');
+                toast.success(t('payment.toasts.invoiceGenerated'));
               }
             } catch (invoiceError) {
               console.error('Failed to generate invoice:', invoiceError);
@@ -320,7 +322,7 @@ const Payment = () => {
           if (failCount > 0) {
             toast.warning(`Payment successful! ${successCount} orders updated, ${failCount} failed.`);
           } else {
-            toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Project has been updated.`);
+            toast.success(`${t('payment.toasts.paymentOf')} ${upgradeData.amount.toFixed(2)} PLN ${t('payment.toasts.successProjectUpdated')}`);
           }
           navigate('/orders');
         } else {
@@ -405,7 +407,7 @@ const Payment = () => {
                   type: 'invoice',
                 });
                 localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success('Invoice generated and sent to your email!');
+                toast.success(t('payment.toasts.invoiceGenerated'));
               }
             } catch (invoiceError) {
               console.error('Failed to generate invoice:', invoiceError);
@@ -420,7 +422,7 @@ const Payment = () => {
             orderId: upgradeData.orderId,
           });
 
-          toast.success(`Payment of ${upgradeData.amount.toFixed(2)} PLN successful! Your order has been updated.`);
+          toast.success(`${t('payment.toasts.paymentOf')} ${upgradeData.amount.toFixed(2)} PLN ${t('payment.toasts.successOrderUpdated')}`);
           navigate(`/orders/${upgradeData.orderId}`);
         }
       } else if (orderData) {
@@ -522,7 +524,7 @@ const Payment = () => {
                   type: 'invoice',
                 });
                 localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success('Invoice generated and sent to your email!');
+                toast.success(t('payment.toasts.invoiceGenerated'));
               }
             } catch (invoiceError) {
               console.error('Failed to generate invoice:', invoiceError);
@@ -537,7 +539,7 @@ const Payment = () => {
             message: `Your project "${orderData.projectName}" with ${orderData.files.length} file(s) has been submitted successfully.`,
           });
 
-          toast.success(`Payment successful! ${orderData.files.length} orders have been placed.`);
+          toast.success(`${t('payment.toasts.paymentSuccessful')} ${orderData.files.length} ${t('payment.toasts.ordersPlaced')}`);
           navigate('/orders');
         } else {
           // Single file order
@@ -628,7 +630,7 @@ const Payment = () => {
                   type: 'invoice',
                 });
                 localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success('Invoice generated and sent to your email!');
+                toast.success(t('payment.toasts.invoiceGenerated'));
               }
             } catch (invoiceError) {
               console.error('Failed to generate invoice:', invoiceError);
@@ -643,13 +645,13 @@ const Payment = () => {
             message: `Your print order for "${orderData.file.name}" has been submitted successfully.`,
           });
 
-          toast.success("Payment successful! Your order has been placed.");
+          toast.success(t('payment.toasts.paymentSuccess'));
           navigate('/orders');
         }
       }
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error(error instanceof Error ? error.message : 'Payment failed. Please try again.');
+      toast.error(error instanceof Error ? error.message : t('payment.toasts.paymentFailed'));
     } finally {
       setIsProcessing(false);
     }
@@ -659,7 +661,7 @@ const Payment = () => {
   if (!orderData && !upgradeData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
+        <p>{t('common.loading')}</p>
       </div>
     );
   }
@@ -670,8 +672,8 @@ const Payment = () => {
     : orderData?.totalAmount || 0;
 
   const displayTitle = isUpgradePayment 
-    ? `Extra Payment for Order #${upgradeData?.orderNumber || ''}` 
-    : 'Complete Your Order';
+    ? `${t('payment.extraPaymentFor')} #${upgradeData?.orderNumber || ''}`
+    : t('payment.completeOrder');
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
@@ -687,13 +689,13 @@ const Payment = () => {
               className="mb-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {isUpgradePayment ? 'Back to Edit Order' : 'Back to Order'}
+              {isUpgradePayment ? t('payment.backToEditOrder') : t('payment.backToOrder')}
             </Button>
             <h1 className="text-4xl font-bold mb-3 gradient-text">
-              {isUpgradePayment ? displayTitle : 'Payment'}
+              {isUpgradePayment ? displayTitle : t('payment.title')}
             </h1>
             <p className="text-muted-foreground text-lg">
-              {isUpgradePayment ? 'Pay the difference for your updated order' : 'Complete your order securely'}
+              {isUpgradePayment ? t('payment.payDifference') : t('payment.subtitle')}
             </p>
           </div>
 
@@ -704,16 +706,16 @@ const Payment = () => {
                 <CardHeader>
                   <CardTitle className="text-2xl flex items-center gap-2">
                     <CreditCard className="w-6 h-6 text-primary" />
-                    Payment Method
+                    {t('payment.paymentMethod')}
                   </CardTitle>
-                  <CardDescription>Choose how you'd like to pay</CardDescription>
+                  <CardDescription>{t('payment.choosePayment')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Saved Payment Methods */}
                   {savedPaymentMethods.length > 0 && (
                     <>
                       <div className="mb-2">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">Saved Cards</p>
+                        <p className="text-sm font-medium text-muted-foreground mb-3">{t('payment.savedCards')}</p>
                         {savedPaymentMethods.map((method) => (
                           <div
                             key={method.id}
@@ -740,12 +742,12 @@ const Payment = () => {
                                 {method.isDefault && (
                                   <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3" />
-                                    Default
+                                    {t('payment.default')}
                                   </span>
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {method.name} • Expires {method.expiryDate}
+                                {method.name} • {t('payment.expires')} {method.expiryDate}
                               </p>
                             </div>
                           </div>
@@ -756,7 +758,7 @@ const Payment = () => {
                           <span className="w-full border-t" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-card px-2 text-muted-foreground">Or pay with</span>
+                          <span className="bg-card px-2 text-muted-foreground">{t('payment.orPayWith')}</span>
                         </div>
                       </div>
                     </>
@@ -788,7 +790,7 @@ const Payment = () => {
                           <p className="font-bold text-lg">{method.name}</p>
                           {method.popular && (
                             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                              Popular
+                              {t('payment.popular')}
                             </span>
                           )}
                         </div>
@@ -802,10 +804,10 @@ const Payment = () => {
                     <div className="mt-6 p-6 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 border-2 border-pink-200 dark:border-pink-800 rounded-xl animate-scale-in">
                       <div className="flex items-center gap-2 mb-4">
                         <Smartphone className="w-5 h-5 text-pink-600 dark:text-pink-400" />
-                        <p className="font-bold text-pink-800 dark:text-pink-300">Enter BLIK Code</p>
+                        <p className="font-bold text-pink-800 dark:text-pink-300">{t('payment.enterBlikCode')}</p>
                       </div>
                       <p className="text-sm text-pink-700 dark:text-pink-400 mb-4">
-                        Open your banking app and generate a 6-digit BLIK code
+                        {t('payment.blikInstructions')}
                       </p>
                       <Input
                         type="text"
@@ -816,7 +818,7 @@ const Payment = () => {
                         className="text-center text-3xl font-mono tracking-[0.5em] h-16 border-2 border-pink-300 dark:border-pink-700 focus:border-pink-500"
                       />
                       <p className="text-xs text-pink-600 dark:text-pink-400 mt-2 text-center">
-                        Code expires in 2 minutes
+                        {t('payment.codeExpires')}
                       </p>
                     </div>
                   )}
@@ -826,11 +828,11 @@ const Payment = () => {
                     <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl animate-scale-in space-y-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <p className="font-bold text-blue-800 dark:text-blue-300">Card Details</p>
+                        <p className="font-bold text-blue-800 dark:text-blue-300">{t('payment.cardDetails')}</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="cardName">Cardholder Name</Label>
+                        <Label htmlFor="cardName">{t('payment.cardholderName')}</Label>
                         <Input
                           id="cardName"
                           placeholder="John Doe"
@@ -840,7 +842,7 @@ const Payment = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="cardNumber">Card Number</Label>
+                        <Label htmlFor="cardNumber">{t('payment.cardNumber')}</Label>
                         <Input
                           id="cardNumber"
                           placeholder="1234 5678 9012 3456"
@@ -852,7 +854,7 @@ const Payment = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="expiry">Expiry Date</Label>
+                          <Label htmlFor="expiry">{t('payment.expiryDate')}</Label>
                           <Input
                             id="expiry"
                             placeholder="MM/YY"
@@ -887,10 +889,10 @@ const Payment = () => {
                     <div className="mt-6 p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl animate-scale-in">
                       <div className="flex items-center gap-2 mb-4">
                         <Building2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        <p className="font-bold text-green-800 dark:text-green-300">Bank Transfer (Przelewy24)</p>
+                        <p className="font-bold text-green-800 dark:text-green-300">{t('payment.bankTransfer')}</p>
                       </div>
                       <p className="text-sm text-green-700 dark:text-green-400">
-                        You'll be redirected to your bank's website to complete the payment securely.
+                        {t('payment.bankTransferDesc')}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {['PKO BP', 'mBank', 'ING', 'Santander', 'Pekao', 'Alior'].map((bank) => (
@@ -910,10 +912,10 @@ const Payment = () => {
                 <div>
                   <p className="font-semibold flex items-center gap-2">
                     <Lock className="w-4 h-4" />
-                    Secure Payment
+                    {t('payment.securePayment')}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Your payment information is encrypted and secure
+                    {t('payment.encryptedSecure')}
                   </p>
                 </div>
               </div>
@@ -924,7 +926,7 @@ const Payment = () => {
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in sticky top-8">
                 <CardHeader>
                   <CardTitle className="text-xl">
-                    {isUpgradePayment ? 'Upgrade Payment' : 'Order Summary'}
+                    {isUpgradePayment ? t('payment.upgradePayment') : t('payment.orderSummary')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -933,28 +935,28 @@ const Payment = () => {
                     <>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Order</span>
+                          <span className="text-muted-foreground">{t('payment.order')}</span>
                           <span className="font-medium">#{upgradeData.orderNumber}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Previous Price</span>
+                          <span className="text-muted-foreground">{t('payment.previousPrice')}</span>
                           <span className="font-medium">{upgradeData.previousPrice?.toFixed(2) || '0.00'} PLN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">New Price</span>
+                          <span className="text-muted-foreground">{t('payment.newPrice')}</span>
                           <span className="font-medium">{upgradeData.totalAmount?.toFixed(2) || '0.00'} PLN</span>
                         </div>
                       </div>
 
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-lg">Extra Payment</span>
+                          <span className="font-bold text-lg">{t('payment.extraPayment')}</span>
                           <span className="text-3xl font-bold gradient-text">
                             {upgradeData.amount.toFixed(2)} PLN
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                          This is the difference between your new and previous order total
+                          {t('payment.differenceExplanation')}
                         </p>
                       </div>
 
@@ -965,7 +967,7 @@ const Payment = () => {
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-primary" />
                               <div>
-                                <p className="text-sm font-medium">Generate Invoice</p>
+                                <p className="text-sm font-medium">{t('payment.generateInvoice')}</p>
                                 <p className="text-xs text-muted-foreground">{billingInfo.companyName}</p>
                               </div>
                             </div>
@@ -979,17 +981,17 @@ const Payment = () => {
                     <>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Project</span>
+                          <span className="text-muted-foreground">{t('payment.project')}</span>
                           <span className="font-medium">{orderData.projectName}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Files</span>
-                          <span className="font-medium">{orderData.files.length} items</span>
+                          <span className="text-muted-foreground">{t('payment.files')}</span>
+                          <span className="font-medium">{orderData.files.length} {t('payment.items')}</span>
                         </div>
                       </div>
 
                       <div className="border-t pt-4 space-y-2">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">FILES IN PROJECT</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">{t('payment.filesInProject')}</p>
                         <div className="max-h-32 overflow-y-auto space-y-2">
                           {orderData.files.map((file, index) => (
                             <div key={index} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded-lg">
@@ -1005,18 +1007,18 @@ const Payment = () => {
 
                       <div className="border-t pt-4 space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="text-muted-foreground">{t('payment.subtotal')}</span>
                           <span>{orderData.projectTotal.toFixed(2)} PLN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="text-muted-foreground">{t('payment.delivery')}</span>
                           <span>{orderData.deliveryPrice.toFixed(2)} PLN</span>
                         </div>
                       </div>
 
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-lg">Total</span>
+                          <span className="font-bold text-lg">{t('payment.total')}</span>
                           <span className="text-3xl font-bold gradient-text">
                             {orderData.totalAmount.toFixed(2)} PLN
                           </span>
@@ -1030,7 +1032,7 @@ const Payment = () => {
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-primary" />
                               <div>
-                                <p className="text-sm font-medium">Generate Invoice</p>
+                                <p className="text-sm font-medium">{t('payment.generateInvoice')}</p>
                                 <p className="text-xs text-muted-foreground">{billingInfo.companyName}</p>
                               </div>
                             </div>
@@ -1044,41 +1046,41 @@ const Payment = () => {
                     <>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Material</span>
+                          <span className="text-muted-foreground">{t('payment.material')}</span>
                           <span className="font-medium">{orderData.material}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Quality</span>
+                          <span className="text-muted-foreground">{t('payment.quality')}</span>
                           <span className="font-medium capitalize">{orderData.quality}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Quantity</span>
+                          <span className="text-muted-foreground">{t('payment.quantity')}</span>
                           <span className="font-medium">×{orderData.quantity}</span>
                         </div>
                       </div>
 
                       <div className="border-t pt-4 space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Internal Costs</span>
+                          <span className="text-muted-foreground">{t('payment.internalCosts')}</span>
                           <span>{orderData.priceBreakdown.internalCost.toFixed(2)} PLN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Service Fee</span>
+                          <span className="text-muted-foreground">{t('payment.serviceFee')}</span>
                           <span>{orderData.priceBreakdown.serviceFee.toFixed(2)} PLN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">VAT (23%)</span>
+                          <span className="text-muted-foreground">{t('payment.vat')}</span>
                           <span>{orderData.priceBreakdown.vat.toFixed(2)} PLN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Delivery</span>
+                          <span className="text-muted-foreground">{t('payment.delivery')}</span>
                           <span>{orderData.deliveryPrice.toFixed(2)} PLN</span>
                         </div>
                       </div>
 
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-lg">Total</span>
+                          <span className="font-bold text-lg">{t('payment.total')}</span>
                           <span className="text-3xl font-bold gradient-text">
                             {orderData.totalAmount.toFixed(2)} PLN
                           </span>
@@ -1094,9 +1096,9 @@ const Payment = () => {
                         <div className="flex items-center gap-3">
                           <FileText className="w-5 h-5 text-primary" />
                           <div>
-                            <p className="font-medium text-sm">Generate Invoice</p>
+                            <p className="font-medium text-sm">{t('payment.generateInvoice')}</p>
                             <p className="text-xs text-muted-foreground">
-                              Invoice for {billingInfo.companyName}
+                              {t('payment.invoiceFor')} {billingInfo.companyName}
                             </p>
                           </div>
                         </div>
@@ -1107,7 +1109,7 @@ const Payment = () => {
                       </div>
                       {generateInvoice && (
                         <div className="mt-2 p-3 bg-primary/5 rounded-lg text-xs text-muted-foreground">
-                          <p className="font-medium text-foreground mb-1">Invoice will be generated for:</p>
+                          <p className="font-medium text-foreground mb-1">{t('payment.invoiceWillGenerate')}</p>
                           <p>{billingInfo.companyName}</p>
                           <p>NIP: {billingInfo.taxId}</p>
                           <p>{billingInfo.billingAddress}, {billingInfo.billingZipCode} {billingInfo.billingCity}</p>
@@ -1121,12 +1123,12 @@ const Payment = () => {
                       <div className="p-3 bg-muted/30 rounded-lg text-center">
                         <FileText className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          Want an invoice?{' '}
+                          {t('payment.wantInvoice')}{' '}
                           <button 
                             onClick={() => navigate('/settings')} 
                             className="text-primary hover:underline font-medium"
                           >
-                            Add billing info
+                            {t('payment.addBillingInfo')}
                           </button>
                         </p>
                       </div>
@@ -1145,18 +1147,18 @@ const Payment = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Processing...
+                        {t('payment.processing')}
                       </span>
                     ) : (
                       <span className="flex items-center">
                         <CheckCircle2 className="mr-2 h-5 w-5" />
-                        Pay {displayAmount.toFixed(2)} PLN
+                        {t('payment.pay')} {displayAmount.toFixed(2)} PLN
                       </span>
                     )}
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    By completing this payment, you agree to our Terms of Service
+                    {t('payment.termsAgreement')}
                   </p>
                 </CardContent>
               </Card>

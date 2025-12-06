@@ -1,0 +1,106 @@
+{
+  "email": {
+    "common": {
+      "hello": "Witaj {{name}}!",
+      "bestRegards": "Z poważaniem,",
+      "teamName": "Zespół ProtoLab 3D Poland",
+      "footer": "ProtoLab 3D Poland - Profesjonalne Usługi Druku 3D",
+      "copyright": "© {{year}} ProtoLab 3D Poland. Wszelkie prawa zastrzeżone.",
+      "needHelp": "Potrzebujesz pomocy?",
+      "contactSupport": "Skontaktuj się z naszym zespołem wsparcia pod adresem"
+    },
+    "registration": {
+      "subject": "Witamy w ProtoLab 3D Poland! 🎉",
+      "title": "🎉 Witamy w ProtoLab 3D Poland!",
+      "thankYou": "Dziękujemy za rejestrację. Cieszymy się, że dołączasz do naszej społeczności entuzjastów druku 3D!",
+      "nextStep": "Następny krok:",
+      "verifyEmail": "Sprawdź swoją skrzynkę email, aby otrzymać link weryfikacyjny i dokończyć rejestrację.",
+      "whatYouCanDo": "Co możesz zrobić:",
+      "feature1": "📦 Przesyłaj pliki modeli 3D (STL, OBJ, 3MF)",
+      "feature2": "🎨 Wybieraj materiały i kolory",
+      "feature3": "📊 Dostosowuj wysokość warstwy i wypełnienie",
+      "feature4": "🚀 Śledź zamówienia w czasie rzeczywistym",
+      "feature5": "📍 Wybieraj spośród wielu opcji dostawy"
+    },
+    "verification": {
+      "subject": "Zweryfikuj swój adres email - ProtoLab 3D Poland",
+      "title": "✅ Zweryfikuj swój Email",
+      "thankYou": "Dziękujemy za rejestrację w ProtoLab 3D Poland. Aby dokończyć rejestrację, zweryfikuj swój adres email klikając poniższy przycisk:",
+      "buttonText": "Zweryfikuj Adres Email",
+      "orCopyLink": "Lub skopiuj i wklej ten link do przeglądarki:",
+      "expiresIn": "⏰ Ten link weryfikacyjny wygaśnie za 24 godziny.",
+      "afterVerification": "Po weryfikacji zostaniesz automatycznie zalogowany do swojego konta i możesz zacząć przesyłać modele 3D.",
+      "ignore": "Jeśli nie zakładałeś tego konta, zignoruj tę wiadomość."
+    },
+    "welcome": {
+      "subject": "Gratulacje! Twoje konto jest gotowe 🚀",
+      "title": "🎉 Gratulacje!",
+      "verified": "✅ Twój email został pomyślnie zweryfikowany!",
+      "accountActive": "Twoje konto jest teraz aktywne i gotowe do użycia.",
+      "youCanNow": "Teraz możesz:",
+      "feature1": "📤 Przesyłać pliki modeli 3D",
+      "feature2": "🎨 Wybierać materiały i kolory",
+      "feature3": "⚙️ Konfigurować ustawienia druku (wysokość warstwy, wypełnienie, itp.)",
+      "feature4": "📦 Składać zamówienia i śledzić je w czasie rzeczywistym",
+      "feature5": "💬 Rozmawiać z naszym zespołem wsparcia",
+      "goToDashboard": "Przejdź do Panelu",
+      "thankYou": "Dziękujemy za wybór ProtoLab 3D Poland. Jesteśmy tutaj, aby ożywić Twoje pomysły! 🚀"
+    },
+    "passwordReset": {
+      "subject": "Zresetuj hasło - ProtoLab 3D Poland",
+      "title": "🔐 Prośba o Reset Hasła",
+      "received": "Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta ProtoLab 3D Poland.",
+      "buttonText": "Zresetuj Moje Hasło",
+      "important": "⚠️ Ważne:",
+      "expiresIn": "Ten link wygaśnie za 1 godzinę",
+      "ignore": "Jeśli nie prosiłeś o reset, zignoruj tę wiadomość",
+      "unchanged": "Twoje hasło pozostanie niezmienione, dopóki nie utworzysz nowego",
+      "linkNotWorking": "Jeśli przycisk nie działa, skopiuj i wklej ten link do przeglądarki:"
+    },
+    "paymentConfirmation": {
+      "subject": "Potwierdzenie płatności - Zamówienie #{{orderNumber}}",
+      "title": "✅ Płatność Potwierdzona",
+      "thankYou": "Dziękujemy za płatność!",
+      "confirmed": "Twoja płatność za zamówienie #{{orderNumber}} została pomyślnie przetworzona.",
+      "orderDetails": "Szczegóły zamówienia:",
+      "orderId": "ID zamówienia",
+      "amount": "Kwota",
+      "paymentMethod": "Metoda płatności",
+      "paymentDate": "Data płatności",
+      "status": "Status",
+      "processing": "W trakcie realizacji",
+      "nextSteps": "Następne kroki:",
+      "step1": "Twoje zamówienie jest teraz w kolejce do druku",
+      "step2": "Będziesz otrzymywać aktualizacje emailowe o postępie",
+      "step3": "Otrzymasz powiadomienie, gdy zamówienie zostanie wysłane",
+      "trackOrder": "Śledź Zamówienie"
+    },
+    "refund": {
+      "subject": "Prośba o Zwrot - Zamówienie #{{orderNumber}}",
+      "title": "💰 Prośba o Zwrot Otrzymana",
+      "received": "Otrzymaliśmy Twoją prośbę o zwrot za zamówienie #{{orderNumber}}.",
+      "details": "Szczegóły zwrotu:",
+      "orderId": "ID zamówienia",
+      "refundAmount": "Kwota zwrotu",
+      "reason": "Powód",
+      "requestDate": "Data prośby",
+      "whatHappens": "Co dalej?",
+      "step1": "Nasz zespół przejrzy Twoją prośbę w ciągu 1-2 dni roboczych",
+      "step2": "Otrzymasz email z decyzją",
+      "step3": "Po zatwierdzeniu zwrot zostanie przetworzony w ciągu 3-5 dni roboczych",
+      "processing": "W trakcie rozpatrywania"
+    },
+    "invoice": {
+      "subject": "Faktura za zamówienie #{{orderNumber}} - ProtoLab 3D Poland",
+      "title": "📄 Twoja Faktura",
+      "attached": "W załączniku znajdziesz fakturę za zamówienie.",
+      "invoiceDetails": "Szczegóły faktury:",
+      "invoiceNumber": "Numer faktury",
+      "orderId": "ID zamówienia",
+      "issueDate": "Data wystawienia",
+      "totalAmount": "Kwota całkowita",
+      "download": "Możesz też pobrać fakturę z panelu konta.",
+      "goToDashboard": "Przejdź do Panelu"
+    }
+  }
+}

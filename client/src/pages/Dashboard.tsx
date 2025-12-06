@@ -48,7 +48,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     activeOrders: 0,
     completedPrints: 0,
-    totalSpent: "0 PLN",
+    totalSpent: `0 ${t('common.pln')}`,
   });
 
   useEffect(() => {
@@ -139,7 +139,7 @@ const Dashboard = () => {
       setStats({
         activeOrders: active,
         completedPrints: completed,
-        totalSpent: `${total.toFixed(2)} PLN`,
+        totalSpent: `${total.toFixed(2)} ${t('common.pln')}`,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -246,7 +246,7 @@ const Dashboard = () => {
       const projectOrders = groupedOrders.allProjects[selectedProject] || groupedOrders.projects[selectedProject];
       
       if (!projectOrders || projectOrders.length === 0) {
-        toast.error('Project not found');
+        toast.error(t('dashboard.toasts.projectNotFound'));
         return;
       }
       
@@ -274,11 +274,11 @@ const Dashboard = () => {
       }
       
       if (failCount > 0 && successCount === 0) {
-        toast.error('Failed to rename project. Please make sure you have the latest database schema.');
+        toast.error(t('dashboard.toasts.renameFailed'));
       } else if (failCount > 0) {
-        toast.warning(`Partially renamed: ${successCount} succeeded, ${failCount} failed`);
+        toast.warning(t('dashboard.toasts.renamePartial').replace('{{success}}', String(successCount)).replace('{{failed}}', String(failCount)));
       } else {
-        toast.success(`Project renamed to "${newProjectName.trim()}"`);
+        toast.success(`${t('dashboard.toasts.renameSuccess')} "${newProjectName.trim()}"`);
       }
       
       setRenameDialogOpen(false);
@@ -287,14 +287,14 @@ const Dashboard = () => {
       fetchDashboardData();
     } catch (error) {
       console.error('Rename error:', error);
-      toast.error('Failed to rename project');
+      toast.error(t('dashboard.toasts.renameFailed'));
     }
   };
 
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
     
-    toast.error('Delete project functionality coming soon');
+    toast.error(t('dashboard.toasts.deleteComingSoon'));
     setDeleteDialogOpen(false);
     setSelectedProject(null);
   };
@@ -304,7 +304,7 @@ const Dashboard = () => {
   };
 
   const handleDuplicateProject = async (projectName: string) => {
-    toast.info('Duplicate project functionality coming soon');
+    toast.info(t('dashboard.toasts.duplicateComingSoon'));
   };
 
   const handleDownloadAllFiles = async (projectName: string) => {
@@ -315,27 +315,27 @@ const Dashboard = () => {
         window.open(order.file_url, '_blank');
       }
     }
-    toast.success(`Downloading ${projectOrders.length} files...`);
+    toast.success(t('dashboard.toasts.downloadingFiles').replace('{{count}}', String(projectOrders.length)));
   };
 
   const statsConfig = [
     {
-      title: t.dashboard.activeOrders,
+      title: t('dashboard.activeOrders'),
       value: stats.activeOrders.toString(),
       icon: Clock,
-      description: "Currently in progress",
+      description: t('dashboard.inProgress'),
     },
     {
-      title: t.dashboard.completedPrints,
+      title: t('dashboard.completedPrints'),
       value: stats.completedPrints.toString(),
       icon: Package,
-      description: "Successfully delivered",
+      description: t('dashboard.successfullyDelivered'),
     },
     {
-      title: "Store Credits",
-      value: `${creditBalance.toFixed(2)} PLN`,
+      title: t('dashboard.storeCredits'),
+      value: `${creditBalance.toFixed(2)} ${t('common.pln')}`,
       icon: Wallet,
-      description: "Available balance",
+      description: t('dashboard.availableBalance'),
       isCredit: true,
     },
   ];
@@ -360,8 +360,8 @@ const Dashboard = () => {
           {/* Header with Title and Notifications */}
           <div className="flex items-start justify-between animate-slide-up">
             <div>
-              <h1 className="text-4xl font-bold mb-2 gradient-text">{t.dashboard.overview}</h1>
-              <p className="text-muted-foreground text-lg">{t.dashboard.welcome}</p>
+              <h1 className="text-4xl font-bold mb-2 gradient-text">{t('dashboard.overview')}</h1>
+              <p className="text-muted-foreground text-lg">{t('dashboard.welcome')}</p>
             </div>
             <div className="flex items-center gap-2">
               <NotificationDropdown />
@@ -390,7 +390,7 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground">
                     {stat.description}
                     {(stat as any).isCredit && (
-                      <span className="ml-2 text-primary hover:underline">Get more →</span>
+                      <span className="ml-2 text-primary hover:underline">{t('dashboard.projects.getMore')}</span>
                     )}
                   </p>
                 </CardContent>
@@ -403,7 +403,7 @@ const Dashboard = () => {
             <CardHeader className="border-b">
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Package className="w-6 h-6 text-primary" />
-                {t.dashboard.recentOrders}
+                {t('dashboard.recentOrders')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -411,13 +411,13 @@ const Dashboard = () => {
                 {orders.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Package className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg mb-2">No orders yet</p>
-                    <p className="text-sm">Start by creating your first 3D print order!</p>
+                    <p className="text-lg mb-2">{t('dashboard.noOrders')}</p>
+                    <p className="text-sm">{t('dashboard.noOrdersDescription')}</p>
                     <Button
                       onClick={() => navigate('/orders')}
                       className="mt-4"
                     >
-                      View Orders
+                      {t('dashboard.projects.viewOrders')}
                     </Button>
                   </div>
                 ) : (
@@ -461,28 +461,28 @@ const Dashboard = () => {
                                       setRenameDialogOpen(true);
                                     }}>
                                       <Pencil className="w-4 h-4 mr-2" />
-                                      Rename Project
+                                      {t('dashboard.projects.renameProject')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleAddPartToProject(projectName);
                                     }}>
                                       <Plus className="w-4 h-4 mr-2" />
-                                      Add Part
+                                      {t('dashboard.projects.addPart')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleDuplicateProject(projectName);
                                     }}>
                                       <Files className="w-4 h-4 mr-2" />
-                                      Duplicate Project
+                                      {t('dashboard.projects.duplicateProject')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={(e) => {
                                       e.stopPropagation();
                                       handleDownloadAllFiles(projectName);
                                     }}>
                                       <Download className="w-4 h-4 mr-2" />
-                                      Download All Files
+                                      {t('dashboard.projects.downloadAllFiles')}
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
@@ -494,7 +494,7 @@ const Dashboard = () => {
                                       }}
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete Project
+                                      {t('dashboard.projects.deleteProject')}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -540,7 +540,7 @@ const Dashboard = () => {
                     {groupedOrders.standaloneOrders.length > 0 && (
                       <>
                         {Object.keys(groupedOrders.projects).length > 0 && (
-                          <div className="text-xs font-semibold text-muted-foreground py-2 px-4">INDIVIDUAL ORDERS</div>
+                          <div className="text-xs font-semibold text-muted-foreground py-2 px-4">{t('dashboard.projects.individualOrders')}</div>
                         )}
                         {groupedOrders.standaloneOrders.map((order, index) => (
                           <div 
@@ -574,30 +574,30 @@ const Dashboard = () => {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
                                     <Eye className="w-4 h-4 mr-2" />
-                                    View Details
+                                    {t('common.viewDetails')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}/edit`)}>
                                     <Pencil className="w-4 h-4 mr-2" />
-                                    Edit Order
+                                    {t('common.editOrder')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     navigator.clipboard.writeText(order.id);
-                                    toast.success('Order ID copied to clipboard');
+                                    toast.success(t('dashboard.toasts.orderIdCopied'));
                                   }}>
                                     <Copy className="w-4 h-4 mr-2" />
-                                    Copy Order ID
+                                    {t('common.copyOrderId')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem>
                                     <Download className="w-4 h-4 mr-2" />
-                                    Download File
+                                    {t('common.downloadFile')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
                                     className="text-destructive focus:text-destructive"
-                                    onClick={() => toast.error('Delete functionality coming soon')}
+                                    onClick={() => toast.error(t('dashboard.toasts.deleteOrderComingSoon'))}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Order
+                                    {t('common.deleteOrder')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -617,28 +617,28 @@ const Dashboard = () => {
         <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Rename Project</DialogTitle>
+              <DialogTitle>{t('dashboard.projects.renameProject')}</DialogTitle>
               <DialogDescription>
-                Enter a new name for your project.
+                {t('dashboard.projects.enterNewName')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="projectName">Project Name</Label>
+                <Label htmlFor="projectName">{t('dashboard.projects.projectName')}</Label>
                 <Input
                   id="projectName"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="Enter project name"
+                  placeholder={t('dashboard.projects.enterProjectNamePlaceholder')}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleRenameProject} disabled={!newProjectName.trim()}>
-                Save
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -648,15 +648,15 @@ const Dashboard = () => {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+              <AlertDialogTitle>{t('dashboard.projects.deleteConfirm')}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will delete all orders in the project "{selectedProject}". This action cannot be undone.
+                {t('dashboard.projects.deleteWarning').replace('"{selectedProject}"', `"${selectedProject}"`)}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

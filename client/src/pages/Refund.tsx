@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, CreditCard, Building2, Wallet, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -27,6 +28,7 @@ interface RefundData {
 const Refund = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [refundData, setRefundData] = useState<RefundData | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,33 +72,33 @@ const Refund = () => {
   const refundMethods = [
     {
       id: "original",
-      name: "Original Payment Method",
-      description: "Refund to the original payment method used",
+      name: t('refund.methods.original'),
+      description: t('refund.methods.originalDesc'),
       icon: CreditCard,
     },
     {
       id: "bank",
-      name: "Bank Transfer",
-      description: "Direct transfer to your bank account",
+      name: t('refund.methods.bank'),
+      description: t('refund.methods.bankDesc'),
       icon: Building2,
     },
     {
       id: "credit",
-      name: "Store Credit",
-      description: "Add to your account balance for future orders",
+      name: t('refund.methods.credit'),
+      description: t('refund.methods.creditDesc'),
       icon: Wallet,
-      bonus: "+5% bonus",
+      bonus: t('refund.methods.creditBonus'),
     },
   ];
 
   const handleRefundRequest = async () => {
     if (!selectedMethod) {
-      toast.error("Please select a refund method");
+      toast.error(t('refund.toasts.selectMethod'));
       return;
     }
 
     if (selectedMethod === "bank" && (!bankDetails.accountNumber || !bankDetails.bankName)) {
-      toast.error("Please fill in all bank details");
+      toast.error(t('refund.toasts.fillBankDetails'));
       return;
     }
 
@@ -172,9 +174,9 @@ const Refund = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         if (failCount > 0) {
-          toast.warning(`Refund request submitted. ${successCount} orders updated, ${failCount} failed.`);
+          toast.warning(`${t('refund.toasts.submitted')} ${successCount} ${t('refund.toasts.ordersUpdated')}, ${failCount} ${t('refund.toasts.failed')}.`);
         } else {
-          toast.success("Refund request submitted successfully!");
+          toast.success(t('refund.toasts.success'));
         }
         
         navigate('/orders');
@@ -263,7 +265,7 @@ const Refund = () => {
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        toast.success("Refund request submitted successfully!");
+        toast.success(t('refund.toasts.success'));
         
         if (isCancellation) {
           navigate('/orders');
@@ -273,7 +275,7 @@ const Refund = () => {
       }
     } catch (error) {
       console.error('Refund error:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to process refund. Please try again.");
+      toast.error(error instanceof Error ? error.message : t('refund.toasts.failed'));
     } finally {
       setIsProcessing(false);
     }
@@ -293,24 +295,24 @@ const Refund = () => {
   const getReasonTitle = () => {
     switch (refundData.reason) {
       case 'cancellation':
-        return 'Order Cancellation Refund';
+        return t('refund.reasons.cancellationTitle');
       case 'price_reduction':
-        return 'Price Adjustment Refund';
+        return t('refund.reasons.priceReductionTitle');
       case 'edit':
-        return 'Order Modification Refund';
+        return t('refund.reasons.editTitle');
       default:
-        return 'Refund Request';
+        return t('refund.title');
     }
   };
 
   const getReasonDescription = () => {
     switch (refundData.reason) {
       case 'cancellation':
-        return 'You are cancelling your order. The full amount will be refunded.';
+        return t('refund.reasons.cancellationDesc');
       case 'price_reduction':
-        return 'Your order modifications resulted in a lower price. The difference will be refunded.';
+        return t('refund.reasons.priceReductionDesc');
       case 'edit':
-        return 'Your order has been updated with a price reduction.';
+        return t('refund.reasons.editDesc');
       default:
         return '';
     }
@@ -338,12 +340,12 @@ const Refund = () => {
             <CardHeader className="bg-gradient-to-r from-primary/5 to-purple-600/5">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Refund Summary
+                {t('refund.summary')}
               </CardTitle>
               <CardDescription>
                 {refundData.isProject 
-                  ? `Project: ${refundData.projectName} (${refundData.orderCount} parts)`
-                  : `Order #${refundData.orderNumber}`
+                  ? `${t('refund.project')}: ${refundData.projectName} (${refundData.orderCount} ${t('refund.parts')})`
+                  : `${t('refund.order')} #${refundData.orderNumber}`
                 }
               </CardDescription>
             </CardHeader>
@@ -351,17 +353,17 @@ const Refund = () => {
               {refundData.reason !== 'cancellation' && (
                 <>
                   <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">Original Price</span>
+                    <span className="text-muted-foreground">{t('refund.originalPrice')}</span>
                     <span className="font-medium">{refundData.originalPrice.toFixed(2)} PLN</span>
                   </div>
                   <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">New Price</span>
+                    <span className="text-muted-foreground">{t('refund.newPrice')}</span>
                     <span className="font-medium">{refundData.newPrice.toFixed(2)} PLN</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between py-3 bg-green-50 dark:bg-green-900/20 px-4 rounded-lg">
-                <span className="font-semibold text-green-700 dark:text-green-400">Refund Amount</span>
+                <span className="font-semibold text-green-700 dark:text-green-400">{t('refund.refundAmount')}</span>
                 <span className="font-bold text-xl text-green-700 dark:text-green-400">
                   {refundData.refundAmount.toFixed(2)} PLN
                 </span>
@@ -372,9 +374,9 @@ const Refund = () => {
           {/* Refund Method Selection */}
           <Card className="shadow-lg animate-scale-in" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
-              <CardTitle>Select Refund Method</CardTitle>
+              <CardTitle>{t('refund.selectMethod')}</CardTitle>
               <CardDescription>
-                Choose how you'd like to receive your refund
+                {t('refund.selectMethodDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -418,9 +420,9 @@ const Refund = () => {
               {/* Bank Details Form */}
               {selectedMethod === "bank" && (
                 <div className="mt-6 space-y-4 p-4 bg-muted/50 rounded-xl animate-slide-up">
-                  <h3 className="font-semibold">Bank Account Details</h3>
+                  <h3 className="font-semibold">{t('refund.bankDetails')}</h3>
                   <div className="space-y-2">
-                    <Label htmlFor="accountHolder">Account Holder Name</Label>
+                    <Label htmlFor="accountHolder">{t('refund.accountHolder')}</Label>
                     <Input
                       id="accountHolder"
                       placeholder="John Doe"
@@ -429,7 +431,7 @@ const Refund = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Label htmlFor="bankName">{t('refund.bankName')}</Label>
                     <Input
                       id="bankName"
                       placeholder="PKO Bank Polski"
@@ -438,7 +440,7 @@ const Refund = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="accountNumber">IBAN / Account Number</Label>
+                    <Label htmlFor="accountNumber">{t('refund.iban')}</Label>
                     <Input
                       id="accountNumber"
                       placeholder="PL00 0000 0000 0000 0000 0000 0000"
@@ -459,12 +461,12 @@ const Refund = () => {
                   <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Processing Time</h3>
+                  <h3 className="font-semibold mb-1">{t('refund.processingTime')}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {selectedMethod === 'original' && "Refunds to original payment method typically take 3-5 business days."}
-                    {selectedMethod === 'bank' && "Bank transfers typically take 2-3 business days."}
-                    {selectedMethod === 'credit' && "Store credit is applied instantly to your account."}
-                    {!selectedMethod && "Processing time varies by refund method."}
+                    {selectedMethod === 'original' && t('refund.processingTimeOriginal')}
+                    {selectedMethod === 'bank' && t('refund.processingTimeBank')}
+                    {selectedMethod === 'credit' && t('refund.processingTimeCredit')}
+                    {!selectedMethod && t('refund.processingTimeDefault')}
                   </p>
                 </div>
               </div>
@@ -474,7 +476,7 @@ const Refund = () => {
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">
             <Button variant="outline" onClick={() => navigate(-1)} disabled={isProcessing}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleRefundRequest}
@@ -484,12 +486,12 @@ const Refund = () => {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
+                  {t('refund.processing')}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Confirm Refund Request
+                  {t('refund.confirmRefund')}
                 </>
               )}
             </Button>

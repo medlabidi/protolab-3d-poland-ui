@@ -25,6 +25,7 @@ import { ArrowLeft, Save, Loader2, Calculator, RefreshCw, AlertTriangle, Ban, Fo
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -100,44 +101,25 @@ const materials = [
   { value: "resin", label: "Resin" },
 ];
 
-const colors = [
-  { value: "white", label: "White" },
-  { value: "black", label: "Black" },
-  { value: "gray", label: "Gray" },
-  { value: "red", label: "Red" },
-  { value: "blue", label: "Blue" },
-  { value: "green", label: "Green" },
-  { value: "yellow", label: "Yellow" },
-  { value: "orange", label: "Orange" },
-  { value: "purple", label: "Purple" },
-  { value: "pink", label: "Pink" },
+const colorValues = ["white", "black", "gray", "red", "blue", "green", "yellow", "orange", "purple", "pink"];
+
+const qualityValues = [
+  { value: "0.3", labelKey: "draft" },
+  { value: "0.2", labelKey: "standard" },
+  { value: "0.15", labelKey: "high" },
+  { value: "0.1", labelKey: "ultra" },
 ];
 
-const qualities = [
-  { value: "0.3", label: "Draft (0.3mm)" },
-  { value: "0.2", label: "Standard (0.2mm)" },
-  { value: "0.15", label: "High (0.15mm)" },
-  { value: "0.1", label: "Ultra (0.1mm)" },
-];
+const infillValues = ["10", "20", "50", "100"];
 
-const infillOptions = [
-  { value: "10", label: "10% - Light" },
-  { value: "20", label: "20% - Standard" },
-  { value: "50", label: "50% - Strong" },
-  { value: "100", label: "100% - Solid" },
-];
-
-const shippingMethods = [
-  { value: "pickup", label: "Local Pickup (Free)" },
-  { value: "inpost", label: "InPost Locker (12.99 PLN)" },
-  { value: "courier", label: "Courier Delivery (24.99 PLN)" },
-];
+const shippingValues = ["pickup", "inpost", "courier"];
 
 const EditProject = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectName } = useParams<{ projectName: string }>();
   const decodedProjectName = decodeURIComponent(projectName || '');
+  const { t } = useLanguage();
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,17 +438,17 @@ const EditProject = () => {
       }
 
       if (failCount > 0 && successCount === 0) {
-        toast.error('Failed to update project');
+        toast.error(t('editProject.toasts.updateFailed'));
       } else if (failCount > 0) {
-        toast.warning(`Partially updated: ${successCount} succeeded, ${failCount} failed`);
+        toast.warning(`${t('editProject.toasts.partialUpdate')}: ${successCount} ${t('editProject.toasts.succeeded')}, ${failCount} ${t('editProject.toasts.failed')}`);
       } else {
-        toast.success('Project updated successfully!');
+        toast.success(t('editProject.toasts.updateSuccess'));
       }
       
       navigate('/orders');
     } catch (err) {
       console.error('Error updating project:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to update project');
+      toast.error(err instanceof Error ? err.message : t('editProject.toasts.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -479,7 +461,7 @@ const EditProject = () => {
         <main className="flex-1 p-8">
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading project...</span>
+            <span className="ml-3 text-muted-foreground">{t('editProject.loading')}</span>
           </div>
         </main>
       </div>
@@ -492,9 +474,9 @@ const EditProject = () => {
         <DashboardSidebar />
         <main className="flex-1 p-8">
           <div className="max-w-5xl mx-auto text-center py-12">
-            <p className="text-destructive text-lg">{error || 'Project not found'}</p>
+            <p className="text-destructive text-lg">{error || t('editProject.projectNotFound')}</p>
             <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
-              Back to Orders
+              {t('editProject.backToOrders')}
             </Button>
           </div>
         </main>
@@ -512,12 +494,12 @@ const EditProject = () => {
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Ban className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">Cannot Edit This Project</h2>
+                  <h2 className="text-xl font-semibold mb-2">{t('editProject.cannotEditTitle')}</h2>
                   <p className="text-muted-foreground mb-6">
-                    This project has been completed and cannot be modified.
+                    {t('editProject.cannotEditDescription')}
                   </p>
                   <Button onClick={() => navigate('/orders')}>
-                    Back to Orders
+                    {t('editProject.backToOrders')}
                   </Button>
                 </div>
               </CardContent>
@@ -544,8 +526,8 @@ const EditProject = () => {
                 <FolderOpen className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">Edit Project: {decodedProjectName}</h1>
-                <p className="text-muted-foreground">{orders.length} parts • Created {formatDate(orders[0]?.created_at)}</p>
+                <h1 className="text-3xl font-bold gradient-text">{t('editProject.title')}: {decodedProjectName}</h1>
+                <p className="text-muted-foreground">{orders.length} {t('editProject.parts')} • {t('editProject.created')} {formatDate(orders[0]?.created_at)}</p>
               </div>
             </div>
             <div className="ml-auto">
@@ -560,9 +542,9 @@ const EditProject = () => {
                 <div className="flex gap-3">
                   <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-yellow-700 dark:text-yellow-400">Some Parts Are Printing</p>
+                    <p className="font-medium text-yellow-700 dark:text-yellow-400">{t('editProject.printingWarningTitle')}</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Parts that are currently being printed cannot have their print parameters modified. You can still change shipping details.
+                      {t('editProject.printingWarningDescription')}
                     </p>
                   </div>
                 </div>
@@ -574,11 +556,11 @@ const EditProject = () => {
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="parts" className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4" />
-                Parts & Parameters
+                {t('editProject.tabs.parts')}
               </TabsTrigger>
               <TabsTrigger value="shipping" className="flex items-center gap-2">
                 <Truck className="w-4 h-4" />
-                Shipping
+                {t('editProject.tabs.shipping')}
               </TabsTrigger>
             </TabsList>
 
@@ -605,13 +587,13 @@ const EditProject = () => {
                           <div className="flex-1 text-left">
                             <p className="font-bold text-primary">{order.file_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {order.material?.toUpperCase()} • {order.color} • Qty: {edit?.quantity || order.quantity}
+                              {order.material?.toUpperCase()} • {order.color} • {t('editProject.qty')}: {edit?.quantity || order.quantity}
                             </p>
                           </div>
                           <div className="flex items-center gap-4 mr-4">
                             <StatusBadge status={order.status} />
                             <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Price</p>
+                              <p className="text-sm text-muted-foreground">{t('editProject.price')}</p>
                               <p className={`font-bold ${priceDiff !== 0 ? (priceDiff > 0 ? 'text-blue-600' : 'text-green-600') : ''}`}>
                                 {edit?.newPrice.toFixed(2) || order.price.toFixed(2)} PLN
                               </p>
@@ -640,13 +622,13 @@ const EditProject = () => {
                             {!canEdit && (
                               <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
                                 <AlertTriangle className="w-4 h-4 inline mr-2" />
-                                Print parameters locked - order is {order.status}
+                                {t('editProject.paramsLocked')} - {t('editProject.orderIs')} {order.status}
                               </div>
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label>Material</Label>
+                                <Label>{t('editProject.labels.material')}</Label>
                                 <Select 
                                   value={edit?.material || order.material} 
                                   onValueChange={(v) => updatePartEdit(order.id, 'material', v)}
@@ -664,7 +646,7 @@ const EditProject = () => {
                               </div>
 
                               <div className="space-y-2">
-                                <Label>Color</Label>
+                                <Label>{t('editProject.labels.color')}</Label>
                                 <Select 
                                   value={edit?.color || order.color} 
                                   onValueChange={(v) => updatePartEdit(order.id, 'color', v)}
@@ -674,8 +656,8 @@ const EditProject = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {colors.map((c) => (
-                                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                    {colorValues.map((c) => (
+                                      <SelectItem key={c} value={c}>{t(`editProject.colors.${c}`)}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
@@ -684,7 +666,7 @@ const EditProject = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label>Quality</Label>
+                                <Label>{t('editProject.labels.quality')}</Label>
                                 <Select 
                                   value={edit?.layerHeight || '0.2'} 
                                   onValueChange={(v) => updatePartEdit(order.id, 'layerHeight', v)}
@@ -694,15 +676,15 @@ const EditProject = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {qualities.map((q) => (
-                                      <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
+                                    {qualityValues.map((q) => (
+                                      <SelectItem key={q.value} value={q.value}>{t(`editProject.qualities.${q.labelKey}`)} ({q.value}mm)</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
                               </div>
 
                               <div className="space-y-2">
-                                <Label>Infill</Label>
+                                <Label>{t('editProject.labels.infill')}</Label>
                                 <Select 
                                   value={edit?.infill || '20'} 
                                   onValueChange={(v) => updatePartEdit(order.id, 'infill', v)}
@@ -712,8 +694,8 @@ const EditProject = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {infillOptions.map((i) => (
-                                      <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>
+                                    {infillValues.map((i) => (
+                                      <SelectItem key={i} value={i}>{i}% - {t(`editProject.infill.${i}`)}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
@@ -721,7 +703,7 @@ const EditProject = () => {
                             </div>
 
                             <div className="space-y-2">
-                              <Label>Quantity</Label>
+                              <Label>{t('editProject.labels.quantity')}</Label>
                               <Input
                                 type="number"
                                 min={1}
@@ -746,27 +728,27 @@ const EditProject = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Truck className="w-5 h-5" />
-                    Shipping Details
+                    {t('editProject.shippingDetails.title')}
                   </CardTitle>
                   <CardDescription>
-                    Shipping applies to all parts in this project
+                    {t('editProject.shippingDetails.description')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Shipping Method</Label>
+                    <Label>{t('editProject.shippingDetails.methodLabel')}</Label>
                     <Select 
                       value={shippingMethod} 
                       onValueChange={setShippingMethod}
                       disabled={!canEditShipping()}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select shipping method" />
+                        <SelectValue placeholder={t('editProject.shippingDetails.selectMethod')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {shippingMethods.map((method) => (
-                          <SelectItem key={method.value} value={method.value}>
-                            {method.label}
+                        {shippingValues.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {t(`editProject.shippingMethods.${method}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -775,9 +757,9 @@ const EditProject = () => {
 
                   {shippingMethod && shippingMethod !== 'pickup' && (
                     <div className="space-y-2">
-                      <Label>Shipping Address</Label>
+                      <Label>{t('editProject.shippingDetails.addressLabel')}</Label>
                       <Textarea
-                        placeholder="Enter your shipping address..."
+                        placeholder={t('editProject.shippingDetails.addressPlaceholder')}
                         value={shippingAddress}
                         onChange={(e) => setShippingAddress(e.target.value)}
                         disabled={!canEditShipping()}
@@ -788,7 +770,7 @@ const EditProject = () => {
 
                   {shippingMethod === 'pickup' && (
                     <p className="text-sm text-muted-foreground">
-                      Pickup address: Zielonogórska 13, 30-406 Kraków
+                      {t('editProject.shippingDetails.pickupAddress')}: Zielonogórska 13, 30-406 Kraków
                     </p>
                   )}
                 </CardContent>
@@ -801,23 +783,23 @@ const EditProject = () => {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
-                Project Price Summary
+                {t('editProject.priceSummary.title')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-5 gap-4 items-center">
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Original Total</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('editProject.priceSummary.originalTotal')}</p>
                   <p className="text-xl font-bold">{originalTotal.toFixed(2)} PLN</p>
                 </div>
                 
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">New Parts Total</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('editProject.priceSummary.newPartsTotal')}</p>
                   <p className="text-xl font-bold">{newPartsTotal.toFixed(2)} PLN</p>
                 </div>
                 
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Shipping</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('editProject.priceSummary.shipping')}</p>
                   <p className="text-xl font-bold">{newShippingCost.toFixed(2)} PLN</p>
                 </div>
                 
@@ -829,7 +811,7 @@ const EditProject = () => {
                       : 'bg-muted/50'
                 }`}>
                   <p className="text-xs text-muted-foreground mb-1">
-                    {totalDifference > 0.01 ? 'Extra Payment' : totalDifference < -0.01 ? 'Refund' : 'Difference'}
+                    {totalDifference > 0.01 ? t('editProject.priceSummary.extraPayment') : totalDifference < -0.01 ? t('editProject.priceSummary.refund') : t('editProject.priceSummary.difference')}
                   </p>
                   <p className={`text-xl font-bold ${
                     totalDifference > 0.01 ? 'text-blue-600' : totalDifference < -0.01 ? 'text-green-600' : ''
@@ -847,22 +829,22 @@ const EditProject = () => {
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
+                        {t('editProject.buttons.processing')}
                       </>
                     ) : totalDifference > 0.01 ? (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Pay Extra {totalDifference.toFixed(2)} PLN
+                        {t('editProject.buttons.payExtra')} {totalDifference.toFixed(2)} PLN
                       </>
                     ) : totalDifference < -0.01 ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Get Refund {Math.abs(totalDifference).toFixed(2)} PLN
+                        {t('editProject.buttons.getRefund')} {Math.abs(totalDifference).toFixed(2)} PLN
                       </>
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Save Changes
+                        {t('editProject.buttons.saveChanges')}
                       </>
                     )}
                   </Button>
@@ -873,20 +855,20 @@ const EditProject = () => {
                     className="w-full"
                     size="sm"
                   >
-                    Cancel
+                    {t('editProject.buttons.cancel')}
                   </Button>
                 </div>
               </div>
 
               {totalDifference > 0.01 && (
                 <div className="mt-4 bg-blue-500/10 p-3 rounded-lg text-sm text-blue-700 dark:text-blue-400">
-                  <strong>Note:</strong> Your updated project requires an additional payment of <strong>{totalDifference.toFixed(2)} PLN</strong>.
+                  <strong>{t('editProject.notes.noteLabel')}:</strong> {t('editProject.notes.extraPaymentNote')} <strong>{totalDifference.toFixed(2)} PLN</strong>.
                 </div>
               )}
 
               {totalDifference < -0.01 && (
                 <div className="mt-4 bg-green-500/10 p-3 rounded-lg text-sm text-green-700 dark:text-green-400">
-                  <strong>Good news!</strong> Your updated project costs less. You'll receive a refund of <strong>{Math.abs(totalDifference).toFixed(2)} PLN</strong>.
+                  <strong>{t('editProject.notes.goodNews')}!</strong> {t('editProject.notes.refundNote')} <strong>{Math.abs(totalDifference).toFixed(2)} PLN</strong>.
                 </div>
               )}
             </CardContent>

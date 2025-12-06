@@ -38,20 +38,20 @@ export const DashboardSidebar = () => {
     clearAllNotifications();
     
     // Show success message
-    toast.success(t.dashboard.logoutSuccess || 'Logged out successfully');
+    toast.success(t('dashboard.logoutSuccess') || 'Logged out successfully');
     
     // Redirect to signin page
     navigate('/signin');
   };
   
   const menuItems = [
-    { icon: LayoutDashboard, label: t.dashboard.overview, path: "/dashboard" },
-    { icon: Plus, label: t.dashboard.newPrint, path: "/new-print" },
-    { icon: Package, label: t.dashboard.orders, path: "/orders" },
-    { icon: MessageSquare, label: "Conversations", path: "/conversations" },
-    { icon: Wallet, label: "Credits", path: "/credits" },
-    { icon: Building2, label: "Business", path: "/business" },
-    { icon: Settings, label: t.dashboard.settings, path: "/settings" },
+    { icon: LayoutDashboard, label: t('dashboard.overview'), path: "/dashboard" },
+    { icon: Plus, label: t('dashboard.newPrint'), path: "/new-print" },
+    { icon: Package, label: t('dashboard.orders'), path: "/orders" },
+    { icon: MessageSquare, label: t('sidebar.conversations'), path: "/conversations" },
+    { icon: Wallet, label: t('sidebar.credits'), path: "/credits" },
+    { icon: Building2, label: t('sidebar.business'), path: "/business" },
+    { icon: Settings, label: t('dashboard.settings'), path: "/settings" },
   ];
 
   return (
@@ -86,13 +86,13 @@ export const DashboardSidebar = () => {
         onClick={handleLogout}
       >
         <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        <span className="font-semibold">{t.dashboard.logout}</span>
+        <span className="font-semibold">{t('dashboard.logout')}</span>
       </Button>
 
       {/* Decorative Element */}
       <div className="mt-6 p-4 bg-gradient-to-br from-primary/10 to-purple-600/10 rounded-xl border border-primary/20">
-        <p className="text-xs text-muted-foreground mb-1 font-semibold">Need Help?</p>
-        <p className="text-sm font-bold text-primary">Contact Support</p>
+        <p className="text-xs text-muted-foreground mb-1 font-semibold">{t('sidebar.needHelp')}</p>
+        <p className="text-sm font-bold text-primary">{t('sidebar.contactSupport')}</p>
       </div>
     </aside>
   );
