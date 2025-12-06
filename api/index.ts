@@ -1,14 +1,55 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { getSupabase } from './_lib/supabase';
-import { generateTokenPair, verifyRefreshToken, getRefreshTokenExpiry, verifyAccessToken, JWTPayload } from './_lib/jwt';
-import { cors, requireAuth, AuthenticatedRequest } from './_lib/middleware';
+
+// Type definition for authenticated requests
+interface AuthenticatedRequest extends VercelRequest {
+  user?: {
+    userId: string;
+    email: string;
+    role: string;
+  };
+}
+
+// Lazy imports to catch module errors
+let bcrypt: any;
+let getSupabase: any;
+let generateTokenPair: any;
+let verifyRefreshToken: any;
+let getRefreshTokenExpiry: any;
+let verifyAccessToken: any;
+let cors: any;
+let requireAuth: any;
+
+const initModules = async () => {
+  if (!bcrypt) {
+    bcrypt = (await import('bcryptjs')).default;
+  }
+  if (!getSupabase) {
+    const supabaseModule = await import('./_lib/supabase');
+    getSupabase = supabaseModule.getSupabase;
+  }
+  if (!generateTokenPair) {
+    const jwtModule = await import('./_lib/jwt');
+    generateTokenPair = jwtModule.generateTokenPair;
+    verifyRefreshToken = jwtModule.verifyRefreshToken;
+    getRefreshTokenExpiry = jwtModule.getRefreshTokenExpiry;
+    verifyAccessToken = jwtModule.verifyAccessToken;
+  }
+  if (!cors) {
+    const middlewareModule = await import('./_lib/middleware');
+    cors = middlewareModule.cors;
+    requireAuth = middlewareModule.requireAuth;
+  }
+};
 
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
-  cors(res);
-  
+  // Set CORS headers immediately
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -17,6 +58,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   const path = url.split('?')[0].replace('/api', '');
   
   try {
+    // Initialize modules lazily
+    await initModules();
     // Auth routes
     if (path === '/auth/register' && req.method === 'POST') {
       return await handleRegister(req, res);
