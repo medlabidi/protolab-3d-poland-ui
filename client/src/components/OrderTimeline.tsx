@@ -20,6 +20,8 @@ const statusOrder: Record<OrderStatus, number> = {
   printing: 2,
   finished: 3,
   delivered: 4,
+  on_hold: 2,
+  suspended: -1,
 };
 
 export const OrderTimeline = ({ currentStatus }: OrderTimelineProps) => {

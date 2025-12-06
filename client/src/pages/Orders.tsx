@@ -375,9 +375,9 @@ const Orders = () => {
     const statuses = projectOrders.map(o => o.payment_status).filter(Boolean);
     if (statuses.length === 0) return null;
     if (statuses.every(s => s === 'paid')) return 'paid';
-    if (statuses.some(s => s === 'pending')) return 'pending';
+    if (statuses.some(s => s === 'on_hold')) return 'on_hold';
     if (statuses.some(s => s === 'refunded')) return 'refunded';
-    return 'pending';
+    return 'on_hold';
   };
 
   // Get project total price
@@ -449,7 +449,7 @@ const Orders = () => {
       setRenameDialogOpen(false);
       setSelectedProject(null);
       setNewProjectName('');
-      fetchOrders();
+      fetchAllOrders();
     } catch (error) {
       toast.error(t('orders.toasts.renameProjectError'));
     }
