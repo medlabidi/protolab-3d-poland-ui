@@ -1,5 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import createApp from '../server/src/express-app';
+
+// Use require for compiled JavaScript from server/dist
+const createApp = require('../server/dist/express-app').default;
 
 // Create Express app instance
 const app = createApp();
