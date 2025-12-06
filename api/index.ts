@@ -1,13 +1,25 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Use require for compiled JavaScript from server/dist
-const createApp = require('../server/dist/express-app').default;
+// Standalone API handler for Vercel Serverless Functions
+// Note: This is a simplified handler. For full functionality, 
+// deploy the server separately or use a different hosting approach.
 
-// Create Express app instance
-const app = createApp();
-
-// Export handler for Vercel serverless function
 export default async (req: VercelRequest, res: VercelResponse) => {
-  // Let Express handle the request
-  return app(req, res);
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Return API info
+  return res.status(200).json({
+    message: 'ProtoLab API',
+    version: '1.0.0',
+    status: 'running',
+    note: 'For full API functionality, the server needs to be deployed separately. Contact support for backend deployment instructions.'
+  });
 };

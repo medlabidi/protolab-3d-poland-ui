@@ -11,8 +11,10 @@
     "strict": false,
     "resolveJsonModule": true,
     "noImplicitAny": false,
-    "allowJs": true
+    "allowJs": true,
+    "declaration": false,
+    "noEmit": false
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["./*.ts"],
+  "exclude": ["node_modules", "dist", "../client", "../server/src"]
 }
