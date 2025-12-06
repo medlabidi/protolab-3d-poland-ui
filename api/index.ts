@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getSupabase } from './_lib/supabase';
 import { generateTokenPair, verifyRefreshToken, getRefreshTokenExpiry, verifyAccessToken, JWTPayload } from './_lib/jwt';
