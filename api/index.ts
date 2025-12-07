@@ -217,6 +217,8 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
   const password_hash = await bcrypt.hash(password, 10);
   const verificationToken = crypto.randomBytes(32).toString('hex');
   
+  console.log(`📝 [REGISTER] Creating user ${normalizedEmail} with token: ${verificationToken.substring(0, 10)}...`);
+  
   const { data: user, error } = await supabase
     .from('users')
     .insert([{
@@ -238,12 +240,16 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
     .single();
   
   if (error) {
+    console.error(`📝 [REGISTER] Failed to create user:`, JSON.stringify(error));
     return res.status(500).json({ error: 'Failed to create user' });
   }
   
+  console.log(`📝 [REGISTER] User created with ID: ${user.id}`);
+  
   // Send verification email
   try {
-    await sendVerificationEmail(normalizedEmail, name, verificationToken);
+    const emailResult = await sendVerificationEmail(normalizedEmail, name, verificationToken);
+    console.log(`📝 [REGISTER] Email result:`, JSON.stringify(emailResult));
   } catch (emailError) {
     console.error('Failed to send verification email:', emailError);
     // Don't fail registration if email fails
@@ -542,19 +548,41 @@ async function handleResetPassword(req: VercelRequest, res: VercelResponse) {
 async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
   const token = req.query.token as string;
   
+  console.log(`📧 [VERIFY-EMAIL] Received token: ${token ? token.substring(0, 10) + '...' : 'NONE'}`);
+  
   if (!token) {
     return res.status(400).json({ error: 'Verification token required' });
   }
   
+  // Clean the token (remove any whitespace or newlines)
+  const cleanToken = token.trim();
+  console.log(`📧 [VERIFY-EMAIL] Clean token length: ${cleanToken.length}`);
+  
   const supabase = getSupabase();
   
-  const { data: user } = await supabase
+  const { data: user, error: lookupError } = await supabase
     .from('users')
-    .select('id, name, email, verification_token_expires')
-    .eq('verification_token', token)
+    .select('id, name, email, verification_token, verification_token_expires')
+    .eq('verification_token', cleanToken)
     .single();
   
+  console.log(`📧 [VERIFY-EMAIL] User lookup result:`, user ? `Found user ${user.email}` : 'No user found');
+  if (lookupError) {
+    console.log(`📧 [VERIFY-EMAIL] Lookup error:`, JSON.stringify(lookupError));
+  }
+  
   if (!user) {
+    // Try to find any user with a token to debug
+    const { data: anyUser } = await supabase
+      .from('users')
+      .select('email, verification_token')
+      .not('verification_token', 'is', null)
+      .limit(1);
+    
+    if (anyUser && anyUser.length > 0) {
+      console.log(`📧 [VERIFY-EMAIL] Sample token in DB: ${anyUser[0].verification_token?.substring(0, 10)}... for ${anyUser[0].email}`);
+    }
+    
     return res.status(400).json({ error: 'Invalid verification token' });
   }
   
@@ -562,11 +590,16 @@ async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Verification token has expired' });
   }
   
-  await supabase.from('users').update({
+  const { error: updateError } = await supabase.from('users').update({
     email_verified: true,
     verification_token: null,
     verification_token_expires: null,
   }).eq('id', user.id);
+  
+  if (updateError) {
+    console.error(`📧 [VERIFY-EMAIL] Update error:`, JSON.stringify(updateError));
+    return res.status(500).json({ error: 'Failed to verify email' });
+  }
   
   // Send welcome email
   try {
@@ -575,6 +608,7 @@ async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
     console.error('Failed to send welcome email:', emailError);
   }
   
+  console.log(`📧 [VERIFY-EMAIL] Successfully verified ${user.email}`);
   return res.status(200).json({ message: 'Email verified successfully' });
 }
 
