@@ -14,6 +14,7 @@ import AboutUs from "./pages/AboutUs";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
 import NewPrint from "./pages/NewPrint";
 import Orders from "./pages/Orders";
@@ -51,6 +52,7 @@ const App = () => (
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/login" element={<SignIn />} /> {/* Redirect /login to /signin */}
                 
                 {/* Protected Routes - Require Authentication */}
