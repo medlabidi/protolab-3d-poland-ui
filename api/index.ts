@@ -316,7 +316,7 @@ async function handleLogin(req: VercelRequest, res: VercelResponse) {
       country: user.country,
       email_verified: user.email_verified,
     },
-    ...tokens,
+    tokens,
   });
 }
 
@@ -360,7 +360,7 @@ async function handleRefresh(req: VercelRequest, res: VercelResponse) {
       expires_at: getRefreshTokenExpiry().toISOString(),
     }]);
     
-    return res.status(200).json(tokens);
+    return res.status(200).json({ tokens });
   } catch (error) {
     return res.status(401).json({ error: 'Invalid refresh token' });
   }
