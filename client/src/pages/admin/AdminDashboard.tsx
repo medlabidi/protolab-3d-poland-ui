@@ -133,7 +133,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const formatPrice = (price: number) => `${price.toFixed(2)} PLN`;
+  const formatPrice = (price: number | null | undefined) => `${(price ?? 0).toFixed(2)} PLN`;
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',

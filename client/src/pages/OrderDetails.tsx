@@ -186,8 +186,8 @@ const OrderDetails = () => {
     });
   };
 
-  const formatPrice = (price: number) => {
-    return `${price.toFixed(2)} PLN`;
+  const formatPrice = (price: number | null | undefined) => {
+    return `${(price ?? 0).toFixed(2)} PLN`;
   };
 
   const capitalizeFirst = (str: string) => {

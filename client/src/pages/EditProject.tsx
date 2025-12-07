@@ -595,7 +595,7 @@ const EditProject = () => {
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">{t('editProject.price')}</p>
                               <p className={`font-bold ${priceDiff !== 0 ? (priceDiff > 0 ? 'text-blue-600' : 'text-green-600') : ''}`}>
-                                {edit?.newPrice.toFixed(2) || order.price.toFixed(2)} PLN
+                                {(edit?.newPrice ?? order.price ?? 0).toFixed(2)} PLN
                               </p>
                             </div>
                             {priceDiff !== 0 && (
