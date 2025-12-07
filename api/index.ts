@@ -19,6 +19,9 @@ let getRefreshTokenExpiry: any;
 let verifyAccessToken: any;
 let cors: any;
 let requireAuth: any;
+let sendVerificationEmail: any;
+let sendPasswordResetEmail: any;
+let sendWelcomeEmail: any;
 
 const initModules = async () => {
   if (!bcrypt) {
@@ -39,6 +42,12 @@ const initModules = async () => {
     const middlewareModule = await import('./_lib/middleware');
     cors = middlewareModule.cors;
     requireAuth = middlewareModule.requireAuth;
+  }
+  if (!sendVerificationEmail) {
+    const emailModule = await import('./_lib/email');
+    sendVerificationEmail = emailModule.sendVerificationEmail;
+    sendPasswordResetEmail = emailModule.sendPasswordResetEmail;
+    sendWelcomeEmail = emailModule.sendWelcomeEmail;
   }
 };
 
@@ -230,6 +239,14 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
   
   if (error) {
     return res.status(500).json({ error: 'Failed to create user' });
+  }
+  
+  // Send verification email
+  try {
+    await sendVerificationEmail(normalizedEmail, name, verificationToken);
+  } catch (emailError) {
+    console.error('Failed to send verification email:', emailError);
+    // Don't fail registration if email fails
   }
   
   return res.status(201).json({
@@ -477,8 +494,14 @@ async function handleForgotPassword(req: VercelRequest, res: VercelResponse) {
     reset_token_expires: resetExpires,
   }).eq('id', user.id);
   
-  // TODO: Send email with reset link
-  // For now, just return success
+  // Send password reset email
+  try {
+    await sendPasswordResetEmail(user.email, user.name, resetToken);
+  } catch (emailError) {
+    console.error('Failed to send password reset email:', emailError);
+    // Don't fail - still return success to prevent email enumeration
+  }
+  
   return res.status(200).json({ message: 'If the email exists, a reset link has been sent' });
 }
 
@@ -527,7 +550,7 @@ async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
   
   const { data: user } = await supabase
     .from('users')
-    .select('id, verification_token_expires')
+    .select('id, name, email, verification_token_expires')
     .eq('verification_token', token)
     .single();
   
@@ -544,6 +567,13 @@ async function handleVerifyEmail(req: VercelRequest, res: VercelResponse) {
     verification_token: null,
     verification_token_expires: null,
   }).eq('id', user.id);
+  
+  // Send welcome email
+  try {
+    await sendWelcomeEmail(user.email, user.name);
+  } catch (emailError) {
+    console.error('Failed to send welcome email:', emailError);
+  }
   
   return res.status(200).json({ message: 'Email verified successfully' });
 }
