@@ -11,20 +11,26 @@ export interface TokenPair {
   refreshToken: string;
 }
 
-const ACCESS_SECRET: Secret = process.env.JWT_ACCESS_SECRET || 'access-secret';
-const REFRESH_SECRET: Secret = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
-const ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+// Clean environment variable values (remove quotes, whitespace, \r\n)
+const cleanEnvValue = (value: string | undefined, defaultValue: string): string => {
+  if (!value) return defaultValue;
+  return value.trim().replace(/^["']|["']$/g, '').replace(/\\r\\n/g, '').replace(/\r\n/g, '');
+};
+
+const getAccessSecret = (): Secret => cleanEnvValue(process.env.JWT_ACCESS_SECRET, 'access-secret');
+const getRefreshSecret = (): Secret => cleanEnvValue(process.env.JWT_REFRESH_SECRET, 'refresh-secret');
+const getAccessExpiresIn = (): string => cleanEnvValue(process.env.JWT_ACCESS_EXPIRES_IN, '15m');
+const getRefreshExpiresIn = (): string => cleanEnvValue(process.env.JWT_REFRESH_EXPIRES_IN, '7d');
 
 export const generateAccessToken = (payload: JWTPayload): string => {
-  return jwt.sign(payload, ACCESS_SECRET as Secret, {
-    expiresIn: ACCESS_EXPIRES_IN,
+  return jwt.sign(payload, getAccessSecret(), {
+    expiresIn: getAccessExpiresIn(),
   } as any);
 };
 
 export const generateRefreshToken = (payload: JWTPayload): string => {
-  return jwt.sign(payload, REFRESH_SECRET as Secret, {
-    expiresIn: REFRESH_EXPIRES_IN,
+  return jwt.sign(payload, getRefreshSecret(), {
+    expiresIn: getRefreshExpiresIn(),
   } as any);
 };
 
@@ -36,15 +42,15 @@ export const generateTokenPair = (payload: JWTPayload): TokenPair => {
 };
 
 export const verifyAccessToken = (token: string): JWTPayload => {
-  return jwt.verify(token, ACCESS_SECRET) as JWTPayload;
+  return jwt.verify(token, getAccessSecret()) as JWTPayload;
 };
 
 export const verifyRefreshToken = (token: string): JWTPayload => {
-  return jwt.verify(token, REFRESH_SECRET) as JWTPayload;
+  return jwt.verify(token, getRefreshSecret()) as JWTPayload;
 };
 
 export const getRefreshTokenExpiry = (): Date => {
-  const expiresIn = REFRESH_EXPIRES_IN;
+  const expiresIn = getRefreshExpiresIn();
   const match = expiresIn.match(/^(\d+)([dhms])$/);
   
   if (!match) {
