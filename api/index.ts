@@ -936,25 +936,24 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     }
   }
   
+  // Build order object with only valid columns
+  const orderData: any = {
+    user_id: user.userId,
+    file_name: fileName,
+    file_url: fileUrl,
+    material: material || 'PLA',
+    color: color || 'white',
+    quantity: quantity || 1,
+    price: price || 0,
+    shipping_method: shippingMethod || 'pickup',
+    layer_height: parseFloat(layerHeight || '0.2'),
+    infill: parseInt(infill || '20', 10),
+    status: 'submitted',
+  };
+  
   const { data: order, error } = await supabase
     .from('orders')
-    .insert([{
-      user_id: user.userId,
-      file_name: fileName,
-      file_url: fileUrl,
-      material: material || 'PLA',
-      color: color || 'white',
-      quantity: quantity || 1,
-      notes,
-      project_name: projectName,
-      price: price || 0,
-      shipping_method: shippingMethod,
-      shipping_address: shippingAddress,
-      layer_height: layerHeight,
-      infill: infill,
-      status: 'submitted',
-      payment_status: 'pending',
-    }])
+    .insert([orderData])
     .select()
     .single();
   
