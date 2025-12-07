@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
+import { IncomingForm, Fields, Files } from 'formidable';
 
 // Type definition for authenticated requests
 interface AuthenticatedRequest extends VercelRequest {
@@ -9,6 +10,21 @@ interface AuthenticatedRequest extends VercelRequest {
     role: string;
   };
 }
+
+// Parse multipart form data
+const parseFormData = (req: VercelRequest): Promise<{ fields: Fields; files: Files }> => {
+  return new Promise((resolve, reject) => {
+    const form = new IncomingForm({
+      keepExtensions: true,
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+    });
+    
+    form.parse(req as any, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
+    });
+  });
+};
 
 // Lazy imports to catch module errors
 let bcrypt: any;
@@ -51,6 +67,32 @@ const initModules = async () => {
   }
 };
 
+// Disable body parser for multipart form data support
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// Parse JSON body manually when needed
+const parseJsonBody = async (req: VercelRequest): Promise<any> => {
+  if (req.body) return req.body;
+  
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk: Buffer) => {
+      data += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(data));
+      } catch {
+        resolve({});
+      }
+    });
+  });
+};
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   // Set CORS headers immediately
@@ -65,6 +107,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
   const url = req.url || '';
   const path = url.split('?')[0].replace('/api', '');
+  const contentType = req.headers['content-type'] || '';
+  
+  // Parse JSON body for non-multipart requests
+  if (req.method !== 'GET' && !contentType.includes('multipart/form-data') && !req.body) {
+    req.body = await parseJsonBody(req);
+  }
   
   try {
     // Initialize modules lazily
@@ -781,13 +829,112 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   const user = requireAuth(req, res);
   if (!user) return;
   
-  const { fileName, fileUrl, material, color, quantity, notes, projectName } = req.body;
-  
-  if (!fileName || !fileUrl) {
-    return res.status(400).json({ error: 'File name and URL required' });
-  }
-  
   const supabase = getSupabase();
+  
+  // Check if this is a multipart form data request
+  const contentType = req.headers['content-type'] || '';
+  
+  let fileName: string;
+  let fileUrl: string;
+  let material: string;
+  let color: string;
+  let quantity: number;
+  let notes: string | undefined;
+  let projectName: string | undefined;
+  let price: number | undefined;
+  let shippingMethod: string | undefined;
+  let shippingAddress: any;
+  let layerHeight: string | undefined;
+  let infill: string | undefined;
+  
+  if (contentType.includes('multipart/form-data')) {
+    // Parse FormData
+    try {
+      const { fields, files } = await parseFormData(req);
+      
+      // Get field values (formidable returns arrays)
+      const getField = (name: string): string | undefined => {
+        const value = fields[name];
+        return Array.isArray(value) ? value[0] : value;
+      };
+      
+      material = getField('material') || 'PLA';
+      color = getField('color') || 'white';
+      quantity = parseInt(getField('quantity') || '1', 10);
+      notes = getField('notes');
+      projectName = getField('projectName');
+      price = parseFloat(getField('price') || '0');
+      shippingMethod = getField('shippingMethod');
+      layerHeight = getField('layerHeight');
+      infill = getField('infill');
+      
+      const shippingAddressStr = getField('shippingAddress');
+      if (shippingAddressStr) {
+        try {
+          shippingAddress = JSON.parse(shippingAddressStr);
+        } catch (e) {
+          shippingAddress = shippingAddressStr;
+        }
+      }
+      
+      // Handle file upload
+      const uploadedFile = files.file;
+      const fileData = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
+      
+      if (!fileData) {
+        return res.status(400).json({ error: 'File is required' });
+      }
+      
+      fileName = fileData.originalFilename || 'unknown.stl';
+      
+      // Upload file to Supabase storage
+      const fs = await import('fs');
+      const fileBuffer = fs.readFileSync(fileData.filepath);
+      const bucket = process.env.SUPABASE_BUCKET || 'order-files';
+      const filePath = `${user.userId}/${Date.now()}-${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, fileBuffer, {
+          contentType: fileData.mimetype || 'application/octet-stream',
+        });
+      
+      if (uploadError) {
+        console.error('File upload error:', uploadError);
+        return res.status(500).json({ error: 'Failed to upload file' });
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+      fileUrl = urlData.publicUrl;
+      
+      // Clean up temp file
+      fs.unlinkSync(fileData.filepath);
+      
+    } catch (parseError) {
+      console.error('FormData parse error:', parseError);
+      return res.status(400).json({ error: 'Failed to parse form data' });
+    }
+  } else {
+    // Handle JSON body
+    const body = req.body || {};
+    fileName = body.fileName;
+    fileUrl = body.fileUrl;
+    material = body.material || 'PLA';
+    color = body.color || 'white';
+    quantity = body.quantity || 1;
+    notes = body.notes;
+    projectName = body.projectName;
+    price = body.price;
+    shippingMethod = body.shippingMethod;
+    shippingAddress = body.shippingAddress;
+    layerHeight = body.layerHeight;
+    infill = body.infill;
+    
+    if (!fileName || !fileUrl) {
+      return res.status(400).json({ error: 'File name and URL required' });
+    }
+  }
   
   const { data: order, error } = await supabase
     .from('orders')
@@ -800,6 +947,11 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       quantity: quantity || 1,
       notes,
       project_name: projectName,
+      price: price || 0,
+      shipping_method: shippingMethod,
+      shipping_address: shippingAddress,
+      layer_height: layerHeight,
+      infill: infill,
       status: 'submitted',
       payment_status: 'pending',
     }])
@@ -807,6 +959,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     .single();
   
   if (error) {
+    console.error('Order creation error:', error);
     return res.status(500).json({ error: 'Failed to create order' });
   }
   
