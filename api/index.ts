@@ -890,14 +890,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       // Upload file to Supabase storage
       const fs = await import('fs');
       const fileBuffer = fs.readFileSync(fileData.filepath);
-      const bucket = process.env.SUPABASE_BUCKET || 'order-files';
+      const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
       const filePath = `${user.userId}/${Date.now()}-${fileName}`;
-      
-      console.log(`📁 [UPLOAD] Attempting upload to bucket: ${bucket}, path: ${filePath}`);
-      
-      // First, try to list buckets to debug
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      console.log(`📁 [UPLOAD] Available buckets:`, buckets?.map(b => b.name) || 'none', listError ? `Error: ${listError.message}` : '');
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucket)
