@@ -893,6 +893,12 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       const bucket = process.env.SUPABASE_BUCKET || 'order-files';
       const filePath = `${user.userId}/${Date.now()}-${fileName}`;
       
+      console.log(`📁 [UPLOAD] Attempting upload to bucket: ${bucket}, path: ${filePath}`);
+      
+      // First, try to list buckets to debug
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      console.log(`📁 [UPLOAD] Available buckets:`, buckets?.map(b => b.name) || 'none', listError ? `Error: ${listError.message}` : '');
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, fileBuffer, {
