@@ -3,13 +3,19 @@ import { Resend } from 'resend';
 // Clean environment variable values
 const cleanEnvValue = (value: string | undefined, defaultValue: string): string => {
   if (!value) return defaultValue;
-  return value.trim().replace(/^["']|["']$/g, '').replace(/\\r\\n/g, '').replace(/\r\n/g, '');
+  // Remove quotes, \r\n, and trim
+  return value.trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\\r\\n/g, '')
+    .replace(/\r\n/g, '')
+    .replace(/\r/g, '')
+    .replace(/\n/g, '');
 };
 
 const getResendApiKey = () => cleanEnvValue(process.env.RESEND_API_KEY, '');
-const getFromEmail = () => cleanEnvValue(process.env.FROM_EMAIL, 'noreply@protolab3d.pl');
+const getFromEmail = () => cleanEnvValue(process.env.FROM_EMAIL, 'noreply@protolab.info');
 const getFrontendUrl = () => cleanEnvValue(process.env.FRONTEND_URL, 'https://protolabb.vercel.app');
-const getEmailMode = () => cleanEnvValue(process.env.EMAIL_MODE, 'console');
+const getEmailMode = () => cleanEnvValue(process.env.EMAIL_MODE, 'resend'); // Default to resend
 
 let resendClient: Resend | null = null;
 
@@ -17,12 +23,17 @@ const getResend = (): Resend | null => {
   const apiKey = getResendApiKey();
   const emailMode = getEmailMode();
   
-  if (emailMode !== 'resend' || !apiKey || apiKey.includes('_dev_key')) {
+  console.log(`📧 [EMAIL-CONFIG] Mode: "${emailMode}", API Key exists: ${!!apiKey && apiKey.length > 10}, From: ${getFromEmail()}`);
+  
+  // Allow sending if we have an API key (be more permissive)
+  if (!apiKey || apiKey.length < 10) {
+    console.log('📧 [EMAIL-DISABLED] No valid API key found');
     return null;
   }
   
   if (!resendClient) {
     resendClient = new Resend(apiKey);
+    console.log('📧 [EMAIL-INIT] Resend client initialized');
   }
   
   return resendClient;
