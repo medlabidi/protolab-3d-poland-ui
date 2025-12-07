@@ -775,6 +775,16 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
   const filter = req.query.filter as string || 'active';
   const supabase = getSupabase();
   
+  console.log(`📦 [ORDERS] Fetching orders for user: ${user.userId}, filter: ${filter}`);
+  
+  // First, get all orders for this user to debug
+  const { data: allOrders, error: allError } = await supabase
+    .from('orders')
+    .select('id, status, created_at')
+    .eq('user_id', user.userId);
+  
+  console.log(`📦 [ORDERS] All orders for user: ${JSON.stringify(allOrders)}, error: ${allError ? JSON.stringify(allError) : 'none'}`);
+  
   let query = supabase
     .from('orders')
     .select('*')
@@ -791,11 +801,13 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
   
   const { data: orders, error } = await query;
   
+  console.log(`📦 [ORDERS] Filtered orders: ${orders?.length || 0}, error: ${error ? JSON.stringify(error) : 'none'}`);
+  
   if (error) {
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
   
-  return res.status(200).json(orders || []);
+  return res.status(200).json({ orders: orders || [] });
 }
 
 async function handleGetOrder(req: AuthenticatedRequest, res: VercelResponse) {
@@ -951,6 +963,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     status: 'submitted',
   };
   
+  console.log(`📦 [ORDER-CREATE] Creating order for user: ${user.userId}`, JSON.stringify(orderData));
+  
   const { data: order, error } = await supabase
     .from('orders')
     .insert([orderData])
@@ -958,10 +972,11 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     .single();
   
   if (error) {
-    console.error('Order creation error:', error);
+    console.error('📦 [ORDER-CREATE] Error:', JSON.stringify(error));
     return res.status(500).json({ error: 'Failed to create order' });
   }
   
+  console.log(`📦 [ORDER-CREATE] Success! Order ID: ${order?.id}`);
   return res.status(201).json(order);
 }
 
