@@ -106,18 +106,21 @@ export async function sendVerificationEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
+    console.log(`📧 [EMAIL-SENDING] To: ${toEmail}, From: ${fromEmail}`);
+    
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Verification email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Verification email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send verification email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send verification email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -183,18 +186,21 @@ export async function sendPasswordResetEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
+    console.log(`📧 [EMAIL-SENDING] Password reset to: ${toEmail}, From: ${fromEmail}`);
+    
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Password reset email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Password reset email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send password reset email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send password reset email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -256,18 +262,19 @@ export async function sendWelcomeEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Welcome email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Welcome email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send welcome email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send welcome email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -340,18 +347,19 @@ export async function sendPaymentConfirmationEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Payment confirmation sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Payment confirmation sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send payment confirmation to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send payment confirmation to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -422,18 +430,19 @@ export async function sendPaymentFailedEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Payment failed email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Payment failed email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send payment failed email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send payment failed email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -503,18 +512,19 @@ export async function sendRefundRequestEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Refund request email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Refund request email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send refund request email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send refund request email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -614,18 +624,19 @@ export async function sendShipmentStatusEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Shipment status email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Shipment status email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send shipment status email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send shipment status email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
 
@@ -709,17 +720,18 @@ export async function sendOrderStatusEmail(
   }
   
   try {
+    const fromEmail = getFromEmail();
     const result = await resend.emails.send({
-      from: `ProtoLab 3D Poland <${getFromEmail()}>`,
-      to: toEmail,
+      from: `ProtoLab 3D Poland <${fromEmail}>`,
+      to: [toEmail],
       subject,
       html,
     });
     
-    console.log(`📧 [EMAIL-SENT] Order status email sent to ${toEmail}`, result);
+    console.log(`📧 [EMAIL-SENT] Order status email sent to ${toEmail}`, JSON.stringify(result));
     return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error(`📧 [EMAIL-ERROR] Failed to send order status email to ${toEmail}`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } catch (error: any) {
+    console.error(`📧 [EMAIL-ERROR] Failed to send order status email to ${toEmail}`, JSON.stringify(error));
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 }
