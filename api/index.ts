@@ -340,13 +340,17 @@ async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Invalid Google token' });
     }
     
-    const googleData = await googleResponse.json();
-    const { email, name, picture, email_verified } = googleData;
-    
+    const googleData: any = await googleResponse.json();
+    const email = typeof googleData.email === 'string' ? googleData.email : undefined;
+    const name = typeof googleData.name === 'string' ? googleData.name : undefined;
+    const picture = typeof googleData.picture === 'string' ? googleData.picture : undefined;
+    const email_verified = typeof googleData.email_verified === 'boolean' ? googleData.email_verified : undefined;
+    const googleSub = typeof googleData.sub === 'string' ? googleData.sub : undefined;
+
     if (!email) {
       return res.status(400).json({ error: 'Email not provided by Google' });
     }
-    
+
     const supabase = getSupabase();
     const normalizedEmail = email.toLowerCase().trim();
     
@@ -366,10 +370,10 @@ async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
           email: normalizedEmail,
           password_hash: '', // No password for Google users
           role: 'user',
-          email_verified: email_verified || true,
+          email_verified: email_verified ?? true,
           status: 'approved',
           avatar_url: picture,
-          google_id: googleData.sub,
+          google_id: googleSub,
         }])
         .select()
         .single();
