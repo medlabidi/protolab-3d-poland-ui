@@ -100,6 +100,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/auth/verify-email' && req.method === 'GET') {
       return await handleVerifyEmail(req, res);
     }
+    if (path === '/auth/google' && req.method === 'POST') {
+      return await handleGoogleAuth(req, res);
+    }
     
     // Order routes
     if (path === '/orders/my' && req.method === 'GET') {
@@ -159,6 +162,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       availableEndpoints: [
         'POST /api/auth/register',
         'POST /api/auth/login',
+        'POST /api/auth/google',
         'POST /api/auth/refresh',
         'POST /api/auth/logout',
         'GET /api/auth/me',
@@ -259,6 +263,108 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
     message: 'Registration successful! Please check your email to verify your account.',
     user: { id: user.id, name: user.name, email: user.email, role: user.role }
   });
+}
+
+async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
+  const { googleToken } = req.body;
+  
+  if (!googleToken) {
+    return res.status(400).json({ error: 'Google token required' });
+  }
+  
+  try {
+    // Verify the Google token
+    const googleResponse = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${googleToken}`
+    );
+    
+    if (!googleResponse.ok) {
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+    
+    const googleData = await googleResponse.json();
+    const { email, name, picture, email_verified } = googleData;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email not provided by Google' });
+    }
+    
+    const supabase = getSupabase();
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Check if user exists
+    let { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .single();
+    
+    if (!user) {
+      // Create new user
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert([{
+          name: name || email.split('@')[0],
+          email: normalizedEmail,
+          password_hash: '', // No password for Google users
+          role: 'user',
+          email_verified: email_verified || true,
+          status: 'approved',
+          avatar_url: picture,
+          google_id: googleData.sub,
+        }])
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error('Failed to create Google user:', createError);
+        return res.status(500).json({ error: 'Failed to create account' });
+      }
+      
+      user = newUser;
+      
+      // Send welcome email
+      try {
+        await sendWelcomeEmail(normalizedEmail, name || email.split('@')[0]);
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+      }
+    }
+    
+    // Generate tokens
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    
+    // Store refresh token
+    await supabase.from('refresh_tokens').insert([{
+      user_id: user.id,
+      token: tokens.refreshToken,
+      expires_at: getRefreshTokenExpiry().toISOString(),
+    }]);
+    
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        zipCode: user.zip_code,
+        country: user.country,
+        email_verified: user.email_verified,
+        avatar_url: user.avatar_url,
+      },
+      tokens,
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    return res.status(500).json({ error: 'Google authentication failed' });
+  }
 }
 
 async function handleLogin(req: VercelRequest, res: VercelResponse) {
