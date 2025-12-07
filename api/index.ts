@@ -201,6 +201,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleSendMessage(req as AuthenticatedRequest, res);
     }
     
+    // Admin routes
+    if (path === '/admin/orders' && req.method === 'GET') {
+      return await handleAdminGetOrders(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/users' && req.method === 'GET') {
+      return await handleAdminGetUsers(req as AuthenticatedRequest, res);
+    }
+    
     // Default: API info
     return res.status(200).json({
       message: 'ProtoLab API',
@@ -232,6 +240,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'GET /api/conversations',
         'GET /api/conversations/:id/messages',
         'POST /api/conversations/:id/messages',
+        'GET /api/admin/orders',
+        'GET /api/admin/users',
       ]
     });
   } catch (error) {
@@ -547,8 +557,10 @@ async function handleGetMe(req: AuthenticatedRequest, res: VercelResponse) {
   }
   
   return res.status(200).json({
-    ...userData,
-    zipCode: userData.zip_code,
+    user: {
+      ...userData,
+      zipCode: userData.zip_code,
+    }
   });
 }
 
@@ -834,7 +846,7 @@ async function handleGetOrder(req: AuthenticatedRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Order not found' });
   }
   
-  return res.status(200).json(order);
+  return res.status(200).json({ order });
 }
 
 async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse) {
@@ -1146,7 +1158,7 @@ async function handleGetConversations(req: AuthenticatedRequest, res: VercelResp
     return res.status(500).json({ error: 'Failed to fetch conversations' });
   }
   
-  return res.status(200).json(conversations || []);
+  return res.status(200).json({ conversations: conversations || [] });
 }
 
 async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse) {
@@ -1185,7 +1197,7 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
     return res.status(500).json({ error: 'Failed to fetch messages' });
   }
   
-  return res.status(200).json(messages || []);
+  return res.status(200).json({ messages: messages || [] });
 }
 
 async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
@@ -1241,5 +1253,67 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     .update({ updated_at: new Date().toISOString() })
     .eq('id', conversationId);
   
-  return res.status(201).json(message);
+  return res.status(201).json({ message });
+}
+
+// ==================== ADMIN HANDLERS ====================
+
+async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get all orders for admin
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+  
+  return res.status(200).json({ orders: orders || [] });
+}
+
+async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get all users
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, name, email, role, phone, address, city, zip_code, country, email_verified, created_at, status')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch users' });
+  }
+  
+  return res.status(200).json({ users: users || [] });
 }
