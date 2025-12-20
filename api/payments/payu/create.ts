@@ -64,18 +64,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    // Store PayU order ID in database
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ 
-        payu_order_id: payuResult.payuOrderId,
-        payment_status: 'pending',
-      })
-      .eq('id', orderId);
+    // Store PayU order ID in database (only for real orders, not credit purchases)
+    if (!orderId.startsWith('credit_')) {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          payu_order_id: payuResult.payuOrderId,
+          payment_status: 'pending',
+        })
+        .eq('id', orderId);
 
-    if (updateError) {
-      console.error('Failed to update order with PayU ID:', updateError);
-      // Continue anyway - payment URL is more important
+      if (updateError) {
+        console.error('Failed to update order with PayU ID:', updateError);
+        // Continue anyway - payment URL is more important
+      }
     }
 
     return res.status(200).json({
