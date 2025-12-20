@@ -176,6 +176,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/users/profile' && req.method === 'PUT') {
       return await handleUpdateUserProfile(req as AuthenticatedRequest, res);
     }
+    if (path === '/users/notifications' && req.method === 'GET') {
+      return await handleGetNotifications(req as AuthenticatedRequest, res);
+    }
     
     // Upload routes
     if (path === '/upload/presigned-url' && req.method === 'POST') {
@@ -263,6 +266,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'DELETE /api/orders/:id',
         'GET /api/users/profile',
         'PUT /api/users/profile',
+        'GET /api/users/notifications',
         'POST /api/upload/presigned-url',
         'POST /api/upload/analyze',
         'GET /api/credits/balance',
@@ -1098,7 +1102,13 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
   
   if (error) {
     console.error('Order update error:', error);
-    return res.status(500).json({ error: 'Failed to update order' });
+    console.error('Update data:', updateData);
+    console.error('Order ID:', orderId);
+    return res.status(500).json({ 
+      error: 'Failed to update order',
+      details: error.message,
+      hint: error.hint
+    });
   }
 
   // If this is a store credit refund, add credits to user's wallet
@@ -1801,4 +1811,30 @@ async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResp
   }
   
   return res.status(200).json({ printers: printers || [] });
+}
+
+async function handleGetNotifications(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  try {
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (error) {
+      console.error('Failed to fetch notifications:', error);
+      return res.status(200).json({ notifications: [] }); // Return empty array instead of error
+    }
+    
+    return res.status(200).json({ notifications: notifications || [] });
+  } catch (error) {
+    console.error('Notifications fetch error:', error);
+    return res.status(200).json({ notifications: [] }); // Return empty array on error
+  }
 }
