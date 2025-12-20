@@ -1181,19 +1181,31 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
         console.log('New Balance:', newBalance);
 
         // Update or insert credit balance
-        const { data: upsertData, error: creditError } = await supabase
-          .from('credits')
-          .upsert({
-            user_id: user.userId,
-            balance: newBalance,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_id'
-          })
-          .select();
+        let creditError = null;
+        if (creditData) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('credits')
+            .update({
+              balance: newBalance,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.userId);
+          creditError = updateError;
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('credits')
+            .insert({
+              user_id: user.userId,
+              balance: newBalance,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          creditError = insertError;
+        }
 
-        console.log('Upsert result:', upsertData);
-        console.log('Upsert error:', creditError);
+        console.log('Credit operation error:', creditError);
 
         if (creditError) {
           console.error('Credit update error:', creditError);
