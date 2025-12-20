@@ -293,7 +293,11 @@ const Refund = () => {
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        toast.success(t('refund.toasts.success'));
+        if (selectedMethod === 'credit') {
+          toast.success('Refund processed! Store credit has been added to your account. Check the Credits page.');
+        } else {
+          toast.success(t('refund.toasts.success'));
+        }
         
         if (isCancellation) {
           navigate('/orders');

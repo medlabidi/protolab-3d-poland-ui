@@ -138,9 +138,18 @@ const Credits = () => {
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
+      // Note: This is a demo payment simulation
+      // In production, integrate with actual payment gateway (PayU, Stripe, etc.)
+      toast.info('Demo mode: Simulating payment...');
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // For demo purposes, show that real payment integration is needed
+      toast.error('Payment integration required. Please contact support to add credits.');
+      setIsProcessing(false);
+      return;
 
+      // The code below would work once payment gateway is integrated:
+      /*
       // Add credits to user account
       const totalCredits = packageDetails.amount;
       const response = await apiFetch("/credits/add", {
@@ -166,6 +175,7 @@ const Credits = () => {
       
       // Refresh data
       fetchCreditsData();
+      */
     } catch (error) {
       console.error("Purchase error:", error);
       toast.error(t('credits.toasts.paymentFailed'));
