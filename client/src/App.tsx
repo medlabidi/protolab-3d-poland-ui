@@ -27,6 +27,7 @@ import Payment from "./pages/Payment";
 import PaymentPage from "./pages/PaymentPage";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Conversations from "./pages/Conversations";
 import Business from "./pages/Business";
 import NotFound from "./pages/NotFound";
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
                 <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
                 

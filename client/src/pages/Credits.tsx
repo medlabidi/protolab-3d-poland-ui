@@ -127,10 +127,8 @@ const Credits = () => {
       return;
     }
 
-    // Handle saved card payment - no additional validation needed
-    if (selectedPayment.startsWith("saved_")) {
-      // Saved card - proceed
-    } else if (selectedPayment === "blik" && blikCode.length !== 6) {
+    // For BLIK, validate code
+    if (selectedPayment === "blik" && blikCode.length !== 6) {
       toast.error(t('credits.toasts.invalidBlik'));
       return;
     }
@@ -138,48 +136,53 @@ const Credits = () => {
     setIsProcessing(true);
 
     try {
-      // Note: This is a demo payment simulation
-      // In production, integrate with actual payment gateway (PayU, Stripe, etc.)
-      toast.info('Demo mode: Simulating payment...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For demo purposes, show that real payment integration is needed
-      toast.error('Payment integration required. Please contact support to add credits.');
-      setIsProcessing(false);
-      return;
+      // Get user data
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.id) {
+        toast.error('Please log in to purchase credits');
+        navigate('/login');
+        return;
+      }
 
-      // The code below would work once payment gateway is integrated:
-      /*
-      // Add credits to user account
-      const totalCredits = packageDetails.amount;
-      const response = await apiFetch("/credits/add", {
+      // Create a temporary order ID for the credit purchase
+      const orderId = `credit_${Date.now()}_${user.id}`;
+      
+      toast.info('Redirecting to payment gateway...');
+
+      // Create PayU payment
+      const response = await apiFetch("/payments/payu/create", {
         method: "POST",
         body: JSON.stringify({
-          amount: totalCredits,
-          type: "credit",
-          description: `Purchased ${packageDetails.amount} PLN credits`,
+          orderId: orderId,
+          amount: packageDetails.amount,
+          description: `Store Credit: ${packageDetails.amount} PLN`,
+          userId: user.id,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add credits");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create payment");
       }
 
-      toast.success(t('credits.toasts.addedSuccess').replace('{amount}', String(totalCredits)));
+      const data = await response.json();
       
-      // Reset form
-      setSelectedPackage(null);
-      setCustomAmount("");
-      setSelectedPayment(null);
-      setBlikCode("");
-      
-      // Refresh data
-      fetchCreditsData();
-      */
+      if (data.success && data.redirectUri) {
+        // Store order info for reference
+        sessionStorage.setItem('pendingCreditPurchase', JSON.stringify({
+          orderId,
+          amount: packageDetails.amount,
+          timestamp: Date.now(),
+        }));
+
+        // Redirect to PayU payment page
+        window.location.href = data.redirectUri;
+      } else {
+        throw new Error("Invalid payment response");
+      }
     } catch (error) {
       console.error("Purchase error:", error);
-      toast.error(t('credits.toasts.paymentFailed'));
-    } finally {
+      toast.error(error instanceof Error ? error.message : t('credits.toasts.paymentFailed'));
       setIsProcessing(false);
     }
   };
