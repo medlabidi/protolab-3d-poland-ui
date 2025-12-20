@@ -8,10 +8,10 @@ Add to your `.env` file:
 
 ```env
 # PayU Configuration
-PAYU_CLIENT_ID=501885
-PAYU_CLIENT_SECRET=81927c33ee2b36ee897bef24ef90a446
-PAYU_POS_ID=501885
-PAYU_MD5_KEY=93e0d9536f9d4bb396c47163c3a1692e
+PAYU_CLIENT_ID=your-client-id
+PAYU_CLIENT_SECRET=your-client-secret
+PAYU_POS_ID=your-pos-id
+PAYU_MD5_KEY=your-md5-key
 PAYU_ENV=sandbox
 PAYU_NOTIFY_URL=https://your-domain.vercel.app/api/payments/payu/notify
 PAYU_CONTINUE_URL=https://your-domain.vercel.app/payment-success

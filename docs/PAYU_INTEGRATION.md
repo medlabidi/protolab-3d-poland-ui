@@ -5,11 +5,11 @@ This guide explains how to integrate PayU payment gateway into the Protolab 3D P
 
 ## PayU Credentials
 
-Your PayU Point of Sale (POS) credentials:
-- **POS ID**: `501885`
-- **MD5 Key**: `93e0d9536f9d4bb396c47163c3a1692e`
-- **OAuth Client ID**: `501885`
-- **OAuth Client Secret**: `81927c33ee2b36ee897bef24ef90a446`
+Your PayU Point of Sale (POS) credentials (get these from your PayU dashboard):
+- **POS ID**: `your-pos-id`
+- **MD5 Key**: `your-md5-key`
+- **OAuth Client ID**: `your-client-id`
+- **OAuth Client Secret**: `your-client-secret`
 
 ## Environment Variables
 
@@ -17,10 +17,10 @@ Add these variables to your `.env` file:
 
 ```env
 # PayU Configuration
-PAYU_CLIENT_ID=501885
-PAYU_CLIENT_SECRET=81927c33ee2b36ee897bef24ef90a446
-PAYU_POS_ID=501885
-PAYU_MD5_KEY=93e0d9536f9d4bb396c47163c3a1692e
+PAYU_CLIENT_ID=your-client-id
+PAYU_CLIENT_SECRET=your-client-secret
+PAYU_POS_ID=your-pos-id
+PAYU_MD5_KEY=your-md5-key
 
 # PayU Environment (sandbox or production)
 PAYU_ENV=sandbox  # Change to 'production' when going live
