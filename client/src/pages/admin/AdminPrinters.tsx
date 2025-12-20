@@ -93,7 +93,7 @@ export default function AdminPrinters() {
 
       if (response.ok) {
         const data = await response.json();
-        setPrinters(data.printers);
+        setPrinters(Array.isArray(data.printers) ? data.printers : []);
       }
     } catch (error) {
       toast({

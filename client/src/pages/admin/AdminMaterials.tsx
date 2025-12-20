@@ -78,7 +78,7 @@ export default function AdminMaterials() {
 
       if (response.ok) {
         const data = await response.json();
-        setMaterials(data.materials);
+        setMaterials(Array.isArray(data.materials) ? data.materials : []);
       }
     } catch (error) {
       toast({

@@ -185,6 +185,11 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleGetMaterialsByType(req, res);
     }
     
+    // Printers routes
+    if (path === '/printers/default' && req.method === 'GET') {
+      return await handleGetDefaultPrinter(req, res);
+    }
+    
     // Upload routes
     if (path === '/upload/presigned-url' && req.method === 'POST') {
       return await handleGetPresignedUrl(req as AuthenticatedRequest, res);
@@ -244,6 +249,31 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path === '/admin/printers' && req.method === 'GET') {
       return await handleAdminGetPrinters(req as AuthenticatedRequest, res);
+    }
+    
+    // Admin conversation routes
+    if (path === '/admin/conversations' && req.method === 'GET') {
+      return await handleAdminGetConversations(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/[^\/]+\/messages$/) && req.method === 'GET') {
+      return await handleAdminGetConversationMessages(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/[^\/]+\/messages$/) && req.method === 'POST') {
+      return await handleAdminSendMessage(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/[^\/]+\/status$/) && req.method === 'PATCH') {
+      return await handleAdminUpdateConversationStatus(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/[^\/]+\/read$/) && req.method === 'PATCH') {
+      return await handleAdminMarkConversationRead(req as AuthenticatedRequest, res);
+    }
+    
+    // Admin business routes
+    if (path === '/admin/businesses' && req.method === 'GET') {
+      return await handleAdminGetBusinesses(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/businesses\/[^\/]+\/invoices$/) && req.method === 'GET') {
+      return await handleAdminGetBusinessInvoices(req as AuthenticatedRequest, res);
     }
     
     // Default: API info
@@ -1878,5 +1908,274 @@ async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse)
   } catch (error) {
     console.error('Materials fetch error:', error);
     return res.status(200).json({ materials: {} }); // Return empty object on error
+  }
+}
+
+async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) {
+  const supabase = getSupabase();
+  
+  try {
+    const { data: printer, error } = await supabase
+      .from('printers')
+      .select('*')
+      .eq('is_default', true)
+      .single();
+    
+    if (error || !printer) {
+      console.error('Failed to fetch default printer:', error);
+      // Return a basic default printer spec
+      return res.status(200).json({ 
+        printer: {
+          name: 'Default Printer',
+          max_x: 220,
+          max_y: 220,
+          max_z: 250,
+          is_default: true
+        }
+      });
+    }
+    
+    return res.status(200).json({ printer });
+  } catch (error) {
+    console.error('Default printer fetch error:', error);
+    return res.status(200).json({ 
+      printer: {
+        name: 'Default Printer',
+        max_x: 220,
+        max_y: 220,
+        max_z: 250,
+        is_default: true
+      }
+    });
+  }
+}
+
+async function handleAdminGetConversations(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: conversations, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      console.error('Failed to fetch conversations:', error);
+      return res.status(200).json({ conversations: [] });
+    }
+    
+    return res.status(200).json({ conversations: conversations || [] });
+  } catch (error) {
+    console.error('Conversations fetch error:', error);
+    return res.status(200).json({ conversations: [] });
+  }
+}
+
+async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: messages, error } = await supabase
+      .from('support_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch messages:', error);
+      return res.status(200).json({ messages: [] });
+    }
+    
+    return res.status(200).json({ messages: messages || [] });
+  } catch (error) {
+    console.error('Messages fetch error:', error);
+    return res.status(200).json({ messages: [] });
+  }
+}
+
+async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: message, error } = await supabase
+      .from('support_messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.userId,
+        message: req.body.message,
+        sender_type: 'admin'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to send message' });
+    }
+    
+    return res.status(200).json({ message });
+  } catch (error) {
+    console.error('Send message error:', error);
+    return res.status(500).json({ error: 'Failed to send message' });
+  }
+}
+
+async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ status: req.body.status })
+      .eq('id', conversationId);
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update status' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Update status error:', error);
+    return res.status(500).json({ error: 'Failed to update status' });
+  }
+}
+
+async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ admin_read: true })
+      .eq('id', conversationId);
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to mark as read' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    return res.status(500).json({ error: 'Failed to mark as read' });
+  }
+}
+
+async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: businesses, error } = await supabase
+      .from('users')
+      .select('*, business_info(*)')
+      .not('business_info', 'is', null);
+    
+    if (error) {
+      console.error('Failed to fetch businesses:', error);
+      return res.status(200).json({ businesses: [] });
+    }
+    
+    return res.status(200).json({ businesses: businesses || [] });
+  } catch (error) {
+    console.error('Businesses fetch error:', error);
+    return res.status(200).json({ businesses: [] });
+  }
+}
+
+async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const userId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Failed to fetch invoices:', error);
+      return res.status(200).json({ invoices: [] });
+    }
+    
+    return res.status(200).json({ invoices: invoices || [] });
+  } catch (error) {
+    console.error('Invoices fetch error:', error);
+    return res.status(200).json({ invoices: [] });
   }
 }

@@ -122,7 +122,7 @@ export default function AdminConversations() {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        setMessages(Array.isArray(data.messages) ? data.messages : []);
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
