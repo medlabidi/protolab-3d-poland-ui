@@ -86,7 +86,7 @@ export async function getPayUToken(): Promise<string> {
       throw new Error(`PayU authentication failed: ${response.status} ${errorText}`);
     }
 
-    const data: PayUAuthResponse = await response.json();
+    const data = await response.json() as PayUAuthResponse;
 
     // Cache token (expires_in is in seconds, convert to milliseconds)
     cachedToken = {
@@ -163,7 +163,7 @@ export async function createPayUOrder(orderData: {
       throw new Error(`PayU order creation failed: ${response.status} ${errorText}`);
     }
 
-    const result: PayUOrderResponse = await response.json();
+    const result = await response.json() as PayUOrderResponse;
 
     if (result.status.statusCode !== 'SUCCESS') {
       throw new Error(`PayU order creation failed: ${result.status.statusCode}`);
