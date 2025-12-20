@@ -180,6 +180,11 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleGetNotifications(req as AuthenticatedRequest, res);
     }
     
+    // Materials routes
+    if (path === '/materials/by-type' && req.method === 'GET') {
+      return await handleGetMaterialsByType(req, res);
+    }
+    
     // Upload routes
     if (path === '/upload/presigned-url' && req.method === 'POST') {
       return await handleGetPresignedUrl(req as AuthenticatedRequest, res);
@@ -267,6 +272,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'GET /api/users/profile',
         'PUT /api/users/profile',
         'GET /api/users/notifications',
+        'GET /api/materials/by-type',
         'POST /api/upload/presigned-url',
         'POST /api/upload/analyze',
         'GET /api/credits/balance',
@@ -1836,5 +1842,41 @@ async function handleGetNotifications(req: AuthenticatedRequest, res: VercelResp
   } catch (error) {
     console.error('Notifications fetch error:', error);
     return res.status(200).json({ notifications: [] }); // Return empty array on error
+  }
+}
+
+async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
+  const supabase = getSupabase();
+  
+  try {
+    const { data: materials, error } = await supabase
+      .from('materials')
+      .select('*')
+      .order('material_type', { ascending: true })
+      .order('color', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch materials:', error);
+      return res.status(200).json({ materials: {} }); // Return empty object
+    }
+    
+    if (!materials || materials.length === 0) {
+      return res.status(200).json({ materials: {} });
+    }
+    
+    // Group materials by type
+    const grouped = materials.reduce((acc: any, material: any) => {
+      const type = material.material_type || 'Other';
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(material);
+      return acc;
+    }, {});
+    
+    return res.status(200).json({ materials: grouped });
+  } catch (error) {
+    console.error('Materials fetch error:', error);
+    return res.status(200).json({ materials: {} }); // Return empty object on error
   }
 }

@@ -281,11 +281,15 @@ const NewPrint = () => {
         const response = await fetch('/api/materials/by-type');
         if (response.ok) {
           const data = await response.json();
-          // Flatten the grouped materials
+          // Flatten the grouped materials with safe check
           const allMaterials: MaterialData[] = [];
-          Object.values(data.materials).forEach((typeMaterials: any) => {
-            allMaterials.push(...typeMaterials);
-          });
+          if (data.materials && typeof data.materials === 'object') {
+            Object.values(data.materials).forEach((typeMaterials: any) => {
+              if (Array.isArray(typeMaterials)) {
+                allMaterials.push(...typeMaterials);
+              }
+            });
+          }
           setMaterials(allMaterials);
         }
       } catch (error) {

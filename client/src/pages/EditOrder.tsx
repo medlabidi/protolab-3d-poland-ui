@@ -395,9 +395,14 @@ const EditOrder = () => {
         if (response.ok) {
           const data = await response.json();
           const allMaterials: MaterialData[] = [];
-          Object.values(data.materials).forEach((typeMaterials: any) => {
-            allMaterials.push(...typeMaterials);
-          });
+          // Safe check for materials object
+          if (data.materials && typeof data.materials === 'object') {
+            Object.values(data.materials).forEach((typeMaterials: any) => {
+              if (Array.isArray(typeMaterials)) {
+                allMaterials.push(...typeMaterials);
+              }
+            });
+          }
           setMaterials(allMaterials);
         }
       } catch (error) {
