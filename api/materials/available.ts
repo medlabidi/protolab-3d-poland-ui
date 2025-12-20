@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabase } from '../../server/src/config/database';
+import { getSupabase } from '../_lib/supabase';
 
 interface Material {
   material_type: string;
