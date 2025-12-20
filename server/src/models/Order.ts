@@ -33,6 +33,7 @@ export interface IOrder {
   paid_amount: number;
   material_weight?: number;
   print_time?: number;
+  model_volume_cm3?: number;
   price: number;
   shipping_method: ShippingMethod;
   shipping_address?: string;
@@ -41,6 +42,15 @@ export interface IOrder {
   project_name?: string;
   is_archived?: boolean;
   deleted_at?: string | null;
+  refund_method?: 'credit' | 'bank' | 'original';
+  refund_reason?: string;
+  refund_bank_details?: string;
+  order_number?: string;
+  // Advanced print settings
+  support_type?: 'none' | 'normal' | 'tree';
+  infill_pattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
+  custom_layer_height?: number;
+  custom_infill?: number;
   created_at: string;
 }
 

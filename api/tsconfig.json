@@ -4,7 +4,7 @@
     "target": "es2018",
     "lib": ["es2018"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "..",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,6 +15,6 @@
     "declaration": false,
     "noEmit": false
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "dist", "../client", "../server/src"]
+  "include": ["./**/*.ts", "../server/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "../client"]
 }

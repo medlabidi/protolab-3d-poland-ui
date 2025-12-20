@@ -358,6 +358,49 @@ export class ConversationsService {
       throw new Error('Failed to update conversation status');
     }
   }
+
+  /**
+   * Auto-close conversations for completed or canceled orders
+   */
+  async autoCloseConversationsForOrder(orderId: string, orderStatus: string): Promise<void> {
+    // Only auto-close for terminal statuses
+    const terminalStatuses = ['delivered', 'suspended', 'refund_requested'];
+    
+    if (!terminalStatuses.includes(orderStatus)) {
+      return;
+    }
+
+    const supabase = getSupabase();
+
+    // Get all conversations for this order
+    const { data: conversations, error: fetchError } = await supabase
+      .from('conversations')
+      .select('id, status')
+      .eq('order_id', orderId)
+      .neq('status', 'closed');
+
+    if (fetchError || !conversations || conversations.length === 0) {
+      return;
+    }
+
+    // Close all open conversations
+    for (const conversation of conversations) {
+      try {
+        await this.updateStatus(conversation.id, 'closed');
+        
+        // Add system message about auto-closure
+        await this.addMessage(conversation.id, {
+          sender_type: 'system',
+          message: `This conversation has been automatically closed because the order status is now "${orderStatus}". If you need further assistance, please contact support.`,
+          attachments: [],
+        });
+
+        logger.info(`Auto-closed conversation ${conversation.id} for order ${orderId} (status: ${orderStatus})`);
+      } catch (error) {
+        logger.error({ error }, `Failed to auto-close conversation ${conversation.id}`);
+      }
+    }
+  }
 }
 
 export const conversationsService = new ConversationsService();

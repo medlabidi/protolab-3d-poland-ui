@@ -24,7 +24,9 @@ export type OrderStatus =
   | 'in_queue' 
   | 'printing' 
   | 'finished' 
-  | 'delivered';
+  | 'delivered'
+  | 'on_hold'
+  | 'suspended';
 
 export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
 
@@ -60,6 +62,9 @@ export interface OrderCreateInput {
   shippingAddress?: string;
   price?: number;
   projectName?: string;
+  materialWeight?: number;  // Weight in grams
+  printTime?: number;       // Print time in minutes
+  modelVolume?: number;     // Base model volume in cm³ (for exact recalculation)
 }
 
 // Re-export pricing types for backward compatibility

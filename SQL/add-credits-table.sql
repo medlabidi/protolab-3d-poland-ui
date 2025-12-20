@@ -28,6 +28,12 @@ CREATE INDEX IF NOT EXISTS idx_credits_transactions_created_at ON public.credits
 ALTER TABLE public.credits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credits_transactions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own credits" ON public.credits;
+DROP POLICY IF EXISTS "Service role can manage credits" ON public.credits;
+DROP POLICY IF EXISTS "Users can view their own transactions" ON public.credits_transactions;
+DROP POLICY IF EXISTS "Service role can manage transactions" ON public.credits_transactions;
+
 -- RLS policies for credits
 CREATE POLICY "Users can view their own credits" ON public.credits
     FOR SELECT USING (auth.uid() = user_id);

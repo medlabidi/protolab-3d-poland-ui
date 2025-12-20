@@ -256,6 +256,18 @@ const Settings = () => {
     loadActivityLog();
   }, []);
 
+  // Check URL for section navigation (e.g., from password change button)
+  useEffect(() => {
+    // Check if there's a hash to scroll to password section
+    if (window.location.hash === '#password-section') {
+      setActiveSection('security');
+      // Small delay to ensure section is rendered
+      setTimeout(() => {
+        document.getElementById('password-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, []);
+
   // Activity log functions
   const loadActivityLog = () => {
     const savedLog = localStorage.getItem("activityLog");
@@ -999,7 +1011,7 @@ const Settings = () => {
               {/* Security Settings */}
               {activeSection === "security" && (
                 <>
-                  <Card>
+                  <Card id="password-section">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Key className="w-5 h-5" />

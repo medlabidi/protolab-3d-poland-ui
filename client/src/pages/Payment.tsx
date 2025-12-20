@@ -122,6 +122,19 @@ const Payment = () => {
     name: "",
   });
 
+  // Helper function for PayU payment processing
+  const processPayUPayment = async (
+    amount: number,
+    description: string,
+    products: Array<{ name: string; unitPrice: number; quantity: number }>
+  ) => {
+    // TODO: Implement PayU payment flow for upgrades
+    // This is a placeholder for the upgrade payment flow
+    console.log('Processing PayU payment:', { amount, description, products });
+    // For now, we'll just simulate success
+    return Promise.resolve();
+  };
+
   useEffect(() => {
     // Load saved payment methods from localStorage
     const savedMethods = localStorage.getItem("paymentMethods");
@@ -226,8 +239,16 @@ const Payment = () => {
 
           const projectUpdateData = JSON.parse(pendingUpdate);
 
-          // Simulate payment processing
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Process PayU payment
+          await processPayUPayment(
+            upgradeData.amount,
+            `Project Upgrade - ${upgradeData.projectName}`,
+            [{
+              name: `Project Upgrade - ${upgradeData.projectName}`,
+              unitPrice: upgradeData.amount,
+              quantity: 1
+            }]
+          );
 
           // Update all orders in the project
           let successCount = 0;

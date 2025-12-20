@@ -20,24 +20,8 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const from = location.state?.from?.pathname || "/admin";
-
-  // Check if user has valid access key
-  useEffect(() => {
-    const accessKey = searchParams.get('key');
-    if (accessKey === ADMIN_ACCESS_KEY) {
-      setIsAuthorized(true);
-      // Store in session to maintain access during the session
-      sessionStorage.setItem('adminAccessGranted', 'true');
-    } else if (sessionStorage.getItem('adminAccessGranted') === 'true') {
-      setIsAuthorized(true);
-    } else {
-      // Redirect to 404 if no valid key
-      navigate('/404', { replace: true });
-    }
-  }, [searchParams, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +50,7 @@ const AdminLogin = () => {
 
       // Store tokens and user info
       localStorage.setItem('accessToken', data.tokens.accessToken);
+      localStorage.setItem('token', data.tokens.accessToken); // Also store as 'token' for compatibility
       localStorage.setItem('refreshToken', data.tokens.refreshToken);
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('userRole', 'admin');
@@ -83,11 +68,6 @@ const AdminLogin = () => {
       setIsLoading(false);
     }
   };
-
-  // Don't render anything if not authorized (will redirect to 404)
-  if (!isAuthorized) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">

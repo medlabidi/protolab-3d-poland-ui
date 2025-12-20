@@ -22,7 +22,9 @@ import OrderDetails from "./pages/OrderDetails";
 import EditOrder from "./pages/EditOrder";
 import EditProject from "./pages/EditProject";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Payment from "./pages/Payment";
+import PaymentPage from "./pages/PaymentPage";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
 import Conversations from "./pages/Conversations";
@@ -32,6 +34,16 @@ import NotFound from "./pages/NotFound";
 // Admin pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminUserProfile from "./pages/admin/AdminUserProfile";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminMaterials from "./pages/admin/AdminMaterials";
+import AdminPrinters from "./pages/admin/AdminPrinters";
+import AdminConversations from "./pages/admin/AdminConversations";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminBusinessManagement from "./pages/admin/AdminBusinessManagement";
 
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
@@ -61,7 +73,9 @@ const App = () => (
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />
+                <Route path="/orders/:orderId/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
                 <Route path="/projects/:projectName/edit" element={<ProtectedRoute><EditProject /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
@@ -72,6 +86,16 @@ const App = () => (
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+                <Route path="/admin/orders" element={<AdminProtectedRoute><AdminOrders /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetail /></AdminProtectedRoute>} />
+                <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
+                <Route path="/admin/users/:userId" element={<AdminProtectedRoute><AdminUserProfile /></AdminProtectedRoute>} />
+                <Route path="/admin/conversations" element={<AdminProtectedRoute><AdminConversations /></AdminProtectedRoute>} />
+                <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
+                <Route path="/admin/materials" element={<AdminProtectedRoute><AdminMaterials /></AdminProtectedRoute>} />
+                <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />
+                <Route path="/admin/analytics" element={<AdminProtectedRoute><AdminAnalytics /></AdminProtectedRoute>} />
+                <Route path="/admin/businesses" element={<AdminProtectedRoute><AdminBusinessManagement /></AdminProtectedRoute>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

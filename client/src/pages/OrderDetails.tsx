@@ -34,6 +34,11 @@ interface Order {
   tracking_code?: string;
   review?: string;
   notes?: string;
+  // Advanced settings
+  support_type?: 'none' | 'normal' | 'tree';
+  infill_pattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
+  custom_layer_height?: string;
+  custom_infill?: string;
 }
 
 const OrderDetails = () => {
@@ -350,6 +355,44 @@ const OrderDetails = () => {
                     <span className="font-medium text-right max-w-[200px]">{order.shipping_address}</span>
                   </div>
                 )}
+                
+                {/* Advanced Settings (if any are set) */}
+                {(order.support_type && order.support_type !== 'none') || 
+                 (order.infill_pattern && order.infill_pattern !== 'grid') || 
+                 order.custom_layer_height || 
+                 order.custom_infill ? (
+                  <div className="pt-4 mt-4 border-t">
+                    <p className="text-sm font-semibold mb-3 text-primary">Advanced Settings</p>
+                    
+                    {order.support_type && order.support_type !== 'none' && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Support Type</span>
+                        <span className="font-medium">{capitalizeFirst(order.support_type)}</span>
+                      </div>
+                    )}
+                    
+                    {order.infill_pattern && order.infill_pattern !== 'grid' && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Infill Pattern</span>
+                        <span className="font-medium">{capitalizeFirst(order.infill_pattern)}</span>
+                      </div>
+                    )}
+                    
+                    {order.custom_layer_height && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Custom Layer Height</span>
+                        <span className="font-medium">{order.custom_layer_height}mm</span>
+                      </div>
+                    )}
+                    
+                    {order.custom_infill && (
+                      <div className="flex justify-between py-2">
+                        <span className="text-muted-foreground">Custom Infill</span>
+                        <span className="font-medium">{order.custom_infill}%</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>

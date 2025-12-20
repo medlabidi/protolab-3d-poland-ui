@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send, CreditCard, FileText, FolderOpen, X, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Calculator, Send, CreditCard, FileText, FolderOpen, X, Plus, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
 import { LockerPickerModal } from "@/components/LockerPickerModal";
@@ -70,6 +70,17 @@ const MemoizedModelViewer = memo(({
   return prevProps.file === nextProps.file && prevProps.fileId === nextProps.fileId;
 });
 
+interface MaterialData {
+  id: string;
+  material_type: string;
+  color: string;
+  price_per_kg: number;
+  stock_status: 'available' | 'low_stock' | 'out_of_stock';
+  lead_time_days: number;
+  hex_color?: string;
+  is_active: boolean;
+}
+
 const NewPrint = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -86,6 +97,46 @@ const NewPrint = () => {
   const [material, setMaterial] = useState("");
   const [quality, setQuality] = useState("");
   const [quantity, setQuantity] = useState(1);
+  
+  // Advanced settings state (override quality-based defaults when advanced is enabled)
+  const [customLayerHeight, setCustomLayerHeight] = useState<string | undefined>(undefined);
+  const [customInfill, setCustomInfill] = useState<string | undefined>(undefined);
+  const [supportType, setSupportType] = useState("none");
+  const [infillPattern, setInfillPattern] = useState("grid");
+  
+  // Materials from database
+  const [materials, setMaterials] = useState<MaterialData[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+
+  // Printer specifications from database
+  interface PrinterSpecs {
+    power_watts: number;
+    cost_pln: number;
+    lifespan_hours: number;
+    maintenance_rate: number;
+  }
+  const [printerSpecs, setPrinterSpecs] = useState<PrinterSpecs>({
+    power_watts: 270,
+    cost_pln: 3483.39,
+    lifespan_hours: 5000,
+    maintenance_rate: 0.03,
+  });
+
+  const getMaterialKey = (materialType: string, color: string) => {
+    return `${materialType.toLowerCase()}-${color.toLowerCase()}`;
+  };
+
+  const isOutOfStock = (materialValue: string) => {
+    const material = materials.find(m => getMaterialKey(m.material_type, m.color) === materialValue);
+    return material?.stock_status === 'out_of_stock';
+  };
+
+  const getOutOfStockWarning = (materialValue: string) => {
+    const material = materials.find(m => getMaterialKey(m.material_type, m.color) === materialValue);
+    if (!material || material.stock_status !== 'out_of_stock') return null;
+    const days = material.lead_time_days || 2;
+    return `⚠️ Material color is out of stock. Print process will take approximately +${days} days longer.`;
+  };
   
   // Project (multi-file) state
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
@@ -127,6 +178,14 @@ const NewPrint = () => {
     high: 30,
     ultra: 40,
   };
+  
+  // Infill by layer height mapping
+  const INFILL_BY_LAYER_HEIGHT: Record<string, number> = {
+    '0.3': 10,   // Draft
+    '0.2': 20,   // Standard
+    '0.15': 30,  // High
+    '0.1': 40,   // Ultra
+  };
 
   // Print speed multipliers by quality (base speed in cm³/hour)
   const PRINT_SPEED_CM3_PER_HOUR: Record<string, number> = {
@@ -135,6 +194,14 @@ const NewPrint = () => {
     high: 6,        // Slower for quality
     ultra: 3,       // Slowest for finest detail
   };
+  
+  // Print speed by layer height mapping
+  const SPEED_BY_LAYER_HEIGHT: Record<string, number> = {
+    '0.3': 15,   // Draft
+    '0.2': 10,   // Standard
+    '0.15': 6,   // High
+    '0.1': 3,    // Ultra
+  };
 
   // Computed weight based on material, quality, and model volume
   const estimatedWeight = useMemo(() => {
@@ -142,29 +209,59 @@ const NewPrint = () => {
     
     const materialType = material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    
+    // Use custom infill if advanced settings are enabled, otherwise use quality-based default
+    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_QUALITY[quality] || 20);
     
     // Weight = volume × density × (1 + infill%)
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
-    return effectiveVolume * density;
-  }, [modelAnalysis, material, quality]);
+    let weight = effectiveVolume * density;
+    
+    // Support structures add extra material
+    if (supportType === 'normal') {
+      weight *= 1.15; // +15% for normal supports
+    } else if (supportType === 'tree') {
+      weight *= 1.10; // +10% for tree supports
+    }
+    
+    return weight;
+  }, [modelAnalysis, material, quality, showAdvanced, customInfill, supportType]);
 
   // Computed print time based on model volume and quality
   const estimatedPrintTime = useMemo(() => {
     if (!modelAnalysis || !quality) return null;
     
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
-    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[quality] || 10;
+    // Use custom values if advanced settings are enabled, otherwise use quality-based defaults
+    const layerHeight = showAdvanced && customLayerHeight ? customLayerHeight : 
+                       (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+    
+    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_LAYER_HEIGHT[layerHeight] || 20);
+    
+    const speedCm3PerHour = SPEED_BY_LAYER_HEIGHT[layerHeight] || 10;
     
     // Effective volume with infill
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
     
     // Time = volume / speed (in hours)
-    const printTimeHours = effectiveVolume / speedCm3PerHour;
+    let printTimeHours = effectiveVolume / speedCm3PerHour;
+    
+    // Support structures add extra time
+    if (supportType === 'normal') {
+      printTimeHours *= 1.10; // +10% for normal supports
+    } else if (supportType === 'tree') {
+      printTimeHours *= 1.05; // +5% for tree supports (faster)
+    }
+    
+    // Infill pattern affects print time
+    if (infillPattern === 'honeycomb' || infillPattern === 'gyroid') {
+      printTimeHours *= 1.05; // +5% for complex patterns
+    }
     
     // Add setup time (15 minutes minimum)
     return Math.max(0.25, printTimeHours);
-  }, [modelAnalysis, quality]);
+  }, [modelAnalysis, quality, showAdvanced, customLayerHeight, customInfill, supportType, infillPattern]);
 
   // Format print time for display
   const formatPrintTime = (hours: number | null): string => {
@@ -176,6 +273,45 @@ const NewPrint = () => {
     const m = Math.round((hours - h) * 60);
     return m > 0 ? `${h}h ${m}min` : `${h}h`;
   };
+
+  // Fetch materials from database
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      try {
+        const response = await fetch('/api/materials/by-type');
+        if (response.ok) {
+          const data = await response.json();
+          // Flatten the grouped materials
+          const allMaterials: MaterialData[] = [];
+          Object.values(data.materials).forEach((typeMaterials: any) => {
+            allMaterials.push(...typeMaterials);
+          });
+          setMaterials(allMaterials);
+        }
+      } catch (error) {
+        console.error('Failed to fetch materials:', error);
+        toast.error('Failed to load materials');
+      } finally {
+        setMaterialsLoading(false);
+      }
+    };
+    
+    const fetchPrinterSpecs = async () => {
+      try {
+        const response = await fetch('/api/printers/default');
+        if (response.ok) {
+          const data = await response.json();
+          setPrinterSpecs(data.printer);
+        }
+      } catch (error) {
+        console.error('Failed to fetch printer specs:', error);
+        // Continue with default fallback values
+      }
+    };
+    
+    fetchMaterials();
+    fetchPrinterSpecs();
+  }, []);
 
   useEffect(() => {
     // Check if user is logged in
@@ -239,6 +375,13 @@ const NewPrint = () => {
     setModelAnalysis(analysis);
     setIsModelLoading(false);
     setModelError(null);
+    
+    console.log('📦 Model Analysis Complete:');
+    console.log('  - Volume:', analysis.volumeCm3.toFixed(2), 'cm³');
+    console.log('  - Bounding Box:', 
+      `${analysis.boundingBox.x.toFixed(1)} × ${analysis.boundingBox.y.toFixed(1)} × ${analysis.boundingBox.z.toFixed(1)} cm`);
+    console.log('  - Surface Area:', analysis.surfaceArea.toFixed(2), 'cm²');
+    
     toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³`);
   };
 
@@ -356,20 +499,19 @@ const NewPrint = () => {
     const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10;
     const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
     
-    const materialPrices: Record<string, number> = {
-      "pla-white": 39, "pla-black": 39, "pla-red": 49, "pla-yellow": 49, "pla-blue": 49,
-      "abs-silver": 50, "abs-transparent": 50, "abs-black": 50, "abs-grey": 50,
-      "abs-red": 50, "abs-white": 50, "abs-blue": 50, "abs-green": 50,
-      "petg-black": 30, "petg-white": 35, "petg-red": 39, "petg-green": 39,
-      "petg-blue": 39, "petg-yellow": 39, "petg-pink": 39, "petg-orange": 39, "petg-silver": 39,
-    };
-
-    const materialPricePerKg = materialPrices[projectFile.material] || 39;
+    // Get price from database materials
+    const materialData = materials.find(m => 
+      getMaterialKey(m.material_type, m.color) === projectFile.material
+    );
+    const materialPricePerKg = materialData?.price_per_kg || 39;
     const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
-    const Cenergy = printTimeHours * 0.27 * 0.914;
+    
+    // Use printer specs from database
+    const powerKW = printerSpecs.power_watts / 1000;
+    const Cenergy = printTimeHours * powerKW * 0.914;
     const Clabor = 31.40 * (10 / 60);
-    const Cdepreciation = (3483.39 / 5000) * printTimeHours;
-    const Cmaintenance = Cdepreciation * 0.03;
+    const Cdepreciation = (printerSpecs.cost_pln / printerSpecs.lifespan_hours) * printTimeHours;
+    const Cmaintenance = Cdepreciation * printerSpecs.maintenance_rate;
     const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
     const vat = Cinternal * 0.23;
     const totalPrice = Math.round((Cinternal + vat) * projectFile.quantity * 100) / 100;
@@ -441,39 +583,19 @@ const NewPrint = () => {
       return;
     }
     
-    // MATERIAL PRICES (PLN per kg) - exact pricing
-    const materialPrices: Record<string, number> = {
-      // PLA
-      "pla-white": 39,
-      "pla-black": 39,
-      "pla-red": 49,
-      "pla-yellow": 49,
-      "pla-blue": 49,
-      // ABS
-      "abs-silver": 50,
-      "abs-transparent": 50,
-      "abs-black": 50,
-      "abs-grey": 50,
-      "abs-red": 50,
-      "abs-white": 50,
-      "abs-blue": 50,
-      "abs-green": 50,
-      // PETG
-      "petg-black": 30,
-      "petg-white": 35,
-      "petg-red": 39,
-      "petg-green": 39,
-      "petg-blue": 39,
-      "petg-yellow": 39,
-      "petg-pink": 39,
-      "petg-orange": 39,
-      "petg-silver": 39,
-    };
+    // Get material price from database
+    const materialData = materials.find(m => 
+      getMaterialKey(m.material_type, m.color) === material
+    );
+    const materialPricePerKg = materialData?.price_per_kg || 39;
 
     // Get material type from selection (e.g., "pla-white" -> "pla")
     const materialType = material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    
+    // Use custom infill if advanced settings are enabled
+    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_QUALITY[quality] || 20);
     
     // Calculate weight using volume, density, and infill factor (matches backend)
     let materialWeightGrams: number;
@@ -481,6 +603,13 @@ const NewPrint = () => {
       const volumeCm3 = modelAnalysis.volumeCm3;
       const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
       materialWeightGrams = effectiveVolume * density;
+      
+      // Support structures add extra material
+      if (supportType === 'normal') {
+        materialWeightGrams *= 1.15; // +15% for normal supports
+      } else if (supportType === 'tree') {
+        materialWeightGrams *= 1.10; // +10% for tree supports (less material)
+      }
     } else {
       // Fallback: 1MB ≈ 10g
       materialWeightGrams = (file.size / 1024 / 1024) * 10;
@@ -491,11 +620,10 @@ const NewPrint = () => {
     const printTimeHours = estimatedPrintTime || 4;
     
     // Material cost: Cmaterial = materialPricePerKg * (materialWeightGrams / 1000)
-    const materialPricePerKg = materialPrices[material] || 39;
     const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
     
-    // Energy cost: Cenergy = T * W * Pe
-    const W = 0.27; // 270W = 0.27 kW
+    // Energy cost: Cenergy = T * W * Pe (using printer specs from database)
+    const W = printerSpecs.power_watts / 1000; // Convert watts to kW
     const Pe = 0.914; // PLN per kWh in Krakow
     const Cenergy = printTimeHours * W * Pe;
     
@@ -504,13 +632,11 @@ const NewPrint = () => {
     const laborTimeMinutes = 10;
     const Clabor = R * (laborTimeMinutes / 60);
     
-    // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours
-    const machineCost = 3483.39;
-    const lifespanHours = 5000;
-    const Cdepreciation = (machineCost / lifespanHours) * printTimeHours;
+    // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours (using printer specs from database)
+    const Cdepreciation = (printerSpecs.cost_pln / printerSpecs.lifespan_hours) * printTimeHours;
     
-    // Maintenance cost: Cmaintenance = Cdepreciation * 0.03 (3% - matches backend)
-    const Cmaintenance = Cdepreciation * 0.03;
+    // Maintenance cost: Cmaintenance = Cdepreciation * maintenanceRate (using printer specs from database)
+    const Cmaintenance = Cdepreciation * printerSpecs.maintenance_rate;
     
     // Total internal cost
     const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
@@ -521,6 +647,29 @@ const NewPrint = () => {
     // Final price (without delivery)
     const priceWithoutDelivery = Cinternal + vat;
     const totalPrice = Math.round(priceWithoutDelivery * quantity * 100) / 100;
+    
+    console.log('=== NEW PRINT: Price Calculation ===' , {
+      material: materialType,
+      volume: modelAnalysis?.volumeCm3,
+      density,
+      infillPercent,
+      materialWeightGrams: materialWeightGrams.toFixed(2),
+      massKg: (materialWeightGrams / 1000).toFixed(3),
+      printTimeHours: printTimeHours.toFixed(2),
+      materialCost: Cmaterial.toFixed(2),
+      energyCost: Cenergy.toFixed(2),
+      laborCost: Clabor.toFixed(2),
+      depreciationCost: Cdepreciation.toFixed(2),
+      maintenanceCost: Cmaintenance.toFixed(2),
+      internalCost: Cinternal.toFixed(2),
+      vat: vat.toFixed(2),
+      priceWithoutDelivery: priceWithoutDelivery.toFixed(2),
+      quantity,
+      totalPrice: totalPrice.toFixed(2),
+      supportType,
+      infillPattern,
+      customInfill
+    });
     
     // Store detailed breakdown
     const breakdown: PriceBreakdown = {
@@ -749,11 +898,46 @@ const NewPrint = () => {
       formData.append('file', file);
       formData.append('material', material.split('-')[0]); // e.g., 'pla-white' -> 'pla'
       formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
-      formData.append('layerHeight', quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
+      
+      // Use custom layer height if advanced settings enabled, otherwise quality preset
+      const layerHeight = showAdvanced && customLayerHeight ? customLayerHeight : 
+                         (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('layerHeight', layerHeight);
+      
+      // Use custom infill if advanced settings enabled, otherwise quality preset
+      const infill = showAdvanced && customInfill ? customInfill :
+                    (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
+      formData.append('infill', infill);
+      
       formData.append('quantity', quantity.toString());
       formData.append('shippingMethod', selectedDeliveryOption);
       formData.append('price', estimatedPrice.toString());
+      
+      // Add advanced settings
+      formData.append('supportType', supportType);
+      formData.append('infillPattern', infillPattern);
+      
+      // Add custom values if advanced settings were used
+      if (showAdvanced) {
+        if (customLayerHeight) {
+          formData.append('customLayerHeight', customLayerHeight);
+        }
+        if (customInfill) {
+          formData.append('customInfill', customInfill);
+        }
+      }
+      
+      // Add material weight and print time for accurate price recalculation later
+      // These values are calculated based on actual model analysis
+      if (estimatedWeight && estimatedPrintTime) {
+        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
+        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+      }
+      
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+      }
       
       // Add delivery-specific details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {
@@ -1043,22 +1227,34 @@ const NewPrint = () => {
                                       <Select 
                                         value={pf.material} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { material: v })}
+                                        disabled={materialsLoading}
                                       >
                                         <SelectTrigger className="h-10">
-                                          <SelectValue placeholder="Select" />
+                                          <SelectValue placeholder={materialsLoading ? "Loading..." : "Select"} />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[300px]">
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">PLA</div>
-                                          <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
-                                          <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
-                                          <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
-                                          <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">ABS</div>
-                                          <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
-                                          <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">PETG</div>
-                                          <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
-                                          <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
+                                          {materialsLoading ? (
+                                            <div className="px-2 py-2 text-sm text-muted-foreground">Loading materials...</div>
+                                          ) : (
+                                            ['PLA', 'ABS', 'PETG'].map(type => {
+                                              const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
+                                              if (typeMaterials.length === 0) return null;
+                                              return (
+                                                <div key={type}>
+                                                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">{type}</div>
+                                                  {typeMaterials.map(mat => {
+                                                    const materialKey = getMaterialKey(mat.material_type, mat.color);
+                                                    const isOOS = mat.stock_status === 'out_of_stock';
+                                                    return (
+                                                      <SelectItem key={mat.id} value={materialKey}>
+                                                        <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                                      </SelectItem>
+                                                    );
+                                                  })}
+                                                </div>
+                                              );
+                                            })
+                                          )}
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -1159,40 +1355,43 @@ const NewPrint = () => {
               <div className="grid md:grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="material" className="text-base font-semibold">{t('newPrint.material')}</Label>
-                  <Select value={material} onValueChange={setMaterial}>
+                  <Select value={material} onValueChange={setMaterial} disabled={materialsLoading}>
                     <SelectTrigger id="material" className="h-12">
-                      <SelectValue placeholder={t('newPrint.selectMaterial')} />
+                      <SelectValue placeholder={materialsLoading ? "Loading materials..." : t('newPrint.selectMaterial')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">PLA</div>
-                      <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
-                      <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
-                      <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
-                      <SelectItem value="pla-yellow">💛 PLA - Yellow</SelectItem>
-                      <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
-                      
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">ABS</div>
-                      <SelectItem value="abs-silver">⚪ ABS - Silver</SelectItem>
-                      <SelectItem value="abs-transparent">💎 ABS - Transparent</SelectItem>
-                      <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
-                      <SelectItem value="abs-grey">🩶 ABS - Grey</SelectItem>
-                      <SelectItem value="abs-red">❤️ ABS - Red</SelectItem>
-                      <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
-                      <SelectItem value="abs-blue">💙 ABS - Blue</SelectItem>
-                      <SelectItem value="abs-green">💚 ABS - Green</SelectItem>
-                      
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">PETG</div>
-                      <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
-                      <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
-                      <SelectItem value="petg-red">❤️ PETG - Red</SelectItem>
-                      <SelectItem value="petg-green">💚 PETG - Green</SelectItem>
-                      <SelectItem value="petg-blue">💙 PETG - Blue</SelectItem>
-                      <SelectItem value="petg-yellow">💛 PETG - Yellow</SelectItem>
-                      <SelectItem value="petg-pink">💗 PETG - Pink</SelectItem>
-                      <SelectItem value="petg-orange">🧡 PETG - Orange</SelectItem>
-                      <SelectItem value="petg-silver">⚪ PETG - Silver</SelectItem>
+                      {materialsLoading ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground">Loading materials...</div>
+                      ) : (
+                        ['PLA', 'ABS', 'PETG'].map(type => {
+                          const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
+                          if (typeMaterials.length === 0) return null;
+                          return (
+                            <div key={type}>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{type}</div>
+                              {typeMaterials.map(mat => {
+                                const materialKey = getMaterialKey(mat.material_type, mat.color);
+                                const isOOS = mat.stock_status === 'out_of_stock';
+                                return (
+                                  <SelectItem key={mat.id} value={materialKey}>
+                                    <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                  </SelectItem>
+                                );
+                              })}
+                            </div>
+                          );
+                        })
+                      )}
                     </SelectContent>
                   </Select>
+                  {material && isOutOfStock(material) && (
+                    <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-scale-in">
+                      <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                        {getOutOfStockWarning(material)}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1247,36 +1446,46 @@ const NewPrint = () => {
                 <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted rounded-lg">
                   <div className="space-y-2">
                     <Label htmlFor="layer-height">{t('newPrint.settings.layerHeight')}</Label>
-                    <Select>
+                    <Select value={customLayerHeight || 'default'} onValueChange={(val) => setCustomLayerHeight(val === 'default' ? undefined : val)}>
                       <SelectTrigger id="layer-height">
-                        <SelectValue placeholder={t('newPrint.selectLayerHeight')} />
+                        <SelectValue placeholder="Use quality default" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0.1">0.1mm - Ultra Fine</SelectItem>
+                        <SelectItem value="default">Use quality default</SelectItem>
+                        <SelectItem value="0.3">0.3mm - Draft (Fast)</SelectItem>
                         <SelectItem value="0.2">0.2mm - Standard</SelectItem>
-                        <SelectItem value="0.3">0.3mm - Fast</SelectItem>
+                        <SelectItem value="0.15">0.15mm - High (Slower)</SelectItem>
+                        <SelectItem value="0.1">0.1mm - Ultra (Slowest)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {customLayerHeight ? `Custom: ${customLayerHeight}mm` : 'Using quality preset'}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="infill">{t('newPrint.infill')}</Label>
-                    <Select>
+                    <Select value={customInfill || 'default'} onValueChange={(val) => setCustomInfill(val === 'default' ? undefined : val)}>
                       <SelectTrigger id="infill">
-                        <SelectValue placeholder={t('newPrint.selectInfill')} />
+                        <SelectValue placeholder="Use quality default" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="10">10% - Light</SelectItem>
+                        <SelectItem value="default">Use quality default</SelectItem>
+                        <SelectItem value="10">10% - Light (Less material)</SelectItem>
                         <SelectItem value="20">20% - Standard</SelectItem>
-                        <SelectItem value="50">50% - Strong</SelectItem>
-                        <SelectItem value="100">100% - Solid</SelectItem>
+                        <SelectItem value="30">30% - Strong</SelectItem>
+                        <SelectItem value="50">50% - Very Strong</SelectItem>
+                        <SelectItem value="100">100% - Solid (Most material)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {customInfill ? `Custom: ${customInfill}%` : 'Using quality preset'}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="pattern">Infill Pattern</Label>
-                    <Select>
+                    <Select value={infillPattern} onValueChange={setInfillPattern}>
                       <SelectTrigger id="pattern">
                         <SelectValue placeholder={t('newPrint.selectPattern')} />
                       </SelectTrigger>
@@ -1287,20 +1496,28 @@ const NewPrint = () => {
                         <SelectItem value="gyroid">{t('newPrint.patterns.gyroid')}</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Pattern affects print time but not material cost
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="supports">{t('newPrint.settings.supports')}</Label>
-                    <Select>
+                    <Select value={supportType} onValueChange={setSupportType}>
                       <SelectTrigger id="supports">
                         <SelectValue placeholder={t('newPrint.selectSupports')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">{t('newPrint.supports.none')}</SelectItem>
-                        <SelectItem value="normal">{t('newPrint.supports.normal')}</SelectItem>
-                        <SelectItem value="tree">{t('newPrint.supports.tree')}</SelectItem>
+                        <SelectItem value="normal">{t('newPrint.supports.normal')} (+15% material, +10% time)</SelectItem>
+                        <SelectItem value="tree">{t('newPrint.supports.tree')} (+10% material, +5% time)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {supportType === 'none' && 'No supports - fastest and cheapest'}
+                      {supportType === 'normal' && 'Standard supports - more stable but uses more material'}
+                      {supportType === 'tree' && 'Tree supports - uses less material than normal'}
+                    </p>
                   </div>
                 </div>
               )}

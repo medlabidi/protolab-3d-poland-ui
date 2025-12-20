@@ -951,8 +951,7 @@
       "bank": "Przelew bankowy",
       "bankDesc": "Bezpośredni przelew na Twoje konto bankowe",
       "credit": "Kredyty sklepowe",
-      "creditDesc": "Dodaj do salda konta na przyszłe zamówienia",
-      "creditBonus": "+5% bonus"
+      "creditDesc": "Dodaj do salda konta na przyszłe zamówienia"
     },
     "bankDetails": "Dane konta bankowego",
     "accountHolder": "Imię i nazwisko właściciela konta",

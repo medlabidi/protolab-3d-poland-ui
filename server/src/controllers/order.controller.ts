@@ -30,6 +30,9 @@ export class OrderController {
       const order = await orderService.createOrder(req.user!.id, {
         ...req.body,
         price: parseFloat(req.body.price) || 0,
+        materialWeight: req.body.materialWeight ? parseFloat(req.body.materialWeight) : undefined,
+        printTime: req.body.printTime ? parseFloat(req.body.printTime) : undefined,
+        modelVolume: req.body.modelVolume ? parseFloat(req.body.modelVolume) : undefined,
         fileName: req.file.originalname,
         fileUrl,
       });
@@ -109,6 +112,28 @@ export class OrderController {
       logger.info(`Order permanently deleted: ${id}`);
       
       res.json({ message: 'Order permanently deleted' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancelOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.cancelOrder(id, req.user!.id);
+      
+      // Send notification to user about cancellation
+      const { notificationService } = await import('../services/notification.service');
+      await notificationService.notifyOrderStatusChange(
+        req.user!.id,
+        order.id,
+        'suspended',
+        order.order_number
+      );
+
+      logger.info(`Order cancelled: ${order.id} by user ${req.user!.id}`);
+      
+      res.json({ message: 'Order cancelled successfully', order });
     } catch (error) {
       next(error);
     }
@@ -238,6 +263,37 @@ export class OrderController {
       logger.info(`Payment confirmation email sent for user ${user.id}`);
       
       res.json({ message: 'Payment confirmation email sent' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async submitRefundRequest(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { refundMethod, refundAmount, reason, bankDetails } = req.body;
+      const userId = req.user!.id;
+      
+      logger.info(`Submitting refund request for order ${id} by user ${userId}`);
+      
+      // Update the order with refund information
+      const updatedOrder = await orderService.submitRefundRequest(
+        id,
+        userId,
+        {
+          refundMethod,
+          refundAmount: parseFloat(refundAmount) || 0,
+          reason: reason || 'customer_request',
+          bankDetails,
+        }
+      );
+      
+      logger.info(`Refund request submitted for order ${id}`);
+      
+      res.json({
+        message: 'Refund request submitted successfully',
+        order: updatedOrder,
+      });
     } catch (error) {
       next(error);
     }

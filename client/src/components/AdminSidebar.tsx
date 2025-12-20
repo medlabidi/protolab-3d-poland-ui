@@ -14,6 +14,7 @@ import {
   Bell,
   FileText,
   Palette,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -36,6 +37,16 @@ const menuItems = [
     path: "/admin/users",
   },
   {
+    title: "Businesses",
+    icon: Building2,
+    path: "/admin/businesses",
+  },
+  {
+    title: "Support",
+    icon: Bell,
+    path: "/admin/conversations",
+  },
+  {
     title: "Printers",
     icon: Printer,
     path: "/admin/printers",
@@ -54,11 +65,6 @@ const menuItems = [
     title: "Reports",
     icon: FileText,
     path: "/admin/reports",
-  },
-  {
-    title: "Notifications",
-    icon: Bell,
-    path: "/admin/notifications",
   },
   {
     title: "Settings",

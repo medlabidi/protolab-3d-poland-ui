@@ -945,8 +945,7 @@
       "bank": "Bank Transfer",
       "bankDesc": "Direct transfer to your bank account",
       "credit": "Store Credit",
-      "creditDesc": "Add to your account balance for future orders",
-      "creditBonus": "+5% bonus"
+      "creditDesc": "Add to your account balance for future orders"
     },
     "bankDetails": "Bank Account Details",
     "accountHolder": "Account Holder Name",

@@ -31,12 +31,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, User, Settings, KeyRound, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useMemo } from "react";
 import { API_URL } from "@/config/api";
+import { useNetworkReconnect } from "@/hooks/useNetworkReconnect";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -50,6 +51,22 @@ const Dashboard = () => {
     completedPrints: 0,
     totalSpent: `0 ${t('common.pln')}`,
   });
+
+  // Handle network reconnection
+  useNetworkReconnect(() => {
+    console.log('Reconnected, refreshing user dashboard data');
+    fetchDashboardData(true);
+    fetchCreditBalance(true);
+  });
+
+  // Poll for order updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -148,16 +165,25 @@ const Dashboard = () => {
     }
   };
 
-  const fetchCreditBalance = async () => {
+  const fetchCreditBalance = async (retry = true) => {
     try {
-      const token = localStorage.getItem('accessToken');
+      let token = localStorage.getItem('accessToken');
       if (!token) return;
 
-      const response = await fetch(`${API_URL}/credits/balance`, {
+      let response = await fetch(`${API_URL}/credits/balance`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      // If unauthorized, try to refresh token
+      if (response.status === 401 && retry) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchCreditBalance(false);
+        }
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -222,8 +248,11 @@ const Dashboard = () => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<any>(null);
   const [newProjectName, setNewProjectName] = useState('');
+  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   const toggleProject = (projectName: string) => {
     setExpandedProjects(prev => {
@@ -235,6 +264,50 @@ const Dashboard = () => {
       }
       return newSet;
     });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    toast.success(t('auth.logoutSuccess'));
+    navigate('/login');
+  };
+
+  const handleCancelOrder = (order: any) => {
+    setSelectedOrderToCancel(order);
+    setCancelOrderDialogOpen(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!selectedOrderToCancel) return;
+
+    setCancellingOrder(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${selectedOrderToCancel.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success(t('dashboard.toasts.orderCancelled'));
+        fetchDashboardData();
+        setCancelOrderDialogOpen(false);
+        setSelectedOrderToCancel(null);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || t('dashboard.toasts.orderCancelFailed'));
+      }
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      toast.error(t('dashboard.toasts.orderCancelFailed'));
+    } finally {
+      setCancellingOrder(false);
+    }
   };
 
   const handleRenameProject = async () => {
@@ -365,6 +438,36 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <NotificationDropdown />
+              
+              {/* User Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    {t('profile.viewProfile')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    {t('profile.editProfile')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    navigate('/settings#password-section');
+                  }}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    {t('profile.changePassword')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t('auth.logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -594,10 +697,11 @@ const Dashboard = () => {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
                                     className="text-destructive focus:text-destructive"
-                                    onClick={() => toast.error(t('dashboard.toasts.deleteOrderComingSoon'))}
+                                    onClick={() => handleCancelOrder(order)}
+                                    disabled={order.status === 'delivered' || order.status === 'cancelled'}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    {t('common.deleteOrder')}
+                                    {t('common.cancelPayment')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -657,6 +761,35 @@ const Dashboard = () => {
               <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Cancel Order Confirmation Dialog */}
+        <AlertDialog open={cancelOrderDialogOpen} onOpenChange={setCancelOrderDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Print Job?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel the print job for "{selectedOrderToCancel?.file_name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancellingOrder}>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmCancelOrder} 
+                disabled={cancellingOrder}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {cancellingOrder ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  'Yes, Cancel Print Job'
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

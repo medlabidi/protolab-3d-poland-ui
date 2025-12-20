@@ -87,7 +87,6 @@ const Refund = () => {
       name: t('refund.methods.credit'),
       description: t('refund.methods.creditDesc'),
       icon: Wallet,
-      bonus: t('refund.methods.creditBonus'),
     },
   ];
 
@@ -193,7 +192,21 @@ const Refund = () => {
         let updatePayload: Record<string, unknown> = {
           status: newOrderStatus,
           payment_status: newPaymentStatus,
+          refund_method: selectedMethod,
+          refund_amount: refundData?.refundAmount,
+          refund_reason: refundData?.reason,
         };
+        
+        console.log('=== REFUND REQUEST PAYLOAD ===');
+        console.log('Selected Method:', selectedMethod);
+        console.log('Refund Amount:', refundData?.refundAmount);
+        console.log('Order ID:', refundData?.orderId);
+        console.log('Is Cancellation:', isCancellation);
+        
+        // Add bank details if bank transfer selected
+        if (selectedMethod === 'bank') {
+          updatePayload.refund_bank_details = JSON.stringify(bankDetails);
+        }
         
         // If there are pending updates (price reduction), merge them
         if (pendingUpdate && !isCancellation) {
@@ -202,8 +215,16 @@ const Refund = () => {
             ...parsedUpdate.updates,
             status: newOrderStatus,
             payment_status: newPaymentStatus,
+            refund_method: selectedMethod,
+            refund_amount: refundData?.refundAmount,
+            refund_reason: refundData?.reason,
+            ...(selectedMethod === 'bank' ? { refund_bank_details: JSON.stringify(bankDetails) } : {}),
           };
         }
+        
+        console.log('Final Update Payload:', updatePayload);
+        console.log('API URL:', API_URL);
+        console.log('Full PATCH URL:', `${API_URL}/orders/${refundData?.orderId}`);
         
         // Update the order
         const updateResponse = await fetch(`${API_URL}/orders/${refundData?.orderId}`, {
@@ -215,10 +236,17 @@ const Refund = () => {
           body: JSON.stringify(updatePayload),
         });
 
+        console.log('PATCH Response Status:', updateResponse.status);
+        console.log('PATCH Response OK:', updateResponse.ok);
+
         if (!updateResponse.ok) {
           const errorData = await updateResponse.json();
+          console.error('PATCH Error Data:', errorData);
           throw new Error(errorData.message || 'Failed to update order status');
         }
+        
+        const updateResult = await updateResponse.json();
+        console.log('PATCH Success Result:', updateResult);
         
         // Clear pending update from session storage
         sessionStorage.removeItem('pendingOrderUpdate');
@@ -399,11 +427,6 @@ const Refund = () => {
                       <div className="flex-1">
                         <Label htmlFor={method.id} className="text-lg font-semibold cursor-pointer flex items-center gap-2">
                           {method.name}
-                          {method.bonus && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                              {method.bonus}
-                            </span>
-                          )}
                         </Label>
                         <p className="text-sm text-muted-foreground mt-1">
                           {method.description}

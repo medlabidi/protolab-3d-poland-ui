@@ -27,6 +27,9 @@ export class OrderService {
       status: 'submitted',
       payment_status: 'paid',
       project_name: data.projectName,
+      material_weight: data.materialWeight,  // Store weight in grams
+      print_time: data.printTime,            // Store time in minutes
+      model_volume_cm3: data.modelVolume,    // Store base volume in cm³
     });
     
     // Auto-create conversation log for the order
@@ -211,7 +214,7 @@ export class OrderService {
       updates.print_time = printTime;
     }
     
-    const pricingResult = pricingService.calculatePrice({
+    const pricingResult = await pricingService.calculatePrice({
       materialType: order.material,
       color: order.color,
       materialWeightGrams: (materialWeight ?? order.material_weight ?? 0) * 1000,
@@ -269,6 +272,10 @@ export class OrderService {
     payment_status?: PaymentStatus;
     paid_amount?: number;
     project_name?: string;
+    refund_method?: 'credit' | 'bank' | 'original';
+    refund_amount?: number;
+    refund_reason?: string;
+    refund_bank_details?: string;
   }): Promise<IOrder> {
     const supabase = getSupabase();
     
@@ -316,6 +323,12 @@ export class OrderService {
     if (updates.paid_amount !== undefined) allowedUpdates.paid_amount = updates.paid_amount;
     if (updates.status !== undefined) allowedUpdates.status = updates.status;
     
+    // Refund fields can always be updated
+    if (updates.refund_method !== undefined) allowedUpdates.refund_method = updates.refund_method;
+    if (updates.refund_amount !== undefined) allowedUpdates.refund_amount = updates.refund_amount;
+    if (updates.refund_reason !== undefined) allowedUpdates.refund_reason = updates.refund_reason;
+    if (updates.refund_bank_details !== undefined) allowedUpdates.refund_bank_details = updates.refund_bank_details;
+    
     // If no valid updates, throw error
     if (Object.keys(allowedUpdates).length === 0) {
       throw new Error('No valid updates provided');
@@ -325,6 +338,79 @@ export class OrderService {
     
     if (!updatedOrder) {
       throw new Error('Failed to update order');
+    }
+    
+    // If this is a store credit refund, add credits to user's wallet
+    if (updates.refund_method === 'credit' && updates.refund_amount) {
+      try {
+        const refundAmount = typeof updates.refund_amount === 'number' 
+          ? updates.refund_amount 
+          : parseFloat(updates.refund_amount);
+        
+        console.log('=== STORE CREDIT REFUND DETECTED ===');
+        console.log('User ID:', userId);
+        console.log('Refund Amount:', refundAmount);
+        console.log('Order ID:', orderId);
+        
+        if (refundAmount > 0) {
+          // Get current credit balance
+          const { data: creditData, error: fetchError } = await supabase
+            .from('credits')
+            .select('balance')
+            .eq('user_id', userId)
+            .single();
+
+          console.log('Current credit data:', creditData);
+          console.log('Fetch error:', fetchError);
+
+          const currentBalance = creditData?.balance || 0;
+          const newBalance = currentBalance + refundAmount;
+
+          console.log('Current Balance:', currentBalance);
+          console.log('New Balance:', newBalance);
+
+          // Update or insert credit balance
+          const { data: upsertData, error: creditError } = await supabase
+            .from('credits')
+            .upsert({
+              user_id: userId,
+              balance: newBalance,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            })
+            .select();
+
+          console.log('Upsert result:', upsertData);
+          console.log('Upsert error:', creditError);
+
+          if (creditError) {
+            console.error('Credit update error:', creditError);
+          } else {
+            // Record the transaction
+            const { data: txData, error: txError } = await supabase
+              .from('credits_transactions')
+              .insert({
+                user_id: userId,
+                amount: refundAmount,
+                type: 'refund',
+                description: `Refund for order ${updatedOrder.order_number || orderId}`,
+                balance_after: newBalance,
+              })
+              .select();
+            
+            console.log('Transaction record result:', txData);
+            console.log('Transaction error:', txError);
+            
+            console.log(`✅ Added ${refundAmount} PLN store credit for user ${userId}`);
+          }
+        } else {
+          console.log('❌ Refund amount is 0 or negative:', refundAmount);
+        }
+      } catch (creditError) {
+        console.error('Failed to add store credit:', creditError);
+        // Don't fail the order update if credit addition fails
+      }
     }
     
     return updatedOrder;
@@ -363,10 +449,14 @@ export class OrderService {
       throw new Error('This order cannot be cancelled');
     }
     
+    // Get refund method from the order
+    const refundMethod = (order as any).refund_method || 'original';
+    
     // Update status to suspended and payment status to refunding
     const updatedOrder = await Order.updateById(orderId, {
       status: 'suspended',
       payment_status: 'refunding',
+      refund_method: refundMethod,
     });
     
     if (!updatedOrder) {
@@ -394,6 +484,53 @@ export class OrderService {
     if (!updatedOrder) {
       throw new Error('Failed to process refund');
     }
+    
+    return updatedOrder;
+  }
+
+  async submitRefundRequest(
+    orderId: string,
+    userId: string,
+    refundDetails: {
+      refundMethod: 'credit' | 'bank' | 'original';
+      refundAmount: number;
+      reason: string;
+      bankDetails?: {
+        accountNumber: string;
+        bankName: string;
+        accountHolder: string;
+      };
+    }
+  ): Promise<IOrder> {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Verify order belongs to user
+    if (order.user_id !== userId) {
+      throw new Error('Unauthorized: Order does not belong to user');
+    }
+
+    // Update order with refund details
+    const updates: Record<string, unknown> = {
+      refund_method: refundDetails.refundMethod,
+      refund_reason: refundDetails.reason,
+      status: 'suspended',
+      payment_status: 'refunding',
+    };
+
+    // Store bank details if provided
+    if (refundDetails.bankDetails) {
+      updates.refund_bank_details = JSON.stringify(refundDetails.bankDetails);
+    }
+
+    const updatedOrder = await Order.updateById(orderId, updates);
+    if (!updatedOrder) {
+      throw new Error('Failed to submit refund request');
+    }
+
+    logger.info(`Refund request submitted for order ${orderId} with method ${refundDetails.refundMethod}`);
     
     return updatedOrder;
   }

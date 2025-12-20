@@ -162,7 +162,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/orders' && req.method === 'POST') {
       return await handleCreateOrder(req as AuthenticatedRequest, res);
     }
-    if (path.match(/^\/orders\/[^/]+$/) && req.method === 'PUT') {
+    if (path.match(/^\/orders\/[^/]+$/) && (req.method === 'PUT' || req.method === 'PATCH')) {
       return await handleUpdateOrder(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/orders\/[^/]+$/) && req.method === 'DELETE') {
@@ -189,6 +189,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/credits/balance' && req.method === 'GET') {
       return await handleGetCreditsBalance(req as AuthenticatedRequest, res);
     }
+    if (path === '/credits/transactions' && req.method === 'GET') {
+      return await handleGetCreditsTransactions(req as AuthenticatedRequest, res);
+    }
+    if (path === '/credits/add' && req.method === 'POST') {
+      console.log('=== CREDITS ADD ENDPOINT HIT ===');
+      console.log('Request body:', req.body);
+      return await handleAddCredits(req as AuthenticatedRequest, res);
+    }
     
     // Conversations routes
     if (path === '/conversations' && req.method === 'GET') {
@@ -205,8 +213,29 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/admin/orders' && req.method === 'GET') {
       return await handleAdminGetOrders(req as AuthenticatedRequest, res);
     }
+    if (path.match(/^\/admin\/orders\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminGetOrderById(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/orders\/[^/]+\/status$/) && req.method === 'PATCH') {
+      return await handleAdminUpdateOrderStatus(req as AuthenticatedRequest, res);
+    }
     if (path === '/admin/users' && req.method === 'GET') {
       return await handleAdminGetUsers(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/users\/[^/]+\/role$/) && req.method === 'PATCH') {
+      return await handleAdminUpdateUserRole(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/settings' && req.method === 'GET') {
+      return await handleAdminGetSettings(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/settings' && req.method === 'PATCH') {
+      return await handleAdminUpdateSettings(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/materials' && req.method === 'GET') {
+      return await handleAdminGetMaterials(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/printers' && req.method === 'GET') {
+      return await handleAdminGetPrinters(req as AuthenticatedRequest, res);
     }
     
     // Default: API info
@@ -237,11 +266,20 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'POST /api/upload/presigned-url',
         'POST /api/upload/analyze',
         'GET /api/credits/balance',
+        'GET /api/credits/transactions',
+        'POST /api/credits/add',
         'GET /api/conversations',
         'GET /api/conversations/:id/messages',
         'POST /api/conversations/:id/messages',
         'GET /api/admin/orders',
+        'GET /api/admin/orders/:id',
+        'PATCH /api/admin/orders/:id/status',
         'GET /api/admin/users',
+        'PATCH /api/admin/users/:id/role',
+        'GET /api/admin/settings',
+        'PATCH /api/admin/settings',
+        'GET /api/admin/materials',
+        'GET /api/admin/printers',
       ]
     });
   } catch (error) {
@@ -1003,6 +1041,11 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
   const url = req.url || '';
   const orderId = url.split('/').pop()?.split('?')[0];
   
+  console.log('=== HANDLE UPDATE ORDER CALLED ===');
+  console.log('Order ID:', orderId);
+  console.log('User ID:', user.userId);
+  console.log('Request Body:', JSON.stringify(req.body, null, 2));
+  
   if (!orderId) {
     return res.status(400).json({ error: 'Order ID required' });
   }
@@ -1021,24 +1064,123 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
     return res.status(404).json({ error: 'Order not found' });
   }
   
-  const { material, color, quantity, notes, projectName, status } = req.body;
+  // Get the current order data to check for refund
+  const { data: currentOrder } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
+
+  // Extract all possible fields from request body
+  const updateData: any = {};
+  const allowedFields = [
+    'material', 'color', 'quantity', 'notes', 'project_name', 'status',
+    'payment_status', 'price', 'layer_height', 'infill', 'quality',
+    'support_type', 'infill_pattern', 'custom_layer_height', 'custom_infill',
+    'shipping_method', 'tracking_number', 'estimated_delivery',
+    'refund_method', 'refund_amount', 'refund_reason', 'refund_bank_details'
+  ];
+
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      // Handle snake_case conversion for camelCase fields
+      const dbField = field === 'projectName' ? 'project_name' : field;
+      updateData[dbField] = req.body[field];
+    }
+  }
   
   const { data: order, error } = await supabase
     .from('orders')
-    .update({
-      material,
-      color,
-      quantity,
-      notes,
-      project_name: projectName,
-      status,
-    })
+    .update(updateData)
     .eq('id', orderId)
     .select()
     .single();
   
   if (error) {
+    console.error('Order update error:', error);
     return res.status(500).json({ error: 'Failed to update order' });
+  }
+
+  // If this is a store credit refund, add credits to user's wallet
+  console.log('=== CHECKING CREDIT REFUND CONDITIONS ===');
+  console.log('refund_method:', req.body.refund_method);
+  console.log('refund_amount (raw):', req.body.refund_amount);
+  console.log('refund_amount (type):', typeof req.body.refund_amount);
+  console.log('currentOrder exists:', !!currentOrder);
+  
+  if (req.body.refund_method === 'credit' && req.body.refund_amount && currentOrder) {
+    try {
+      const refundAmount = parseFloat(req.body.refund_amount);
+      
+      console.log('=== STORE CREDIT REFUND DETECTED ===');
+      console.log('User ID:', user.userId);
+      console.log('Refund Amount (parsed):', refundAmount);
+      console.log('Order ID:', orderId);
+      
+      if (refundAmount > 0) {
+        // Get current credit balance
+        const { data: creditData, error: fetchError } = await supabase
+          .from('credits')
+          .select('balance')
+          .eq('user_id', user.userId)
+          .single();
+
+        console.log('Current credit data:', creditData);
+        console.log('Fetch error:', fetchError);
+
+        const currentBalance = creditData?.balance || 0;
+        const newBalance = currentBalance + refundAmount;
+
+        console.log('Current Balance:', currentBalance);
+        console.log('New Balance:', newBalance);
+
+        // Update or insert credit balance
+        const { data: upsertData, error: creditError } = await supabase
+          .from('credits')
+          .upsert({
+            user_id: user.userId,
+            balance: newBalance,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id'
+          })
+          .select();
+
+        console.log('Upsert result:', upsertData);
+        console.log('Upsert error:', creditError);
+
+        if (creditError) {
+          console.error('Credit update error:', creditError);
+        } else {
+          // Record the transaction
+          const { data: txData, error: txError } = await supabase
+            .from('credits_transactions')
+            .insert({
+              user_id: user.userId,
+              amount: refundAmount,
+              type: 'refund',
+              description: `Refund for order ${currentOrder.order_number || orderId}`,
+              balance_after: newBalance,
+            })
+            .select();
+          
+          console.log('Transaction record result:', txData);
+          console.log('Transaction error:', txError);
+          
+          console.log(`✅ Added ${refundAmount} PLN store credit for user ${user.userId}`);
+        }
+      } else {
+        console.log('❌ Refund amount is 0 or negative:', refundAmount);
+      }
+    } catch (creditError) {
+      console.error('Failed to add store credit:', creditError);
+      // Don't fail the order update if credit addition fails
+    }
+  } else {
+    console.log('Store credit refund NOT triggered:');
+    console.log('- refund_method:', req.body.refund_method);
+    console.log('- refund_amount:', req.body.refund_amount);
+    console.log('- currentOrder exists:', !!currentOrder);
   }
   
   return res.status(200).json(order);
@@ -1142,6 +1284,89 @@ async function handleGetCreditsBalance(req: AuthenticatedRequest, res: VercelRes
   return res.status(200).json({
     balance: data?.balance || 0,
   });
+}
+
+async function handleGetCreditsTransactions(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data, error } = await supabase
+    .from('credits_transactions')
+    .select('*')
+    .eq('user_id', user.userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  
+  if (error) {
+    console.error('Failed to fetch transactions:', error);
+    return res.status(200).json({ transactions: [] });
+  }
+  
+  return res.status(200).json({
+    transactions: data || [],
+  });
+}
+
+async function handleAddCredits(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const { amount, type, description } = req.body;
+  
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount' });
+  }
+  
+  const supabase = getSupabase();
+  
+  try {
+    // Get current balance
+    const { data: creditData } = await supabase
+      .from('credits')
+      .select('balance')
+      .eq('user_id', user.userId)
+      .single();
+    
+    const currentBalance = creditData?.balance || 0;
+    const newBalance = currentBalance + parseFloat(amount);
+    
+    // Update balance
+    const { error: upsertError } = await supabase
+      .from('credits')
+      .upsert({
+        user_id: user.userId,
+        balance: newBalance,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id'
+      });
+    
+    if (upsertError) {
+      console.error('Failed to update credits:', upsertError);
+      return res.status(500).json({ error: 'Failed to add credits' });
+    }
+    
+    // Record transaction
+    await supabase
+      .from('credits_transactions')
+      .insert({
+        user_id: user.userId,
+        amount: parseFloat(amount),
+        type: type || 'credit',
+        description: description || 'Credits added',
+        balance_after: newBalance,
+      });
+    
+    return res.status(200).json({
+      success: true,
+      balance: newBalance,
+    });
+  } catch (error) {
+    console.error('Add credits error:', error);
+    return res.status(500).json({ error: 'Failed to add credits' });
+  }
 }
 
 // ==================== CONVERSATIONS HANDLERS ====================
@@ -1320,4 +1545,260 @@ async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelRespons
   }
   
   return res.status(200).json({ users: users || [] });
+}
+
+async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const orderId = url.split('/')[3];
+  
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
+  
+  if (error || !order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  
+  return res.status(200).json({ order });
+}
+
+async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const orderId = url.split('/')[3];
+  const { status, payment_status } = req.body;
+  
+  const updateData: any = {};
+  if (status) updateData.status = status;
+  if (payment_status) updateData.payment_status = payment_status;
+  
+  const { data: order, error } = await supabase
+    .from('orders')
+    .update(updateData)
+    .eq('id', orderId)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update order' });
+  }
+  
+  return res.status(200).json({ message: 'Order status updated', order });
+}
+
+async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const targetUserId = url.split('/')[3];
+  const { role } = req.body;
+  
+  if (!['user', 'admin'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+  
+  const { data: updatedUser, error } = await supabase
+    .from('users')
+    .update({ role })
+    .eq('id', targetUserId)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update user role' });
+  }
+  
+  return res.status(200).json({ message: 'User role updated', user: updatedUser });
+}
+
+async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: settings, error } = await supabase
+    .from('settings')
+    .select('*')
+    .limit(1)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') {
+    return res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+  
+  return res.status(200).json({ settings: settings || {} });
+}
+
+async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const updates = req.body;
+  
+  // Get existing settings
+  const { data: existing } = await supabase
+    .from('settings')
+    .select('id')
+    .limit(1)
+    .single();
+  
+  let result;
+  if (existing) {
+    // Update existing
+    const { data, error } = await supabase
+      .from('settings')
+      .update(updates)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update settings' });
+    }
+    result = data;
+  } else {
+    // Insert new
+    const { data, error } = await supabase
+      .from('settings')
+      .insert([updates])
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to create settings' });
+    }
+    result = data;
+  }
+  
+  return res.status(200).json({ message: 'Settings updated', settings: result });
+}
+
+async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: materials, error } = await supabase
+    .from('materials')
+    .select('*')
+    .order('material_type', { ascending: true });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch materials' });
+  }
+  
+  return res.status(200).json({ materials: materials || [] });
+}
+
+async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check if user is admin
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: printers, error } = await supabase
+    .from('printers')
+    .select('*')
+    .order('name', { ascending: true });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch printers' });
+  }
+  
+  return res.status(200).json({ printers: printers || [] });
 }

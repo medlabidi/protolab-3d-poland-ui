@@ -15,14 +15,13 @@ interface CreditPackage {
   id: string;
   amount: number;
   price: number;
-  bonus: number;
   popular?: boolean;
   bestValue?: boolean;
 }
 
 interface Transaction {
   id: string;
-  type: "credit" | "debit" | "bonus" | "refund";
+  type: "credit" | "debit" | "refund";
   amount: number;
   description: string;
   created_at: string;
@@ -52,10 +51,10 @@ const Credits = () => {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
 
   const creditPackages: CreditPackage[] = [
-    { id: "small", amount: 50, price: 50, bonus: 0 },
-    { id: "medium", amount: 100, price: 100, bonus: 5, popular: true },
-    { id: "large", amount: 200, price: 200, bonus: 15 },
-    { id: "xl", amount: 500, price: 500, bonus: 50, bestValue: true },
+    { id: "small", amount: 50, price: 50 },
+    { id: "medium", amount: 100, price: 100, popular: true },
+    { id: "large", amount: 200, price: 200 },
+    { id: "xl", amount: 500, price: 500, bestValue: true },
   ];
 
   const paymentMethods = [
@@ -111,7 +110,7 @@ const Credits = () => {
   const getSelectedPackageDetails = () => {
     if (selectedPackage === "custom") {
       const amount = parseFloat(customAmount) || 0;
-      return { amount, price: amount, bonus: 0 };
+      return { amount, price: amount };
     }
     return creditPackages.find(p => p.id === selectedPackage);
   };
@@ -143,13 +142,13 @@ const Credits = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Add credits to user account
-      const totalCredits = packageDetails.amount + (packageDetails.bonus || 0);
+      const totalCredits = packageDetails.amount;
       const response = await apiFetch("/credits/add", {
         method: "POST",
         body: JSON.stringify({
           amount: totalCredits,
           type: "credit",
-          description: `Purchased ${packageDetails.amount} PLN credits${packageDetails.bonus ? ` + ${packageDetails.bonus} PLN bonus` : ""}`,
+          description: `Purchased ${packageDetails.amount} PLN credits`,
         }),
       });
 
@@ -188,7 +187,6 @@ const Credits = () => {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "credit": return <Plus className="w-4 h-4 text-green-500" />;
-      case "bonus": return <Gift className="w-4 h-4 text-purple-500" />;
       case "debit": return <CreditCard className="w-4 h-4 text-red-500" />;
       case "refund": return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
@@ -284,11 +282,6 @@ const Credits = () => {
                         )}
                         <div className="text-center">
                           <p className="text-3xl font-bold gradient-text">{pkg.amount} PLN</p>
-                          {pkg.bonus > 0 && (
-                            <p className="text-sm text-green-600 font-medium mt-1">
-                              +{pkg.bonus} PLN {t('credits.bonus')}
-                            </p>
-                          )}
                           <p className="text-sm text-muted-foreground mt-2">
                             {t('credits.pay')} {pkg.price} PLN
                           </p>
@@ -416,23 +409,9 @@ const Credits = () => {
                           <span className="text-muted-foreground">{t('credits.creditsLabel')}</span>
                           <span className="font-medium">{getSelectedPackageDetails()!.amount} PLN</span>
                         </div>
-                        {getSelectedPackageDetails()!.bonus > 0 && (
-                          <div className="flex justify-between text-green-600">
-                            <span className="flex items-center gap-1">
-                              <Gift className="w-4 h-4" /> {t('credits.bonusLabel')}
-                            </span>
-                            <span className="font-medium">+{getSelectedPackageDetails()!.bonus} PLN</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="border-t pt-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold">{t('credits.totalCredits')}</span>
-                          <span className="text-xl font-bold text-green-600">
-                            {(getSelectedPackageDetails()!.amount + (getSelectedPackageDetails()!.bonus || 0)).toFixed(2)} PLN
-                          </span>
-                        </div>
                         <div className="flex justify-between items-center">
                           <span className="font-bold">{t('credits.payLabel')}</span>
                           <span className="text-2xl font-bold gradient-text">
