@@ -2,6 +2,7 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +77,10 @@ const Orders = () => {
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Preview dialog state
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetchAllOrders();
@@ -921,7 +926,11 @@ const Orders = () => {
                                 {projectOrders.map((order) => (
                                   <div
                                     key={order.id}
-                                    className="grid grid-cols-7 gap-4 items-center py-3 px-4 hover:bg-primary/5 transition-colors border-t border-primary/5"
+                                    className="grid grid-cols-7 gap-4 items-center py-3 px-4 hover:bg-primary/5 transition-colors border-t border-primary/5 cursor-pointer"
+                                    onClick={() => {
+                                      setPreviewOrder(order);
+                                      setShowPreview(true);
+                                    }}
                                   >
                                     <div className="flex items-center gap-3 pl-4">
                                       <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -944,7 +953,11 @@ const Orders = () => {
                                     <div className="text-right">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm">
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
                                             <MoreHorizontal className="w-4 h-4" />
                                           </Button>
                                         </DropdownMenuTrigger>
@@ -1023,8 +1036,12 @@ const Orders = () => {
                       {groupedOrders.standaloneOrders.map((order, index) => (
                         <div
                           key={order.id}
-                          className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 animate-scale-in"
+                          className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 animate-scale-in cursor-pointer"
                           style={{ animationDelay: `${index * 0.05}s` }}
+                          onClick={() => {
+                            setPreviewOrder(order);
+                            setShowPreview(true);
+                          }}
                         >
                           <div className="font-bold text-primary truncate" title={order.file_name}>
                             {order.file_name}
@@ -1050,6 +1067,7 @@ const Orders = () => {
                                   variant="outline"
                                   size="sm"
                                   className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
@@ -1139,8 +1157,12 @@ const Orders = () => {
                         {filteredArchivedOrders.map((order, index) => (
                           <div
                             key={order.id}
-                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75"
+                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75 cursor-pointer"
                             style={{ animationDelay: `${index * 0.05}s` }}
+                            onClick={() => {
+                              setPreviewOrder(order);
+                              setShowPreview(true);
+                            }}
                           >
                             <div className="font-medium text-muted-foreground truncate" title={order.file_name}>
                               {order.file_name}
@@ -1162,7 +1184,11 @@ const Orders = () => {
                             <div className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="sm">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1227,8 +1253,12 @@ const Orders = () => {
                         {filteredDeletedOrders.map((order, index) => (
                           <div
                             key={order.id}
-                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50"
+                            className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50 cursor-pointer"
                             style={{ animationDelay: `${index * 0.05}s` }}
+                            onClick={() => {
+                              setPreviewOrder(order);
+                              setShowPreview(true);
+                            }}
                           >
                             <div className="font-medium text-muted-foreground truncate line-through" title={order.file_name}>
                               {order.file_name}
@@ -1250,7 +1280,11 @@ const Orders = () => {
                             <div className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="sm">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1329,6 +1363,122 @@ const Orders = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Order Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                <Package className="w-6 h-6 text-primary" />
+                {previewOrder?.file_name}
+              </DialogTitle>
+              <DialogDescription>
+                Order ID: {previewOrder?.id}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {previewOrder && (
+              <div className="grid md:grid-cols-2 gap-6 mt-4">
+                {/* Left Column - 3D Model Preview */}
+                <div className="space-y-4">
+                  <div className="bg-muted rounded-lg p-4 h-[400px] flex items-center justify-center">
+                    {previewOrder.file_url ? (
+                      <ModelViewerUrl 
+                        url={previewOrder.file_url}
+                        fileName={previewOrder.file_name || 'model.stl'}
+                        height="400px"
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground">
+                        <Package className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                        <p>No 3D model preview available</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {previewOrder.project_name && (
+                    <div className="bg-primary/5 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">Project</p>
+                      <p className="font-semibold text-primary">{previewOrder.project_name}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Order Details */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <StatusBadge status={previewOrder.status} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Payment</p>
+                      {previewOrder.payment_status && (
+                        <PaymentStatusBadge status={previewOrder.payment_status} />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Material</p>
+                    <p className="font-semibold">
+                      {capitalizeFirst(previewOrder.material)} ({capitalizeFirst(previewOrder.color)})
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Price</p>
+                    <p className="text-2xl font-bold text-primary">{formatPrice(previewOrder.price)}</p>
+                    {previewOrder.paid_amount && previewOrder.paid_amount > 0 && (
+                      <p className="text-sm text-green-600">
+                        Paid: {formatPrice(previewOrder.paid_amount)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Created</p>
+                    <p className="font-medium">{formatDate(previewOrder.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (previewOrder) {
+                    navigator.clipboard.writeText(previewOrder.id);
+                    toast.success(t('orders.toasts.orderIdCopied'));
+                  }
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy ID
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPreview(false);
+                  if (previewOrder) navigate(`/orders/${previewOrder.id}/edit`);
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit Order
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowPreview(false);
+                  if (previewOrder) navigate(`/orders/${previewOrder.id}`);
+                }}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Full Details
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
