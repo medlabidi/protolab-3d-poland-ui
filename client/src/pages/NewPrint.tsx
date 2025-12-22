@@ -926,12 +926,15 @@ const NewPrint = () => {
       formData.append('shippingMethod', selectedDeliveryOption);
       formData.append('price', estimatedPrice.toString());
       
+      // Add advanced mode flag
+      formData.append('advancedMode', advancedMode.toString());
+      
       // Add advanced settings
       formData.append('supportType', supportType);
       formData.append('infillPattern', infillPattern);
       
-      // Add custom values if advanced settings were used
-      if (showAdvanced) {
+      // Add custom values if advanced mode was used
+      if (advancedMode) {
         if (customLayerHeight) {
           formData.append('customLayerHeight', customLayerHeight);
         }

@@ -952,6 +952,11 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   let shippingAddress: any;
   let layerHeight: string | undefined;
   let infill: string | undefined;
+  let supportType: string | undefined;
+  let infillPattern: string | undefined;
+  let customLayerHeight: string | undefined;
+  let customInfill: string | undefined;
+  let advancedMode: boolean | undefined;
   
   if (contentType.includes('multipart/form-data')) {
     // Parse FormData
@@ -973,6 +978,11 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       shippingMethod = getField('shippingMethod');
       layerHeight = getField('layerHeight');
       infill = getField('infill');
+      supportType = getField('supportType');
+      infillPattern = getField('infillPattern');
+      customLayerHeight = getField('customLayerHeight');
+      customInfill = getField('customInfill');
+      advancedMode = getField('advancedMode') === 'true' || getField('advancedMode') === true;
       
       const shippingAddressStr = getField('shippingAddress');
       if (shippingAddressStr) {
@@ -1036,6 +1046,11 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     shippingAddress = body.shippingAddress;
     layerHeight = body.layerHeight;
     infill = body.infill;
+    supportType = body.supportType;
+    infillPattern = body.infillPattern;
+    customLayerHeight = body.customLayerHeight;
+    customInfill = body.customInfill;
+    advancedMode = body.advancedMode;
     
     if (!fileName || !fileUrl) {
       return res.status(400).json({ error: 'File name and URL required' });
@@ -1056,6 +1071,28 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     infill: parseInt(infill || '20', 10),
     status: 'submitted',
   };
+  
+  // Add advanced mode parameters if provided
+  if (supportType !== undefined && supportType !== null && supportType !== '') {
+    orderData.support_type = supportType;
+  }
+  if (infillPattern !== undefined && infillPattern !== null && infillPattern !== '') {
+    orderData.infill_pattern = infillPattern;
+  }
+  if (customLayerHeight !== undefined && customLayerHeight !== null && customLayerHeight !== '') {
+    orderData.custom_layer_height = parseFloat(customLayerHeight);
+  }
+  if (customInfill !== undefined && customInfill !== null && customInfill !== '') {
+    orderData.custom_infill = parseInt(customInfill, 10);
+  }
+  if (advancedMode !== undefined) {
+    orderData.advanced_mode = advancedMode;
+  }
+  
+  // Add optional fields if provided
+  if (notes) orderData.notes = notes;
+  if (projectName) orderData.project_name = projectName;
+  if (shippingAddress) orderData.shipping_address = shippingAddress;
   
   console.log(`📦 [ORDER-CREATE] Creating order for user: ${user.userId}`, JSON.stringify(orderData));
   
@@ -1117,7 +1154,7 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
     'material', 'color', 'quantity', 'notes', 'project_name', 'status',
     'payment_status', 'price', 'layer_height', 'infill', 'quality',
     'support_type', 'infill_pattern', 'custom_layer_height', 'custom_infill',
-    'shipping_method', 'tracking_number', 'estimated_delivery',
+    'advanced_mode', 'shipping_method', 'tracking_number', 'estimated_delivery',
     'refund_method', 'refund_amount', 'refund_reason', 'refund_bank_details'
   ];
 
