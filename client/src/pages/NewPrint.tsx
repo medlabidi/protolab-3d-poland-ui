@@ -91,6 +91,7 @@ const NewPrint = () => {
   // Single file state
   const [file, setFile] = useState<File | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false); // New: toggle between normal and advanced
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -103,6 +104,14 @@ const NewPrint = () => {
   const [customInfill, setCustomInfill] = useState<string | undefined>(undefined);
   const [supportType, setSupportType] = useState("none");
   const [infillPattern, setInfillPattern] = useState("grid");
+  
+  // Quality presets with characteristics
+  const qualityPresets = {
+    draft: { layerHeight: '0.28mm', infill: '10%', speed: 'Very Fast', detail: 'Low', icon: '⚡' },
+    standard: { layerHeight: '0.20mm', infill: '20%', speed: 'Fast', detail: 'Medium', icon: '✨' },
+    high: { layerHeight: '0.12mm', infill: '30%', speed: 'Medium', detail: 'High', icon: '💎' },
+    ultra: { layerHeight: '0.08mm', infill: '40%', speed: 'Slow', detail: 'Very High', icon: '🏆' }
+  };
   
   // Materials from database
   const [materials, setMaterials] = useState<MaterialData[]>([]);
@@ -1400,17 +1409,48 @@ const NewPrint = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="quality" className="text-base font-semibold">{t('newPrint.quality')}</Label>
-                  <Select value={quality} onValueChange={setQuality}>
+                  <Select value={quality} onValueChange={setQuality} disabled={advancedMode}>
                     <SelectTrigger id="quality" className="h-12">
                       <SelectValue placeholder={t('newPrint.selectQuality')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">⚡ Draft - Fast</SelectItem>
-                      <SelectItem value="standard">✨ Standard</SelectItem>
-                      <SelectItem value="high">💎 High Quality</SelectItem>
-                      <SelectItem value="ultra">🏆 Ultra - Finest</SelectItem>
+                      <SelectItem value="draft">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">⚡ Draft - Fast</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.28mm | Infill: 10% | Speed: Very Fast</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="standard">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">✨ Standard</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.20mm | Infill: 20% | Speed: Fast</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">💎 High Quality</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.12mm | Infill: 30% | Speed: Medium</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="ultra">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">🏆 Ultra - Finest</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.08mm | Infill: 40% | Speed: Slow</div>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  {quality && !advancedMode && (
+                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                      <div className="font-medium mb-1">{qualityPresets[quality as keyof typeof qualityPresets].icon} {quality.charAt(0).toUpperCase() + quality.slice(1)} Quality</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>• Layer Height: {qualityPresets[quality as keyof typeof qualityPresets].layerHeight}</div>
+                        <div>• Infill: {qualityPresets[quality as keyof typeof qualityPresets].infill}</div>
+                        <div>• Print Speed: {qualityPresets[quality as keyof typeof qualityPresets].speed}</div>
+                        <div>• Detail Level: {qualityPresets[quality as keyof typeof qualityPresets].detail}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1435,6 +1475,77 @@ const NewPrint = () => {
                 />
               </div>
 
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div>
+                    <Label htmlFor="advancedMode" className="text-base font-semibold cursor-pointer">Advanced Mode</Label>
+                    <p className="text-sm text-muted-foreground">Manually configure all print parameters</p>
+                  </div>
+                  <Checkbox
+                    id="advancedMode"
+                    checked={advancedMode}
+                    onCheckedChange={(checked) => {
+                      setAdvancedMode(checked as boolean);
+                      if (checked) {
+                        // When switching to advanced mode, set defaults from quality preset
+                        if (quality) {
+                          const preset = qualityPresets[quality as keyof typeof qualityPresets];
+                          setCustomLayerHeight(preset.layerHeight);
+                          setCustomInfill(preset.infill);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {advancedMode && (
+                <div className="space-y-4 p-4 bg-muted rounded-lg border-2 border-primary/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="w-5 h-5 text-primary" />
+                    <span className="font-semibold text-primary">Advanced Settings Active</span>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customLayerHeight">Layer Height (mm)</Label>
+                      <Input
+                        id="customLayerHeight"
+                        type="text"
+                        placeholder="e.g., 0.20"
+                        value={customLayerHeight || ''}
+                        onChange={(e) => setCustomLayerHeight(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customInfill">Infill (%)</Label>
+                      <Input
+                        id="customInfill"
+                        type="text"
+                        placeholder="e.g., 20"
+                        value={customInfill || ''}
+                        onChange={(e) => setCustomInfill(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="infillPattern">Infill Pattern</Label>
+                      <Select value={infillPattern} onValueChange={setInfillPattern}>
+                        <SelectTrigger id="infillPattern">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="grid">Grid</SelectItem>
+                          <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                          <SelectItem value="triangles">Triangles</SelectItem>
+                          <SelectItem value="gyroid">Gyroid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="advanced"
@@ -1446,7 +1557,7 @@ const NewPrint = () => {
                 </Label>
               </div>
 
-              {showAdvanced && (
+              {showAdvanced && !advancedMode && (
                 <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted rounded-lg">
                   <div className="space-y-2">
                     <Label htmlFor="layer-height">{t('newPrint.settings.layerHeight')}</Label>
@@ -1504,19 +1615,8 @@ const NewPrint = () => {
                       Pattern affects print time but not material cost
                     </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="supports">{t('newPrint.settings.supports')}</Label>
-                    <Select value={supportType} onValueChange={setSupportType}>
-                      <SelectTrigger id="supports">
-                        <SelectValue placeholder={t('newPrint.selectSupports')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('newPrint.supports.none')}</SelectItem>
-                        <SelectItem value="normal">{t('newPrint.supports.normal')} (+15% material, +10% time)</SelectItem>
-                        <SelectItem value="tree">{t('newPrint.supports.tree')} (+10% material, +5% time)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                </div>
+              )}
                     <p className="text-xs text-muted-foreground">
                       {supportType === 'none' && 'No supports - fastest and cheapest'}
                       {supportType === 'normal' && 'Standard supports - more stable but uses more material'}

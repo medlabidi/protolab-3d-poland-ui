@@ -112,7 +112,17 @@ const OrderDetails = () => {
       }
 
       const data = await response.json();
-      setOrder(data.order);
+      console.log('Order data received:', data);
+      
+      // Handle both { order } and direct order response
+      const orderData = data.order || data;
+      
+      if (!orderData || !orderData.id) {
+        throw new Error('Invalid order data received');
+      }
+      
+      setOrder(orderData);
+      setError(null);
     } catch (err) {
       console.error('Error fetching order:', err);
       setError(err instanceof Error ? err.message : 'Failed to load order');
