@@ -558,10 +558,14 @@ const Orders = () => {
   };
 
   const formatPrice = (price: number | null | undefined) => {
-    return `${(price ?? 0).toFixed(2)} PLN`;
+    if (price === null || price === undefined || isNaN(price)) {
+      return '0.00 PLN';
+    }
+    return `${Number(price).toFixed(2)} PLN`;
   };
 
-  const capitalizeFirst = (str: string) => {
+  const capitalizeFirst = (str: string | null | undefined) => {
+    if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
