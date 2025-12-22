@@ -90,8 +90,7 @@ const NewPrint = () => {
   
   // Single file state
   const [file, setFile] = useState<File | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [advancedMode, setAdvancedMode] = useState(false); // New: toggle between normal and advanced
+  const [advancedMode, setAdvancedMode] = useState(false); // Toggle between normal and advanced mode
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -220,7 +219,7 @@ const NewPrint = () => {
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
     
     // Use custom infill if advanced settings are enabled, otherwise use quality-based default
-    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
                          (INFILL_BY_QUALITY[quality] || 20);
     
     // Weight = volume × density × (1 + infill%)
@@ -235,17 +234,17 @@ const NewPrint = () => {
     }
     
     return weight;
-  }, [modelAnalysis, material, quality, showAdvanced, customInfill, supportType]);
+  }, [modelAnalysis, material, quality, advancedMode, customInfill, supportType]);
 
   // Computed print time based on model volume and quality
   const estimatedPrintTime = useMemo(() => {
     if (!modelAnalysis || !quality) return null;
     
     // Use custom values if advanced settings are enabled, otherwise use quality-based defaults
-    const layerHeight = showAdvanced && customLayerHeight ? customLayerHeight : 
+    const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
                        (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
     
-    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
                          (INFILL_BY_LAYER_HEIGHT[layerHeight] || 20);
     
     const speedCm3PerHour = SPEED_BY_LAYER_HEIGHT[layerHeight] || 10;
@@ -270,7 +269,7 @@ const NewPrint = () => {
     
     // Add setup time (15 minutes minimum)
     return Math.max(0.25, printTimeHours);
-  }, [modelAnalysis, quality, showAdvanced, customLayerHeight, customInfill, supportType, infillPattern]);
+  }, [modelAnalysis, quality, advancedMode, customLayerHeight, customInfill, supportType, infillPattern]);
 
   // Format print time for display
   const formatPrintTime = (hours: number | null): string => {
@@ -607,7 +606,7 @@ const NewPrint = () => {
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
     
     // Use custom infill if advanced settings are enabled
-    const infillPercent = showAdvanced && customInfill ? parseInt(customInfill) : 
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
                          (INFILL_BY_QUALITY[quality] || 20);
     
     // Calculate weight using volume, density, and infill factor (matches backend)
@@ -913,12 +912,12 @@ const NewPrint = () => {
       formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
       
       // Use custom layer height if advanced settings enabled, otherwise quality preset
-      const layerHeight = showAdvanced && customLayerHeight ? customLayerHeight : 
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
                          (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
       formData.append('layerHeight', layerHeight);
       
       // Use custom infill if advanced settings enabled, otherwise quality preset
-      const infill = showAdvanced && customInfill ? customInfill :
+      const infill = advancedMode && customInfill ? customInfill :
                     (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
       formData.append('infill', infill);
       
@@ -1545,78 +1544,6 @@ const NewPrint = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="advanced"
-                  checked={showAdvanced}
-                  onCheckedChange={(checked) => setShowAdvanced(checked as boolean)}
-                />
-                <Label htmlFor="advanced" className="cursor-pointer">
-                  {t('newPrint.showAdvanced')}
-                </Label>
-              </div>
-
-              {showAdvanced && !advancedMode && (
-                <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted rounded-lg">
-                  <div className="space-y-2">
-                    <Label htmlFor="layer-height">{t('newPrint.settings.layerHeight')}</Label>
-                    <Select value={customLayerHeight || 'default'} onValueChange={(val) => setCustomLayerHeight(val === 'default' ? undefined : val)}>
-                      <SelectTrigger id="layer-height">
-                        <SelectValue placeholder="Use quality default" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">Use quality default</SelectItem>
-                        <SelectItem value="0.3">0.3mm - Draft (Fast)</SelectItem>
-                        <SelectItem value="0.2">0.2mm - Standard</SelectItem>
-                        <SelectItem value="0.15">0.15mm - High (Slower)</SelectItem>
-                        <SelectItem value="0.1">0.1mm - Ultra (Slowest)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {customLayerHeight ? `Custom: ${customLayerHeight}mm` : 'Using quality preset'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="infill">{t('newPrint.infill')}</Label>
-                    <Select value={customInfill || 'default'} onValueChange={(val) => setCustomInfill(val === 'default' ? undefined : val)}>
-                      <SelectTrigger id="infill">
-                        <SelectValue placeholder="Use quality default" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">Use quality default</SelectItem>
-                        <SelectItem value="10">10% - Light (Less material)</SelectItem>
-                        <SelectItem value="20">20% - Standard</SelectItem>
-                        <SelectItem value="30">30% - Strong</SelectItem>
-                        <SelectItem value="50">50% - Very Strong</SelectItem>
-                        <SelectItem value="100">100% - Solid (Most material)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {customInfill ? `Custom: ${customInfill}%` : 'Using quality preset'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pattern">Infill Pattern</Label>
-                    <Select value={infillPattern} onValueChange={setInfillPattern}>
-                      <SelectTrigger id="pattern">
-                        <SelectValue placeholder={t('newPrint.selectPattern')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="grid">{t('newPrint.patterns.grid')}</SelectItem>
-                        <SelectItem value="honeycomb">{t('newPrint.patterns.honeycomb')}</SelectItem>
-                        <SelectItem value="triangles">{t('newPrint.patterns.triangles')}</SelectItem>
-                        <SelectItem value="gyroid">{t('newPrint.patterns.gyroid')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Pattern affects print time but not material cost
-                    </p>
                   </div>
                 </div>
               )}
