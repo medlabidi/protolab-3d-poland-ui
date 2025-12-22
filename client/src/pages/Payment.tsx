@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, CreditCard, Building2, Smartphone, Shield, Lock, CheckCircle2, FileText, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, apiFormData } from "@/lib/api";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -196,10 +196,10 @@ const Payment = () => {
       popular: false,
     },
     {
-      id: "transfer",
-      name: t('payment.methods.transfer'),
-      icon: Building2,
-      description: t('payment.methods.transferDesc'),
+      id: "credits",
+      name: "Store Credits",
+      icon: Wallet,
+      description: "Pay using your store credit balance",
       popular: false,
     },
   ];
