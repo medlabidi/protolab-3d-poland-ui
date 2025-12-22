@@ -1620,14 +1620,6 @@ const NewPrint = () => {
                   </div>
                 </div>
               )}
-                    <p className="text-xs text-muted-foreground">
-                      {supportType === 'none' && 'No supports - fastest and cheapest'}
-                      {supportType === 'normal' && 'Standard supports - more stable but uses more material'}
-                      {supportType === 'tree' && 'Tree supports - uses less material than normal'}
-                    </p>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
           )}
