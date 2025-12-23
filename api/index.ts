@@ -886,7 +886,7 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
     .order('created_at', { ascending: false });
   
   if (filter === 'active') {
-    query = query.in('status', ['submitted', 'in_queue', 'printing', 'on_hold']);
+    query = query.in('status', ['submitted', 'in_queue', 'printing', 'on_hold', 'suspended']);
   } else if (filter === 'archived') {
     query = query.in('status', ['finished', 'delivered']);
   } else if (filter === 'deleted') {

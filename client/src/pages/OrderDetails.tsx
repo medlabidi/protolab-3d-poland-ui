@@ -44,7 +44,7 @@ interface Order {
 const OrderDetails = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { orderId } = useParams();
+  const { orderId } = useParams<{ orderId: string }>();
   const [rating, setRating] = useState(0);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,15 @@ const OrderDetails = () => {
   const [reviewText, setReviewText] = useState("");
   const [startingConversation, setStartingConversation] = useState(false);
 
+  console.log('OrderDetails component mounted, orderId:', orderId);
+
   useEffect(() => {
+    if (!orderId) {
+      console.error('No orderId in URL params!');
+      setError('Order ID is missing');
+      setLoading(false);
+      return;
+    }
     fetchOrder();
   }, [orderId]);
 
@@ -89,17 +97,22 @@ const OrderDetails = () => {
       let token = localStorage.getItem('accessToken');
       
       if (!token) {
+        console.error('No access token found, redirecting to login');
         navigate('/login');
         return;
       }
       
+      console.log('Fetching order:', orderId);
       let response = await fetch(`${API_URL}/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Order response status:', response.status);
+
       if (response.status === 401 && retry) {
+        console.log('Token expired, refreshing...');
         const newToken = await refreshAccessToken();
         if (newToken) {
           return fetchOrder(false);
@@ -108,24 +121,29 @@ const OrderDetails = () => {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to fetch order');
+        const errorText = await response.text();
+        console.error('Order fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch order: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Order data received:', data);
+      console.log('Order data received:', JSON.stringify(data, null, 2));
       
       // Handle both { order } and direct order response
       const orderData = data.order || data;
       
       if (!orderData || !orderData.id) {
+        console.error('Invalid order data structure:', data);
         throw new Error('Invalid order data received');
       }
       
+      console.log('Setting order:', orderData);
       setOrder(orderData);
       setError(null);
     } catch (err) {
       console.error('Error fetching order:', err);
       setError(err instanceof Error ? err.message : 'Failed to load order');
+      toast.error('Failed to load order details');
     } finally {
       setLoading(false);
     }
@@ -270,8 +288,8 @@ const OrderDetails = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">{t('orderDetails.orderTitle')} #{order.id.slice(0, 8)}</h1>
-              <p className="text-muted-foreground">{t('orderDetails.placedOn')} {formatDate(order.created_at)}</p>
+              <h1 className="text-3xl font-bold">{t('orderDetails.orderTitle')} #{order?.id?.slice(0, 8) || 'Unknown'}</h1>
+              <p className="text-muted-foreground">{t('orderDetails.placedOn')} {order?.created_at ? formatDate(order.created_at) : 'Unknown'}</p>
             </div>
             <div className="ml-auto flex gap-2 items-center">
               <Button 
