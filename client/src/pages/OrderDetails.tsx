@@ -351,31 +351,31 @@ const OrderDetails = () => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.material')}</span>
-                  <span className="font-medium">{order.material?.toUpperCase()}</span>
+                  <span className="font-medium">{order.material?.toUpperCase() || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.color')}</span>
-                  <span className="font-medium">{capitalizeFirst(order.color)}</span>
+                  <span className="font-medium">{capitalizeFirst(order.color || '')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.quality')}</span>
-                  <span className="font-medium">{getQualityLabel(order.layer_height)}</span>
+                  <span className="font-medium">{order.layer_height ? getQualityLabel(order.layer_height) : 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.quantity')}</span>
-                  <span className="font-medium">{order.quantity}</span>
+                  <span className="font-medium">{order.quantity || 1}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.layerHeight')}</span>
-                  <span className="font-medium">{order.layer_height}mm</span>
+                  <span className="font-medium">{order.layer_height || 'N/A'}mm</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">{t('orderDetails.params.infill')}</span>
-                  <span className="font-medium">{order.infill}%</span>
+                  <span className="font-medium">{order.infill || 0}%</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-muted-foreground">{t('orderDetails.params.shipping')}</span>
-                  <span className="font-medium">{getShippingLabel(order.shipping_method)}</span>
+                  <span className="font-medium">{order.shipping_method ? getShippingLabel(order.shipping_method) : 'N/A'}</span>
                 </div>
                 {order.shipping_address && (
                   <div className="flex justify-between py-2 border-t">
@@ -432,13 +432,13 @@ const OrderDetails = () => {
                 <CardTitle>{t('orderDetails.technicalDetails')}</CardTitle>
               </CardHeader>
               <CardContent className="grid md:grid-cols-2 gap-4">
-                {order.material_weight && (
+                {order.material_weight != null && order.material_weight > 0 && (
                   <div className="flex justify-between py-2">
                     <span className="text-muted-foreground">{t('orderDetails.params.materialWeight')}</span>
                     <span className="font-medium">{(order.material_weight * 1000).toFixed(1)}g</span>
                   </div>
                 )}
-                {order.print_time && (
+                {order.print_time != null && order.print_time > 0 && (
                   <div className="flex justify-between py-2">
                     <span className="text-muted-foreground">{t('orderDetails.params.printTime')}</span>
                     <span className="font-medium">{Math.floor(order.print_time / 60)}h {order.print_time % 60}min</span>
