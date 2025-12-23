@@ -78,8 +78,12 @@ const AdminAnalytics = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} PLN`;
+  const formatCurrency = (amount: number | null | undefined) => {
+    const numAmount = Number(amount);
+    if (amount === null || amount === undefined || isNaN(numAmount)) {
+      return '0.00 PLN';
+    }
+    return `${numAmount.toFixed(2)} PLN`;
   };
 
   const formatDate = (dateStr: string) => {

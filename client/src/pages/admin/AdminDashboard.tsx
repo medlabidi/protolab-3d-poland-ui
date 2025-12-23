@@ -279,7 +279,14 @@ const AdminDashboard = () => {
     }
   };
 
-  const formatPrice = (price: number | null | undefined) => `${(price ?? 0).toFixed(2)} PLN`;
+  const formatPrice = (price: number | null | undefined) => {
+    const numPrice = Number(price);
+    if (price === null || price === undefined || isNaN(numPrice)) {
+      return '0.00 PLN';
+    }
+    return `${numPrice.toFixed(2)} PLN`;
+  };
+  
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
