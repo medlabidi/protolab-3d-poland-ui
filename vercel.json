@@ -11,6 +11,10 @@
     {
       "source": "/health",
       "destination": "/api/health.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "functions": {
