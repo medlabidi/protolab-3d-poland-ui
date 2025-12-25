@@ -79,7 +79,7 @@ export const PaymentStatusBadge = ({ status, amount }: PaymentStatusBadgeProps) 
   return (
     <Badge className={cn("font-medium", config.className)}>
       {config.label}
-      {amount !== undefined && status === 'paid' && ` (${amount.toFixed(2)} PLN)`}
+      {amount != null && status === 'paid' && ` (${amount.toFixed(2)} PLN)`}
     </Badge>
   );
 };
