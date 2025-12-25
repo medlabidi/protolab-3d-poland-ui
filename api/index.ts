@@ -1612,43 +1612,59 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   const parts = url.split('/');
   const conversationId = parts[parts.indexOf('conversations') + 1];
   
+  console.log('[SEND_MESSAGE] User:', user.userId, 'Conversation:', conversationId);
+  
   if (!conversationId) {
     return res.status(400).json({ error: 'Conversation ID required' });
   }
   
-  const { content } = req.body;
+  const { content, message: messageText } = req.body;
+  const messageContent = content || messageText;
   
-  if (!content) {
+  console.log('[SEND_MESSAGE] Request body:', req.body);
+  
+  if (!messageContent) {
     return res.status(400).json({ error: 'Message content required' });
   }
   
   const supabase = getSupabase();
   
   // Verify ownership
-  const { data: conversation } = await supabase
+  const { data: conversation, error: convError } = await supabase
     .from('conversations')
     .select('id')
     .eq('id', conversationId)
     .eq('user_id', user.userId)
     .single();
   
+  if (convError) {
+    console.error('[SEND_MESSAGE] Conversation verification error:', convError);
+    return res.status(500).json({ error: 'Failed to verify conversation' });
+  }
+  
   if (!conversation) {
+    console.error('[SEND_MESSAGE] Conversation not found');
     return res.status(404).json({ error: 'Conversation not found' });
   }
   
+  const messageData = {
+    conversation_id: conversationId,
+    sender_id: user.userId,
+    message: messageContent,
+    sender_type: 'user',
+  };
+  
+  console.log('[SEND_MESSAGE] Inserting message:', messageData);
+  
   const { data: message, error } = await supabase
     .from('support_messages')
-    .insert([{
-      conversation_id: conversationId,
-      sender_id: user.userId,
-      content,
-      sender_type: 'user',
-    }])
+    .insert([messageData])
     .select()
     .single();
   
   if (error) {
-    return res.status(500).json({ error: 'Failed to send message' });
+    console.error('[SEND_MESSAGE] Insert error:', error);
+    return res.status(500).json({ error: 'Failed to send message', details: error.message });
   }
   
   // Update conversation timestamp
@@ -1657,6 +1673,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     .update({ updated_at: new Date().toISOString() })
     .eq('id', conversationId);
   
+  console.log('[SEND_MESSAGE] Message sent successfully:', message);
   return res.status(201).json({ message });
 }
 
