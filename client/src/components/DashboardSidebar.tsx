@@ -1,17 +1,20 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2 } from "lucide-react";
+import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { useState } from "react";
+import { stopTokenRefresh } from "@/utils/tokenRefresh";
 
 export const DashboardSidebar = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { clearAllNotifications } = useNotifications();
+  const [isOpen, setIsOpen] = useState(false);
   
   const handleLogout = () => {
     // Log activity before clearing localStorage
@@ -27,6 +30,9 @@ export const DashboardSidebar = () => {
     };
     const existingLog = JSON.parse(localStorage.getItem("activityLog") || "[]");
     localStorage.setItem("activityLog", JSON.stringify([logoutActivity, ...existingLog].slice(0, 100)));
+
+    // Stop auto token refresh
+    stopTokenRefresh();
 
     // Clear all auth data from localStorage
     localStorage.removeItem('accessToken');
@@ -47,6 +53,7 @@ export const DashboardSidebar = () => {
   const menuItems = [
     { icon: LayoutDashboard, label: t('dashboard.overview'), path: "/dashboard" },
     { icon: Plus, label: t('dashboard.newPrint'), path: "/new-print" },
+    { icon: Palette, label: "3D Design Assistance", path: "/design-assistance" },
     { icon: Package, label: t('dashboard.orders'), path: "/orders" },
     { icon: MessageSquare, label: t('sidebar.conversations'), path: "/conversations" },
     { icon: Wallet, label: t('sidebar.credits'), path: "/credits" },
@@ -55,7 +62,32 @@ export const DashboardSidebar = () => {
   ];
 
   return (
-    <aside className="w-72 bg-gradient-to-b from-card to-muted/20 border-r border-border/50 min-h-screen p-6 flex flex-col shadow-xl">
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="fixed top-4 left-4 z-50 lg:hidden bg-background/80 backdrop-blur-sm border border-border"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </Button>
+
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-72 bg-gradient-to-b from-card to-muted/20 border-r border-border/50 min-h-screen p-6 flex flex-col shadow-xl
+        transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
       <div className="mb-12 animate-slide-up">
         <NavLink to="/" className="flex items-center gap-3 text-xl font-bold group">
           <Logo size="lg" textClassName="text-xl" />
@@ -70,6 +102,7 @@ export const DashboardSidebar = () => {
             className="flex items-center gap-3 px-5 py-4 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all duration-300 group relative overflow-hidden animate-slide-up"
             activeClassName="bg-gradient-to-r from-primary to-purple-600 text-white hover:from-primary hover:to-purple-600 shadow-lg scale-105"
             style={{ animationDelay: `${index * 0.1}s` }}
+            onClick={() => setIsOpen(false)}
           >
             <item.icon className="w-5 h-5 group-hover:scale-110 transition-transform z-10" />
             <span className="font-semibold z-10">{item.label}</span>
@@ -95,5 +128,6 @@ export const DashboardSidebar = () => {
         <p className="text-sm font-bold text-primary">{t('sidebar.contactSupport')}</p>
       </div>
     </aside>
+    </>
   );
 };

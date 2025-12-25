@@ -9,8 +9,15 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
+import { initTokenRefresh } from "./utils/tokenRefresh";
+import { useEffect } from "react";
 import Landing from "./pages/Landing";
 import AboutUs from "./pages/AboutUs";
+import Services from "./pages/Services";
+import DesignService from "./pages/DesignService";
+import ConsultingService from "./pages/ConsultingService";
+import DesignAssistance from "./pages/DesignAssistance";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import ResetPassword from "./pages/ResetPassword";
@@ -36,7 +43,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
 
-const App = () => (
+const App = () => {
+  // Initialize auto token refresh on app start
+  useEffect(() => {
+    initTokenRefresh();
+  }, []);
+
+  return (
   <ThemeProvider defaultTheme="system" storageKey="protolab-ui-theme">
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <QueryClientProvider client={queryClient}>
@@ -49,6 +62,11 @@ const App = () => (
                 <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/about" element={<AboutUs />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/services/design" element={<DesignService />} />
+                <Route path="/services/consulting" element={<ConsultingService />} />
+                <Route path="/design-assistance" element={<DesignAssistance />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
@@ -83,6 +101,7 @@ const App = () => (
     </QueryClientProvider>
   </GoogleOAuthProvider>
   </ThemeProvider>
-);
+  );
+};
 
 export default App;
