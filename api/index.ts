@@ -215,6 +215,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/conversations' && req.method === 'GET') {
       return await handleGetConversations(req as AuthenticatedRequest, res);
     }
+    if (path.match(/^\/conversations\/order\/[^/]+$/) && req.method === 'POST') {
+      return await handleCreateOrderConversation(req as AuthenticatedRequest, res);
+    }
     if (path.match(/^\/conversations\/[^/]+\/messages$/) && req.method === 'GET') {
       return await handleGetMessages(req as AuthenticatedRequest, res);
     }
@@ -1466,6 +1469,64 @@ async function handleAddCredits(req: AuthenticatedRequest, res: VercelResponse) 
 
 // ==================== CONVERSATIONS HANDLERS ====================
 
+async function handleCreateOrderConversation(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const orderId = url.split('/').pop()?.split('?')[0];
+
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID required' });
+  }
+
+  const supabase = getSupabase();
+
+  // Verify order ownership
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, user_id')
+    .eq('id', orderId)
+    .eq('user_id', user.userId)
+    .single();
+
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  // Check if conversation already exists for this order
+  const { data: existingConversation } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('user_id', user.userId)
+    .single();
+
+  if (existingConversation) {
+    return res.status(200).json({ conversation: existingConversation });
+  }
+
+  // Create new conversation
+  const { subject } = req.body || {};
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .insert({
+      order_id: orderId,
+      user_id: user.userId,
+      subject: subject || `Conversation for order ${orderId.slice(0, 8)}`,
+      status: 'open'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating conversation:', error);
+    return res.status(500).json({ error: 'Failed to create conversation' });
+  }
+
+  return res.status(201).json({ conversation });
+}
+
 async function handleGetConversations(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1474,11 +1535,20 @@ async function handleGetConversations(req: AuthenticatedRequest, res: VercelResp
   
   const { data: conversations, error } = await supabase
     .from('conversations')
-    .select('*')
+    .select(`
+      *,
+      order:orders!conversations_order_id_fkey(
+        id,
+        file_name,
+        project_name,
+        status
+      )
+    `)
     .eq('user_id', user.userId)
     .order('updated_at', { ascending: false });
   
   if (error) {
+    console.error('Error fetching conversations:', error);
     return res.status(500).json({ error: 'Failed to fetch conversations' });
   }
   
