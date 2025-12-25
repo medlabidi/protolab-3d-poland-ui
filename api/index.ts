@@ -1590,7 +1590,7 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
   }
   
   const { data: messages, error } = await supabase
-    .from('messages')
+    .from('support_messages')
     .select('*')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
@@ -1637,7 +1637,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   }
   
   const { data: message, error } = await supabase
-    .from('messages')
+    .from('support_messages')
     .insert([{
       conversation_id: conversationId,
       sender_id: user.userId,
