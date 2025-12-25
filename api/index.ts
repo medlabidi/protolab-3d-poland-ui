@@ -1563,6 +1563,8 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
   const parts = url.split('/');
   const conversationId = parts[parts.indexOf('conversations') + 1];
   
+  console.log('[MESSAGES] Fetching for conversation:', conversationId, 'user:', user.userId);
+  
   if (!conversationId) {
     return res.status(400).json({ error: 'Conversation ID required' });
   }
@@ -1570,14 +1572,20 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
   const supabase = getSupabase();
   
   // Verify ownership
-  const { data: conversation } = await supabase
+  const { data: conversation, error: convError } = await supabase
     .from('conversations')
     .select('id')
     .eq('id', conversationId)
     .eq('user_id', user.userId)
     .single();
   
+  if (convError) {
+    console.error('[MESSAGES] Conversation verification error:', convError);
+    return res.status(500).json({ error: 'Failed to verify conversation', details: convError.message });
+  }
+  
   if (!conversation) {
+    console.error('[MESSAGES] Conversation not found or unauthorized');
     return res.status(404).json({ error: 'Conversation not found' });
   }
   
@@ -1588,9 +1596,11 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
     .order('created_at', { ascending: true });
   
   if (error) {
-    return res.status(500).json({ error: 'Failed to fetch messages' });
+    console.error('Error fetching messages:', error);
+    return res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
   }
   
+  console.log('[MESSAGES] Found', messages?.length || 0, 'messages');
   return res.status(200).json({ messages: messages || [] });
 }
 
