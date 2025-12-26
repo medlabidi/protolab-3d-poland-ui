@@ -29,6 +29,7 @@ import {
   Loader2,
   Eye,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -56,6 +57,7 @@ interface RecentOrder {
   price: number;
   created_at: string;
   users?: { name: string; email: string };
+  hasUnreadMessages?: boolean;
 }
 
 const AdminDashboard = () => {
@@ -173,6 +175,36 @@ const AdminDashboard = () => {
 
         // Store all orders for filtering by status in different sections
         setRecentOrders(orders);
+        
+        // Fetch conversations to check for unread messages
+        try {
+          const conversationsResponse = await fetch(`${API_URL}/admin/conversations`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          
+          if (conversationsResponse.ok) {
+            const conversationsData = await conversationsResponse.json();
+            const conversations = conversationsData.conversations || [];
+            
+            // Track which orders have unread messages
+            const ordersWithUnread = new Set(
+              conversations
+                .filter((c: any) => !c.admin_read)
+                .map((c: any) => c.order_id)
+            );
+            
+            // Update orders with unread indicator
+            setRecentOrders((prevOrders) => 
+              prevOrders.map(order => ({
+                ...order,
+                hasUnreadMessages: ordersWithUnread.has(order.id)
+              }))
+            );
+          }
+        } catch (err) {
+          console.error('Failed to fetch conversations:', err);
+          // Non-critical, continue without unread indicators
+        }
       } else {
         toast.error('Failed to load orders data');
       }
@@ -422,7 +454,14 @@ const AdminDashboard = () => {
                           <div className="flex items-center gap-3 flex-1">
                             <div className={`w-2 h-2 rounded-full ${getStatusColor(order.status)}`} />
                             <div className="flex-1">
-                              <p className="font-medium text-white text-sm">{order.file_name}</p>
+                              <p className={`font-medium text-sm ${
+                                order.hasUnreadMessages ? 'text-orange-400' : 'text-blue-400'
+                              }`}>
+                                {order.file_name}
+                                {order.hasUnreadMessages && (
+                                  <MessageCircle className="w-3 h-3 inline-block ml-2 text-orange-400" />
+                                )}
+                              </p>
                               {order.project_name && (
                                 <p className="text-xs text-blue-400">Project: {order.project_name}</p>
                               )}
@@ -497,7 +536,14 @@ const AdminDashboard = () => {
                           <div className="flex items-center gap-3 flex-1">
                             <div className={`w-2 h-2 rounded-full ${getStatusColor(order.status)}`} />
                             <div className="flex-1">
-                              <p className="font-medium text-white text-sm">{order.file_name}</p>
+                              <p className={`font-medium text-sm ${
+                                order.hasUnreadMessages ? 'text-orange-400' : 'text-white'
+                              }`}>
+                                {order.file_name}
+                                {order.hasUnreadMessages && (
+                                  <MessageCircle className="w-3 h-3 inline-block ml-2 text-orange-400" />
+                                )}
+                              </p>
                               {order.project_name && (
                                 <p className="text-xs text-yellow-400">Project: {order.project_name}</p>
                               )}
@@ -569,7 +615,14 @@ const AdminDashboard = () => {
                           <div className="flex items-center gap-3 flex-1">
                             <div className={`w-2 h-2 rounded-full ${getStatusColor(order.status)}`} />
                             <div className="flex-1">
-                              <p className="font-medium text-white text-sm">{order.file_name}</p>
+                              <p className={`font-medium text-sm ${
+                                order.hasUnreadMessages ? 'text-orange-400' : 'text-white'
+                              }`}>
+                                {order.file_name}
+                                {order.hasUnreadMessages && (
+                                  <MessageCircle className="w-3 h-3 inline-block ml-2 text-orange-400" />
+                                )}
+                              </p>
                               {order.project_name && (
                                 <p className="text-xs text-purple-400">Project: {order.project_name}</p>
                               )}
@@ -640,7 +693,14 @@ const AdminDashboard = () => {
                         <div className="flex items-center gap-4">
                           <div className="w-2 h-2 rounded-full bg-red-500" />
                           <div>
-                            <p className="font-medium text-white">{order.file_name}</p>
+                            <p className={`font-medium ${
+                              order.hasUnreadMessages ? 'text-orange-400' : 'text-white'
+                            }`}>
+                              {order.file_name}
+                              {order.hasUnreadMessages && (
+                                <MessageCircle className="w-3 h-3 inline-block ml-2 text-orange-400" />
+                              )}
+                            </p>
                             {order.project_name && (
                               <p className="text-xs text-red-400">Project: {order.project_name}</p>
                             )}
