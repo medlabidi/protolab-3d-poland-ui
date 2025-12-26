@@ -93,6 +93,125 @@ const parseJsonBody = async (req: VercelRequest): Promise<any> => {
   });
 };
 
+// ==================== CRITICAL HANDLERS - MUST BE BEFORE ROUTER ====================
+// These handlers MUST be declared before the router export to avoid "is not defined" errors
+
+async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get all orders for admin
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+  
+  return res.status(200).json({ orders: orders || [] });
+}
+
+async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get all users
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, name, email, role, phone, address, city, zip_code, country, email_verified, created_at, status')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch users' });
+  }
+  
+  return res.status(200).json({ users: users || [] });
+}
+
+async function handleGetNotifications(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  try {
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (error) {
+      console.error('Failed to fetch notifications:', error);
+      return res.status(200).json({ notifications: [] }); // Return empty array instead of error
+    }
+    
+    return res.status(200).json({ notifications: notifications || [] });
+  } catch (error) {
+    console.error('Notifications fetch error:', error);
+    return res.status(200).json({ notifications: [] }); // Return empty array on error
+  }
+}
+
+async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: businesses, error } = await supabase
+      .from('users')
+      .select('*, business_info(*)')
+      .not('business_info', 'is', null);
+    
+    if (error) {
+      console.error('Failed to fetch businesses:', error);
+      return res.status(200).json({ businesses: [] });
+    }
+    
+    return res.status(200).json({ businesses: businesses || [] });
+  } catch (error) {
+    console.error('Businesses fetch error:', error);
+    return res.status(200).json({ businesses: [] });
+  }
+}
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   // Set CORS headers immediately
@@ -1687,66 +1806,8 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   }
 
 // ==================== ADMIN HANDLERS ====================
-
-async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  // Check if user is admin
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // Get all orders for admin
-  const { data: orders, error } = await supabase
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to fetch orders' });
-  }
-  
-  return res.status(200).json({ orders: orders || [] });
-}
-
-async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  // Check if user is admin
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // Get all users
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, name, email, role, phone, address, city, zip_code, country, email_verified, created_at, status')
-    .order('created_at', { ascending: false });
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to fetch users' });
-  }
-  
-  return res.status(200).json({ users: users || [] });
-}
+// Note: handleAdminGetOrders, handleAdminGetUsers, handleGetNotifications, and handleAdminGetBusinesses
+// are defined at the top of the file (before the router) to avoid "is not defined" errors
 
 async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
@@ -2004,32 +2065,6 @@ async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResp
   return res.status(200).json({ printers: printers || [] });
 }
 
-async function handleGetNotifications(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  try {
-    const { data: notifications, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.userId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    
-    if (error) {
-      console.error('Failed to fetch notifications:', error);
-      return res.status(200).json({ notifications: [] }); // Return empty array instead of error
-    }
-    
-    return res.status(200).json({ notifications: notifications || [] });
-  } catch (error) {
-    console.error('Notifications fetch error:', error);
-    return res.status(200).json({ notifications: [] }); // Return empty array on error
-  }
-}
-
 async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
   const supabase = getSupabase();
   
@@ -2268,36 +2303,6 @@ async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: V
   } catch (error) {
     console.error('Mark read error:', error);
     return res.status(500).json({ error: 'Failed to mark as read' });
-  }
-}
-
-async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { data: businesses, error } = await supabase
-      .from('users')
-      .select('*, business_info(*)')
-      .not('business_info', 'is', null);
-    
-    if (error) {
-      console.error('Failed to fetch businesses:', error);
-      return res.status(200).json({ businesses: [] });
-    }
-    
-    return res.status(200).json({ businesses: businesses || [] });
-  } catch (error) {
-    console.error('Businesses fetch error:', error);
-    return res.status(200).json({ businesses: [] });
   }
 }
 
