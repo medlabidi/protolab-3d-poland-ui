@@ -1591,7 +1591,7 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
     }
     
     const { data: messages, error } = await supabase
-      .from('support_messages')
+      .from('conversation_messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
@@ -1663,7 +1663,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     console.log('[SEND_MESSAGE] Inserting message:', messageData);
     
     const { data: message, error } = await supabase
-      .from('support_messages')
+      .from('conversation_messages')
       .insert([messageData])
       .select()
       .single();
@@ -2152,7 +2152,7 @@ async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res
   
   try {
     const { data: messages, error } = await supabase
-      .from('support_messages')
+      .from('conversation_messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
@@ -2186,7 +2186,7 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
   
   try {
     const { data: message, error } = await supabase
-      .from('support_messages')
+      .from('conversation_messages')
       .insert({
         conversation_id: conversationId,
         sender_id: user.userId,
