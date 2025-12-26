@@ -152,7 +152,7 @@ const AdminDashboard = () => {
         // Calculate stats
         const today = new Date().toISOString().split('T')[0];
         const todayOrders = orders.filter((o: any) => 
-          o.created_at.split('T')[0] === today
+          o && o.created_at && o.created_at.split('T')[0] === today
         );
 
         const pendingStatuses = ['submitted']; // Only submitted orders need attention
@@ -160,16 +160,16 @@ const AdminDashboard = () => {
 
         setStats({
           totalOrders: orders.length,
-          pendingOrders: orders.filter((o: any) => o.status === 'submitted').length,
-          completedOrders: orders.filter((o: any) => completedStatuses.includes(o.status)).length,
+          pendingOrders: orders.filter((o: any) => o && o.status === 'submitted').length,
+          completedOrders: orders.filter((o: any) => o && completedStatuses.includes(o.status)).length,
           totalRevenue: orders
-            .filter((o: any) => o.status !== 'suspended' && o.payment_status !== 'refunded')
+            .filter((o: any) => o && o.status !== 'suspended' && o.payment_status !== 'refunded')
             .reduce((sum: number, o: any) => sum + (parseFloat(o.paid_amount) || parseFloat(o.price) || 0), 0),
           totalUsers: 0, // Will be fetched from users endpoint
           activeUsers: 0,
           ordersToday: todayOrders.length,
           revenueToday: todayOrders
-            .filter((o: any) => o.status !== 'suspended')
+            .filter((o: any) => o && o.status !== 'suspended')
             .reduce((sum: number, o: any) => sum + (parseFloat(o.price) || 0), 0),
         });
 
@@ -426,7 +426,7 @@ const AdminDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800">
                 <CardTitle className="text-xl text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 text-blue-500" />
-                  Submitted ({recentOrders.filter(o => o.status === 'submitted').length})
+                  Submitted ({recentOrders.filter(o => o && o.status === 'submitted').length})
                 </CardTitle>
                 <Button 
                   variant="outline" 
@@ -439,13 +439,13 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-800">
-                  {recentOrders.filter(o => o.status === 'submitted').length === 0 ? (
+                  {recentOrders.filter(o => o && o.status === 'submitted').length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
                       <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No submitted orders</p>
                     </div>
                   ) : (
-                    recentOrders.filter(o => o.status === 'submitted').slice(0, 5).map((order) => (
+                    recentOrders.filter(o => o && o.status === 'submitted').slice(0, 5).map((order) => (
                       <div 
                         key={order.id}
                         className="p-4 hover:bg-gray-800/50 transition-colors"
@@ -503,7 +503,7 @@ const AdminDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800">
                 <CardTitle className="text-xl text-white flex items-center gap-2">
                   <Clock className="w-5 h-5 text-yellow-500" />
-                  In Queue ({recentOrders.filter(o => o.status === 'in_queue').length})
+                  In Queue ({recentOrders.filter(o => o && o.status === 'in_queue').length})
                 </CardTitle>
                 <Button 
                   variant="outline" 
@@ -516,14 +516,14 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-800">
-                  {recentOrders.filter(o => o.status === 'in_queue').length === 0 ? (
+                  {recentOrders.filter(o => o && o.status === 'in_queue').length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
                       <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No orders in queue</p>
                     </div>
                   ) : (
                     recentOrders
-                      .filter(o => o.status === 'in_queue')
+                      .filter(o => o && o.status === 'in_queue')
                       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // FIFO order
                       .slice(0, 5)
                       .map((order) => (
@@ -586,7 +586,7 @@ const AdminDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800">
                 <CardTitle className="text-xl text-white flex items-center gap-2">
                   <Printer className="w-5 h-5 text-purple-500" />
-                  Printing ({recentOrders.filter(o => o.status === 'printing').length})
+                  Printing ({recentOrders.filter(o => o && o.status === 'printing').length})
                 </CardTitle>
                 <Button 
                   variant="outline" 
@@ -599,13 +599,13 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-800">
-                  {recentOrders.filter(o => o.status === 'printing').length === 0 ? (
+                  {recentOrders.filter(o => o && o.status === 'printing').length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
                       <Printer className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No orders printing</p>
                     </div>
                   ) : (
-                    recentOrders.filter(o => o.status === 'printing').slice(0, 5).map((order) => (
+                    recentOrders.filter(o => o && o.status === 'printing').slice(0, 5).map((order) => (
                       <div 
                         key={order.id}
                         className="p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"
@@ -665,7 +665,7 @@ const AdminDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800">
                 <CardTitle className="text-xl text-white flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-red-500" />
-                  Refund Requests ({recentOrders.filter(o => o.status === 'refund_requested').length})
+                  Refund Requests ({recentOrders.filter(o => o && o.status === 'refund_requested').length})
                 </CardTitle>
                 <Button 
                   variant="outline" 
@@ -678,13 +678,13 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-800">
-                  {recentOrders.filter(o => o.status === 'refund_requested').length === 0 ? (
+                  {recentOrders.filter(o => o && o.status === 'refund_requested').length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
                       <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No pending refund requests</p>
                     </div>
                   ) : (
-                    recentOrders.filter(o => o.status === 'refund_requested').slice(0, 5).map((order) => (
+                    recentOrders.filter(o => o && o.status === 'refund_requested').slice(0, 5).map((order) => (
                       <div 
                         key={order.id}
                         className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"

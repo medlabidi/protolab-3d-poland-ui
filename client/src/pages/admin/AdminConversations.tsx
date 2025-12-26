@@ -214,10 +214,12 @@ export default function AdminConversations() {
   };
 
   const filteredConversations = conversations.filter(conv => {
+    if (!conv) return false;
+    
     const matchesSearch = 
-      conv.users.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.users.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.orders.file_name.toLowerCase().includes(searchQuery.toLowerCase());
+      (conv.users?.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (conv.users?.email?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (conv.orders?.file_name?.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = statusFilter === "all" || conv.status === statusFilter;
     
@@ -334,9 +336,9 @@ export default function AdminConversations() {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h3 className="font-semibold">{conv.users.name}</h3>
+                          <h3 className="font-semibold">{conv.users?.name || 'Unknown User'}</h3>
                           <p className="text-sm text-muted-foreground truncate">
-                            {conv.users.email}
+                            {conv.users?.email || 'No email'}
                           </p>
                         </div>
                         {conv.unread_count > 0 && (
@@ -356,7 +358,7 @@ export default function AdminConversations() {
                       </div>
 
                       <p className="text-sm text-muted-foreground truncate">
-                        Order: {conv.orders.file_name}
+                        Order: {conv.orders?.file_name || 'Unknown'}
                       </p>
                     </div>
                   ))
@@ -372,7 +374,7 @@ export default function AdminConversations() {
                 {/* Conversation Header */}
                 <div className="p-4 border-b flex items-center justify-between">
                   <div className="flex-1">
-                    <h2 className="text-xl font-bold">{selectedConversation.users.name}</h2>
+                    <h2 className="text-xl font-bold">{selectedConversation.users?.name || 'Unknown User'}</h2>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-muted-foreground">
                         {selectedConversation.subject || 'Support Conversation'}
