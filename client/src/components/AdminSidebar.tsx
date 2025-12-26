@@ -15,6 +15,7 @@ import {
   FileText,
   Palette,
   Building2,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -42,8 +43,8 @@ const menuItems = [
     path: "/admin/businesses",
   },
   {
-    title: "Support",
-    icon: Bell,
+    title: "Conversations",
+    icon: MessageCircle,
     path: "/admin/conversations",
   },
   {

@@ -189,7 +189,7 @@ const AdminDashboard = () => {
             // Track which orders have unread messages
             const ordersWithUnread = new Set(
               conversations
-                .filter((c: any) => !c.admin_read)
+                .filter((c: any) => c && !c.admin_read && c.order_id)
                 .map((c: any) => c.order_id)
             );
             
