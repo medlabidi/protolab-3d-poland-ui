@@ -472,7 +472,18 @@ async function handleAdminGetConversations(req: AuthenticatedRequest, res: Verce
   try {
     const { data: conversations, error } = await supabase
       .from('conversations')
-      .select('*')
+      .select(`
+        *,
+        users (
+          id,
+          name,
+          email
+        ),
+        orders (
+          id,
+          file_name
+        )
+      `)
       .order('updated_at', { ascending: false });
     
     if (error) {
