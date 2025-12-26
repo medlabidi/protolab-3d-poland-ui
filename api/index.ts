@@ -103,26 +103,15 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
   // Check if user is admin
   const supabase = getSupabase();
   
-  console.log('Admin check - User ID:', user.userId);
-  
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('role, email')
+    .select('role')
     .eq('id', user.userId)
     .single();
   
-  console.log('Admin check - User data:', userData);
-  console.log('Admin check - Error:', userError);
-  
   if (userError || userData?.role !== 'admin') {
-    console.log('Admin check FAILED - Role:', userData?.role);
-    return res.status(403).json({ 
-      error: 'Admin access required',
-      debug: { userId: user.userId, role: userData?.role, email: userData?.email }
-    });
+    return res.status(403).json({ error: 'Admin access required' });
   }
-  
-  console.log('Admin check PASSED for:', userData.email);
   
   // Get all orders for admin
   const { data: orders, error } = await supabase
