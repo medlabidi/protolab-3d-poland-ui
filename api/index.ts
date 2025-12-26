@@ -1571,37 +1571,42 @@ async function handleGetMessages(req: AuthenticatedRequest, res: VercelResponse)
   
   const supabase = getSupabase();
   
-  // Verify ownership
-  const { data: conversation, error: convError } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('user_id', user.userId)
-    .single();
-  
-  if (convError) {
-    console.error('[MESSAGES] Conversation verification error:', convError);
-    return res.status(500).json({ error: 'Failed to verify conversation', details: convError.message });
+  try {
+    // Verify ownership - use maybeSingle() to avoid throwing on no rows
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.userId)
+      .maybeSingle();
+    
+    if (convError) {
+      console.error('[MESSAGES] Conversation verification error:', convError);
+      return res.status(500).json({ error: 'Failed to verify conversation', details: convError.message });
+    }
+    
+    if (!conversation) {
+      console.error('[MESSAGES] Conversation not found or unauthorized');
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    const { data: messages, error } = await supabase
+      .from('support_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('[MESSAGES] Error fetching messages:', error);
+      return res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
+    }
+    
+    console.log('[MESSAGES] Found', messages?.length || 0, 'messages');
+    return res.status(200).json({ messages: messages || [] });
+  } catch (error: any) {
+    console.error('[MESSAGES] Unexpected error:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
-  
-  if (!conversation) {
-    console.error('[MESSAGES] Conversation not found or unauthorized');
-    return res.status(404).json({ error: 'Conversation not found' });
-  }
-  
-  const { data: messages, error } = await supabase
-    .from('support_messages')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true });
-  
-  if (error) {
-    console.error('Error fetching messages:', error);
-    return res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
-  }
-  
-  console.log('[MESSAGES] Found', messages?.length || 0, 'messages');
-  return res.status(200).json({ messages: messages || [] });
 }
 
 async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
@@ -1629,53 +1634,57 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   
   const supabase = getSupabase();
   
-  // Verify ownership
-  const { data: conversation, error: convError } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('user_id', user.userId)
-    .single();
-  
-  if (convError) {
-    console.error('[SEND_MESSAGE] Conversation verification error:', convError);
-    return res.status(500).json({ error: 'Failed to verify conversation' });
+  try {
+    // Verify ownership - use maybeSingle() to avoid throwing on no rows
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.userId)
+      .maybeSingle();
+    
+    if (convError) {
+      console.error('[SEND_MESSAGE] Conversation verification error:', convError);
+      return res.status(500).json({ error: 'Failed to verify conversation' });
+    }
+    
+    if (!conversation) {
+      console.error('[SEND_MESSAGE] Conversation not found');
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    const messageData = {
+      conversation_id: conversationId,
+      sender_id: user.userId,
+      message: messageContent,
+      sender_type: 'user',
+    };
+    
+    console.log('[SEND_MESSAGE] Inserting message:', messageData);
+    
+    const { data: message, error } = await supabase
+      .from('support_messages')
+      .insert([messageData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('[SEND_MESSAGE] Insert error:', error);
+      return res.status(500).json({ error: 'Failed to send message', details: error.message });
+    }
+    
+    // Update conversation timestamp
+    await supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+    
+    console.log('[SEND_MESSAGE] Message sent successfully:', message);
+    return res.status(201).json({ message });
+  } catch (error: any) {
+    console.error('[SEND_MESSAGE] Unexpected error:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
-  
-  if (!conversation) {
-    console.error('[SEND_MESSAGE] Conversation not found');
-    return res.status(404).json({ error: 'Conversation not found' });
-  }
-  
-  const messageData = {
-    conversation_id: conversationId,
-    sender_id: user.userId,
-    message: messageContent,
-    sender_type: 'user',
-  };
-  
-  console.log('[SEND_MESSAGE] Inserting message:', messageData);
-  
-  const { data: message, error } = await supabase
-    .from('support_messages')
-    .insert([messageData])
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('[SEND_MESSAGE] Insert error:', error);
-    return res.status(500).json({ error: 'Failed to send message', details: error.message });
-  }
-  
-  // Update conversation timestamp
-  await supabase
-    .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversationId);
-  
-  console.log('[SEND_MESSAGE] Message sent successfully:', message);
-  return res.status(201).json({ message });
-}
 
 // ==================== ADMIN HANDLERS ====================
 
