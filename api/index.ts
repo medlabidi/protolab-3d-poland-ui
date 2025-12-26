@@ -212,6 +212,446 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
   }
 }
 
+async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const orderId = url.split('/')[3];
+  
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
+  
+  if (error || !order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  
+  return res.status(200).json({ order });
+}
+
+async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const orderId = url.split('/')[3];
+  const { status, payment_status } = req.body;
+  
+  const updateData: any = {};
+  if (status) updateData.status = status;
+  if (payment_status) updateData.payment_status = payment_status;
+  
+  const { data: order, error } = await supabase
+    .from('orders')
+    .update(updateData)
+    .eq('id', orderId)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update order' });
+  }
+  
+  return res.status(200).json({ message: 'Order status updated', order });
+}
+
+async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const targetUserId = url.split('/')[3];
+  const { role } = req.body;
+  
+  if (!['user', 'admin'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+  
+  const { data: updatedUser, error } = await supabase
+    .from('users')
+    .update({ role })
+    .eq('id', targetUserId)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update user role' });
+  }
+  
+  return res.status(200).json({ message: 'User role updated', user: updatedUser });
+}
+
+async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: settings, error } = await supabase
+    .from('settings')
+    .select('*')
+    .limit(1)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') {
+    return res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+  
+  return res.status(200).json({ settings: settings || {} });
+}
+
+async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const updates = req.body;
+  
+  const { data: existing } = await supabase
+    .from('settings')
+    .select('id')
+    .limit(1)
+    .single();
+  
+  let result;
+  if (existing) {
+    const { data, error } = await supabase
+      .from('settings')
+      .update(updates)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update settings' });
+    }
+    result = data;
+  } else {
+    const { data, error } = await supabase
+      .from('settings')
+      .insert([updates])
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to create settings' });
+    }
+    result = data;
+  }
+  
+  return res.status(200).json({ message: 'Settings updated', settings: result });
+}
+
+async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: materials, error } = await supabase
+    .from('materials')
+    .select('*')
+    .order('material_type', { ascending: true });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch materials' });
+  }
+  
+  return res.status(200).json({ materials: materials || [] });
+}
+
+async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: printers, error } = await supabase
+    .from('printers')
+    .select('*')
+    .order('name', { ascending: true });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch printers' });
+  }
+  
+  return res.status(200).json({ printers: printers || [] });
+}
+
+async function handleAdminGetConversations(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: conversations, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      console.error('Failed to fetch conversations:', error);
+      return res.status(200).json({ conversations: [] });
+    }
+    
+    return res.status(200).json({ conversations: conversations || [] });
+  } catch (error) {
+    console.error('Conversations fetch error:', error);
+    return res.status(200).json({ conversations: [] });
+  }
+}
+
+async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: messages, error } = await supabase
+      .from('conversation_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch messages:', error);
+      return res.status(200).json({ messages: [] });
+    }
+    
+    return res.status(200).json({ messages: messages || [] });
+  } catch (error) {
+    console.error('Messages fetch error:', error);
+    return res.status(200).json({ messages: [] });
+  }
+}
+
+async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: message, error } = await supabase
+      .from('conversation_messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.userId,
+        message: req.body.message,
+        sender_type: 'admin'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to send message' });
+    }
+    
+    return res.status(200).json({ message });
+  } catch (error) {
+    console.error('Send message error:', error);
+    return res.status(500).json({ error: 'Failed to send message' });
+  }
+}
+
+async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ status: req.body.status })
+      .eq('id', conversationId);
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update status' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Update status error:', error);
+    return res.status(500).json({ error: 'Failed to update status' });
+  }
+}
+
+async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ admin_read: true })
+      .eq('id', conversationId);
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to mark as read' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    return res.status(500).json({ error: 'Failed to mark as read' });
+  }
+}
+
+async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const userId = url.split('/')[3];
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Failed to fetch invoices:', error);
+      return res.status(200).json({ invoices: [] });
+    }
+    
+    return res.status(200).json({ invoices: invoices || [] });
+  } catch (error) {
+    console.error('Invoices fetch error:', error);
+    return res.status(200).json({ invoices: [] });
+  }
+}
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   // Set CORS headers immediately
@@ -1806,264 +2246,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   }
 
 // ==================== ADMIN HANDLERS ====================
-// Note: handleAdminGetOrders, handleAdminGetUsers, handleGetNotifications, and handleAdminGetBusinesses
-// are defined at the top of the file (before the router) to avoid "is not defined" errors
-
-async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const url = req.url || '';
-  const orderId = url.split('/')[3];
-  
-  const { data: order, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .single();
-  
-  if (error || !order) {
-    return res.status(404).json({ error: 'Order not found' });
-  }
-  
-  return res.status(200).json({ order });
-}
-
-async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const url = req.url || '';
-  const orderId = url.split('/')[3];
-  const { status, payment_status } = req.body;
-  
-  const updateData: any = {};
-  if (status) updateData.status = status;
-  if (payment_status) updateData.payment_status = payment_status;
-  
-  const { data: order, error } = await supabase
-    .from('orders')
-    .update(updateData)
-    .eq('id', orderId)
-    .select()
-    .single();
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to update order' });
-  }
-  
-  return res.status(200).json({ message: 'Order status updated', order });
-}
-
-async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const url = req.url || '';
-  const targetUserId = url.split('/')[3];
-  const { role } = req.body;
-  
-  if (!['user', 'admin'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
-  }
-  
-  const { data: updatedUser, error } = await supabase
-    .from('users')
-    .update({ role })
-    .eq('id', targetUserId)
-    .select()
-    .single();
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to update user role' });
-  }
-  
-  return res.status(200).json({ message: 'User role updated', user: updatedUser });
-}
-
-async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { data: settings, error } = await supabase
-    .from('settings')
-    .select('*')
-    .limit(1)
-    .single();
-  
-  if (error && error.code !== 'PGRST116') {
-    return res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-  
-  return res.status(200).json({ settings: settings || {} });
-}
-
-async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const updates = req.body;
-  
-  // Get existing settings
-  const { data: existing } = await supabase
-    .from('settings')
-    .select('id')
-    .limit(1)
-    .single();
-  
-  let result;
-  if (existing) {
-    // Update existing
-    const { data, error } = await supabase
-      .from('settings')
-      .update(updates)
-      .eq('id', existing.id)
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: 'Failed to update settings' });
-    }
-    result = data;
-  } else {
-    // Insert new
-    const { data, error } = await supabase
-      .from('settings')
-      .insert([updates])
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: 'Failed to create settings' });
-    }
-    result = data;
-  }
-  
-  return res.status(200).json({ message: 'Settings updated', settings: result });
-}
-
-async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { data: materials, error } = await supabase
-    .from('materials')
-    .select('*')
-    .order('material_type', { ascending: true });
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to fetch materials' });
-  }
-  
-  return res.status(200).json({ materials: materials || [] });
-}
-
-async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check if user is admin
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { data: printers, error } = await supabase
-    .from('printers')
-    .select('*')
-    .order('name', { ascending: true });
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to fetch printers' });
-  }
-  
-  return res.status(200).json({ printers: printers || [] });
-}
+// Note: All admin handlers are defined at the top of the file (before the router) to avoid "is not defined" errors
 
 async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
   const supabase = getSupabase();
@@ -2137,205 +2320,5 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
         is_default: true
       }
     });
-  }
-}
-
-async function handleAdminGetConversations(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { data: conversations, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    
-    if (error) {
-      console.error('Failed to fetch conversations:', error);
-      return res.status(200).json({ conversations: [] });
-    }
-    
-    return res.status(200).json({ conversations: conversations || [] });
-  } catch (error) {
-    console.error('Conversations fetch error:', error);
-    return res.status(200).json({ conversations: [] });
-  }
-}
-
-async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const url = req.url || '';
-  const conversationId = url.split('/')[3];
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { data: messages, error } = await supabase
-      .from('conversation_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-    
-    if (error) {
-      console.error('Failed to fetch messages:', error);
-      return res.status(200).json({ messages: [] });
-    }
-    
-    return res.status(200).json({ messages: messages || [] });
-  } catch (error) {
-    console.error('Messages fetch error:', error);
-    return res.status(200).json({ messages: [] });
-  }
-}
-
-async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const url = req.url || '';
-  const conversationId = url.split('/')[3];
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { data: message, error } = await supabase
-      .from('conversation_messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: user.userId,
-        message: req.body.message,
-        sender_type: 'admin'
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      return res.status(500).json({ error: 'Failed to send message' });
-    }
-    
-    return res.status(200).json({ message });
-  } catch (error) {
-    console.error('Send message error:', error);
-    return res.status(500).json({ error: 'Failed to send message' });
-  }
-}
-
-async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const url = req.url || '';
-  const conversationId = url.split('/')[3];
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('conversations')
-      .update({ status: req.body.status })
-      .eq('id', conversationId);
-    
-    if (error) {
-      return res.status(500).json({ error: 'Failed to update status' });
-    }
-    
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Update status error:', error);
-    return res.status(500).json({ error: 'Failed to update status' });
-  }
-}
-
-async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const url = req.url || '';
-  const conversationId = url.split('/')[3];
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('conversations')
-      .update({ admin_read: true })
-      .eq('id', conversationId);
-    
-    if (error) {
-      return res.status(500).json({ error: 'Failed to mark as read' });
-    }
-    
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Mark read error:', error);
-    return res.status(500).json({ error: 'Failed to mark as read' });
-  }
-}
-
-async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const url = req.url || '';
-  const userId = url.split('/')[3];
-  
-  const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  try {
-    const { data: invoices, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Failed to fetch invoices:', error);
-      return res.status(200).json({ invoices: [] });
-    }
-    
-    return res.status(200).json({ invoices: invoices || [] });
-  } catch (error) {
-    console.error('Invoices fetch error:', error);
-    return res.status(200).json({ invoices: [] });
   }
 }
