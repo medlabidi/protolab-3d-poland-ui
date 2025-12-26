@@ -663,6 +663,80 @@ async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: Ve
   }
 }
 
+async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
+  const supabase = getSupabase();
+  
+  try {
+    const { data: materials, error } = await supabase
+      .from('materials')
+      .select('*')
+      .order('material_type', { ascending: true })
+      .order('color', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch materials:', error);
+      return res.status(200).json({ materials: {} });
+    }
+    
+    if (!materials || materials.length === 0) {
+      return res.status(200).json({ materials: {} });
+    }
+    
+    // Group materials by type
+    const grouped = materials.reduce((acc: any, material: any) => {
+      const type = material.material_type || 'Other';
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(material);
+      return acc;
+    }, {});
+    
+    return res.status(200).json({ materials: grouped });
+  } catch (error) {
+    console.error('Materials fetch error:', error);
+    return res.status(200).json({ materials: {} });
+  }
+}
+
+async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) {
+  const supabase = getSupabase();
+  
+  try {
+    const { data: printer, error } = await supabase
+      .from('printers')
+      .select('*')
+      .eq('is_default', true)
+      .single();
+    
+    if (error || !printer) {
+      console.error('Failed to fetch default printer:', error);
+      return res.status(200).json({ 
+        printer: {
+          name: 'Default Printer',
+          max_x: 220,
+          max_y: 220,
+          max_z: 250,
+          is_default: true
+        }
+      });
+    }
+    
+    return res.status(200).json({ printer });
+  } catch (error) {
+    console.error('Default printer fetch error:', error);
+    return res.status(200).json({ 
+      printer: {
+        name: 'Default Printer',
+        max_x: 220,
+        max_y: 220,
+        max_z: 250,
+        is_default: true
+      }
+    });
+  }
+}
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   // Set CORS headers immediately
@@ -1555,7 +1629,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       infillPattern = getField('infillPattern');
       customLayerHeight = getField('customLayerHeight');
       customInfill = getField('customInfill');
-      advancedMode = getField('advancedMode') === 'true' || getField('advancedMode') === true;
+      const advancedModeField = getField('advancedMode');
+      advancedMode = advancedModeField === 'true' || advancedModeField === true;
       
       const shippingAddressStr = getField('shippingAddress');
       if (shippingAddressStr) {
@@ -2258,78 +2333,4 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
 
 // ==================== ADMIN HANDLERS ====================
 // Note: All admin handlers are defined at the top of the file (before the router) to avoid "is not defined" errors
-
-async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  
-  try {
-    const { data: materials, error } = await supabase
-      .from('materials')
-      .select('*')
-      .order('material_type', { ascending: true })
-      .order('color', { ascending: true });
-    
-    if (error) {
-      console.error('Failed to fetch materials:', error);
-      return res.status(200).json({ materials: {} }); // Return empty object
-    }
-    
-    if (!materials || materials.length === 0) {
-      return res.status(200).json({ materials: {} });
-    }
-    
-    // Group materials by type
-    const grouped = materials.reduce((acc: any, material: any) => {
-      const type = material.material_type || 'Other';
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      acc[type].push(material);
-      return acc;
-    }, {});
-    
-    return res.status(200).json({ materials: grouped });
-  } catch (error) {
-    console.error('Materials fetch error:', error);
-    return res.status(200).json({ materials: {} }); // Return empty object on error
-  }
-}
-
-async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  
-  try {
-    const { data: printer, error } = await supabase
-      .from('printers')
-      .select('*')
-      .eq('is_default', true)
-      .single();
-    
-    if (error || !printer) {
-      console.error('Failed to fetch default printer:', error);
-      // Return a basic default printer spec
-      return res.status(200).json({ 
-        printer: {
-          name: 'Default Printer',
-          max_x: 220,
-          max_y: 220,
-          max_z: 250,
-          is_default: true
-        }
-      });
-    }
-    
-    return res.status(200).json({ printer });
-  } catch (error) {
-    console.error('Default printer fetch error:', error);
-    return res.status(200).json({ 
-      printer: {
-        name: 'Default Printer',
-        max_x: 220,
-        max_y: 220,
-        max_z: 250,
-        is_default: true
-      }
-    });
-  }
-}
+};
