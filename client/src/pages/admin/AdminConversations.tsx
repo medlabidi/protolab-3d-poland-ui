@@ -410,24 +410,29 @@ export default function AdminConversations() {
                         selectedConversation?.id === conv.id
                           ? 'bg-primary/10 border-2 border-primary'
                           : conv.admin_read === false
-                          ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-300'
+                          ? 'bg-orange-50 hover:bg-orange-100 border-2 border-orange-400 shadow-md'
                           : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
+                            {conv.admin_read === false && (
+                              <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
+                            )}
                             <h3 className={`font-bold text-base ${
-                              conv.admin_read === false ? 'text-blue-700' : 'text-gray-900'
+                              conv.admin_read === false ? 'text-orange-700' : 'text-gray-900'
                             }`}>
                               {conv.orders?.project_name || conv.orders?.file_name || 'Untitled Print Job'}
                             </h3>
                             {conv.admin_read === false && (
-                              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                              <Badge variant="default" className="bg-orange-500 text-xs">
+                                New
+                              </Badge>
                             )}
                           </div>
                           <p className={`text-sm ${
-                            conv.admin_read === false ? 'text-blue-600 font-semibold' : 'text-muted-foreground'
+                            conv.admin_read === false ? 'text-orange-600 font-semibold' : 'text-muted-foreground'
                           }`}>
                             👤 {conv.users?.name || 'Unknown User'}
                           </p>

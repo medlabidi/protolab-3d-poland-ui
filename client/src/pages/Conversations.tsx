@@ -379,21 +379,26 @@ const Conversations = () => {
                           onClick={() => selectConversation(conversation)}
                           className={cn(
                             "p-4 rounded-lg cursor-pointer transition-all hover:bg-muted/50 relative",
-                            selectedConversation?.id === conversation.id && "bg-primary/10 border border-primary/20",
-                            conversation.user_read === false && "bg-blue-500/10 border border-blue-500/30"
+                            selectedConversation?.id === conversation.id && "bg-primary/10 border-2 border-primary/20",
+                            conversation.user_read === false && "bg-orange-50 border-2 border-orange-400 shadow-md"
                           )}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4 text-muted-foreground" />
+                              {conversation.user_read === false && (
+                                <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
+                              )}
                               <span className={cn(
                                 "font-medium text-sm truncate max-w-[150px]",
-                                conversation.user_read === false && "font-bold text-blue-400"
+                                conversation.user_read === false && "font-extrabold text-orange-600"
                               )}>
                                 {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
                               </span>
                               {conversation.user_read === false && (
-                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                <Badge variant="default" className="bg-orange-500 text-xs">
+                                  New
+                                </Badge>
                               )}
                             </div>
                             {(conversation.unread_count || 0) > 0 && (
