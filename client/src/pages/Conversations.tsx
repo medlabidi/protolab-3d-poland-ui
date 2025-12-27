@@ -73,12 +73,20 @@ const Conversations = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const openConversationId = searchParams.get('open');
 
   // Update ref when selectedConversation changes
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversation?.id || null;
   }, [selectedConversation]);
+
+  // Scroll to bottom when conversation opens or messages load
+  useEffect(() => {
+    if (selectedConversation && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedConversation?.id]);
 
   useEffect(() => {
     fetchConversations();
@@ -539,6 +547,7 @@ const Conversations = () => {
                               </div>
                             </div>
                           ))}
+                          <div ref={messagesEndRef} />
                           
                           {/* Message Input - Now inside ScrollArea */}
                           <div className="pt-4 mt-4 border-t">
