@@ -2311,7 +2311,19 @@ async function handleGetConversations(req: AuthenticatedRequest, res: VercelResp
   const { data: conversations, error } = await supabase
     .from('conversations')
     .select(`
-      *,
+      id,
+      order_id,
+      user_id,
+      subject,
+      status,
+      created_at,
+      updated_at,
+      user_read,
+      admin_read,
+      user_typing,
+      user_typing_at,
+      admin_typing,
+      admin_typing_at,
       order:orders!conversations_order_id_fkey(
         id,
         file_name,
