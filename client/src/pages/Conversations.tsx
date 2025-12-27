@@ -134,9 +134,18 @@ const Conversations = () => {
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
           console.log('[Conversations] Updating selected conversation, user_read:', updatedSelected.user_read);
+          console.log('[Conversations] Updated conversation data:', updatedSelected);
           setSelectedConversation(updatedSelected);
         }
       }
+      
+      // Log all conversations with their read status
+      console.log('[Conversations] All conversations:', updatedConversations.map((c: Conversation) => ({
+        id: c.id.slice(0, 8),
+        order: c.order?.file_name,
+        user_read: c.user_read,
+        updated_at: c.updated_at
+      })));
     } catch (error) {
       console.error('Error fetching conversations:', error);
       toast.error('Failed to load conversations');
