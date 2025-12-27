@@ -455,7 +455,6 @@ export default function AdminConversations() {
                     </Select>
                   </div>
                 </div>
-                </div>
 
                 {/* Messages */}
                 <ScrollArea className="flex-1 p-4">
