@@ -78,10 +78,14 @@ const Conversations = () => {
     // Poll for new messages every 10 seconds
     const interval = setInterval(() => {
       fetchConversations();
+      // Also fetch messages if a conversation is selected
+      if (selectedConversation) {
+        fetchMessages(selectedConversation.id);
+      }
     }, 10000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedConversation]);
 
   // Auto-open conversation from URL parameter
   useEffect(() => {
@@ -113,7 +117,16 @@ const Conversations = () => {
       if (!response.ok) throw new Error('Failed to fetch conversations');
 
       const data = await response.json();
-      setConversations(data.conversations || []);
+      const updatedConversations = data.conversations || [];
+      setConversations(updatedConversations);
+      
+      // Update selectedConversation if it exists to reflect new state
+      if (selectedConversation) {
+        const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
+        if (updatedSelected) {
+          setSelectedConversation(updatedSelected);
+        }
+      }
     } catch (error) {
       console.error('Error fetching conversations:', error);
       toast.error('Failed to load conversations');
