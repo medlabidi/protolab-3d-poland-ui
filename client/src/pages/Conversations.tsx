@@ -354,9 +354,9 @@ const Conversations = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-220px)]">
+          <div className="flex gap-6 h-[calc(100vh-220px)]">
             {/* Conversations List */}
-            <Card className="lg:col-span-1 flex flex-col">
+            <Card className="w-96 flex flex-col flex-shrink-0">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <MessageSquare className="w-5 h-5 text-primary" />
@@ -434,7 +434,7 @@ const Conversations = () => {
 
             {/* Messages Panel */}
             <Card className={cn(
-              "lg:col-span-2 flex flex-col transition-all duration-300",
+              "flex-1 flex flex-col transition-all duration-300",
               selectedConversation?.user_read === false && "ring-2 ring-orange-400 shadow-lg shadow-orange-100"
             )}>
               {selectedConversation ? (
