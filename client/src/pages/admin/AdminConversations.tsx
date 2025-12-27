@@ -124,7 +124,16 @@ export default function AdminConversations() {
 
       if (response.ok) {
         const data = await response.json();
-        setConversations(data.conversations || []);
+        const updatedConversations = data.conversations || [];
+        setConversations(updatedConversations);
+        
+        // Update selectedConversation if it exists to reflect new state (typing, unread, etc.)
+        if (selectedConversation) {
+          const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
+          if (updatedSelected) {
+            setSelectedConversation(updatedSelected);
+          }
+        }
       } else {
         toast.error('Failed to fetch conversations');
       }
