@@ -74,6 +74,13 @@ const Conversations = () => {
 
   useEffect(() => {
     fetchConversations();
+    
+    // Poll for new messages every 10 seconds
+    const interval = setInterval(() => {
+      fetchConversations();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Auto-open conversation from URL parameter
@@ -186,10 +193,10 @@ const Conversations = () => {
       setMessages(prev => [...prev, data.message]);
       setNewMessage("");
       
-      // Update conversation's last message and updated_at
+      // Update conversation's last message, updated_at, and mark as user_read=true (we just sent it)
       setConversations(prev => prev.map(c => 
         c.id === selectedConversation.id 
-          ? { ...c, last_message: data.message, updated_at: new Date().toISOString() }
+          ? { ...c, last_message: data.message, updated_at: new Date().toISOString(), user_read: true }
           : c
       ));
     } catch (error) {

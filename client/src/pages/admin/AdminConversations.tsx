@@ -76,6 +76,13 @@ export default function AdminConversations() {
 
   useEffect(() => {
     fetchConversations();
+    
+    // Poll for new messages every 10 seconds
+    const interval = setInterval(() => {
+      fetchConversations();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -138,10 +145,10 @@ export default function AdminConversations() {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       
-      // Update local unread count
+      // Update local unread count and admin_read status
       setConversations(prev =>
         prev.map(conv =>
-          conv.id === conversationId ? { ...conv, unread_count: 0 } : conv
+          conv.id === conversationId ? { ...conv, unread_count: 0, admin_read: true } : conv
         )
       );
     } catch (error) {
@@ -172,8 +179,15 @@ export default function AdminConversations() {
         const data = await response.json();
         setMessages(prev => [...prev, data.message]);
         setNewMessage("");
-        toast.success('Message sent');
-      } else {
+        toast.success('Message sent');        
+        // Update conversation's updated_at and keep admin_read true
+        if (selectedConversation) {
+          setConversations(prev => prev.map(c => 
+            c.id === selectedConversation.id 
+              ? { ...c, updated_at: new Date().toISOString(), admin_read: true }
+              : c
+          ));
+        }      } else {
         toast.error('Failed to send message');
       }
     } catch (error) {
@@ -338,29 +352,34 @@ export default function AdminConversations() {
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 flex items-center gap-2">
-                          <div>
-                            <h3 className={`font-semibold ${
-                              conv.admin_read === false ? 'text-blue-700' : ''
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className={`font-bold text-base ${
+                              conv.admin_read === false ? 'text-blue-700' : 'text-gray-900'
                             }`}>
-                              {conv.users?.name || 'Unknown User'}
+                              {conv.orders?.project_name || conv.orders?.file_name || 'Untitled Print Job'}
                             </h3>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {conv.users?.email || 'No email'}
-                            </p>
+                            {conv.admin_read === false && (
+                              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            )}
                           </div>
-                          {conv.admin_read === false && (
-                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                          )}
+                          <p className={`text-sm ${
+                            conv.admin_read === false ? 'text-blue-600 font-semibold' : 'text-muted-foreground'
+                          }`}>
+                            👤 {conv.users?.name || 'Unknown User'}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            ✉️ {conv.users?.email || 'No email'}
+                          </p>
                         </div>
                         {conv.unread_count > 0 && (
-                          <Badge variant="destructive" className="ml-2">
+                          <Badge variant="destructive" className="ml-2 h-6 min-w-[24px] flex items-center justify-center">
                             {conv.unread_count}
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mt-2">
                         <Badge className={`${getStatusColor(conv.status)} text-white text-xs`}>
                           {conv.status.replace('_', ' ')}
                         </Badge>
@@ -368,10 +387,6 @@ export default function AdminConversations() {
                           {formatTime(conv.updated_at)}
                         </span>
                       </div>
-
-                      <p className="text-sm text-muted-foreground truncate">
-                        Order: {conv.orders?.file_name || 'Unknown'}
-                      </p>
                     </div>
                   ))
                 )}
