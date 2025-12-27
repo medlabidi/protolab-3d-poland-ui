@@ -51,6 +51,7 @@ interface Conversation {
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   created_at: string;
   updated_at: string;
+  user_read?: boolean;
   order?: Order;
   unread_count?: number;
   last_message?: Message;
@@ -141,9 +142,27 @@ const Conversations = () => {
     }
   };
 
-  const selectConversation = (conversation: Conversation) => {
+  const selectConversation = async (conversation: Conversation) => {
     setSelectedConversation(conversation);
     fetchMessages(conversation.id);
+    
+    // Mark conversation as read for user
+    if (conversation.user_read === false) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        await fetch(`${API_URL}/conversations/${conversation.id}/read`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Update local state
+        setConversations(prev => prev.map(c => 
+          c.id === conversation.id ? { ...c, user_read: true } : c
+        ));
+      } catch (error) {
+        console.error('Error marking conversation as read:', error);
+      }
+    }
   };
 
   const sendMessage = async () => {
@@ -284,16 +303,23 @@ const Conversations = () => {
                           key={conversation.id}
                           onClick={() => selectConversation(conversation)}
                           className={cn(
-                            "p-4 rounded-lg cursor-pointer transition-all hover:bg-muted/50",
-                            selectedConversation?.id === conversation.id && "bg-primary/10 border border-primary/20"
+                            "p-4 rounded-lg cursor-pointer transition-all hover:bg-muted/50 relative",
+                            selectedConversation?.id === conversation.id && "bg-primary/10 border border-primary/20",
+                            conversation.user_read === false && "bg-blue-500/10 border border-blue-500/30"
                           )}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Package className="w-4 h-4 text-muted-foreground" />
-                              <span className="font-medium text-sm truncate max-w-[150px]">
+                              <span className={cn(
+                                "font-medium text-sm truncate max-w-[150px]",
+                                conversation.user_read === false && "font-bold text-blue-400"
+                              )}>
                                 {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
                               </span>
+                              {conversation.user_read === false && (
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                              )}
                             </div>
                             {(conversation.unread_count || 0) > 0 && (
                               <Badge variant="destructive" className="text-xs h-5 min-w-[20px] flex items-center justify-center">
@@ -310,7 +336,10 @@ const Conversations = () => {
                           </div>
                           
                           {conversation.last_message && (
-                            <p className="text-xs text-muted-foreground mt-2 truncate">
+                            <p className={cn(
+                              "text-xs text-muted-foreground mt-2 truncate",
+                              conversation.user_read === false && "font-semibold text-blue-300"
+                            )}>
                               {conversation.last_message.sender_type === 'user' ? t('conversations.you') + ': ' : ''}
                               {conversation.last_message.message}
                             </p>

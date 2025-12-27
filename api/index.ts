@@ -580,6 +580,12 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       return res.status(500).json({ error: 'Failed to send message' });
     }
     
+    // Mark conversation as unread for user
+    await supabase
+      .from('conversations')
+      .update({ user_read: false, updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+    
     return res.status(200).json({ message });
   } catch (error) {
     console.error('Send message error:', error);
@@ -886,6 +892,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/conversations\/[^/]+\/messages$/) && req.method === 'POST') {
       return await handleSendMessage(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/conversations\/[^/]+\/read$/) && req.method === 'PATCH') {
+      return await handleMarkConversationRead(req as AuthenticatedRequest, res);
     }
     
     // Admin routes
@@ -2349,6 +2358,41 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     console.error('[SEND_MESSAGE] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
+}
+
+async function handleMarkConversationRead(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const parts = url.split('/');
+  const conversationId = parts[parts.indexOf('conversations') + 1];
+  
+  if (!conversationId) {
+    return res.status(400).json({ error: 'Conversation ID required' });
+  }
+  
+  const supabase = getSupabase();
+  
+  try {
+    // Verify ownership and mark as read
+    const { error } = await supabase
+      .from('conversations')
+      .update({ user_read: true })
+      .eq('id', conversationId)
+      .eq('user_id', user.userId);
+    
+    if (error) {
+      console.error('[MARK_READ] Error:', error);
+      return res.status(500).json({ error: 'Failed to mark as read' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error('[MARK_READ] Unexpected error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
 
 // ==================== ADMIN HANDLERS ====================
 // Note: All admin handlers are defined at the top of the file (before the router) to avoid "is not defined" errors
