@@ -67,7 +67,17 @@ const AdminUsers = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users || []);
+        // Transform users to split name into firstName and lastName
+        const transformedUsers = (data.users || []).map((user: any) => {
+          const nameParts = (user.name || '').split(' ');
+          return {
+            ...user,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            createdAt: user.created_at
+          };
+        });
+        setUsers(transformedUsers);
       } else {
         toast.error('Failed to fetch users');
       }

@@ -99,8 +99,8 @@ const AdminBusinessManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setBusinesses(data);
-        setFilteredBusinesses(data);
+        setBusinesses(data.businesses || []);
+        setFilteredBusinesses(data.businesses || []);
       } else if (response.status === 401) {
         navigate('/login');
       } else {
@@ -125,7 +125,7 @@ const AdminBusinessManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setInvoices(data);
+        setInvoices(data.invoices || []);
       } else {
         toast.error('Failed to load invoices');
       }

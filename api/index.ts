@@ -205,7 +205,26 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
       return res.status(200).json({ businesses: [] });
     }
     
-    return res.status(200).json({ businesses: businesses || [] });
+    // Enhance with order stats for each business
+    const businessesWithStats = await Promise.all((businesses || []).map(async (business: any) => {
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('price, paid_amount')
+        .eq('user_id', business.id);
+      
+      const orderCount = orders?.length || 0;
+      const totalSpent = orders?.reduce((sum: number, o: any) => 
+        sum + (parseFloat(o.paid_amount) || parseFloat(o.price) || 0), 0
+      ) || 0;
+      
+      return {
+        ...business,
+        orderCount,
+        totalSpent
+      };
+    }));
+    
+    return res.status(200).json({ businesses: businessesWithStats });
   } catch (error) {
     console.error('Businesses fetch error:', error);
     return res.status(200).json({ businesses: [] });
@@ -229,7 +248,7 @@ async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelRes
   }
   
   const url = req.url || '';
-  const orderId = url.split('/')[3];
+  const orderId = url.split('/')[4];
   
   const { data: order, error } = await supabase
     .from('orders')
@@ -261,7 +280,7 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
   }
   
   const url = req.url || '';
-  const orderId = url.split('/')[3];
+  const orderId = url.split('/')[4];
   const { status, payment_status } = req.body;
   
   const updateData: any = {};
@@ -299,7 +318,7 @@ async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelR
   }
   
   const url = req.url || '';
-  const targetUserId = url.split('/')[3];
+  const targetUserId = url.split('/')[4];
   const { role } = req.body;
   
   if (!['user', 'admin'].includes(role)) {
@@ -503,7 +522,7 @@ async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[3];
+  const conversationId = url.split('/')[4];
   
   const supabase = getSupabase();
   
@@ -536,7 +555,7 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[3];
+  const conversationId = url.split('/')[4];
   
   const supabase = getSupabase();
   
@@ -573,7 +592,7 @@ async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, re
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[3];
+  const conversationId = url.split('/')[4];
   
   const supabase = getSupabase();
   
@@ -604,7 +623,7 @@ async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: V
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[3];
+  const conversationId = url.split('/')[4];
   
   const supabase = getSupabase();
   
@@ -635,7 +654,7 @@ async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: Ve
   if (!user) return;
   
   const url = req.url || '';
-  const userId = url.split('/')[3];
+  const userId = url.split('/')[4];
   
   const supabase = getSupabase();
   
