@@ -1,10 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -28,6 +36,9 @@ import {
   Edit,
   Loader2,
   Download,
+  MessageCircle,
+  Send,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +58,23 @@ interface Order {
   user_id: string;
   users?: { name: string; email: string };
   has_unread_messages?: boolean;
+  file_url?: string;
+  print_settings?: any;
+}
+
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_type: 'user' | 'admin' | 'system';
+  sender_id?: string;
+  message: string;
+  created_at: string;
+}
+
+interface Conversation {
+  id: string;
+  order_id: string;
+  status: string;
 }
 
 const AdminOrders = () => {
@@ -58,6 +86,15 @@ const AdminOrders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || "all");
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
+  
+  // Modal state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -140,12 +177,90 @@ const AdminOrders = () => {
       if (response.ok) {
         toast.success('Order status updated');
         fetchOrders(); // Refresh orders
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+        }
       } else {
         toast.error('Failed to update status');
       }
     } catch (error) {
       console.error('Failed to update status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const openOrderModal = async (order: Order) => {
+    setSelectedOrder(order);
+    setShowModal(true);
+    await fetchConversationAndMessages(order.id);
+  };
+
+  const fetchConversationAndMessages = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      // Fetch conversations for this order
+      const convResponse = await fetch(`${API_URL}/admin/conversations`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (convResponse.ok) {
+        const data = await convResponse.json();
+        const orderConv = data.conversations?.find((c: any) => c.order_id === orderId);
+        
+        if (orderConv) {
+          setConversation(orderConv);
+          
+          // Fetch messages
+          const msgResponse = await fetch(`${API_URL}/admin/conversations/${orderConv.id}/messages`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          
+          if (msgResponse.ok) {
+            const msgData = await msgResponse.json();
+            setMessages(msgData.messages || []);
+            
+            // Mark as read
+            await fetch(`${API_URL}/admin/conversations/${orderConv.id}/read`, {
+              method: 'PATCH',
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch conversation:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !conversation) return;
+
+    setSendingMessage(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/conversations/${conversation.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: newMessage }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([...messages, data.message]);
+        setNewMessage("");
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } else {
+        toast.error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -296,6 +411,7 @@ const AdminOrders = () => {
                       filteredOrders.map((order) => (
                         <TableRow 
                           key={order.id}
+                          onClick={() => openOrderModal(order)}
                           className="border-gray-800 hover:bg-gray-800/50 cursor-pointer"
                         >
                           <TableCell className="font-mono text-sm text-gray-400">
@@ -387,6 +503,218 @@ const AdminOrders = () => {
           </Card>
         </div>
       </main>
+
+      {/* Order Detail Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-500" />
+                {selectedOrder?.file_name}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowModal(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <Tabs defaultValue="details" className="h-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Order Details</TabsTrigger>
+                <TabsTrigger value="messages" className="flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  Messages
+                  {messages.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {messages.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="space-y-4 mt-4">
+                <ScrollArea className="h-[60vh]">
+                  <div className="space-y-4 pr-4">
+                    {/* Status Controls */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Order Status</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Order Status</label>
+                          <Select 
+                            value={selectedOrder.status} 
+                            onValueChange={(value) => handleQuickStatusUpdate(selectedOrder.id, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="submitted">Submitted</SelectItem>
+                              <SelectItem value="in_queue">In Queue</SelectItem>
+                              <SelectItem value="printing">Printing</SelectItem>
+                              <SelectItem value="finished">Finished</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="on_hold">On Hold</SelectItem>
+                              <SelectItem value="suspended">Suspended</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Payment Status</label>
+                          <Badge className={`${getPaymentStatusColor(selectedOrder.payment_status)} text-white`}>
+                            {selectedOrder.payment_status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Order Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Order Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Order ID</p>
+                            <p className="font-mono text-sm">{selectedOrder.id}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Created</p>
+                            <p className="text-sm">{formatDate(selectedOrder.created_at)}</p>
+                          </div>
+                        </div>
+                        {selectedOrder.project_name && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Project Name</p>
+                            <p className="font-medium">{selectedOrder.project_name}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-muted-foreground">File Name</p>
+                          <p className="font-medium">{selectedOrder.file_name}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Customer Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Customer Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Name</p>
+                          <p className="font-medium">{selectedOrder.users?.name || 'Unknown'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Email</p>
+                          <p className="text-sm">{selectedOrder.users?.email || 'No email'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Print Settings */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Print Settings</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Material</p>
+                          <p className="font-medium">{selectedOrder.material}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Color</p>
+                          <p className="font-medium">{selectedOrder.color}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Quantity</p>
+                          <p className="font-medium">{selectedOrder.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Price</p>
+                          <p className="text-lg font-bold text-primary">{selectedOrder.price.toFixed(2)} PLN</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="messages" className="mt-4">
+                <div className="flex flex-col h-[60vh]">
+                  {/* Messages Area */}
+                  <ScrollArea className="flex-1 pr-4">
+                    {messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                        <MessageCircle className="w-12 h-12 mb-2 opacity-50" />
+                        <p>No messages yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                msg.sender_type === 'admin'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : msg.sender_type === 'system'
+                                  ? 'bg-muted'
+                                  : 'bg-secondary'
+                              }`}
+                            >
+                              <p className="text-sm">{msg.message}</p>
+                              <p className="text-xs opacity-70 mt-1">
+                                {new Date(msg.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {/* Message Input */}
+                  {conversation && (
+                    <div className="flex gap-2 mt-4 pt-4 border-t">
+                      <Input
+                        placeholder="Type your message..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                        disabled={sendingMessage}
+                      />
+                      <Button
+                        onClick={sendMessage}
+                        disabled={sendingMessage || !newMessage.trim()}
+                      >
+                        {sendingMessage ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
