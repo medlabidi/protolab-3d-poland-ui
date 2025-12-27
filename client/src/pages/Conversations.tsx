@@ -539,42 +539,42 @@ const Conversations = () => {
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Message Input - Now inside ScrollArea */}
+                          <div className="pt-4 mt-4 border-t">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder={t('conversations.typeMessage')}
+                                value={newMessage}
+                                onChange={(e) => {
+                                  setNewMessage(e.target.value);
+                                  handleTyping();
+                                }}
+                                onKeyPress={handleKeyPress}
+                                disabled={sendingMessage || selectedConversation.status === 'closed'}
+                                className="flex-1"
+                              />
+                              <Button
+                                onClick={sendMessage}
+                                disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
+                              >
+                                {sendingMessage ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                            {selectedConversation.status === 'closed' && (
+                              <p className="text-xs text-muted-foreground mt-2 text-center">
+                                {t('conversations.conversationClosed')}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </ScrollArea>
                     )}
                   </CardContent>
-
-                  {/* Message Input */}
-                  <div className="p-4 border-t">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t('conversations.typeMessage')}
-                        value={newMessage}
-                        onChange={(e) => {
-                          setNewMessage(e.target.value);
-                          handleTyping();
-                        }}
-                        onKeyPress={handleKeyPress}
-                        disabled={sendingMessage || selectedConversation.status === 'closed'}
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
-                      >
-                        {sendingMessage ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                    {selectedConversation.status === 'closed' && (
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        {t('conversations.conversationClosed')}
-                      </p>
-                    )}
-                  </div>
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-center p-8">
