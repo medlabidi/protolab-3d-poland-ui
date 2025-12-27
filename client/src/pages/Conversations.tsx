@@ -124,6 +124,7 @@ const Conversations = () => {
       if (selectedConversation) {
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
+          console.log('[Conversations] Updating selected conversation, user_read:', updatedSelected.user_read);
           setSelectedConversation(updatedSelected);
         }
       }
