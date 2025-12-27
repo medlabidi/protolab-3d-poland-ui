@@ -3,6 +3,11 @@
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
   "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "mahmoud": true
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
