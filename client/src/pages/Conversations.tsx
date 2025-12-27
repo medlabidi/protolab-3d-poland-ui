@@ -133,6 +133,7 @@ const Conversations = () => {
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
           console.log('[Conversations] Updating selected conversation, user_read:', updatedSelected.user_read);
+          console.log('[Conversations] admin_typing:', updatedSelected.admin_typing, 'admin_typing_at:', updatedSelected.admin_typing_at);
           console.log('[Conversations] Updated conversation data:', updatedSelected);
           setSelectedConversation(updatedSelected);
         }
@@ -143,6 +144,7 @@ const Conversations = () => {
         id: c.id.slice(0, 8),
         order: c.order?.file_name,
         user_read: c.user_read,
+        admin_typing: c.admin_typing,
         updated_at: c.updated_at
       })));
     } catch (error) {
