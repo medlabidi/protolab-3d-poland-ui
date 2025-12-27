@@ -2346,10 +2346,13 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       return res.status(500).json({ error: 'Failed to send message', details: error.message });
     }
     
-    // Update conversation timestamp
+    // Update conversation timestamp and mark as unread for admin
     await supabase
       .from('conversations')
-      .update({ updated_at: new Date().toISOString() })
+      .update({ 
+        updated_at: new Date().toISOString(),
+        admin_read: false 
+      })
       .eq('id', conversationId);
     
     console.log('[SEND_MESSAGE] Message sent successfully:', message);

@@ -36,6 +36,7 @@ interface Conversation {
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   created_at: string;
   updated_at: string;
+  admin_read?: boolean;
   unread_count: number;
   orders: {
     id: string;
@@ -331,15 +332,26 @@ export default function AdminConversations() {
                       className={`p-4 rounded-lg cursor-pointer transition-colors ${
                         selectedConversation?.id === conv.id
                           ? 'bg-primary/10 border-2 border-primary'
+                          : conv.admin_read === false
+                          ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-300'
                           : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{conv.users?.name || 'Unknown User'}</h3>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {conv.users?.email || 'No email'}
-                          </p>
+                        <div className="flex-1 flex items-center gap-2">
+                          <div>
+                            <h3 className={`font-semibold ${
+                              conv.admin_read === false ? 'text-blue-700' : ''
+                            }`}>
+                              {conv.users?.name || 'Unknown User'}
+                            </h3>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conv.users?.email || 'No email'}
+                            </p>
+                          </div>
+                          {conv.admin_read === false && (
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                          )}
                         </div>
                         {conv.unread_count > 0 && (
                           <Badge variant="destructive" className="ml-2">
