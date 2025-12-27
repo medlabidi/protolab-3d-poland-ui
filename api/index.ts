@@ -1658,7 +1658,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       customLayerHeight = getField('customLayerHeight');
       customInfill = getField('customInfill');
       const advancedModeField = getField('advancedMode');
-      advancedMode = advancedModeField === 'true' || advancedModeField === true;
+      advancedMode = advancedModeField === 'true';
       
       const shippingAddressStr = getField('shippingAddress');
       if (shippingAddressStr) {
@@ -2396,4 +2396,3 @@ async function handleMarkConversationRead(req: AuthenticatedRequest, res: Vercel
 
 // ==================== ADMIN HANDLERS ====================
 // Note: All admin handlers are defined at the top of the file (before the router) to avoid "is not defined" errors
-};
