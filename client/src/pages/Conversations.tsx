@@ -360,11 +360,17 @@ const Conversations = () => {
             </Card>
 
             {/* Messages Panel */}
-            <Card className="lg:col-span-2 flex flex-col">
+            <Card className={cn(
+              "lg:col-span-2 flex flex-col transition-all duration-300",
+              selectedConversation?.user_read === false && "ring-2 ring-orange-400 shadow-lg shadow-orange-100"
+            )}>
               {selectedConversation ? (
                 <>
                   {/* Conversation Header */}
-                  <CardHeader className="pb-3 border-b">
+                  <CardHeader className={cn(
+                    "pb-3 border-b transition-colors",
+                    selectedConversation.user_read === false && "bg-orange-50 border-orange-200"
+                  )}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Button
@@ -378,6 +384,9 @@ const Conversations = () => {
                         <div>
                           <CardTitle className="text-lg flex items-center gap-2">
                             <Package className="w-5 h-5 text-primary" />
+                            {selectedConversation.user_read === false && (
+                              <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
+                            )}
                             {selectedConversation.order?.project_name || selectedConversation.order?.file_name}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground mt-1">
@@ -385,7 +394,14 @@ const Conversations = () => {
                           </p>
                         </div>
                       </div>
-                      {getStatusBadge(selectedConversation.status)}
+                      <div className="flex items-center gap-2">
+                        {selectedConversation.user_read === false && (
+                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">
+                            {t('conversations.unread') || 'New Message'}
+                          </Badge>
+                        )}
+                        {getStatusBadge(selectedConversation.status)}
+                      </div>
                     </div>
                   </CardHeader>
 

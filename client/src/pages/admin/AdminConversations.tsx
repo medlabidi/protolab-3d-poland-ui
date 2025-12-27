@@ -22,9 +22,11 @@ import {
   CheckCheck,
   User,
   Bot,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -395,13 +397,24 @@ export default function AdminConversations() {
           </div>
 
           {/* Messages Panel */}
-          <div className="flex-1 flex flex-col bg-white">
+          <div className={cn(
+            "flex-1 flex flex-col bg-white rounded-lg transition-all duration-300",
+            selectedConversation?.admin_read === false && "ring-2 ring-orange-400 shadow-lg shadow-orange-100"
+          )}>
             {selectedConversation ? (
               <>
                 {/* Conversation Header */}
-                <div className="p-4 border-b flex items-center justify-between">
+                <div className={cn(
+                  "p-4 border-b flex items-center justify-between transition-colors",
+                  selectedConversation.admin_read === false && "bg-orange-50 border-orange-200"
+                )}>
                   <div className="flex-1">
-                    <h2 className="text-xl font-bold">{selectedConversation.users?.name || 'Unknown User'}</h2>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      {selectedConversation.admin_read === false && (
+                        <MessageCircle className="w-5 h-5 text-orange-500 animate-pulse" />
+                      )}
+                      {selectedConversation.users?.name || 'Unknown User'}
+                    </h2>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-muted-foreground">
                         {selectedConversation.subject || 'Support Conversation'}
@@ -418,15 +431,21 @@ export default function AdminConversations() {
                     </div>
                   </div>
 
-                  <Select
-                    value={selectedConversation.status}
-                    onValueChange={(value) => handleUpdateStatus(selectedConversation.id, value)}
-                  >
-                    <SelectTrigger className="w-[160px]">
-                      <Badge className={`${getStatusColor(selectedConversation.status)} text-white border-0`}>
-                        {selectedConversation.status.replace('_', ' ')}
+                  <div className="flex items-center gap-2">
+                    {selectedConversation.admin_read === false && (
+                      <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">
+                        New Message
                       </Badge>
-                    </SelectTrigger>
+                    )}
+                    <Select
+                      value={selectedConversation.status}
+                      onValueChange={(value) => handleUpdateStatus(selectedConversation.id, value)}
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <Badge className={`${getStatusColor(selectedConversation.status)} text-white border-0`}>
+                          {selectedConversation.status.replace('_', ' ')}
+                        </Badge>
+                      </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="open">Open</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
