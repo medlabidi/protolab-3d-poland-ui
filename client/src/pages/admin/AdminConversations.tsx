@@ -78,17 +78,27 @@ export default function AdminConversations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedConversationIdRef = useRef<string | null>(null);
+
+  // Update ref when selectedConversation changes
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversation?.id || null;
+  }, [selectedConversation]);
 
   useEffect(() => {
     fetchConversations();
     
-    // Poll for new messages every 10 seconds
+    // Poll more frequently for real-time feel (every 2 seconds)
     const interval = setInterval(() => {
       fetchConversations();
-    }, 10000);
+      // Fetch messages for currently selected conversation
+      if (selectedConversationIdRef.current) {
+        fetchMessages(selectedConversationIdRef.current);
+      }
+    }, 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Empty dependency array so polling never restarts
 
   useEffect(() => {
     if (selectedConversation) {

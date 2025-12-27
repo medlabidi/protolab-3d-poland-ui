@@ -73,22 +73,28 @@ const Conversations = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedConversationIdRef = useRef<string | null>(null);
   const openConversationId = searchParams.get('open');
+
+  // Update ref when selectedConversation changes
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversation?.id || null;
+  }, [selectedConversation]);
 
   useEffect(() => {
     fetchConversations();
     
-    // Poll for new messages every 10 seconds
+    // Poll more frequently for real-time feel (every 2 seconds)
     const interval = setInterval(() => {
       fetchConversations();
-      // Also fetch messages if a conversation is selected
-      if (selectedConversation) {
-        fetchMessages(selectedConversation.id);
+      // Fetch messages for currently selected conversation
+      if (selectedConversationIdRef.current) {
+        fetchMessages(selectedConversationIdRef.current, false); // Don't show loading during polling
       }
-    }, 10000);
+    }, 2000);
     
     return () => clearInterval(interval);
-  }, [selectedConversation]);
+  }, []); // Empty dependency array so polling never restarts
 
   // Auto-open conversation from URL parameter
   useEffect(() => {
@@ -139,8 +145,10 @@ const Conversations = () => {
     }
   };
 
-  const fetchMessages = async (conversationId: string) => {
-    setLoadingMessages(true);
+  const fetchMessages = async (conversationId: string, showLoading: boolean = true) => {
+    if (showLoading) {
+      setLoadingMessages(true);
+    }
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
@@ -160,9 +168,13 @@ const Conversations = () => {
       ));
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast.error('Failed to load messages');
+      if (showLoading) {
+        toast.error('Failed to load messages');
+      }
     } finally {
-      setLoadingMessages(false);
+      if (showLoading) {
+        setLoadingMessages(false);
+      }
     }
   };
 
