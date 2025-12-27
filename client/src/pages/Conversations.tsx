@@ -52,6 +52,8 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   user_read?: boolean;
+  admin_typing?: boolean;
+  admin_typing_at?: string;
   order?: Order;
   unread_count?: number;
   last_message?: Message;
@@ -70,6 +72,7 @@ const Conversations = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const openConversationId = searchParams.get('open');
 
   useEffect(() => {
@@ -186,8 +189,47 @@ const Conversations = () => {
     }
   };
 
+  const updateTypingStatus = async (isTyping: boolean) => {
+    if (!selectedConversation) return;
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      await fetch(`${API_URL}/conversations/${selectedConversation.id}/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isTyping })
+      });
+    } catch (error) {
+      console.error('Error updating typing status:', error);
+    }
+  };
+
+  const handleTyping = () => {
+    // Send typing indicator
+    updateTypingStatus(true);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing status after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      updateTypingStatus(false);
+    }, 3000);
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
+
+    // Clear typing status
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    updateTypingStatus(false);
 
     setSendingMessage(true);
     try {
@@ -465,6 +507,23 @@ const Conversations = () => {
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Typing Indicator */}
+                          {selectedConversation.admin_typing && (
+                            <div className="flex gap-3 animate-fade-in">
+                              <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                                <Headphones className="w-4 h-4" />
+                              </div>
+                              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl rounded-tl-sm px-4 py-2">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
                           <div ref={messagesEndRef} />
                         </div>
                       </ScrollArea>
@@ -477,7 +536,10 @@ const Conversations = () => {
                       <Input
                         placeholder={t('conversations.typeMessage')}
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={(e) => {
+                          setNewMessage(e.target.value);
+                          handleTyping();
+                        }}
                         onKeyPress={handleKeyPress}
                         disabled={sendingMessage || selectedConversation.status === 'closed'}
                         className="flex-1"

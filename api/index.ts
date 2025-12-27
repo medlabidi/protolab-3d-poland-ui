@@ -668,6 +668,37 @@ async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, re
   }
 }
 
+async function handleAdminSetTypingStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[5];
+  const { isTyping } = req.body;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  try {
+    await supabase
+      .from('conversations')
+      .update({ 
+        admin_typing: isTyping,
+        admin_typing_at: isTyping ? new Date().toISOString() : null
+      })
+      .eq('id', conversationId);
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Set admin typing status error:', error);
+    return res.status(500).json({ error: 'Failed to update typing status' });
+  }
+}
+
 async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -940,6 +971,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path.match(/^\/conversations\/[^/]+\/read$/) && req.method === 'PATCH') {
       return await handleMarkConversationRead(req as AuthenticatedRequest, res);
     }
+    if (path.match(/^\/conversations\/[^/]+\/typing$/) && req.method === 'POST') {
+      return await handleSetTypingStatus(req as AuthenticatedRequest, res);
+    }
     
     // Admin routes
     if (path === '/admin/orders' && req.method === 'GET') {
@@ -985,6 +1019,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/admin\/conversations\/[^\/]+\/read$/) && req.method === 'PATCH') {
       return await handleAdminMarkConversationRead(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/[^\/]+\/typing$/) && req.method === 'POST') {
+      return await handleAdminSetTypingStatus(req as AuthenticatedRequest, res);
     }
     
     // Admin business routes
@@ -2425,6 +2462,33 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
   } catch (error: any) {
     console.error('[SEND_MESSAGE] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+}
+
+async function handleSetTypingStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const url = req.url || '';
+  const conversationId = url.split('/')[4];
+  const { isTyping } = req.body;
+  
+  const supabase = getSupabase();
+  
+  try {
+    await supabase
+      .from('conversations')
+      .update({ 
+        user_typing: isTyping,
+        user_typing_at: isTyping ? new Date().toISOString() : null
+      })
+      .eq('id', conversationId)
+      .eq('user_id', user.userId);
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Set typing status error:', error);
+    return res.status(500).json({ error: 'Failed to update typing status' });
   }
 }
 

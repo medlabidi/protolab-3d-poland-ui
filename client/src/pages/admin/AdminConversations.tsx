@@ -39,6 +39,8 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   admin_read?: boolean;
+  user_typing?: boolean;
+  user_typing_at?: string;
   unread_count: number;
   orders: {
     id: string;
@@ -75,6 +77,7 @@ export default function AdminConversations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -158,9 +161,48 @@ export default function AdminConversations() {
     }
   };
 
+  const updateTypingStatus = async (isTyping: boolean) => {
+    if (!selectedConversation) return;
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      await fetch(`${API_URL}/admin/conversations/${selectedConversation.id}/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isTyping })
+      });
+    } catch (error) {
+      console.error('Error updating typing status:', error);
+    }
+  };
+
+  const handleTyping = () => {
+    // Send typing indicator
+    updateTypingStatus(true);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing status after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      updateTypingStatus(false);
+    }, 3000);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
+
+    // Clear typing status
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    updateTypingStatus(false);
 
     setSendingMessage(true);
     try {
@@ -492,6 +534,23 @@ export default function AdminConversations() {
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Typing Indicator */}
+                    {selectedConversation.user_typing && (
+                      <div className="flex gap-3 animate-fade-in">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="bg-gray-100 rounded-lg rounded-tl-sm px-4 py-2">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
@@ -502,7 +561,10 @@ export default function AdminConversations() {
                     <Textarea
                       placeholder="Type your message..."
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        handleTyping();
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
