@@ -175,7 +175,7 @@ const AdminOrders = () => {
       });
 
       if (response.ok) {
-        toast.success('Order status updated');
+        toast.success(`Order status updated to ${newStatus.replace('_', ' ')} - User notified`);
         fetchOrders(); // Refresh orders
         if (selectedOrder?.id === orderId) {
           setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);

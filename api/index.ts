@@ -283,6 +283,17 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
   const orderId = url.split('/')[4];
   const { status, payment_status } = req.body;
   
+  // First get the order details to get user_id and order_number
+  const { data: existingOrder, error: fetchError } = await supabase
+    .from('orders')
+    .select('user_id, order_number, file_name, status')
+    .eq('id', orderId)
+    .single();
+  
+  if (fetchError || !existingOrder) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  
   const updateData: any = {};
   if (status) updateData.status = status;
   if (payment_status) updateData.payment_status = payment_status;
@@ -296,6 +307,39 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
   
   if (error) {
     return res.status(500).json({ error: 'Failed to update order' });
+  }
+  
+  // Create notification for user when status changes
+  if (status && status !== existingOrder.status && existingOrder.user_id) {
+    const statusMessages: Record<string, string> = {
+      'submitted': 'Your print job has been submitted',
+      'in_queue': 'Your print job is now in the printing queue',
+      'printing': 'Your print job is now being printed',
+      'finished': 'Your print job has been completed',
+      'delivered': 'Your print job has been delivered',
+      'on_hold': 'Your print job has been placed on hold',
+      'suspended': 'Your print job has been suspended'
+    };
+    
+    const notification = {
+      user_id: existingOrder.user_id,
+      type: 'order_status_change',
+      title: 'Print Job Status Update',
+      message: statusMessages[status] || `Your print job status changed to ${status.replace('_', ' ')}`,
+      data: {
+        orderId: orderId,
+        newStatus: status,
+        orderNumber: existingOrder.order_number || orderId.slice(0, 8),
+        fileName: existingOrder.file_name
+      },
+      read: false,
+      created_at: new Date().toISOString()
+    };
+    
+    // Insert notification (don't block on error)
+    await supabase.from('notifications').insert(notification).catch(err => {
+      console.error('Failed to create notification:', err);
+    });
   }
   
   return res.status(200).json({ message: 'Order status updated', order });

@@ -281,7 +281,7 @@ const AdminDashboard = () => {
       }
 
       if (response.ok) {
-        toast.success('Order status updated');
+        toast.success(`Order status updated to ${newStatus.replace('_', ' ')} - User notified`);
         fetchDashboardData(false); // Refresh dashboard without retry
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -379,9 +379,25 @@ const AdminDashboard = () => {
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-            <p className="text-gray-400">Welcome back! Here's what's happening with your business.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+              <p className="text-gray-400">Welcome back! Here's what's happening with your business.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Show count of orders with unread messages */}
+              {recentOrders.filter(o => o.hasUnreadMessages).length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                  onClick={() => navigate('/admin/conversations')}
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  {recentOrders.filter(o => o.hasUnreadMessages).length} unread messages
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Stats Grid */}

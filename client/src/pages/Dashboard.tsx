@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { useNotifications } from "@/contexts/NotificationContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +43,7 @@ import { useNetworkReconnect } from "@/hooks/useNetworkReconnect";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { unreadCount } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
