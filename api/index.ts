@@ -1620,6 +1620,27 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
   
+  // Fetch conversation unread status for each order
+  if (orders && orders.length > 0) {
+    const orderIds = orders.map(o => o.id);
+    const { data: conversations } = await supabase
+      .from('conversations')
+      .select('order_id, user_read')
+      .in('order_id', orderIds);
+    
+    // Map unread status to orders
+    const unreadMap = new Map(
+      conversations?.map(c => [c.order_id, c.user_read === false]) || []
+    );
+    
+    const ordersWithUnread = orders.map(order => ({
+      ...order,
+      has_unread_messages: unreadMap.get(order.id) || false
+    }));
+    
+    return res.status(200).json({ orders: ordersWithUnread });
+  }
+  
   return res.status(200).json({ orders: orders || [] });
 }
 

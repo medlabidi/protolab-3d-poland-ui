@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, User, Settings, KeyRound, LogOut } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, User, Settings, KeyRound, LogOut, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -650,15 +650,35 @@ const Dashboard = () => {
                         {groupedOrders.standaloneOrders.map((order, index) => (
                           <div 
                             key={order.id} 
-                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
+                            className={`flex items-center justify-between py-4 px-4 rounded-lg transition-all hover-lift ${
+                              order.has_unread_messages 
+                                ? 'bg-orange-50 border-2 border-orange-400 hover:bg-orange-100' 
+                                : 'hover:bg-primary/5 border border-transparent hover:border-primary/20'
+                            }`}
                             style={{ animationDelay: `${index * 0.1}s` }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-muted/50 rounded-lg flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-muted-foreground" />
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                order.has_unread_messages ? 'bg-orange-100' : 'bg-muted/50'
+                              }`}>
+                                <FileText className={`w-5 h-5 ${
+                                  order.has_unread_messages ? 'text-orange-600' : 'text-muted-foreground'
+                                }`} />
                               </div>
                               <div>
-                                <p className="font-bold text-primary truncate max-w-[200px]">{order.file_name || 'Unnamed'}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className={`font-bold truncate max-w-[200px] ${
+                                    order.has_unread_messages ? 'text-orange-700' : 'text-primary'
+                                  }`}>
+                                    {order.file_name || 'Unnamed'}
+                                  </p>
+                                  {order.has_unread_messages && (
+                                    <div className="flex items-center gap-1">
+                                      <MessageSquare className="w-4 h-4 text-orange-500 animate-pulse" />
+                                      <span className="text-xs font-semibold text-orange-600">New message</span>
+                                    </div>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">
                                   {order.material || 'N/A'} • {new Date(order.created_at).toLocaleDateString()}
                                 </p>

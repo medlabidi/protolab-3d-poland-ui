@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Settings2, Archive, ArchiveRestore, Trash, Search, Filter, X, Calendar } from "lucide-react";
+import { Eye, Package, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Settings2, Archive, ArchiveRestore, Trash, Search, Filter, X, Calendar, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
@@ -56,6 +56,7 @@ interface Order {
   project_name?: string;
   is_archived?: boolean;
   deleted_at?: string | null;
+  has_unread_messages?: boolean;
 }
 
 type OrderTab = 'active' | 'archived' | 'deleted';
@@ -931,15 +932,26 @@ const Orders = () => {
                                 {projectOrders.map((order) => (
                                   <div
                                     key={order.id}
-                                    className="grid grid-cols-7 gap-4 items-center py-3 px-4 hover:bg-primary/5 transition-colors border-t border-primary/5 cursor-pointer"
+                                    className={`grid grid-cols-7 gap-4 items-center py-3 px-4 transition-colors border-t border-primary/5 cursor-pointer ${
+                                      order.has_unread_messages 
+                                        ? 'bg-orange-50 hover:bg-orange-100 border-l-4 border-l-orange-500' 
+                                        : 'hover:bg-primary/5'
+                                    }`}
                                     onClick={() => {
                                       setPreviewOrder(order);
                                       setShowPreview(true);
                                     }}
                                   >
                                     <div className="flex items-center gap-3 pl-4">
+                                      {order.has_unread_messages && (
+                                        <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse flex-shrink-0" />
+                                      )}
                                       <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="font-medium text-sm truncate">{order.file_name}</span>
+                                      <span className={`font-medium text-sm truncate ${
+                                        order.has_unread_messages ? 'text-orange-700 font-bold' : ''
+                                      }`}>
+                                        {order.file_name}
+                                      </span>
                                     </div>
                                     <div>
                                       <StatusBadge status={order.status} />
@@ -1041,14 +1053,21 @@ const Orders = () => {
                       {groupedOrders.standaloneOrders.map((order, index) => (
                         <div
                           key={order.id}
-                          className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 animate-scale-in cursor-pointer"
+                          className={`grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-primary/5 transition-all hover-lift border animate-scale-in cursor-pointer ${
+                            order.has_unread_messages 
+                              ? 'bg-orange-50 border-orange-400' 
+                              : 'border-transparent hover:border-primary/20'
+                          }`}
                           style={{ animationDelay: `${index * 0.05}s` }}
                           onClick={() => {
                             setPreviewOrder(order);
                             setShowPreview(true);
                           }}
                         >
-                          <div className="font-bold text-primary truncate" title={order.file_name}>
+                          <div className={`font-bold text-primary truncate flex items-center gap-2 ${order.has_unread_messages ? 'font-extrabold' : ''}`} title={order.file_name}>
+                            {order.has_unread_messages && (
+                              <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse flex-shrink-0" />
+                            )}
                             {order.file_name}
                           </div>
                           <div>
