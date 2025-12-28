@@ -677,14 +677,10 @@ async function handleAdminSetTypingStatus(req: AuthenticatedRequest, res: Vercel
   const conversationId = parts[4]; // /api/admin/conversations/[ID]/typing -> index 4
   const { isTyping } = req.body;
   
-  console.log('[Admin Typing API] URL:', url, 'parts:', parts);
-  console.log('[Admin Typing API] conversationId:', conversationId, 'isTyping:', isTyping, 'admin:', user.userId);
-  
   const supabase = getSupabase();
   
   const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
   if (userData?.role !== 'admin') {
-    console.log('[Admin Typing API] Not admin, rejecting');
     return res.status(403).json({ error: 'Admin access required' });
   }
   
@@ -698,13 +694,12 @@ async function handleAdminSetTypingStatus(req: AuthenticatedRequest, res: Vercel
       .eq('id', conversationId)
       .select();
     
-    console.log('[Admin Typing API] Update result:', { data, error });
-    
     if (error) {
       console.error('[Admin Typing API] Database error:', error);
       return res.status(500).json({ error: 'Failed to update typing status', details: error.message });
     }
     
+    console.log('✅ Admin typing status updated:', { conversationId: conversationId.slice(0, 8), admin_typing: isTyping });
     return res.status(200).json({ success: true, conversation: data?.[0] });
   } catch (error) {
     console.error('Set admin typing status error:', error);

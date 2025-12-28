@@ -132,21 +132,10 @@ const Conversations = () => {
       if (selectedConversation) {
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
-          console.log('[Conversations] Updating selected conversation, user_read:', updatedSelected.user_read);
-          console.log('[Conversations] admin_typing:', updatedSelected.admin_typing, 'admin_typing_at:', updatedSelected.admin_typing_at);
-          console.log('[Conversations] Updated conversation data:', updatedSelected);
+          console.log('🔄 TYPING STATUS - Admin typing:', updatedSelected.admin_typing, '| User typing:', updatedSelected.user_typing);
           setSelectedConversation(updatedSelected);
         }
       }
-      
-      // Log all conversations with their read status
-      console.log('[Conversations] All conversations:', updatedConversations.map((c: Conversation) => ({
-        id: c.id.slice(0, 8),
-        order: c.order?.file_name,
-        user_read: c.user_read,
-        admin_typing: c.admin_typing,
-        updated_at: c.updated_at
-      })));
     } catch (error) {
       console.error('Error fetching conversations:', error);
       toast.error('Failed to load conversations');
@@ -531,11 +520,8 @@ const Conversations = () => {
                           ))}
                           
                           {/* Admin Typing Indicator - Shows as a message */}
-                          {(() => {
-                            const isTyping = selectedConversation.admin_typing;
-                            console.log('[Typing Indicator Render] admin_typing:', isTyping, 'will show:', !!isTyping);
-                            return isTyping && (
-                              <div className="flex gap-3 animate-fade-in">
+                          {selectedConversation.admin_typing && (
+                            <div className="flex gap-3 animate-fade-in">
                                 <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
                                   <Headphones className="w-4 h-4" />
                                 </div>
@@ -547,8 +533,7 @@ const Conversations = () => {
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })()}
+                          )}
                           <div ref={messagesEndRef} />
                           
                           {/* Message Input - Now inside ScrollArea */}
