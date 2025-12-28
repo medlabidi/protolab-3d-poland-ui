@@ -139,7 +139,8 @@ const Conversations = () => {
             admin_typing: updatedSelected.admin_typing,
             admin_typing_at: updatedSelected.admin_typing_at 
           });
-          setSelectedConversation(updatedSelected);
+          // Force state update with new object reference
+          setSelectedConversation({ ...updatedSelected });
         } else {
           console.log('❌ USER - Selected conversation not found in list');
         }
