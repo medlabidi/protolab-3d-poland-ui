@@ -189,6 +189,7 @@ const Conversations = () => {
   };
 
   const selectConversation = async (conversation: Conversation) => {
+    console.log('✅ USER - Selecting conversation:', conversation.id.slice(0, 8), 'admin_typing:', conversation.admin_typing);
     setSelectedConversation(conversation);
     fetchMessages(conversation.id);
     
