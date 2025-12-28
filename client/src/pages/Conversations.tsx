@@ -16,7 +16,6 @@ import {
   CheckCircle,
   AlertCircle,
   User,
-  Headphones,
   UserCog,
   Bot,
   Loader2,
@@ -535,7 +534,7 @@ const Conversations = () => {
                           {selectedConversation.admin_typing && (
                             <div className="flex gap-3 animate-fade-in">
                                 <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
-                                  <Headphones className="w-4 h-4" />
+                                  <UserCog className="w-4 h-4" />
                                 </div>
                                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl rounded-tl-sm px-4 py-3">
                                   <div className="flex items-center gap-2">
