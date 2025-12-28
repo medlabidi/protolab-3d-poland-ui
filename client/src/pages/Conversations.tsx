@@ -131,9 +131,11 @@ const Conversations = () => {
       console.log('🔄 USER - Polling conversations (total:', updatedConversations.length, ')');
       
       // Update selectedConversation if it exists to reflect new state
-      if (selectedConversation) {
-        console.log('🔄 USER - Has selected conversation:', selectedConversation.id.slice(0, 8));
-        const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
+      // Use ref to avoid stale closure issue
+      const currentSelectedId = selectedConversationIdRef.current;
+      if (currentSelectedId) {
+        console.log('🔄 USER - Has selected conversation:', currentSelectedId.slice(0, 8));
+        const updatedSelected = updatedConversations.find((c: Conversation) => c.id === currentSelectedId);
         if (updatedSelected) {
           console.log('🔄 USER - Typing status:', { 
             admin_typing: updatedSelected.admin_typing,
