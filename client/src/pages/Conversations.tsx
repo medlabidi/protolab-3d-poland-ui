@@ -492,26 +492,6 @@ const Conversations = () => {
                     ) : (
                       <ScrollArea className="h-full p-4">
                         <div className="space-y-4">
-                          {/* Typing Indicator */}
-                          {(() => {
-                            console.log('[Typing Debug] admin_typing:', selectedConversation.admin_typing, 'admin_typing_at:', selectedConversation.admin_typing_at);
-                            return selectedConversation.admin_typing && (
-                              <div className="flex gap-3 animate-fade-in mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
-                                  <Headphones className="w-4 h-4" />
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                  <p className="text-xs font-medium text-blue-700 mb-1">Engineering Support is typing...</p>
-                                  <div className="flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          
                           {messages.map((message) => (
                             <div
                               key={message.id}
@@ -549,6 +529,26 @@ const Conversations = () => {
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Admin Typing Indicator - Shows as a message */}
+                          {(() => {
+                            const isTyping = selectedConversation.admin_typing;
+                            console.log('[Typing Indicator Render] admin_typing:', isTyping, 'will show:', !!isTyping);
+                            return isTyping && (
+                              <div className="flex gap-3 animate-fade-in">
+                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                                  <Headphones className="w-4 h-4" />
+                                </div>
+                                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl rounded-tl-sm px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <div ref={messagesEndRef} />
                           
                           {/* Message Input - Now inside ScrollArea */}
