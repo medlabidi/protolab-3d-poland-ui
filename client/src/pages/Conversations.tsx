@@ -128,17 +128,23 @@ const Conversations = () => {
       const updatedConversations = data.conversations || [];
       setConversations(updatedConversations);
       
+      console.log('🔄 USER - Polling conversations (total:', updatedConversations.length, ')');
+      
       // Update selectedConversation if it exists to reflect new state
       if (selectedConversation) {
+        console.log('🔄 USER - Has selected conversation:', selectedConversation.id.slice(0, 8));
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
-          console.log('🔄 USER POLLING - Received typing status:', { 
-            conversationId: updatedSelected.id.slice(0, 8),
+          console.log('🔄 USER - Typing status:', { 
             admin_typing: updatedSelected.admin_typing,
             admin_typing_at: updatedSelected.admin_typing_at 
           });
           setSelectedConversation(updatedSelected);
+        } else {
+          console.log('❌ USER - Selected conversation not found in list');
         }
+      } else {
+        console.log('⚠️ USER - No conversation selected');
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
