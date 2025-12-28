@@ -183,9 +183,15 @@ export default function AdminConversations() {
   const updateTypingStatus = async (isTyping: boolean) => {
     if (!selectedConversation) return;
     
+    console.log('🔵 ADMIN TYPING - Sending to API:', { 
+      conversationId: selectedConversation.id, 
+      isTyping,
+      url: `${API_URL}/admin/conversations/${selectedConversation.id}/typing`
+    });
+    
     try {
       const token = localStorage.getItem('accessToken');
-      await fetch(`${API_URL}/admin/conversations/${selectedConversation.id}/typing`, {
+      const response = await fetch(`${API_URL}/admin/conversations/${selectedConversation.id}/typing`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -193,8 +199,15 @@ export default function AdminConversations() {
         },
         body: JSON.stringify({ isTyping })
       });
+      
+      const result = await response.json();
+      console.log('🔵 ADMIN TYPING - API Response:', result);
+      
+      if (!response.ok) {
+        console.error('🔴 ADMIN TYPING - API Error:', result);
+      }
     } catch (error) {
-      console.error('Error updating typing status:', error);
+      console.error('🔴 ADMIN TYPING - Request failed:', error);
     }
   };
 
