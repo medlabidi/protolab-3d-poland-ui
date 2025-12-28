@@ -609,6 +609,13 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
   }
   
   try {
+    // Get current conversation status
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('status')
+      .eq('id', conversationId)
+      .single();
+    
     const { data: message, error } = await supabase
       .from('conversation_messages')
       .insert({
@@ -624,10 +631,19 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       return res.status(500).json({ error: 'Failed to send message' });
     }
     
-    // Mark conversation as unread for user
+    // Update conversation: mark as unread for user and change status to "in_progress" if it's "open"
+    const updateData: any = { 
+      user_read: false, 
+      updated_at: new Date().toISOString() 
+    };
+    
+    if (conversation?.status === 'open') {
+      updateData.status = 'in_progress';
+    }
+    
     await supabase
       .from('conversations')
-      .update({ user_read: false, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', conversationId);
     
     return res.status(200).json({ message });
