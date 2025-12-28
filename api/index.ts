@@ -673,9 +673,11 @@ async function handleAdminSetTypingStatus(req: AuthenticatedRequest, res: Vercel
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[5];
+  const parts = url.split('/');
+  const conversationId = parts[4]; // /api/admin/conversations/[ID]/typing -> index 4
   const { isTyping } = req.body;
   
+  console.log('[Admin Typing API] URL:', url, 'parts:', parts);
   console.log('[Admin Typing API] conversationId:', conversationId, 'isTyping:', isTyping, 'admin:', user.userId);
   
   const supabase = getSupabase();
