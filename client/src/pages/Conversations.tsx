@@ -132,7 +132,11 @@ const Conversations = () => {
       if (selectedConversation) {
         const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
         if (updatedSelected) {
-          console.log('🔄 TYPING STATUS - Admin typing:', updatedSelected.admin_typing, '| User typing:', updatedSelected.user_typing);
+          console.log('🔄 USER POLLING - Received typing status:', { 
+            conversationId: updatedSelected.id.slice(0, 8),
+            admin_typing: updatedSelected.admin_typing,
+            admin_typing_at: updatedSelected.admin_typing_at 
+          });
           setSelectedConversation(updatedSelected);
         }
       }
