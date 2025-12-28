@@ -615,7 +615,7 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
         conversation_id: conversationId,
         sender_id: user.userId,
         message: req.body.message,
-        sender_type: 'admin'
+        sender_type: 'engineer'
       })
       .select()
       .single();
