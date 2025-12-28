@@ -542,12 +542,12 @@ export default function AdminConversations() {
                       <div
                         key={msg.id}
                         className={`flex ${
-                          msg.sender_type === 'engineer' ? 'justify-end' : 'justify-start'
+                          msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'
                         }`}
                       >
                         <div
                           className={`max-w-[70%] ${
-                            msg.sender_type === 'engineer'
+                            msg.sender_type === 'engineer' || msg.sender_type === 'admin'
                               ? 'bg-primary text-primary-foreground'
                               : msg.sender_type === 'system'
                               ? 'bg-gray-100 text-gray-700'
@@ -556,14 +556,14 @@ export default function AdminConversations() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             {msg.sender_type === 'user' && <User className="w-3 h-3" />}
-                            {msg.sender_type === 'engineer' && <Badge variant="secondary" className="text-xs">Admin</Badge>}
+                            {(msg.sender_type === 'engineer' || msg.sender_type === 'admin') && <Badge variant="secondary" className="text-xs">Admin</Badge>}
                             {msg.sender_type === 'system' && <Bot className="w-3 h-3" />}
                             <span className="text-xs opacity-70">
                               {formatTime(msg.created_at)}
                             </span>
                           </div>
                           <p className="whitespace-pre-wrap">{msg.message}</p>
-                          {msg.is_read && msg.sender_type === 'engineer' && (
+                          {msg.is_read && (msg.sender_type === 'engineer' || msg.sender_type === 'admin') && (
                             <div className="flex justify-end mt-1">
                               <CheckCheck className="w-3 h-3 opacity-70" />
                             </div>

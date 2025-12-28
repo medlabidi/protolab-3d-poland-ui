@@ -174,10 +174,13 @@ const Conversations = () => {
       const data = await response.json();
       setMessages(data.messages || []);
       
-      // Update conversation unread count locally
+      // Update conversation unread count locally and mark as read
       setConversations(prev => prev.map(c => 
-        c.id === conversationId ? { ...c, unread_count: 0 } : c
+        c.id === conversationId ? { ...c, unread_count: 0, user_read: true } : c
       ));
+      
+      // Update selected conversation to mark as read
+      setSelectedConversation(prev => prev ? { ...prev, user_read: true } : null);
     } catch (error) {
       console.error('Error fetching messages:', error);
       if (showLoading) {
