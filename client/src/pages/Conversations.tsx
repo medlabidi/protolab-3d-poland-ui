@@ -449,17 +449,11 @@ const Conversations = () => {
             </Card>
 
             {/* Messages Panel */}
-            <Card className={cn(
-              "flex-1 flex flex-col transition-all duration-300 border",
-              selectedConversation?.user_read === false && "ring-2 ring-orange-400 shadow-lg shadow-orange-100"
-            )}>
+            <Card className="flex-1 flex flex-col transition-all duration-300 border">
               {selectedConversation ? (
                 <>
                   {/* Conversation Header */}
-                  <CardHeader className={cn(
-                    "pb-3 border-b transition-colors",
-                    selectedConversation.user_read === false && "bg-orange-50 border-orange-200"
-                  )}>
+                  <CardHeader className="pb-3 border-b transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Button
