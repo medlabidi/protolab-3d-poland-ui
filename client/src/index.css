@@ -117,6 +117,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Space Grotesk', sans-serif;
     font-smooth: always;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -166,6 +167,21 @@ All colors MUST be HSL.
   50% { background-position: 100% 50%; }
 }
 
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes scroll-vertical {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 /* Custom Utilities */
 @layer utilities {
   .animate-float {
@@ -189,10 +205,23 @@ All colors MUST be HSL.
     animation: gradient-shift 3s ease infinite;
   }
 
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
+  }
+
+  .animate-spin-reverse {
+    animation: spin-reverse 20s linear infinite;
+  }
+
+  .animate-scroll-vertical {
+    animation: scroll-vertical 25s linear infinite;
+  }
+
   .glass-effect {
     backdrop-filter: blur(12px) saturate(180%);
-    background-color: rgba(255, 255, 255, 0.75);
+    background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .glass-effect-dark {

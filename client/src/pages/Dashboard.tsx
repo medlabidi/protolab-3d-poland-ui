@@ -430,13 +430,13 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
       
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="flex-1 p-4 md:p-8 w-full lg:w-auto">
+        <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
           {/* Header with Title and Notifications */}
-          <div className="flex items-start justify-between animate-slide-up">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 animate-slide-up">
             <div>
-              <h1 className="text-4xl font-bold mb-2 gradient-text">{t('dashboard.overview')}</h1>
-              <p className="text-muted-foreground text-lg">{t('dashboard.welcome')}</p>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">{t('dashboard.overview')}</h1>
+              <p className="text-muted-foreground text-base md:text-lg">{t('dashboard.welcome')}</p>
             </div>
             <div className="flex items-center gap-2">
               <NotificationDropdown />
@@ -474,7 +474,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
@@ -483,16 +483,16 @@ const Dashboard = () => {
                 onClick={(stat as any).isCredit ? () => navigate('/credits') : undefined}
               >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                  <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className={`p-2 rounded-lg transition-colors ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                    <stat.icon className={`w-5 h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
+                  <div className={`p-1.5 md:p-2 rounded-lg transition-colors ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-3xl font-bold mb-2 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
-                  <p className="text-sm text-muted-foreground">
+                  <div className={`text-xl md:text-3xl font-bold mb-1 md:mb-2 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
+                  <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                     {stat.description}
                     {(stat as any).isCredit && (
                       <span className="ml-2 text-primary hover:underline">{t('dashboard.projects.getMore')}</span>
@@ -505,13 +505,13 @@ const Dashboard = () => {
 
           {/* Recent Orders & Projects */}
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="border-b">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Package className="w-6 h-6 text-primary" />
+            <CardHeader className="border-b p-4 md:p-6">
+              <CardTitle className="text-xl md:text-2xl flex items-center gap-2">
+                <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 {t('dashboard.recentOrders')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 md:pt-6">
               <div className="space-y-2">
                 {orders.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
@@ -535,14 +535,14 @@ const Dashboard = () => {
                         onOpenChange={() => toggleProject(projectName)}
                       >
                         <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10 mb-2">
-                          <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors">
-                              <CollapsibleTrigger className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center">
-                                    <FolderOpen className="w-5 h-5 text-primary" />
+                          <div className="flex items-center justify-between p-3 md:p-4 hover:bg-primary/5 transition-colors">
+                              <CollapsibleTrigger className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 md:gap-3">
+                                  <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <FolderOpen className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                   </div>
-                                  <div className="text-left">
-                                    <p className="font-bold text-primary">{projectName}</p>
+                                  <div className="text-left min-w-0">
+                                    <p className="font-bold text-primary text-sm md:text-base truncate">{projectName}</p>
                                     <p className="text-xs text-muted-foreground">
                                       {projectOrders.length} file{projectOrders.length > 1 ? 's' : ''} • 
                                       {new Date(projectOrders[0].created_at).toLocaleDateString()}
@@ -550,7 +550,7 @@ const Dashboard = () => {
                                   </div>
                                 </div>
                               </CollapsibleTrigger>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                                 <StatusBadge status={getProjectStatus(projectOrders)} />
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -617,18 +617,19 @@ const Dashboard = () => {
                               {projectOrders.map((order) => (
                                 <div 
                                   key={order.id}
-                                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                  className="flex items-center justify-between p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <FileText className="w-4 h-4 text-muted-foreground" />
-                                    <span className="text-sm font-medium truncate max-w-[200px]">{order.file_name}</span>
+                                  <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-xs md:text-sm font-medium truncate">{order.file_name}</span>
                                   </div>
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                                     <StatusBadge status={order.status as OrderStatus} />
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => navigate(`/orders/${order.id}`)}
+                                      className="h-8 w-8 p-0"
                                     >
                                       <Eye className="w-4 h-4" />
                                     </Button>
@@ -684,7 +685,7 @@ const Dashboard = () => {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                               <StatusBadge status={order.status as OrderStatus} />
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

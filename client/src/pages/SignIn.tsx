@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { GoogleLogin } from "@react-oauth/google";
 import { Logo } from "@/components/Logo";
+import { scheduleTokenRefresh } from "@/utils/tokenRefresh";
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -59,6 +60,9 @@ const SignIn = () => {
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
 
+      // Initialize auto token refresh
+      scheduleTokenRefresh(data.tokens.accessToken);
+
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {
@@ -95,6 +99,9 @@ const SignIn = () => {
       localStorage.setItem("refreshToken", data.tokens.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("isLoggedIn", "true");
+
+      // Initialize auto token refresh
+      scheduleTokenRefresh(data.tokens.accessToken);
 
       toast.success("Google login successful!");
       navigate("/dashboard");
