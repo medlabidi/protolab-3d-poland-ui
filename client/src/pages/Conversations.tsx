@@ -17,6 +17,7 @@ import {
   AlertCircle,
   User,
   Headphones,
+  UserCog,
   Bot,
   Loader2,
   MessageCircle
@@ -321,7 +322,7 @@ const Conversations = () => {
       case 'user':
         return <User className="w-4 h-4" />;
       case 'engineer':
-        return <Headphones className="w-4 h-4" />;
+        return <UserCog className="w-4 h-4" />;
       case 'system':
         return <Bot className="w-4 h-4" />;
       default:
