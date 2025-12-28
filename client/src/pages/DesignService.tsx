@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Palette, Upload, FileText, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
+import { submitDesignRequest } from "@/utils/servicesApi";
 
 const DesignService = () => {
   const navigate = useNavigate();
@@ -30,26 +31,44 @@ const DesignService = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.projectDescription) {
-      toast.error(t('services.design.validation.required'));
+      toast.error(t('services.design.validation.required') || 'Please fill in all required fields');
       return;
     }
 
-    // TODO: Implement actual submission logic
-    toast.success(t('services.design.success'));
-    console.log("Design request submitted:", formData);
-    
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      projectDescription: "",
-      referenceFiles: [],
-    });
+    // Show loading toast
+    const loadingToast = toast.loading('Submitting your design request...');
+
+    try {
+      const result = await submitDesignRequest(formData);
+      
+      if (result.success) {
+        toast.success(result.message || t('services.design.success') || 'Design request submitted successfully!', {
+          id: loadingToast,
+        });
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          projectDescription: "",
+          referenceFiles: [],
+        });
+      } else {
+        toast.error(result.message || 'Failed to submit design request', {
+          id: loadingToast,
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting design request:', error);
+      toast.error('An error occurred while submitting your request', {
+        id: loadingToast,
+      });
+    }
   };
 
   const designProcess = [

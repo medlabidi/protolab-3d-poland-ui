@@ -6,17 +6,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Clock, CheckCircle2, ArrowRight, User, Mail, Phone, MessageSquare } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { bookAppointment, checkAvailability } from "@/utils/servicesApi";
 
 const ConsultingService = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,12 +28,31 @@ const ConsultingService = () => {
     message: "",
   });
 
-  // Available time slots
-  const timeSlots = [
+  // All possible time slots
+  const allTimeSlots = [
     "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
     "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
     "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
   ];
+
+  // Fetch available slots when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      checkAvailability(dateStr).then(result => {
+        if (result.success) {
+          setAvailableSlots(result.availableSlots || []);
+          setBookedSlots(result.bookedSlots || []);
+        } else {
+          setAvailableSlots(allTimeSlots);
+          setBookedSlots([]);
+        }
+      });
+    }
+  }, [selectedDate]);
+
+  // Get time slots based on availability
+  const timeSlots = selectedDate ? availableSlots : allTimeSlots;
 
   // Filter out past dates and weekends
   const isDateDisabled = (date: Date) => {
@@ -49,34 +71,56 @@ const ConsultingService = () => {
     { value: "other", label: t('services.consulting.topics.other') },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.topic || !selectedDate || !selectedTime) {
-      toast.error(t('services.consulting.validation.required'));
+      toast.error(t('services.consulting.validation.required') || 'Please fill in all required fields');
       return;
     }
 
-    // TODO: Implement actual appointment booking logic
-    const appointmentData = {
-      ...formData,
-      date: selectedDate,
-      time: selectedTime,
-    };
-    
-    toast.success(t('services.consulting.success'));
-    console.log("Appointment booked:", appointmentData);
-    
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      topic: "",
-      message: "",
-    });
-    setSelectedDate(undefined);
-    setSelectedTime("");
+    // Show loading toast
+    const loadingToast = toast.loading('Booking your appointment...');
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      
+      const result = await bookAppointment({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        topic: formData.topic,
+        date: dateStr,
+        time: selectedTime,
+        message: formData.message,
+      });
+      
+      if (result.success) {
+        toast.success(result.message || t('services.consulting.success') || 'Appointment booked successfully!', {
+          id: loadingToast,
+        });
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          topic: "",
+          message: "",
+        });
+        setSelectedDate(undefined);
+        setSelectedTime("");
+      } else {
+        toast.error(result.message || 'Failed to book appointment', {
+          id: loadingToast,
+        });
+      }
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      toast.error('An error occurred while booking your appointment', {
+        id: loadingToast,
+      });
+    }
   };
 
   const benefits = [
