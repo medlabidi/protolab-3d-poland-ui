@@ -399,10 +399,11 @@ const Conversations = () => {
                   </CardTitle>
                   {/* Collapse Button */}
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 border-primary/20 hover:bg-primary/10"
                     onClick={() => setSidebarCollapsed(true)}
+                    title="Collapse sidebar"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
