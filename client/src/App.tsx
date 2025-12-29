@@ -37,6 +37,7 @@ import Credits from "./pages/Credits";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Conversations from "./pages/Conversations";
 import Business from "./pages/Business";
+import PayUTest from "./pages/PayUTest"; // TEMPORARY - Delete after testing
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -102,6 +103,9 @@ const App = () => {
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
                 <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
+                
+                {/* TEMPORARY - PayU Sandbox Test - DELETE AFTER TESTING */}
+                <Route path="/payu-test" element={<PayUTest />} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
