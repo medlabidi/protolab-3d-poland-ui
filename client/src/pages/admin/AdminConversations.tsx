@@ -79,6 +79,7 @@ export default function AdminConversations() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
+  const hasScrolledRef = useRef<string | null>(null);
 
   // Update ref when selectedConversation changes
   useEffect(() => {
@@ -109,12 +110,13 @@ export default function AdminConversations() {
 
   // Scroll to bottom only when conversation opens - one time
   useEffect(() => {
-    if (selectedConversation && messages.length > 0) {
+    if (selectedConversation && messages.length > 0 && hasScrolledRef.current !== selectedConversation.id) {
+      hasScrolledRef.current = selectedConversation.id;
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 100);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }, 150);
     }
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, messages.length]);
 
   const fetchConversations = async () => {
     try {

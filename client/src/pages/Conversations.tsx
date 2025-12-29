@@ -78,6 +78,7 @@ const Conversations = () => {
   const selectedConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const openConversationId = searchParams.get('open');
+  const hasScrolledRef = useRef<string | null>(null);
 
   // Update ref when selectedConversation changes
   useEffect(() => {
@@ -86,12 +87,13 @@ const Conversations = () => {
 
   // Scroll to bottom when conversation opens - one time only
   useEffect(() => {
-    if (selectedConversation && messages.length > 0) {
+    if (selectedConversation && messages.length > 0 && hasScrolledRef.current !== selectedConversation.id) {
+      hasScrolledRef.current = selectedConversation.id;
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 100);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }, 150);
     }
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, messages.length]);
 
   useEffect(() => {
     fetchConversations();
