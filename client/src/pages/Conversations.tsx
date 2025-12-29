@@ -377,10 +377,11 @@ const Conversations = () => {
             {/* Expand Button - visible when sidebar is collapsed */}
             {sidebarCollapsed && (
               <Button
-                variant="ghost"
+                variant="default"
                 size="icon"
-                className="absolute left-4 top-4 z-50 bg-background border shadow-md hover:bg-muted"
+                className="absolute left-4 top-4 z-50 shadow-lg"
                 onClick={() => setSidebarCollapsed(false)}
+                title="Expand sidebar"
               >
                 <Menu className="w-4 h-4" />
               </Button>
@@ -397,15 +398,15 @@ const Conversations = () => {
                     <MessageSquare className="w-5 h-5 text-primary" />
                     {t('conversations.listTitle')}
                   </CardTitle>
-                  {/* Collapse Button */}
+                  {/* Collapse Button - visible on all screens */}
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 border-primary/20 hover:bg-primary/10"
+                    className="h-8 w-8"
                     onClick={() => setSidebarCollapsed(true)}
                     title="Collapse sidebar"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" />
                   </Button>
                 </div>
               </CardHeader>
