@@ -19,7 +19,9 @@ import {
   UserCog,
   Bot,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  Menu,
+  ChevronLeft
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
@@ -71,6 +73,7 @@ const Conversations = () => {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -370,9 +373,37 @@ const Conversations = () => {
             </p>
           </div>
 
-          <div className="flex gap-6 h-[calc(100vh-220px)]">
+          <div className="flex gap-6 h-[calc(100vh-220px)] relative">
+            {/* Toggle Button */}
+            {!sidebarCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -left-2 top-4 z-10 md:hidden bg-background border shadow-md"
+                onClick={() => setSidebarCollapsed(true)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {sidebarCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-4 top-4 z-10 bg-background border shadow-md"
+                onClick={() => setSidebarCollapsed(false)}
+              >
+                <Menu className="w-4 h-4" />
+              </Button>
+            )}
+
             {/* Conversations List */}
-            <Card className="w-96 flex flex-col flex-shrink-0 border">
+            <Card className={cn(
+              "w-96 flex flex-col flex-shrink-0 border transition-all duration-300",
+              sidebarCollapsed && "md:-ml-[400px] md:opacity-0 md:pointer-events-none",
+              "max-md:absolute max-md:left-0 max-md:top-0 max-md:z-20 max-md:h-full",
+              sidebarCollapsed && "max-md:-translate-x-full"
+            )}>
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <MessageSquare className="w-5 h-5 text-primary" />
