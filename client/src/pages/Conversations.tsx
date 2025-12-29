@@ -374,23 +374,24 @@ const Conversations = () => {
           </div>
 
           <div className="flex gap-6 h-[calc(100vh-220px)] relative">
-            {/* Toggle Button */}
+            {/* Collapse Button - visible when sidebar is open */}
             {!sidebarCollapsed && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute -left-2 top-4 z-10 md:hidden bg-background border shadow-md"
+                className="absolute left-2 top-4 z-10 bg-background border shadow-md hover:bg-muted"
                 onClick={() => setSidebarCollapsed(true)}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
             )}
             
+            {/* Expand Button - visible when sidebar is collapsed */}
             {sidebarCollapsed && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-4 top-4 z-10 bg-background border shadow-md"
+                className="absolute left-4 top-4 z-10 bg-background border shadow-md hover:bg-muted"
                 onClick={() => setSidebarCollapsed(false)}
               >
                 <Menu className="w-4 h-4" />
@@ -399,10 +400,8 @@ const Conversations = () => {
 
             {/* Conversations List */}
             <Card className={cn(
-              "w-96 flex flex-col flex-shrink-0 border transition-all duration-300",
-              sidebarCollapsed && "md:-ml-[400px] md:opacity-0 md:pointer-events-none",
-              "max-md:absolute max-md:left-0 max-md:top-0 max-md:z-20 max-md:h-full",
-              sidebarCollapsed && "max-md:-translate-x-full"
+              "w-96 flex flex-col flex-shrink-0 border transition-all duration-300 ease-in-out",
+              sidebarCollapsed && "-ml-[400px] opacity-0 pointer-events-none"
             )}>
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="flex items-center gap-2 text-lg">
