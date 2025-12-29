@@ -107,13 +107,14 @@ export default function AdminConversations() {
     }
   }, [selectedConversation]);
 
+  // Scroll to bottom only when conversation opens - one time
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    if (selectedConversation && messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [selectedConversation?.id]);
 
   const fetchConversations = async () => {
     try {
