@@ -99,9 +99,12 @@ const Conversations = () => {
 
   // Scroll to bottom (used for initial load and when user is at bottom)
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior });
-    }
+    // Use setTimeout to ensure DOM is updated
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+      }
+    }, 100);
   };
 
   // Scroll to bottom when conversation opens (one-time)
@@ -110,7 +113,7 @@ const Conversations = () => {
       scrollToBottom('auto'); // Instant scroll on open
       setIsUserScrolledUp(false); // Reset scroll tracking
     }
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, messages.length]);
 
   // Auto-scroll when new messages arrive, but only if user is near bottom
   useEffect(() => {
