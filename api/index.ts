@@ -1886,7 +1886,6 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     quantity: quantity || 1,
     price: price || 0,
     shipping_method: shippingMethod || 'pickup',
-    payment_method: paymentMethod || 'card',
     layer_height: parseFloat(layerHeight || '0.2'),
     infill: parseInt(infill || '20', 10),
     status: 'submitted',
@@ -1896,19 +1895,19 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   if (paymentMethod === 'credits') {
     const orderPrice = price || 0;
     
-    // Get current credit balance
+    // Get current credit balance (use maybeSingle to handle no record case)
     const { data: creditData, error: creditFetchError } = await supabase
       .from('credits')
       .select('balance')
       .eq('user_id', user.userId)
-      .single();
+      .maybeSingle();
     
-    if (creditFetchError || !creditData) {
+    if (creditFetchError) {
       console.error('Failed to fetch credit balance:', creditFetchError);
       return res.status(400).json({ error: 'Failed to fetch credit balance' });
     }
     
-    const currentBalance = creditData.balance || 0;
+    const currentBalance = creditData?.balance || 0;
     
     // Check if user has sufficient credits
     if (currentBalance < orderPrice) {
@@ -1919,12 +1918,17 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       });
     }
     
-    // Deduct credits
+    // Deduct credits - use upsert to handle case where no record exists
     const newBalance = currentBalance - orderPrice;
     const { error: updateError } = await supabase
       .from('credits')
-      .update({ balance: newBalance, updated_at: new Date().toISOString() })
-      .eq('user_id', user.userId);
+      .upsert({ 
+        user_id: user.userId,
+        balance: newBalance, 
+        updated_at: new Date().toISOString() 
+      }, {
+        onConflict: 'user_id'
+      });
     
     if (updateError) {
       console.error('Failed to deduct credits:', updateError);
@@ -1933,7 +1937,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     
     console.log(`💳 [CREDITS] Deducted ${orderPrice} PLN from user ${user.userId}. New balance: ${newBalance} PLN`);
     
-    // Mark order as paid
+    // Mark order as paid (only if these columns exist)
     orderData.payment_status = 'paid';
     orderData.paid_amount = orderPrice;
   }
@@ -1959,6 +1963,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   if (notes) orderData.notes = notes;
   if (projectName) orderData.project_name = projectName;
   if (shippingAddress) orderData.shipping_address = shippingAddress;
+  if (paymentMethod) orderData.payment_method = paymentMethod;
   
   console.log(`📦 [ORDER-CREATE] Creating order for user: ${user.userId}`, JSON.stringify(orderData));
   
