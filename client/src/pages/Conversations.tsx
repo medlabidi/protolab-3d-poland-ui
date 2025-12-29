@@ -374,24 +374,12 @@ const Conversations = () => {
           </div>
 
           <div className="flex gap-6 h-[calc(100vh-220px)] relative">
-            {/* Collapse Button - visible when sidebar is open */}
-            {!sidebarCollapsed && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-2 top-4 z-10 bg-background border shadow-md hover:bg-muted"
-                onClick={() => setSidebarCollapsed(true)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-            )}
-            
             {/* Expand Button - visible when sidebar is collapsed */}
             {sidebarCollapsed && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-4 top-4 z-10 bg-background border shadow-md hover:bg-muted"
+                className="absolute left-4 top-4 z-50 bg-background border shadow-md hover:bg-muted"
                 onClick={() => setSidebarCollapsed(false)}
               >
                 <Menu className="w-4 h-4" />
@@ -404,10 +392,21 @@ const Conversations = () => {
               sidebarCollapsed && "-ml-[400px] opacity-0 pointer-events-none"
             )}>
               <CardHeader className="pb-3 border-b">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  {t('conversations.listTitle')}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    {t('conversations.listTitle')}
+                  </CardTitle>
+                  {/* Collapse Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setSidebarCollapsed(true)}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="flex-1 p-0">
                 <ScrollArea className="h-full">
