@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X } from "lucide-react";
+import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -15,6 +15,7 @@ export const DashboardSidebar = () => {
   const navigate = useNavigate();
   const { clearAllNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const handleLogout = () => {
     // Log activity before clearing localStorage
@@ -84,28 +85,46 @@ export const DashboardSidebar = () => {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
-        w-72 bg-gradient-to-b from-card to-muted/20 border-r border-border/50 min-h-screen p-6 flex flex-col shadow-xl
-        transform transition-transform duration-300 ease-in-out
+        bg-gradient-to-b from-card to-muted/20 border-r border-border/50 min-h-screen p-6 flex flex-col shadow-xl
+        transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${isCollapsed ? 'lg:w-20' : 'w-72'}
       `}>
-      <div className="mb-12 animate-slide-up">
-        <NavLink to="/" className="flex items-center gap-3 text-xl font-bold group">
-          <Logo size="lg" textClassName="text-xl" />
-        </NavLink>
+      <div className={`mb-12 animate-slide-up ${isCollapsed ? 'lg:flex lg:justify-center' : ''}`}>
+        {!isCollapsed ? (
+          <NavLink to="/" className="flex items-center gap-3 text-xl font-bold group">
+            <Logo size="lg" textClassName="text-xl" />
+          </NavLink>
+        ) : (
+          <NavLink to="/" className="lg:flex items-center justify-center hidden">
+            <Logo size="sm" showText={false} />
+          </NavLink>
+        )}
       </div>
+
+      {/* Desktop Collapse Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="hidden lg:flex absolute -right-3 top-6 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-muted z-50"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </Button>
 
       <nav className="flex-1 space-y-2">
         {menuItems.map((item, index) => (
           <NavLink
             key={item.path}
             to={item.path}
-            className="flex items-center gap-3 px-5 py-4 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all duration-300 group relative overflow-hidden animate-slide-up"
+            className={`flex items-center gap-3 px-5 py-4 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all duration-300 group relative overflow-hidden animate-slide-up ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
             activeClassName="bg-gradient-to-r from-primary to-purple-600 text-white hover:from-primary hover:to-purple-600 shadow-lg scale-105"
             style={{ animationDelay: `${index * 0.1}s` }}
             onClick={() => setIsOpen(false)}
+            title={isCollapsed ? item.label : ''}
           >
             <item.icon className="w-5 h-5 group-hover:scale-110 transition-transform z-10" />
-            <span className="font-semibold z-10">{item.label}</span>
+            {!isCollapsed && <span className="font-semibold z-10">{item.label}</span>}
             <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </NavLink>
         ))}
@@ -115,18 +134,21 @@ export const DashboardSidebar = () => {
 
       <Button
         variant="ghost"
-        className="justify-start gap-3 px-5 py-4 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-300 group hover-lift"
+        className={`justify-start gap-3 px-5 py-4 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-300 group hover-lift ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
         onClick={handleLogout}
+        title={isCollapsed ? t('dashboard.logout') : ''}
       >
         <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        <span className="font-semibold">{t('dashboard.logout')}</span>
+        {!isCollapsed && <span className="font-semibold">{t('dashboard.logout')}</span>}
       </Button>
 
       {/* Decorative Element */}
-      <div className="mt-6 p-4 bg-gradient-to-br from-primary/10 to-purple-600/10 rounded-xl border border-primary/20">
-        <p className="text-xs text-muted-foreground mb-1 font-semibold">{t('sidebar.needHelp')}</p>
-        <p className="text-sm font-bold text-primary">{t('sidebar.contactSupport')}</p>
-      </div>
+      {!isCollapsed && (
+        <div className="mt-6 p-4 bg-gradient-to-br from-primary/10 to-purple-600/10 rounded-xl border border-primary/20">
+          <p className="text-xs text-muted-foreground mb-1 font-semibold">{t('sidebar.needHelp')}</p>
+          <p className="text-sm font-bold text-primary">{t('sidebar.contactSupport')}</p>
+        </div>
+      )}
     </aside>
     </>
   );
