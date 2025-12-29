@@ -1772,6 +1772,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   let customLayerHeight: string | undefined;
   let customInfill: string | undefined;
   let advancedMode: boolean | undefined;
+  let paymentMethod: string | undefined;
   
   if (contentType.includes('multipart/form-data')) {
     // Parse FormData
@@ -1791,6 +1792,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       projectName = getField('projectName');
       price = parseFloat(getField('price') || '0');
       shippingMethod = getField('shippingMethod');
+      paymentMethod = getField('paymentMethod');
       layerHeight = getField('layerHeight');
       infill = getField('infill');
       supportType = getField('supportType');
@@ -1860,6 +1862,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     price = body.price;
     shippingMethod = body.shippingMethod;
     shippingAddress = body.shippingAddress;
+    paymentMethod = body.paymentMethod;
     layerHeight = body.layerHeight;
     infill = body.infill;
     supportType = body.supportType;
@@ -1883,10 +1886,57 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     quantity: quantity || 1,
     price: price || 0,
     shipping_method: shippingMethod || 'pickup',
+    payment_method: paymentMethod || 'card',
     layer_height: parseFloat(layerHeight || '0.2'),
     infill: parseInt(infill || '20', 10),
     status: 'submitted',
   };
+  
+  // If paying with credits, check balance and deduct
+  if (paymentMethod === 'credits') {
+    const orderPrice = price || 0;
+    
+    // Get current credit balance
+    const { data: creditData, error: creditFetchError } = await supabase
+      .from('credits')
+      .select('balance')
+      .eq('user_id', user.userId)
+      .single();
+    
+    if (creditFetchError || !creditData) {
+      console.error('Failed to fetch credit balance:', creditFetchError);
+      return res.status(400).json({ error: 'Failed to fetch credit balance' });
+    }
+    
+    const currentBalance = creditData.balance || 0;
+    
+    // Check if user has sufficient credits
+    if (currentBalance < orderPrice) {
+      return res.status(400).json({ 
+        error: 'Insufficient credits',
+        balance: currentBalance,
+        required: orderPrice 
+      });
+    }
+    
+    // Deduct credits
+    const newBalance = currentBalance - orderPrice;
+    const { error: updateError } = await supabase
+      .from('credits')
+      .update({ balance: newBalance, updated_at: new Date().toISOString() })
+      .eq('user_id', user.userId);
+    
+    if (updateError) {
+      console.error('Failed to deduct credits:', updateError);
+      return res.status(500).json({ error: 'Failed to deduct credits' });
+    }
+    
+    console.log(`💳 [CREDITS] Deducted ${orderPrice} PLN from user ${user.userId}. New balance: ${newBalance} PLN`);
+    
+    // Mark order as paid
+    orderData.payment_status = 'paid';
+    orderData.paid_amount = orderPrice;
+  }
   
   // Add advanced mode parameters if provided
   if (supportType !== undefined && supportType !== null && supportType !== '') {
@@ -1921,6 +1971,26 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   if (error) {
     console.error('📦 [ORDER-CREATE] Error:', JSON.stringify(error));
     return res.status(500).json({ error: 'Failed to create order' });
+  }
+  
+  // If payment was made with credits, create transaction record
+  if (paymentMethod === 'credits' && order) {
+    const { error: transactionError } = await supabase
+      .from('credits_transactions')
+      .insert([{
+        user_id: user.userId,
+        amount: -(price || 0),
+        type: 'debit',
+        description: `Payment for order #${order.id} - ${fileName}`,
+        order_id: order.id,
+      }]);
+    
+    if (transactionError) {
+      console.error('Failed to create credit transaction record:', transactionError);
+      // Don't fail the order creation, just log the error
+    } else {
+      console.log(`💳 [CREDITS] Created transaction record for order #${order.id}`);
+    }
   }
   
   console.log(`📦 [ORDER-CREATE] Success! Order ID: ${order?.id}`);
