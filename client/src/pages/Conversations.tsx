@@ -363,25 +363,28 @@ const Conversations = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
 
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 p-4 md:p-8">
+        <div className="max-w-[1600px] mx-auto h-full">
           {/* Header */}
-          <div className="mb-8 animate-slide-up">
-            <h1 className="text-4xl font-bold mb-2 gradient-text">{t('conversations.title')}</h1>
-            <p className="text-muted-foreground text-lg">
+          <div className="mb-6 animate-slide-up">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text flex items-center gap-3">
+              <MessageSquare className="w-8 h-8 text-primary" />
+              {t('conversations.title')}
+            </h1>
+            <p className="text-muted-foreground">
               {t('conversations.subtitle')}
             </p>
           </div>
 
-          <div className="flex gap-6 h-[calc(100vh-220px)] relative">
+          <div className="flex gap-4 md:gap-6 h-[calc(100vh-180px)] md:h-[calc(100vh-220px)] relative">
             {/* Expand Button - visible when sidebar is collapsed */}
             {sidebarCollapsed && (
               <Button
                 variant="default"
                 size="icon"
-                className="absolute left-4 top-4 z-50 shadow-lg"
+                className="absolute left-4 top-4 z-50 shadow-lg rounded-full"
                 onClick={() => setSidebarCollapsed(false)}
-                title="Expand sidebar"
+                title="Expand conversations"
               >
                 <Menu className="w-4 h-4" />
               </Button>
@@ -389,85 +392,105 @@ const Conversations = () => {
 
             {/* Conversations List */}
             <Card className={cn(
-              "w-96 flex flex-col flex-shrink-0 border transition-all duration-300 ease-in-out",
-              sidebarCollapsed && "-ml-[400px] opacity-0 pointer-events-none"
+              "w-full md:w-96 flex flex-col flex-shrink-0 shadow-lg border-2 transition-all duration-300 ease-in-out overflow-hidden",
+              sidebarCollapsed && "md:-ml-[420px] md:opacity-0 md:pointer-events-none"
             )}>
-              <CardHeader className="pb-3 border-b">
+              <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-purple-600/5 border-b-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                    {t('conversations.listTitle')}
+                  <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="gradient-text">{t('conversations.listTitle')}</span>
                   </CardTitle>
-                  {/* Collapse Button - visible on all screens */}
+                  {/* Collapse Button */}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-9 w-9 rounded-lg hover:bg-primary/10"
                     onClick={() => setSidebarCollapsed(true)}
-                    title="Collapse sidebar"
+                    title="Collapse conversations"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 p-0">
+              <CardContent className="flex-1 p-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   {conversations.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
-                      <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">{t('conversations.noConversations')}</p>
-                      <p className="text-sm mt-1">{t('conversations.noConversationsHint')}</p>
+                    <div className="p-8 text-center text-muted-foreground">
+                      <div className="w-20 h-20 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                        <MessageCircle className="w-10 h-10 opacity-30" />
+                      </div>
+                      <p className="font-semibold text-lg mb-1">{t('conversations.noConversations')}</p>
+                      <p className="text-sm">{t('conversations.noConversationsHint')}</p>
                     </div>
                   ) : (
-                    <div className="space-y-1 p-2">
+                    <div className="p-3 space-y-2">
                       {conversations.map((conversation) => (
                         <div
                           key={conversation.id}
                           onClick={() => selectConversation(conversation)}
                           className={cn(
-                            "p-4 rounded-lg cursor-pointer transition-all hover:bg-muted/50 relative",
-                            selectedConversation?.id === conversation.id && "bg-primary/10 border-2 border-primary/20",
-                            conversation.user_read === false && "bg-orange-50 border-2 border-orange-400 shadow-md"
+                            "p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md border-2 group",
+                            selectedConversation?.id === conversation.id 
+                              ? "bg-gradient-to-r from-primary/10 to-purple-600/10 border-primary shadow-lg scale-[1.02]" 
+                              : "bg-card border-transparent hover:border-primary/20 hover:bg-muted/30",
+                            conversation.user_read === false && "ring-2 ring-orange-400 bg-orange-50/50 dark:bg-orange-950/20"
                           )}
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Package className="w-4 h-4 text-muted-foreground" />
-                              {conversation.user_read === false && (
-                                <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
-                              )}
-                              <span className={cn(
-                                "font-medium text-sm truncate max-w-[150px]",
-                                conversation.user_read === false && "font-extrabold text-orange-600"
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                selectedConversation?.id === conversation.id 
+                                  ? "bg-primary text-primary-foreground" 
+                                  : "bg-primary/10 group-hover:bg-primary/20"
                               )}>
-                                {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
-                              </span>
-                              {conversation.user_read === false && (
-                                <Badge variant="default" className="bg-orange-500 text-xs">
-                                  New
-                                </Badge>
-                              )}
+                                <Package className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  {conversation.user_read === false && (
+                                    <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                                  )}
+                                  <span className={cn(
+                                    "font-semibold text-sm truncate",
+                                    conversation.user_read === false && "text-orange-600 dark:text-orange-400"
+                                  )}>
+                                    {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(conversation.updated_at)}
+                                </span>
+                              </div>
                             </div>
                             {(conversation.unread_count || 0) > 0 && (
-                              <Badge variant="destructive" className="text-xs h-5 min-w-[20px] flex items-center justify-center">
+                              <Badge variant="destructive" className="text-xs h-6 min-w-[24px] rounded-full font-bold">
                                 {conversation.unread_count}
                               </Badge>
                             )}
                           </div>
                           
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mb-2">
                             {getStatusBadge(conversation.status)}
-                            <span className="text-xs text-muted-foreground">
-                              {formatTime(conversation.updated_at)}
-                            </span>
+                            {conversation.user_read === false && (
+                              <Badge className="bg-orange-500 text-white text-xs px-2 py-0.5">
+                                <MessageCircle className="w-3 h-3 mr-1" />
+                                New
+                              </Badge>
+                            )}
                           </div>
                           
                           {conversation.last_message && (
                             <p className={cn(
-                              "text-xs text-muted-foreground mt-2 truncate",
-                              conversation.user_read === false && "font-semibold text-blue-300"
+                              "text-xs text-muted-foreground line-clamp-2 pl-12",
+                              conversation.user_read === false && "font-medium text-foreground/70"
                             )}>
-                              {conversation.last_message.sender_type === 'user' ? t('conversations.you') + ': ' : ''}
+                              {conversation.last_message.sender_type === 'user' && (
+                                <span className="font-semibold">{t('conversations.you')}: </span>
+                              )}
                               {conversation.last_message.message}
                             </p>
                           )}
@@ -480,32 +503,36 @@ const Conversations = () => {
             </Card>
 
             {/* Messages Panel */}
-            <Card className="flex-1 flex flex-col transition-all duration-300 border">
+            <Card className="flex-1 flex flex-col shadow-lg border-2 overflow-hidden">
               {selectedConversation ? (
                 <>
                   {/* Conversation Header */}
-                  <CardHeader className="pb-3 border-b transition-colors">
+                  <CardHeader className="pb-4 bg-gradient-to-r from-primary/5 to-purple-600/5 border-b-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="lg:hidden"
+                          className="lg:hidden rounded-lg"
                           onClick={() => setSelectedConversation(null)}
                         >
-                          <ArrowLeft className="w-4 h-4" />
+                          <ArrowLeft className="w-5 h-5" />
                         </Button>
-                        <div>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <Package className="w-5 h-5 text-primary" />
-                            {selectedConversation.user_read === false && (
-                              <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
-                            )}
-                            {selectedConversation.order?.project_name || selectedConversation.order?.file_name}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {t('conversations.orderId')}: {selectedConversation.order_id.slice(0, 8)}...
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Package className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg flex items-center gap-2 font-bold">
+                              {selectedConversation.order?.project_name || selectedConversation.order?.file_name}
+                              {selectedConversation.user_read === false && (
+                                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                              )}
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {t('conversations.orderId')}: {selectedConversation.order_id.slice(0, 8)}...
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -515,44 +542,54 @@ const Conversations = () => {
                   </CardHeader>
 
                   {/* Messages */}
-                  <CardContent className="flex-1 p-0 overflow-hidden">
+                  <CardContent className="flex-1 p-0 overflow-hidden bg-muted/20">
                     {loadingMessages ? (
                       <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
                       </div>
                     ) : (
-                      <ScrollArea className="h-full p-4">
-                        <div className="space-y-4">
+                      <ScrollArea className="h-full">
+                        <div className="p-4 md:p-6 space-y-6">
                           {messages.map((message) => (
                             <div
                               key={message.id}
                               className={cn(
-                                "flex gap-3",
+                                "flex gap-3 animate-fade-in",
                                 message.sender_type === 'user' && "flex-row-reverse"
                               )}
                             >
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                                message.sender_type === 'user' && "bg-primary text-primary-foreground",
-                                message.sender_type === 'engineer' && "bg-blue-500 text-white",
+                                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md",
+                                message.sender_type === 'user' && "bg-gradient-to-br from-primary to-purple-600 text-white ring-2 ring-primary/20",
+                                message.sender_type === 'engineer' && "bg-gradient-to-br from-blue-500 to-blue-600 text-white ring-2 ring-blue-500/20",
                                 message.sender_type === 'system' && "bg-muted text-muted-foreground"
                               )}>
                                 {getSenderIcon(message.sender_type)}
                               </div>
                               <div className={cn(
-                                "max-w-[70%] rounded-2xl px-4 py-2",
-                                message.sender_type === 'user' && "bg-primary text-primary-foreground rounded-tr-sm",
-                                message.sender_type === 'engineer' && "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-tl-sm",
-                                message.sender_type === 'system' && "bg-muted text-muted-foreground text-center mx-auto text-sm italic"
+                                "max-w-[75%] md:max-w-[70%] group",
+                                message.sender_type === 'system' && "max-w-full mx-auto"
                               )}>
-                                {message.sender_type === 'engineer' && (
-                                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
-                                    {t('conversations.engineeringSupport')}
-                                  </p>
-                                )}
-                                <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                                <div className={cn(
+                                  "rounded-2xl px-4 py-3 shadow-sm",
+                                  message.sender_type === 'user' && "bg-gradient-to-br from-primary to-purple-600 text-white rounded-tr-sm",
+                                  message.sender_type === 'engineer' && "bg-card border-2 border-blue-200 dark:border-blue-800 rounded-tl-sm",
+                                  message.sender_type === 'system' && "bg-muted/50 text-muted-foreground text-center text-sm italic border"
+                                )}>
+                                  {message.sender_type === 'engineer' && (
+                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-blue-200 dark:border-blue-800">
+                                      <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center">
+                                        <UserCog className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                      </div>
+                                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                        {t('conversations.engineeringSupport')}
+                                      </p>
+                                    </div>
+                                  )}
+                                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.message}</p>
+                                </div>
                                 <p className={cn(
-                                  "text-xs mt-1 opacity-70",
+                                  "text-xs text-muted-foreground mt-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity",
                                   message.sender_type === 'user' && "text-right"
                                 )}>
                                   {formatTime(message.created_at)}
@@ -561,65 +598,69 @@ const Conversations = () => {
                             </div>
                           ))}
                           
-                          {/* Admin Typing Indicator - Shows as a message */}
+                          {/* Admin Typing Indicator */}
                           {selectedConversation.admin_typing && (
                             <div className="flex gap-3 animate-fade-in">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
-                                  <UserCog className="w-4 h-4" />
-                                </div>
-                                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl rounded-tl-sm px-4 py-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                  </div>
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                                <UserCog className="w-5 h-5" />
+                              </div>
+                              <div className="bg-card border-2 border-blue-200 dark:border-blue-800 rounded-2xl rounded-tl-sm px-5 py-3 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                 </div>
                               </div>
+                            </div>
                           )}
                           <div ref={messagesEndRef} />
-                          
-                          {/* Message Input - Now inside ScrollArea */}
-                          <div className="pt-4 mt-4 border-t">
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder={t('conversations.typeMessage')}
-                                value={newMessage}
-                                onChange={(e) => {
-                                  setNewMessage(e.target.value);
-                                  handleTyping();
-                                }}
-                                onKeyPress={handleKeyPress}
-                                disabled={sendingMessage || selectedConversation.status === 'closed'}
-                                className="flex-1"
-                              />
-                              <Button
-                                onClick={sendMessage}
-                                disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
-                              >
-                                {sendingMessage ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </div>
-                            {selectedConversation.status === 'closed' && (
-                              <p className="text-xs text-muted-foreground mt-2 text-center">
-                                {t('conversations.conversationClosed')}
-                              </p>
-                            )}
-                          </div>
                         </div>
                       </ScrollArea>
                     )}
                   </CardContent>
+
+                  {/* Message Input */}
+                  <div className="p-4 bg-card border-t-2">
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder={t('conversations.typeMessage')}
+                        value={newMessage}
+                        onChange={(e) => {
+                          setNewMessage(e.target.value);
+                          handleTyping();
+                        }}
+                        onKeyPress={handleKeyPress}
+                        disabled={sendingMessage || selectedConversation.status === 'closed'}
+                        className="flex-1 h-11 rounded-xl border-2 focus-visible:ring-primary"
+                      />
+                      <Button
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
+                        className="h-11 px-6 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                        size="lg"
+                      >
+                        {sendingMessage ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Send className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </div>
+                    {selectedConversation.status === 'closed' && (
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        {t('conversations.conversationClosed')}
+                      </p>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-center p-8">
-                  <div>
-                    <MessageSquare className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">{t('conversations.selectConversation')}</h3>
-                    <p className="text-muted-foreground text-sm max-w-sm">
+                  <div className="max-w-md">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/10 to-purple-600/10 mx-auto mb-6 flex items-center justify-center">
+                      <MessageSquare className="w-12 h-12 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 gradient-text">{t('conversations.selectConversation')}</h3>
+                    <p className="text-muted-foreground">
                       {t('conversations.selectConversationHint')}
                     </p>
                   </div>
