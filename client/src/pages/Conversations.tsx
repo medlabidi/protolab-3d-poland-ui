@@ -74,9 +74,11 @@ const Conversations = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const openConversationId = searchParams.get('open');
 
   // Update ref when selectedConversation changes
@@ -84,12 +86,38 @@ const Conversations = () => {
     selectedConversationIdRef.current = selectedConversation?.id || null;
   }, [selectedConversation]);
 
-  // Scroll to bottom when conversation opens or messages load
+  // Check if user is near bottom of scroll area
+  const isNearBottom = () => {
+    if (!scrollAreaRef.current) return true;
+    const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return true;
+    
+    const threshold = 100; // pixels from bottom
+    const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
+    return isAtBottom;
+  };
+
+  // Scroll to bottom (used for initial load and when user is at bottom)
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  };
+
+  // Scroll to bottom when conversation opens (one-time)
   useEffect(() => {
     if (selectedConversation && messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom('auto'); // Instant scroll on open
+      setIsUserScrolledUp(false); // Reset scroll tracking
     }
   }, [selectedConversation?.id]);
+
+  // Auto-scroll when new messages arrive, but only if user is near bottom
+  useEffect(() => {
+    if (messages.length > 0 && !isUserScrolledUp && isNearBottom()) {
+      scrollToBottom('smooth');
+    }
+  }, [messages.length, isUserScrolledUp]);
 
   useEffect(() => {
     fetchConversations();
@@ -280,6 +308,9 @@ const Conversations = () => {
       setMessages(prev => [...prev, data.message]);
       setNewMessage("");
       
+      // Scroll to show sent message (user expects to see their message)
+      setIsUserScrolledUp(false);
+      
       // Update conversation's last message, updated_at, and mark as user_read=true (we just sent it)
       setConversations(prev => prev.map(c => 
         c.id === selectedConversation.id 
@@ -300,6 +331,26 @@ const Conversations = () => {
       sendMessage();
     }
   };
+
+  // Handle scroll detection
+  const handleScroll = () => {
+    if (isNearBottom()) {
+      setIsUserScrolledUp(false); // User is at bottom, enable auto-scroll
+    } else {
+      setIsUserScrolledUp(true); // User scrolled up, disable auto-scroll
+    }
+  };
+
+  // Attach scroll listener to scroll area
+  useEffect(() => {
+    if (!scrollAreaRef.current) return;
+    
+    const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return;
+    
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [selectedConversation]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
@@ -548,7 +599,7 @@ const Conversations = () => {
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                       </div>
                     ) : (
-                      <ScrollArea className="h-full">
+                      <ScrollArea className="h-full" ref={scrollAreaRef}>
                         <div className="p-4 md:p-6 space-y-6">
                           {messages.map((message) => (
                             <div
