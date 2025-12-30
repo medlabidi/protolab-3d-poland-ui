@@ -24,9 +24,9 @@ const PAYU_SANDBOX_CONFIG = {
   posId: '501885',
   md5Key: '93e0d9536f9d4bb396c47163c3a1692e',
   baseUrl: 'https://secure.snd.payu.com', // SANDBOX URL
-  // Hardcoded URLs for testing
-  notifyUrl: 'https://protolab-3d-poland-ui.vercel.app/api/payu-notify-test',
-  continueUrl: 'https://protolab-3d-poland-ui.vercel.app/payment-test-success',
+  // Hardcoded URLs for testing - using latest deployment
+  notifyUrl: 'https://protolabb-4i6hlbc2y-med-labidis-projects.vercel.app/api/payu-notify-test',
+  continueUrl: 'https://protolabb-4i6hlbc2y-med-labidis-projects.vercel.app/payment-test-success',
 };
 
 interface PayUAuthResponse {
