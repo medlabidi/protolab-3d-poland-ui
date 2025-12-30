@@ -88,19 +88,21 @@ export function PayUDisclosures({ lang = 'pl' }: PayUDisclosuresProps) {
   }
 
   // Polish version with collapsible payment order
+  const plDisclosure = disclosure as typeof DISCLOSURES.pl;
+  
   return (
     <div className="text-xs text-muted-foreground space-y-3 border-t pt-4">
       {/* Payment Order (Collapsible) */}
       <div>
         <div className="font-semibold mb-1">
-          {disclosure.paymentOrder!.title}
+          {plDisclosure.paymentOrder.title}
         </div>
         <div className="pl-4">
-          <p>{disclosure.paymentOrder!.items[0]}</p>
+          <p>{plDisclosure.paymentOrder.items[0]}</p>
           
           {showPaymentOrder && (
             <div className="mt-1 space-y-1">
-              {disclosure.paymentOrder!.items.slice(1).map((item, index) => (
+              {plDisclosure.paymentOrder.items.slice(1).map((item: string, index: number) => (
                 <p key={index}>{item}</p>
               ))}
             </div>
