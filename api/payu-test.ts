@@ -147,6 +147,7 @@ async function createTestOrder(token: string): Promise<{
 
     console.log('📦 [PAYU-TEST] Order payload:', JSON.stringify(orderPayload, null, 2));
 
+    // Try with fetch but ensure we're following REST API v2.1 spec exactly
     const response = await fetch(`${PAYU_SANDBOX_CONFIG.baseUrl}/api/v2_1/orders`, {
       method: 'POST',
       headers: {
@@ -155,6 +156,7 @@ async function createTestOrder(token: string): Promise<{
         'Accept': 'application/json',
       },
       body: JSON.stringify(orderPayload),
+      redirect: 'manual', // Don't follow redirects
     });
 
     const responseText = await response.text();
