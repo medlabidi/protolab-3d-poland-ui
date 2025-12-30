@@ -158,20 +158,38 @@ async function createTestOrder(token: string): Promise<{
 
     const responseText = await response.text();
     console.log('📦 [PAYU-TEST] Order Response Status:', response.status);
-    console.log('📦 [PAYU-TEST] Order Response:', responseText);
+    console.log('📦 [PAYU-TEST] Order Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+    console.log('📦 [PAYU-TEST] Order Response (first 500 chars):', responseText.substring(0, 500));
 
     if (!response.ok) {
       return {
         success: false,
-        error: `Order creation failed: ${response.status} ${responseText}`,
+        error: `Order creation failed: ${response.status} ${responseText.substring(0, 200)}`,
         response: {
           status: response.status,
-          body: responseText,
+          body: responseText.substring(0, 500),
+          isHtml: responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html'),
         },
       };
     }
 
-    const data = JSON.parse(responseText) as PayUOrderResponse;
+    // Try to parse JSON, if it fails, it might be HTML
+    let data: PayUOrderResponse;
+    try {
+      data = JSON.parse(responseText) as PayUOrderResponse;
+    } catch (parseError) {
+      console.error('📦 [PAYU-TEST] Failed to parse response as JSON');
+      console.error('📦 [PAYU-TEST] Response starts with:', responseText.substring(0, 100));
+      return {
+        success: false,
+        error: `Invalid response format (got HTML instead of JSON). Status: ${response.status}`,
+        response: {
+          status: response.status,
+          body: responseText.substring(0, 500),
+          isHtml: true,
+        },
+      };
+    }
 
     console.log('✅ [PAYU-TEST] Order created successfully!');
     console.log('✅ [PAYU-TEST] PayU Order ID:', data.orderId);
