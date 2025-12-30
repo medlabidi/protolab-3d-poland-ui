@@ -116,7 +116,7 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
           number: '0000 0000 0000 0000',
           date: 'MM/YY',
           cvv: 'CVV',
-        },
+        } as any,
         style: {
           basic: {
             'font-size': '16px',
@@ -129,7 +129,7 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
           placeholder: {
             'color': '#9ca3af',
           },
-        },
+        } as any,
       });
 
       // Render in container
