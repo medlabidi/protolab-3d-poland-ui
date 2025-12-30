@@ -163,229 +163,6 @@ const Payment = () => {
     try {
       // For upgrades, redirect to PaymentPage with upgrade info
       if (isUpgradePayment && upgradeData) {
-        // Check if this is a project upgrade or single order upgrade
-        if (upgradeData.isProject) {
-          // Handle project upgrade payment
-          const pendingUpdate = sessionStorage.getItem('pendingProjectUpdate');
-          if (!pendingUpdate) {
-            throw new Error('No pending project update found');
-          }
-
-          const projectUpdateData = JSON.parse(pendingUpdate);
-
-          // Process PayU payment
-          await processPayUPayment(
-            upgradeData.amount,
-            `Project Upgrade - ${upgradeData.projectName}`,
-            [{
-              name: `Project Upgrade - ${upgradeData.projectName}`,
-              unitPrice: upgradeData.amount,
-              quantity: 1
-            }]
-          );
-
-          // Update all orders in the project
-          let successCount = 0;
-          let failCount = 0;
-
-          for (const orderUpdate of projectUpdateData.updates) {
-            const updatesWithPayment = {
-              ...orderUpdate.updates,
-              payment_status: 'paid',
-              paid_amount: orderUpdate.newPrice,
-            };
-
-            const response = await apiFetch(`/orders/${orderUpdate.orderId}`, {
-              method: 'PATCH',
-              body: JSON.stringify(updatesWithPayment),
-            });
-
-            if (response.ok) {
-              successCount++;
-            } else {
-              failCount++;
-            }
-          }
-
-          // Clear the pending update from session storage
-          sessionStorage.removeItem('pendingProjectUpdate');
-
-          // Send payment confirmation email for project upgrade
-          try {
-            await apiFetch('/orders/email/payment-confirmation', {
-              method: 'POST',
-              body: JSON.stringify({
-                projectName: upgradeData.projectName,
-                totalAmount: upgradeData.amount,
-                itemCount: upgradeData.orderCount || projectUpdateData.updates.length,
-                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-              }),
-            });
-          } catch (emailError) {
-            console.error('Failed to send payment confirmation email:', emailError);
-          }
-
-          // Generate and send invoice if requested for project upgrade
-          if (generateInvoice && billingInfo && billingInfo.companyName) {
-            try {
-              const invoiceResponse = await apiFetch('/orders/email/invoice', {
-                method: 'POST',
-                body: JSON.stringify({
-                  projectName: upgradeData.projectName,
-                  items: [{
-                    description: `Project Upgrade - ${upgradeData.projectName}`,
-                    quantity: 1,
-                    unitPrice: upgradeData.amount,
-                    total: upgradeData.amount,
-                  }],
-                  subtotal: upgradeData.amount,
-                  deliveryPrice: 0,
-                  totalAmount: upgradeData.amount,
-                  paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-                  billingInfo,
-                }),
-              });
-
-              if (invoiceResponse.ok) {
-                const invoiceData = await invoiceResponse.json();
-                const existingHistory = localStorage.getItem('billingHistory');
-                const history = existingHistory ? JSON.parse(existingHistory) : [];
-                history.unshift({
-                  id: invoiceData.invoiceNumber,
-                  invoiceNumber: invoiceData.invoiceNumber,
-                  date: new Date().toISOString(),
-                  amount: upgradeData.amount,
-                  description: `Project Upgrade: ${upgradeData.projectName}`,
-                  status: 'paid',
-                  type: 'invoice',
-                });
-                localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success(t('payment.toasts.invoiceGenerated'));
-              }
-            } catch (invoiceError) {
-              console.error('Failed to generate invoice:', invoiceError);
-            }
-          }
-
-          // Add notification for project update
-          addNotification({
-            type: "order_update",
-            title: "Project Updated",
-            message: `Your project "${upgradeData.projectName}" has been updated with new specifications.`,
-          });
-
-          if (failCount > 0) {
-            toast.warning(`Payment successful! ${successCount} orders updated, ${failCount} failed.`);
-          } else {
-            toast.success(`${t('payment.toasts.paymentOf')} ${upgradeData.amount.toFixed(2)} PLN ${t('payment.toasts.successProjectUpdated')}`);
-          }
-          navigate('/orders');
-        } else {
-          // Handle single order upgrade payment
-          const pendingUpdate = sessionStorage.getItem('pendingOrderUpdate');
-          if (!pendingUpdate) {
-            throw new Error('No pending order update found');
-          }
-
-          const updateData = JSON.parse(pendingUpdate);
-
-          // Simulate payment processing
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Update the order with new details and set payment status to paid with new amount
-          const updatesWithPayment = {
-            ...updateData.updates,
-            payment_status: 'paid',
-            paid_amount: upgradeData.totalAmount,
-          };
-
-          const response = await apiFetch(`/orders/${upgradeData.orderId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updatesWithPayment),
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to update order');
-          }
-
-          // Clear the pending update from session storage
-          sessionStorage.removeItem('pendingOrderUpdate');
-
-          // Send payment confirmation email for upgrade
-          try {
-            await apiFetch('/orders/email/payment-confirmation', {
-              method: 'POST',
-              body: JSON.stringify({
-                orderNumber: upgradeData.orderNumber,
-                totalAmount: upgradeData.amount,
-                itemCount: 1,
-                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-              }),
-            });
-          } catch (emailError) {
-            console.error('Failed to send payment confirmation email:', emailError);
-          }
-
-          // Generate and send invoice if requested for single order upgrade
-          if (generateInvoice && billingInfo && billingInfo.companyName) {
-            try {
-              const invoiceResponse = await apiFetch('/orders/email/invoice', {
-                method: 'POST',
-                body: JSON.stringify({
-                  orderNumber: upgradeData.orderNumber,
-                  items: [{
-                    description: `Order Upgrade #${upgradeData.orderNumber}`,
-                    quantity: 1,
-                    unitPrice: upgradeData.amount,
-                    total: upgradeData.amount,
-                  }],
-                  subtotal: upgradeData.amount,
-                  deliveryPrice: 0,
-                  totalAmount: upgradeData.amount,
-                  paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-                  billingInfo,
-                }),
-              });
-
-              if (invoiceResponse.ok) {
-                const invoiceData = await invoiceResponse.json();
-                const existingHistory = localStorage.getItem('billingHistory');
-                const history = existingHistory ? JSON.parse(existingHistory) : [];
-                history.unshift({
-                  id: invoiceData.invoiceNumber,
-                  invoiceNumber: invoiceData.invoiceNumber,
-                  date: new Date().toISOString(),
-                  amount: upgradeData.amount,
-                  description: `Order Upgrade #${upgradeData.orderNumber}`,
-                  status: 'paid',
-                  type: 'invoice',
-                });
-                localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success(t('payment.toasts.invoiceGenerated'));
-              }
-            } catch (invoiceError) {
-              console.error('Failed to generate invoice:', invoiceError);
-            }
-          }
-
-          // Add notification for order update
-          addNotification({
-            type: "order_update",
-            title: "Order Updated",
-            message: `Your order #${upgradeData.orderNumber} has been updated with new specifications.`,
-            orderId: upgradeData.orderId,
-          });
-
-          toast.success(`${t('payment.toasts.paymentOf')} ${upgradeData.amount.toFixed(2)} PLN ${t('payment.toasts.successOrderUpdated')}`);
-          navigate(`/orders/${upgradeData.orderId}`);
-        }
-  const handleCreateOrder = async () => {
-    setIsProcessing(true);
-
-    try {
-      // For upgrades, redirect to PaymentPage with upgrade info
-      if (isUpgradePayment && upgradeData) {
         // For now, handle upgrade payments inline (TODO: integrate with PaymentPage)
         toast.info('Upgrade payment flow needs integration');
         navigate('/orders');
@@ -539,223 +316,46 @@ const Payment = () => {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Payment Methods */}
+            {/* Order Review */}
             <div className="lg:col-span-2 space-y-6">
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in">
                 <CardHeader>
                   <CardTitle className="text-2xl flex items-center gap-2">
-                    <CreditCard className="w-6 h-6 text-primary" />
-                    {t('payment.paymentMethod')}
+                    <CheckCircle2 className="w-6 h-6 text-primary" />
+                    {isUpgradePayment ? 'Order Upgrade Review' : t('payment.orderReview')}
                   </CardTitle>
-                  <CardDescription>{t('payment.choosePayment')}</CardDescription>
+                  <CardDescription>
+                    {isUpgradePayment 
+                      ? 'Review upgrade details and continue to payment' 
+                      : t('payment.reviewAndContinue')}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Saved Payment Methods */}
-                  {savedPaymentMethods.length > 0 && (
-                    <>
-                      <div className="mb-2">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">{t('payment.savedCards')}</p>
-                        {savedPaymentMethods.map((method) => (
-                          <div
-                            key={method.id}
-                            className={`flex items-center space-x-4 p-4 border-2 rounded-xl cursor-pointer transition-all hover-lift mb-2 ${
-                              selectedPayment === `saved_${method.id}`
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:border-primary/40"
-                            }`}
-                            onClick={() => setSelectedPayment(`saved_${method.id}`)}
-                          >
-                            <input
-                              type="radio"
-                              name="payment"
-                              checked={selectedPayment === `saved_${method.id}`}
-                              onChange={() => setSelectedPayment(`saved_${method.id}`)}
-                              className="w-5 h-5"
-                            />
-                            <div className={`p-3 rounded-lg ${selectedPayment === `saved_${method.id}` ? 'bg-primary text-white' : 'bg-muted'}`}>
-                              <CreditCard className="w-6 h-6" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="font-bold text-lg">•••• •••• •••• {method.last4}</p>
-                                {method.isDefault && (
-                                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    {t('payment.default')}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                {method.name} • {t('payment.expires')} {method.expiryDate}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="relative py-3">
-                        <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-card px-2 text-muted-foreground">{t('payment.orPayWith')}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <div className="p-6 bg-muted/30 rounded-lg text-center space-y-2">
+                    <Lock className="w-12 h-12 mx-auto text-primary" />
+                    <p className="font-medium">Your order will be created and you'll be redirected to secure payment</p>
+                    <p className="text-sm text-muted-foreground">All payment methods are available on the next page</p>
+                  </div>
 
-                  {/* Standard Payment Methods */}
-                  {paymentMethods.map((method) => (
-                    <div
-                      key={method.id}
-                      className={`flex items-center space-x-4 p-4 border-2 rounded-xl cursor-pointer transition-all hover-lift ${
-                        selectedPayment === method.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                      onClick={() => setSelectedPayment(method.id)}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        checked={selectedPayment === method.id}
-                        onChange={() => setSelectedPayment(method.id)}
-                        className="w-5 h-5"
-                      />
-                      <div className={`p-3 rounded-lg ${selectedPayment === method.id ? 'bg-primary text-white' : 'bg-muted'}`}>
-                        <method.icon className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-lg">{method.name}</p>
-                          {method.popular && (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                              {t('payment.popular')}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{method.description}</p>
-                      </div>
+                  <div className="flex items-center gap-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                    <Shield className="w-5 h-5 text-primary flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-primary">{t('payment.securePayment')}</p>
+                      <p className="text-muted-foreground">{t('payment.encryptedSecure')}</p>
                     </div>
-                  ))}
-
-                  {/* BLIK Code Input */}
-                  {selectedPayment === "blik" && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 border-2 border-pink-200 dark:border-pink-800 rounded-xl animate-scale-in">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Smartphone className="w-5 h-5 text-pink-600 dark:text-pink-400" />
-                        <p className="font-bold text-pink-800 dark:text-pink-300">{t('payment.enterBlikCode')}</p>
-                      </div>
-                      <p className="text-sm text-pink-700 dark:text-pink-400 mb-4">
-                        {t('payment.blikInstructions')}
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="000000"
-                        maxLength={6}
-                        value={blikCode}
-                        onChange={(e) => setBlikCode(e.target.value.replace(/\D/g, ''))}
-                        className="text-center text-3xl font-mono tracking-[0.5em] h-16 border-2 border-pink-300 dark:border-pink-700 focus:border-pink-500"
-                      />
-                      <p className="text-xs text-pink-600 dark:text-pink-400 mt-2 text-center">
-                        {t('payment.codeExpires')}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Card Details Input */}
-                  {selectedPayment === "card" && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl animate-scale-in space-y-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <p className="font-bold text-blue-800 dark:text-blue-300">{t('payment.cardDetails')}</p>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="cardName">{t('payment.cardholderName')}</Label>
-                        <Input
-                          id="cardName"
-                          placeholder="John Doe"
-                          value={cardDetails.name}
-                          onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="cardNumber">{t('payment.cardNumber')}</Label>
-                        <Input
-                          id="cardNumber"
-                          placeholder="1234 5678 9012 3456"
-                          value={cardDetails.number}
-                          onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim() })}
-                          maxLength={19}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="expiry">{t('payment.expiryDate')}</Label>
-                          <Input
-                            id="expiry"
-                            placeholder="MM/YY"
-                            value={cardDetails.expiry}
-                            onChange={(e) => {
-                              let value = e.target.value.replace(/\D/g, '');
-                              if (value.length >= 2) {
-                                value = value.substring(0, 2) + '/' + value.substring(2, 4);
-                              }
-                              setCardDetails({ ...cardDetails, expiry: value });
-                            }}
-                            maxLength={5}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="cvv">CVV</Label>
-                          <Input
-                            id="cvv"
-                            type="password"
-                            placeholder="•••"
-                            value={cardDetails.cvv}
-                            onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, '') })}
-                            maxLength={4}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bank Transfer Info */}
-                  {selectedPayment === "transfer" && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl animate-scale-in">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Building2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        <p className="font-bold text-green-800 dark:text-green-300">{t('payment.bankTransfer')}</p>
-                      </div>
-                      <p className="text-sm text-green-700 dark:text-green-400">
-                        {t('payment.bankTransferDesc')}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {['PKO BP', 'mBank', 'ING', 'Santander', 'Pekao', 'Alior'].map((bank) => (
-                          <span key={bank} className="px-3 py-1 bg-card border border-green-200 dark:border-green-800 rounded-full text-xs font-medium text-green-700 dark:text-green-400">
-                            {bank}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Security Info */}
-              <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl">
-                <Shield className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="font-semibold flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    {t('payment.securePayment')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('payment.encryptedSecure')}
-                  </p>
+              <div className="flex items-center justify-center gap-6 text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  <span className="text-sm">{t('payment.ssl')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  {t('payment.securePayment')}
                 </div>
               </div>
             </div>
