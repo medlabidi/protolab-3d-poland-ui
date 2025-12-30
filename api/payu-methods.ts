@@ -59,7 +59,7 @@ async function authenticatePayU(): Promise<string> {
     throw new Error(`PayU OAuth failed: ${response.status}`);
   }
 
-  const data: PayUAuthResponse = await response.json();
+  const data = await response.json() as PayUAuthResponse;
   console.log('[PAYU-METHODS] OAuth successful');
   
   return data.access_token;
@@ -85,7 +85,7 @@ async function fetchPaymentMethods(token: string, lang: string = 'pl'): Promise<
     throw new Error(`Failed to fetch payment methods: ${response.status}`);
   }
 
-  const data: PayUPayMethodsResponse = await response.json();
+  const data = await response.json() as PayUPayMethodsResponse;
   console.log(`[PAYU-METHODS] Retrieved ${data.pblPayMethods?.length || 0} payment methods`);
   
   return data;
