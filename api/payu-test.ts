@@ -13,6 +13,7 @@
  */
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import https from 'https';
 
 // PayU SANDBOX Configuration - Using PUBLIC TEST CREDENTIALS
 // Testing with public POS to isolate account-specific issues
@@ -150,89 +151,129 @@ async function createTestOrder(token: string): Promise<{
 
     console.log('📦 [PAYU-TEST] Order payload:', JSON.stringify(orderPayload, null, 2));
 
-    // PayU returns JSON with statusCode SUCCESS and redirectUri on 200/201
-    const response = await fetch(`${PAYU_SANDBOX_CONFIG.baseUrl}/api/v2_1/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(orderPayload),
-    });
-
-    const responseText = await response.text();
-    console.log('📦 [PAYU-TEST] Order Response Status:', response.status);
-    console.log('📦 [PAYU-TEST] Order Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+    // Use native https module with manual redirect control
+    const postData = JSON.stringify(orderPayload);
     
-    // PayU returns HTTP 302 redirect for successful orders
-    if (response.status === 302) {
-      const redirectUri = response.headers.get('Location');
-      console.log('✅ [PAYU-TEST] Order created successfully!');
-      console.log('✅ [PAYU-TEST] Got 302 redirect to payment page');
-      console.log('✅ [PAYU-TEST] Redirect URI:', redirectUri);
+    return new Promise((resolve) => {
+      const options = {
+        hostname: 'secure.snd.payu.com',
+        port: 443,
+        path: '/api/v2_1/orders',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      };
+
+      console.log('📦 [PAYU-TEST] Making HTTPS request to:', `https://${options.hostname}${options.path}`);
+
+      const req = https.request(options, (response) => {
+        console.log('📦 [PAYU-TEST] Order Response Status:', response.statusCode);
+        console.log('📦 [PAYU-TEST] Order Response Headers:', JSON.stringify(response.headers, null, 2));
+        
+        // Handle 302 redirect - Extract Location without following
+        if (response.statusCode === 302 || response.statusCode === 301) {
+          const redirectUri = response.headers.location;
+          console.log('✅ [PAYU-TEST] Order created successfully!');
+          console.log('✅ [PAYU-TEST] Got redirect to payment page');
+          console.log('✅ [PAYU-TEST] Redirect URI:', redirectUri);
+          
+          resolve({
+            success: true,
+            redirectUri: redirectUri,
+            response: {
+              status: response.statusCode,
+              statusCode: 'SUCCESS',
+              redirectUri: redirectUri,
+            },
+          });
+          return;
+        }
+        
+        let responseData = '';
+        
+        response.on('data', (chunk) => {
+          responseData += chunk;
+        });
+        
+        response.on('end', () => {
+          console.log('📦 [PAYU-TEST] Response body (first 500 chars):', responseData.substring(0, 500));
+          
+          // Check if we got HTML
+          const isHtml = responseData.trim().startsWith('<!DOCTYPE') || responseData.trim().startsWith('<html');
+          
+          if (isHtml) {
+            console.error('❌ [PAYU-TEST] ERROR: Received HTML instead of JSON');
+            console.error('📦 [PAYU-TEST] Content-Type:', response.headers['content-type']);
+            console.error('📦 [PAYU-TEST] This means PayU is NOT treating our request as a REST API call');
+            
+            resolve({
+              success: false,
+              error: `PayU returned HTML payment page (Content-Type: ${response.headers['content-type']}) instead of JSON. This indicates the REST API is not processing the request correctly.`,
+              response: {
+                status: response.statusCode || 0,
+                body: responseData.substring(0, 1000),
+                isHtml: true,
+                contentType: response.headers['content-type'],
+                headers: response.headers,
+              },
+            });
+            return;
+          }
+          
+          // Try to parse JSON
+          try {
+            const data = JSON.parse(responseData) as PayUOrderResponse;
+            console.log('✅ [PAYU-TEST] Order created successfully!');
+            console.log('✅ [PAYU-TEST] PayU Order ID:', data.orderId);
+            console.log('✅ [PAYU-TEST] Status Code:', data.status?.statusCode);
+            console.log('✅ [PAYU-TEST] Redirect URI:', data.redirectUri);
+            
+            resolve({
+              success: true,
+              orderId: data.orderId,
+              redirectUri: data.redirectUri,
+              response: {
+                status: response.statusCode || 200,
+                statusCode: data.status.statusCode,
+                statusDesc: data.status.statusDesc,
+                orderId: data.orderId,
+                extOrderId: data.extOrderId,
+                redirectUri: data.redirectUri,
+              },
+            });
+          } catch (parseError) {
+            console.error('❌ [PAYU-TEST] Failed to parse JSON:', parseError);
+            resolve({
+              success: false,
+              error: `Failed to parse response as JSON. Status: ${response.statusCode}`,
+              response: {
+                status: response.statusCode || 0,
+                body: responseData.substring(0, 500),
+              },
+            });
+          }
+        });
+      });
       
-      return {
-        success: true,
-        redirectUri: redirectUri || undefined,
-        response: {
-          status: 302,
-          statusCode: 'SUCCESS',
-          redirectUri: redirectUri || undefined,
-        },
-      };
-    }
-    
-    console.log('📦 [PAYU-TEST] Order Response (first 500 chars):', responseText.substring(0, 500));
-
-    if (!response.ok && response.status !== 302) {
-      return {
-        success: false,
-        error: `Order creation failed: ${response.status} ${responseText.substring(0, 200)}`,
-        response: {
-          status: response.status,
-          body: responseText.substring(0, 500),
-          isHtml: responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html'),
-        },
-      };
-    }
-
-    // Try to parse JSON, if it fails, it might be HTML
-    let data: PayUOrderResponse;
-    try {
-      data = JSON.parse(responseText) as PayUOrderResponse;
-    } catch (parseError) {
-      console.error('📦 [PAYU-TEST] Failed to parse response as JSON');
-      console.error('📦 [PAYU-TEST] Response starts with:', responseText.substring(0, 100));
-      return {
-        success: false,
-        error: `Invalid response format (got HTML instead of JSON). Status: ${response.status}`,
-        response: {
-          status: response.status,
-          body: responseText.substring(0, 500),
-          isHtml: true,
-        },
-      };
-    }
-
-    console.log('✅ [PAYU-TEST] Order created successfully!');
-    console.log('✅ [PAYU-TEST] PayU Order ID:', data.orderId);
-    console.log('✅ [PAYU-TEST] Status Code:', data.status.statusCode);
-    console.log('✅ [PAYU-TEST] Redirect URI:', data.redirectUri);
-
-    return {
-      success: true,
-      orderId: data.orderId,
-      redirectUri: data.redirectUri,
-      response: {
-        status: response.status,
-        statusCode: data.status.statusCode,
-        statusDesc: data.status.statusDesc,
-        orderId: data.orderId,
-        extOrderId: data.extOrderId,
-        redirectUri: data.redirectUri,
-      },
-    };
+      req.on('error', (error) => {
+        console.error('❌ [PAYU-TEST] HTTPS request error:', error);
+        resolve({
+          success: false,
+          error: `Request failed: ${error.message}`,
+          response: {
+            status: 0,
+            error: error.message,
+          },
+        });
+      });
+      
+      req.write(postData);
+      req.end();
+    });
   } catch (error) {
     console.error('❌ [PAYU-TEST] Order creation error:', error);
     return {
