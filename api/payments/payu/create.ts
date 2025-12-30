@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { orderId, amount, description, userId } = req.body;
+    const { orderId, amount, description, userId, payMethods } = req.body;
 
     if (!orderId || !amount || !description || !userId) {
       return res.status(400).json({ 
@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lastName,
         language: 'pl',
       },
+      payMethods: payMethods, // Include payment method selection
     });
 
     // Store PayU order ID in database (only for real orders, not credit purchases)
@@ -71,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .update({ 
           payu_order_id: payuResult.payuOrderId,
           payment_status: 'pending',
+          payment_method: payMethods?.payMethod?.value || 'redirect',
         })
         .eq('id', orderId);
 
@@ -84,6 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       redirectUri: payuResult.redirectUri,
       payuOrderId: payuResult.payuOrderId,
+      statusCode: payuResult.statusCode,
     });
   } catch (error) {
     console.error('PayU payment creation error:', error);

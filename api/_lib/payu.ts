@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import https from 'https';
 
 // PayU Configuration
 const PAYU_CONFIG = {
@@ -45,6 +46,14 @@ interface PayUOrderRequest {
   products: PayUProduct[];
   notifyUrl?: string;
   continueUrl?: string;
+  payMethods?: {
+    payMethod: {
+      type: string;
+      value: string;
+      authorizationCode?: string;
+      specificData?: any[];
+    };
+  };
 }
 
 interface PayUOrderResponse {
@@ -112,7 +121,15 @@ export async function createPayUOrder(orderData: {
   customerIp: string;
   products: Array<{ name: string; unitPrice: number; quantity: number }>;
   buyer?: Partial<PayUBuyer>;
-}): Promise<{ redirectUri: string; payuOrderId: string }> {
+  payMethods?: {
+    payMethod: {
+      type: string;
+      value: string;
+      authorizationCode?: string;
+      specificData?: any[];
+    };
+  };
+}): Promise<{ redirectUri?: string; payuOrderId: string; statusCode: string }> {
   try {
     // Get OAuth token
     const token = await getPayUToken();
@@ -145,38 +162,99 @@ export async function createPayUOrder(orderData: {
       },
     };
 
+    // Add payMethods if provided (for white label integration)
+    if (orderData.payMethods) {
+      payuOrder.payMethods = orderData.payMethods;
+    }
+
     console.log('Creating PayU order:', JSON.stringify(payuOrder, null, 2));
 
-    // Create order
-    const response = await fetch(`${PAYU_CONFIG.baseUrl}/api/v2_1/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(payuOrder),
+    // Use native https module for better redirect control
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify(payuOrder);
+      
+      const options = {
+        hostname: PAYU_CONFIG.baseUrl.replace('https://', ''),
+        port: 443,
+        path: '/api/v2_1/orders',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'Authorization': `Bearer ${token}`,
+        },
+      };
+
+      const req = https.request(options, (response) => {
+        console.log(`[PAYU] Response Status: ${response.statusCode}`);
+
+        // Handle 302 redirect (PBL methods)
+        if (response.statusCode === 302 || response.statusCode === 301) {
+          const redirectUri = response.headers.location;
+          console.log(`[PAYU] Got redirect:`, redirectUri);
+
+          // Try to extract order ID from response body if available
+          let responseData = '';
+          response.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          response.on('end', () => {
+            try {
+              const data = JSON.parse(responseData);
+              resolve({
+                redirectUri: redirectUri,
+                payuOrderId: data.orderId || redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
+                statusCode: 'SUCCESS',
+              });
+            } catch (e) {
+              // No JSON body, use redirect URL
+              resolve({
+                redirectUri: redirectUri,
+                payuOrderId: redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
+                statusCode: 'SUCCESS',
+              });
+            }
+          });
+          return;
+        }
+
+        // Handle 201 (BLIK with code, card tokenization)
+        let responseData = '';
+
+        response.on('data', (chunk) => {
+          responseData += chunk;
+        });
+
+        response.on('end', () => {
+          try {
+            const result = JSON.parse(responseData) as PayUOrderResponse;
+
+            if (result.status.statusCode !== 'SUCCESS') {
+              reject(new Error(`PayU order creation failed: ${result.status.statusCode}`));
+              return;
+            }
+
+            resolve({
+              redirectUri: result.redirectUri,
+              payuOrderId: result.orderId,
+              statusCode: result.status.statusCode,
+            });
+          } catch (parseError) {
+            console.error('[PAYU] Failed to parse response:', responseData);
+            reject(new Error('Invalid PayU response format'));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        console.error('[PAYU] Request error:', error);
+        reject(error);
+      });
+
+      req.write(postData);
+      req.end();
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('PayU order creation failed:', errorText);
-      throw new Error(`PayU order creation failed: ${response.status} ${errorText}`);
-    }
-
-    const result = await response.json() as PayUOrderResponse;
-
-    if (result.status.statusCode !== 'SUCCESS') {
-      throw new Error(`PayU order creation failed: ${result.status.statusCode}`);
-    }
-
-    if (!result.redirectUri) {
-      throw new Error('PayU did not return redirect URI');
-    }
-
-    return {
-      redirectUri: result.redirectUri,
-      payuOrderId: result.orderId,
-    };
   } catch (error) {
     console.error('Create PayU order error:', error);
     throw error;
