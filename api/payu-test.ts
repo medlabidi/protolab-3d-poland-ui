@@ -165,9 +165,28 @@ async function createTestOrder(token: string): Promise<{
     const responseText = await response.text();
     console.log('📦 [PAYU-TEST] Order Response Status:', response.status);
     console.log('📦 [PAYU-TEST] Order Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+    
+    // PayU returns HTTP 302 redirect for successful orders
+    if (response.status === 302) {
+      const redirectUri = response.headers.get('Location');
+      console.log('✅ [PAYU-TEST] Order created successfully!');
+      console.log('✅ [PAYU-TEST] Got 302 redirect to payment page');
+      console.log('✅ [PAYU-TEST] Redirect URI:', redirectUri);
+      
+      return {
+        success: true,
+        redirectUri: redirectUri || undefined,
+        response: {
+          status: 302,
+          statusCode: 'SUCCESS',
+          redirectUri: redirectUri || undefined,
+        },
+      };
+    }
+    
     console.log('📦 [PAYU-TEST] Order Response (first 500 chars):', responseText.substring(0, 500));
 
-    if (!response.ok) {
+    if (!response.ok && response.status !== 302) {
       return {
         success: false,
         error: `Order creation failed: ${response.status} ${responseText.substring(0, 200)}`,
