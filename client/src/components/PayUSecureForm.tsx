@@ -61,6 +61,13 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
   }, []);
 
   const loadPayUSDK = () => {
+    // Only run in browser
+    if (typeof window === 'undefined') {
+      setError('Payment form only available in browser');
+      setLoading(false);
+      return;
+    }
+
     // Check if already loaded
     if (scriptLoadedRef.current || window.PayU) {
       initializeSecureForm();
@@ -88,6 +95,11 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
   };
 
   const initializeSecureForm = () => {
+    // Only run in browser
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       if (!window.PayU || !window.PayU.SecureForm) {
         setError('PayU SDK not available');
@@ -134,6 +146,12 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
   };
 
   const handleTokenize = async () => {
+    // Only run in browser
+    if (typeof window === 'undefined') {
+      setError('Not available');
+      return;
+    }
+
     if (!window.PayU || !cardFormRef.current) {
       setError('Payment form not ready');
       return;
