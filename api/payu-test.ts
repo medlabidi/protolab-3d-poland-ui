@@ -152,6 +152,7 @@ async function createTestOrder(token: string): Promise<{
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
       },
       body: JSON.stringify(orderPayload),
     });
