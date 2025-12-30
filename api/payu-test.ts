@@ -14,14 +14,14 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-// PayU SANDBOX Configuration - Using YOUR POS CREDENTIALS
-// Source: Your PayU sandbox account
+// PayU SANDBOX Configuration - Using PUBLIC TEST CREDENTIALS
+// Testing with public POS to isolate account-specific issues
 const PAYU_SANDBOX_CONFIG = {
-  // Your POS - 501885
-  clientId: '501885',
-  clientSecret: '81927c33ee2b36ee897bef24ef90a446',
-  posId: '501885',
-  md5Key: '93e0d9536f9d4bb396c47163c3a1692e',
+  // Public test POS - 300746
+  clientId: '300746',
+  clientSecret: '2ee86a66e5d97e3fadc400c9f19b065d',
+  posId: '300746',
+  md5Key: '',
   baseUrl: 'https://secure.snd.payu.com', // SANDBOX URL
   // Hardcoded URLs for testing
   notifyUrl: 'https://protolab-3d-poland-ui.vercel.app/api/payu-notify-test',
