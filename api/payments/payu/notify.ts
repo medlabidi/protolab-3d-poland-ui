@@ -76,9 +76,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: 'Failed to update order' });
       }
 
-      // If payment completed, handle store credits
-      if (order.status === 'COMPLETED' && order.description.includes('Store Credit')) {
-        await handleCreditsPayment(order);
+      // If payment completed, check if this is a credits purchase
+      if (order.status === 'COMPLETED') {
+        // Get order details to check type
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('order_type, credits_amount')
+          .eq('id', order.extOrderId)
+          .single();
+
+        if (orderData?.order_type === 'credits_purchase') {
+          await handleCreditsPayment(order, orderData.credits_amount);
+        }
       }
 
       console.log(`Order ${order.extOrderId} updated: status=${orderStatus}, payment=${paymentStatus}`);
@@ -98,16 +107,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 /**
  * Handle store credits payment completion
  */
-async function handleCreditsPayment(order: PayUNotification['order']) {
+async function handleCreditsPayment(order: PayUNotification['order'], creditsAmount: number) {
   try {
-    // Parse amount from description (format: "Store Credit: XXX PLN")
-    const amountMatch = order.description.match(/Store Credit:\s*([\d.]+)\s*PLN/);
-    if (!amountMatch) {
-      console.error('Could not parse credit amount from description');
+    if (!creditsAmount || creditsAmount <= 0) {
+      console.error('Invalid credits amount');
       return;
     }
-
-    const creditAmount = parseFloat(amountMatch[1]);
 
     // Get user ID from order
     const { data: orderData, error: orderError } = await supabase
@@ -124,14 +129,14 @@ async function handleCreditsPayment(order: PayUNotification['order']) {
     const userId = orderData.user_id;
 
     // Get current balance
-    const { data: creditData, error: creditError } = await supabase
+    const { data: creditData } = await supabase
       .from('credits')
       .select('balance')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     const currentBalance = creditData?.balance || 0;
-    const newBalance = currentBalance + creditAmount;
+    const newBalance = currentBalance + creditsAmount;
 
     // Update balance
     const { error: updateError } = await supabase
@@ -140,6 +145,8 @@ async function handleCreditsPayment(order: PayUNotification['order']) {
         user_id: userId,
         balance: newBalance,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id'
       });
 
     if (updateError) {
@@ -152,7 +159,7 @@ async function handleCreditsPayment(order: PayUNotification['order']) {
       .from('credits_transactions')
       .insert({
         user_id: userId,
-        amount: creditAmount,
+        amount: creditsAmount,
         type: 'purchase',
         description: `Store credit purchase via PayU - Order ${order.extOrderId}`,
         payu_order_id: order.orderId,
@@ -163,7 +170,7 @@ async function handleCreditsPayment(order: PayUNotification['order']) {
       console.error('Failed to create transaction record:', txError);
     }
 
-    console.log(`Credits added for user ${userId}: ${creditAmount} PLN (new balance: ${newBalance})`);
+    console.log(`Credits added for user ${userId}: ${creditsAmount} PLN (new balance: ${newBalance})`);
   } catch (error) {
     console.error('Error handling credits payment:', error);
   }

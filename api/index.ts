@@ -1773,6 +1773,9 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   let customInfill: string | undefined;
   let advancedMode: boolean | undefined;
   let paymentMethod: string | undefined;
+  let orderType: string | undefined;
+  let description: string | undefined;
+  let creditsAmount: number | undefined;
   
   if (contentType.includes('multipart/form-data')) {
     // Parse FormData
@@ -1793,6 +1796,9 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       price = parseFloat(getField('price') || '0');
       shippingMethod = getField('shippingMethod');
       paymentMethod = getField('paymentMethod');
+      orderType = getField('order_type');
+      description = getField('description');
+      creditsAmount = parseFloat(getField('credits_amount') || '0');
       layerHeight = getField('layerHeight');
       infill = getField('infill');
       supportType = getField('supportType');
@@ -1811,39 +1817,46 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
         }
       }
       
-      // Handle file upload
+      // Handle file upload (not required for credits_purchase)
       const uploadedFile = files.file;
       const fileData = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
       
-      if (!fileData) {
+      // For credits purchase, file is not required
+      if (orderType !== 'credits_purchase' && !fileData) {
         return res.status(400).json({ error: 'File is required' });
       }
       
-      fileName = fileData.originalFilename || 'unknown.stl';
-      
-      // Upload file to Supabase storage
-      const fs = await import('fs');
-      const fileBuffer = fs.readFileSync(fileData.filepath);
-      const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
-      const filePath = `${user.userId}/${Date.now()}-${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, fileBuffer, {
-          contentType: fileData.mimetype || 'application/octet-stream',
-        });
-      
-      if (uploadError) {
-        console.error('File upload error:', uploadError);
-        return res.status(500).json({ error: 'Failed to upload file' });
+      if (fileData) {
+        fileName = fileData.originalFilename || 'unknown.stl';
+        
+        // Upload file to Supabase storage
+        const fs = await import('fs');
+        const fileBuffer = fs.readFileSync(fileData.filepath);
+        const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+        const filePath = `${user.userId}/${Date.now()}-${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, fileBuffer, {
+            contentType: fileData.mimetype || 'application/octet-stream',
+          });
+        
+        if (uploadError) {
+          console.error('File upload error:', uploadError);
+          return res.status(500).json({ error: 'Failed to upload file' });
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
+        
+        // Clean up temp file
+        fs.unlinkSync(fileData.filepath);
+      } else {
+        // For credits purchase
+        fileName = 'credits_purchase';
+        fileUrl = 'n/a';
       }
-      
-      // Get public URL
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-      fileUrl = urlData.publicUrl;
-      
-      // Clean up temp file
-      fs.unlinkSync(fileData.filepath);
       
     } catch (parseError) {
       console.error('FormData parse error:', parseError);
@@ -1888,8 +1901,19 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     shipping_method: shippingMethod || 'pickup',
     layer_height: parseFloat(layerHeight || '0.2'),
     infill: parseInt(infill || '20', 10),
-    status: 'submitted',
+    status: orderType === 'credits_purchase' ? 'pending_payment' : 'submitted',
   };
+
+  // Add order type and description if provided
+  if (orderType) {
+    orderData.order_type = orderType;
+  }
+  if (description) {
+    orderData.notes = description;
+  }
+  if (creditsAmount && creditsAmount > 0) {
+    orderData.credits_amount = creditsAmount;
+  }
   
   // If paying with credits, check balance and deduct
   if (paymentMethod === 'credits') {

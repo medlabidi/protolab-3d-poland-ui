@@ -109,18 +109,9 @@ const Payment = () => {
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [upgradeData, setUpgradeData] = useState<UpgradeData | null>(null);
   const [isUpgradePayment, setIsUpgradePayment] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
-  const [blikCode, setBlikCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null);
   const [generateInvoice, setGenerateInvoice] = useState(false);
-  const [cardDetails, setCardDetails] = useState({
-    number: "",
-    expiry: "",
-    cvv: "",
-    name: "",
-  });
 
   // Helper function for PayU payment processing
   const processPayUPayment = async (
@@ -136,22 +127,6 @@ const Payment = () => {
   };
 
   useEffect(() => {
-    // Load saved payment methods from localStorage
-    const savedMethods = localStorage.getItem("paymentMethods");
-    if (savedMethods) {
-      try {
-        const methods = JSON.parse(savedMethods) as SavedPaymentMethod[];
-        setSavedPaymentMethods(methods);
-        // Auto-select default saved card if exists
-        const defaultMethod = methods.find(m => m.isDefault);
-        if (defaultMethod) {
-          setSelectedPayment(`saved_${defaultMethod.id}`);
-        }
-      } catch (error) {
-        console.error("Failed to parse saved payment methods:", error);
-      }
-    }
-
     // Load billing information from localStorage
     const savedBillingInfo = localStorage.getItem("billingInfo");
     if (savedBillingInfo) {
@@ -180,54 +155,13 @@ const Payment = () => {
     }
   }, [location.state, navigate]);
 
-  const paymentMethods = [
-    {
-      id: "blik",
-      name: "BLIK",
-      icon: Smartphone,
-      description: t('payment.methods.blikDesc'),
-      popular: true,
-    },
-    {
-      id: "card",
-      name: t('payment.methods.card'),
-      icon: CreditCard,
-      description: t('payment.methods.cardDesc'),
-      popular: false,
-    },
-    {
-      id: "credits",
-      name: "Store Credits",
-      icon: Wallet,
-      description: "Pay using your store credit balance",
-      popular: false,
-    },
-  ];
 
-  const handlePayment = async () => {
-    if (!selectedPayment) {
-      toast.error(t('payment.toasts.selectPayment'));
-      return;
-    }
 
-    // Handle saved card payment
-    if (selectedPayment.startsWith("saved_")) {
-      // Saved card - no additional validation needed
-    } else if (selectedPayment === "blik" && blikCode.length !== 6) {
-      toast.error(t('payment.toasts.invalidBlik'));
-      return;
-    }
-
-    if (selectedPayment === "card") {
-      if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name) {
-        toast.error(t('payment.toasts.fillCardDetails'));
-        return;
-      }
-    }
-
+  const handleCreateOrder = async () => {
     setIsProcessing(true);
 
     try {
+      // For upgrades, redirect to PaymentPage with upgrade info
       if (isUpgradePayment && upgradeData) {
         // Check if this is a project upgrade or single order upgrade
         if (upgradeData.isProject) {
@@ -446,134 +380,40 @@ const Payment = () => {
           toast.success(`${t('payment.toasts.paymentOf')} ${upgradeData.amount.toFixed(2)} PLN ${t('payment.toasts.successOrderUpdated')}`);
           navigate(`/orders/${upgradeData.orderId}`);
         }
-      } else if (orderData) {
-        // Handle new order payment
-        if (orderData.isProject) {
-          // Project (multi-file) order
-          // For project orders, we need to create multiple order items or a single project order
-          // For now, we'll create separate orders for each file
-          for (const projectFile of orderData.files) {
-            const formData = new FormData();
-            formData.append('file', projectFile.file);
-            formData.append('material', projectFile.material.split('-')[0]);
-            formData.append('color', projectFile.material.split('-')[1] || 'white');
-            formData.append('layerHeight', projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
-            formData.append('infill', projectFile.quality === 'draft' ? '10' : projectFile.quality === 'standard' ? '20' : projectFile.quality === 'high' ? '50' : '100');
-            formData.append('quantity', projectFile.quantity.toString());
-            formData.append('shippingMethod', orderData.deliveryOption);
-            formData.append('paymentMethod', selectedPayment);
-            formData.append('price', projectFile.estimatedPrice.toString());
-            formData.append('projectName', orderData.projectName);
+  const handleCreateOrder = async () => {
+    setIsProcessing(true);
 
-            // Add delivery-specific details
-            if (orderData.deliveryOption === 'inpost' && orderData.locker) {
-              formData.append('shippingAddress', JSON.stringify({
-                lockerCode: orderData.locker.name,
-                lockerAddress: orderData.locker.address
-              }));
-            } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
-              formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
-            } else if (orderData.deliveryOption === 'pickup') {
-              formData.append('shippingAddress', JSON.stringify({
-                type: 'pickup',
-                address: 'Zielonogórska 13, 30-406 Kraków'
-              }));
-            }
+    try {
+      // For upgrades, redirect to PaymentPage with upgrade info
+      if (isUpgradePayment && upgradeData) {
+        // For now, handle upgrade payments inline (TODO: integrate with PaymentPage)
+        toast.info('Upgrade payment flow needs integration');
+        navigate('/orders');
+        return;
+      }
 
-            const response = await apiFormData('/orders', formData);
+      if (!orderData) {
+        toast.error('No order data available');
+        return;
+      }
 
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.message || 'Failed to create order');
-            }
-          }
+      // Create order(s) in database first
+      if (orderData.isProject) {
+        // Project (multi-file) order - create all orders
+        const orderIds: string[] = [];
 
-          // Simulate payment processing
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Send payment confirmation email
-          try {
-            await apiFetch('/orders/email/payment-confirmation', {
-              method: 'POST',
-              body: JSON.stringify({
-                projectName: orderData.projectName,
-                totalAmount: orderData.totalAmount,
-                itemCount: orderData.files.length,
-                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-              }),
-            });
-          } catch (emailError) {
-            console.error('Failed to send payment confirmation email:', emailError);
-            // Don't fail the payment if email fails
-          }
-
-          // Generate and send invoice if requested
-          if (generateInvoice && billingInfo && billingInfo.companyName) {
-            try {
-              const invoiceItems = orderData.files.map(file => ({
-                description: `3D Print - ${file.file.name}`,
-                quantity: file.quantity,
-                unitPrice: file.estimatedPrice / file.quantity,
-                total: file.estimatedPrice,
-              }));
-
-              const invoiceResponse = await apiFetch('/orders/email/invoice', {
-                method: 'POST',
-                body: JSON.stringify({
-                  projectName: orderData.projectName,
-                  items: invoiceItems,
-                  subtotal: orderData.projectTotal,
-                  deliveryPrice: orderData.deliveryPrice,
-                  totalAmount: orderData.totalAmount,
-                  paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-                  billingInfo,
-                }),
-              });
-
-              if (invoiceResponse.ok) {
-                const invoiceData = await invoiceResponse.json();
-                // Save invoice to billing history
-                const existingHistory = localStorage.getItem('billingHistory');
-                const history = existingHistory ? JSON.parse(existingHistory) : [];
-                history.unshift({
-                  id: invoiceData.invoiceNumber,
-                  invoiceNumber: invoiceData.invoiceNumber,
-                  date: new Date().toISOString(),
-                  amount: orderData.totalAmount,
-                  description: `Project: ${orderData.projectName} (${orderData.files.length} files)`,
-                  status: 'paid',
-                  type: 'invoice',
-                });
-                localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success(t('payment.toasts.invoiceGenerated'));
-              }
-            } catch (invoiceError) {
-              console.error('Failed to generate invoice:', invoiceError);
-              // Don't fail the payment if invoice generation fails
-            }
-          }
-
-          // Add notification for project order
-          addNotification({
-            type: "order_created",
-            title: "Project Submitted",
-            message: `Your project "${orderData.projectName}" with ${orderData.files.length} file(s) has been submitted successfully.`,
-          });
-
-          toast.success(`${t('payment.toasts.paymentSuccessful')} ${orderData.files.length} ${t('payment.toasts.ordersPlaced')}`);
-          navigate('/orders');
-        } else {
-          // Single file order
+        for (const projectFile of orderData.files) {
           const formData = new FormData();
-          formData.append('file', orderData.file);
-          formData.append('material', orderData.material.split('-')[0]);
-          formData.append('color', orderData.material.split('-')[1] || 'white');
-          formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
-          formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
-          formData.append('quantity', orderData.quantity.toString());
+          formData.append('file', projectFile.file);
+          formData.append('material', projectFile.material.split('-')[0]);
+          formData.append('color', projectFile.material.split('-')[1] || 'white');
+          formData.append('layerHeight', projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
+          formData.append('infill', projectFile.quality === 'draft' ? '10' : projectFile.quality === 'standard' ? '20' : projectFile.quality === 'high' ? '50' : '100');
+          formData.append('quantity', projectFile.quantity.toString());
           formData.append('shippingMethod', orderData.deliveryOption);
-          formData.append('paymentMethod', selectedPayment);
-          formData.append('price', orderData.totalAmount.toString());
+          formData.append('paymentMethod', 'pending'); // Will be set after payment
+          formData.append('price', projectFile.estimatedPrice.toString());
+          formData.append('projectName', orderData.projectName);
 
           // Add delivery-specific details
           if (orderData.deliveryOption === 'inpost' && orderData.locker) {
@@ -597,82 +437,60 @@ const Payment = () => {
             throw new Error(error.message || 'Failed to create order');
           }
 
-          // Simulate payment processing
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Send payment confirmation email
-          try {
-            await apiFetch('/orders/email/payment-confirmation', {
-              method: 'POST',
-              body: JSON.stringify({
-                totalAmount: orderData.totalAmount,
-                itemCount: 1,
-                paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-              }),
-            });
-          } catch (emailError) {
-            console.error('Failed to send payment confirmation email:', emailError);
-            // Don't fail the payment if email fails
-          }
-
-          // Generate and send invoice if requested
-          if (generateInvoice && billingInfo && billingInfo.companyName) {
-            try {
-              const invoiceResponse = await apiFetch('/orders/email/invoice', {
-                method: 'POST',
-                body: JSON.stringify({
-                  orderNumber: `ORD-${Date.now()}`,
-                  items: [{
-                    description: `3D Print - ${orderData.file.name}`,
-                    quantity: orderData.quantity,
-                    unitPrice: orderData.priceBreakdown?.totalPrice / orderData.quantity || orderData.totalAmount / orderData.quantity,
-                    total: orderData.priceBreakdown?.totalPrice || (orderData.totalAmount - orderData.deliveryPrice),
-                  }],
-                  subtotal: orderData.priceBreakdown?.totalPrice || (orderData.totalAmount - orderData.deliveryPrice),
-                  deliveryPrice: orderData.deliveryPrice,
-                  totalAmount: orderData.totalAmount,
-                  paymentMethod: selectedPayment === 'blik' ? 'BLIK' : selectedPayment === 'card' ? 'Card' : 'Bank Transfer',
-                  billingInfo,
-                }),
-              });
-
-              if (invoiceResponse.ok) {
-                const invoiceData = await invoiceResponse.json();
-                // Save invoice to billing history
-                const existingHistory = localStorage.getItem('billingHistory');
-                const history = existingHistory ? JSON.parse(existingHistory) : [];
-                history.unshift({
-                  id: invoiceData.invoiceNumber,
-                  invoiceNumber: invoiceData.invoiceNumber,
-                  date: new Date().toISOString(),
-                  amount: orderData.totalAmount,
-                  description: `3D Print - ${orderData.file.name}`,
-                  status: 'paid',
-                  type: 'invoice',
-                });
-                localStorage.setItem('billingHistory', JSON.stringify(history));
-                toast.success(t('payment.toasts.invoiceGenerated'));
-              }
-            } catch (invoiceError) {
-              console.error('Failed to generate invoice:', invoiceError);
-              // Don't fail the payment if invoice generation fails
-            }
-          }
-
-          // Add notification for single order
-          addNotification({
-            type: "order_created",
-            title: "Order Submitted",
-            message: `Your print order for "${orderData.file.name}" has been submitted successfully.`,
-          });
-
-          toast.success(t('payment.toasts.paymentSuccess'));
-          navigate('/orders');
+          const orderResult = await response.json();
+          orderIds.push(orderResult.order.id);
         }
+
+        // For projects, redirect to payment page with first order ID
+        // TODO: Handle project-wide payments better
+        if (orderIds.length > 0) {
+          toast.success('Orders created. Redirecting to payment...');
+          navigate(`/payment/${orderIds[0]}`);
+        }
+      } else {
+        // Single file order
+        const formData = new FormData();
+        formData.append('file', orderData.file);
+        formData.append('material', orderData.material.split('-')[0]);
+        formData.append('color', orderData.material.split('-')[1] || 'white');
+        formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
+        formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
+        formData.append('quantity', orderData.quantity.toString());
+        formData.append('shippingMethod', orderData.deliveryOption);
+        formData.append('paymentMethod', 'pending'); // Will be set after payment
+        formData.append('price', orderData.totalAmount.toString());
+
+        // Add delivery-specific details
+        if (orderData.deliveryOption === 'inpost' && orderData.locker) {
+          formData.append('shippingAddress', JSON.stringify({
+            lockerCode: orderData.locker.name,
+            lockerAddress: orderData.locker.address
+          }));
+        } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
+          formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
+        } else if (orderData.deliveryOption === 'pickup') {
+          formData.append('shippingAddress', JSON.stringify({
+            type: 'pickup',
+            address: 'Zielonogórska 13, 30-406 Kraków'
+          }));
+        }
+
+        const response = await apiFormData('/orders', formData);
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to create order');
+        }
+
+        const orderResult = await response.json();
+
+        // Redirect to PaymentPage with order ID
+        toast.success('Order created. Redirecting to payment...');
+        navigate(`/payment/${orderResult.order.id}`);
       }
     } catch (error) {
-      console.error('Payment error:', error);
-      toast.error(error instanceof Error ? error.message : t('payment.toasts.paymentFailed'));
+      console.error('Order creation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create order');
     } finally {
       setIsProcessing(false);
     }
@@ -1157,8 +975,8 @@ const Payment = () => {
                   )}
 
                   <Button
-                    onClick={handlePayment}
-                    disabled={!selectedPayment || isProcessing}
+                    onClick={handleCreateOrder}
+                    disabled={isProcessing}
                     className="w-full h-14 text-lg mt-4"
                     size="lg"
                   >
@@ -1173,7 +991,7 @@ const Payment = () => {
                     ) : (
                       <span className="flex items-center">
                         <CheckCircle2 className="mr-2 h-5 w-5" />
-                        {t('payment.pay')} {displayAmount.toFixed(2)} PLN
+                        {t('payment.continueToPayment')}
                       </span>
                     )}
                   </Button>

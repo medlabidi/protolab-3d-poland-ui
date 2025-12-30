@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Wallet, Plus, CreditCard, Smartphone, Building2, Gift, Clock, CheckCircle2, Sparkles, Zap, Crown } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiFormData } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CreditPackage {
@@ -144,42 +144,28 @@ const Credits = () => {
         return;
       }
 
-      // Create a temporary order ID for the credit purchase
-      const orderId = `credit_${Date.now()}_${user.id}`;
-      
-      toast.info('Redirecting to payment gateway...');
+      // Create a credits purchase order
+      const formData = new FormData();
+      formData.append('order_type', 'credits_purchase');
+      formData.append('description', `Store Credit: ${packageDetails.amount} PLN`);
+      formData.append('price', packageDetails.amount.toString());
+      formData.append('credits_amount', packageDetails.credits.toString());
+      formData.append('paymentMethod', 'pending'); // Will be set after payment selection
 
-      // Create PayU payment
-      const response = await apiFetch("/payments/payu/create", {
-        method: "POST",
-        body: JSON.stringify({
-          orderId: orderId,
-          amount: packageDetails.amount,
-          description: `Store Credit: ${packageDetails.amount} PLN`,
-          userId: user.id,
-        }),
-      });
+      toast.info('Creating order...');
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create payment");
+      const orderResponse = await apiFormData('/orders', formData);
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.message || 'Failed to create order');
       }
 
-      const data = await response.json();
+      const orderData = await orderResponse.json();
       
-      if (data.success && data.redirectUri) {
-        // Store order info for reference
-        sessionStorage.setItem('pendingCreditPurchase', JSON.stringify({
-          orderId,
-          amount: packageDetails.amount,
-          timestamp: Date.now(),
-        }));
-
-        // Redirect to PayU payment page
-        window.location.href = data.redirectUri;
-      } else {
-        throw new Error("Invalid payment response");
-      }
+      // Redirect to PaymentPage with order ID
+      toast.success('Redirecting to payment...');
+      navigate(`/payment/${orderData.order.id}`);
     } catch (error) {
       console.error("Purchase error:", error);
       toast.error(error instanceof Error ? error.message : t('credits.toasts.paymentFailed'));
