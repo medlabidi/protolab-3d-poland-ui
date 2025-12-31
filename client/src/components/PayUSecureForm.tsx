@@ -75,44 +75,85 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
       return;
     }
 
-    // Use sandbox SDK URL for testing
-    const sdkUrl = 'https://secure.snd.payu.com/javascript/sdk'; // Sandbox SDK
-    console.log('[PAYU-SECURE-FORM] Loading SDK from:', sdkUrl);
+    // Try multiple SDK URLs (sandbox first, then production)
+    const sdkUrls = [
+      'https://secure.snd.payu.com/javascript/sdk', // Sandbox
+      'https://secure.payu.com/javascript/sdk',     // Production
+    ];
+    
+    let currentUrlIndex = 0;
+    console.log('[PAYU-SECURE-FORM] Loading SDK from:', sdkUrls[currentUrlIndex]);
 
     const script = document.createElement('script');
-    script.src = sdkUrl;
+    script.src = sdkUrls[currentUrlIndex];
     script.type = 'text/javascript';
     script.async = true;
+    script.crossOrigin = 'anonymous';
 
     script.onload = () => {
       console.log('[PAYU-SECURE-FORM] SDK script loaded');
       scriptLoadedRef.current = true;
       
-      // Give more time for SDK to initialize
+      // Give more time for SDK to initialize with extended checking
       let retryCount = 0;
-      const maxRetries = 10;
+      const maxRetries = 20; // Increased retries
       
       const checkSDK = () => {
-        if (window.PayU && window.PayU.SecureForm) {
+        // More thorough SDK availability check
+        const hasPayU = typeof window !== 'undefined' && window.PayU;
+        const hasSecureForm = hasPayU && window.PayU.SecureForm;
+        const hasInit = hasSecureForm && typeof window.PayU.SecureForm.init === 'function';
+        const hasAdd = hasSecureForm && typeof window.PayU.SecureForm.add === 'function';
+        
+        console.log('[PAYU-SECURE-FORM] SDK Check:', {
+          hasPayU: !!hasPayU,
+          hasSecureForm: !!hasSecureForm,
+          hasInit: !!hasInit,
+          hasAdd: !!hasAdd,
+          retry: retryCount + 1
+        });
+        
+        if (hasPayU && hasSecureForm && hasInit && hasAdd) {
           console.log('[PAYU-SECURE-FORM] SDK fully available after', retryCount, 'retries');
           initializeSecureForm();
         } else if (retryCount < maxRetries) {
           retryCount++;
-          console.log('[PAYU-SECURE-FORM] SDK not ready, retry', retryCount, 'of', maxRetries);
-          setTimeout(checkSDK, 200);
+          setTimeout(checkSDK, 300); // Longer intervals
         } else {
           console.error('[PAYU-SECURE-FORM] SDK failed to initialize after', maxRetries, 'retries');
-          setError('PayU SDK failed to initialize. Please refresh the page.');
+          console.error('[PAYU-SECURE-FORM] Final SDK state:', {
+            windowPayU: typeof window !== 'undefined' ? !!window.PayU : 'no window',
+            PayUKeys: typeof window !== 'undefined' && window.PayU ? Object.keys(window.PayU) : 'none'
+          });
+          setError('Payment form failed to load. Please refresh the page and try again.');
           setLoading(false);
         }
       };
       
-      setTimeout(checkSDK, 100);
+      setTimeout(checkSDK, 200);
     };
 
     script.onerror = (e) => {
-      console.error('[PAYU-SECURE-FORM] Failed to load SDK from:', sdkUrl, e);
-      setError('Failed to load payment form. Please refresh the page.');
+      console.error('[PAYU-SECURE-FORM] Failed to load SDK from:', sdkUrls[currentUrlIndex], e);
+      
+      // Try next URL if available
+      currentUrlIndex++;
+      if (currentUrlIndex < sdkUrls.length) {
+        console.log('[PAYU-SECURE-FORM] Trying next SDK URL:', sdkUrls[currentUrlIndex]);
+        script.remove();
+        
+        const newScript = document.createElement('script');
+        newScript.src = sdkUrls[currentUrlIndex];
+        newScript.type = 'text/javascript';
+        newScript.async = true;
+        newScript.crossOrigin = 'anonymous';
+        newScript.onload = script.onload;
+        newScript.onerror = script.onerror;
+        document.body.appendChild(newScript);
+        return;
+      }
+      
+      setError('Failed to load payment form from all sources. Please refresh the page.');
       setLoading(false);
     };
 
