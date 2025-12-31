@@ -144,13 +144,13 @@ const Credits = () => {
         return;
       }
 
-      // Create a credits purchase order
+      // Create credits purchase order first
       const formData = new FormData();
       formData.append('order_type', 'credits_purchase');
       formData.append('description', `Store Credit: ${packageDetails.amount} PLN`);
       formData.append('price', packageDetails.amount.toString());
-      formData.append('credits_amount', packageDetails.credits.toString());
-      formData.append('paymentMethod', 'pending'); // Will be set after payment selection
+      formData.append('credits_amount', packageDetails.amount.toString());
+      formData.append('paymentMethod', 'pending');
 
       toast.info('Creating order...');
 
@@ -163,9 +163,9 @@ const Credits = () => {
 
       const orderData = await orderResponse.json();
       
-      // Redirect to PaymentPage with order ID
+      // Navigate to PaymentPage with order ID
       toast.success('Redirecting to payment...');
-      navigate(`/payment/${orderData.order.id}`);
+      navigate(`/payment/${orderData.id}`);
     } catch (error) {
       console.error("Purchase error:", error);
       toast.error(error instanceof Error ? error.message : t('credits.toasts.paymentFailed'));

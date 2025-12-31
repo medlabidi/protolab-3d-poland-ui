@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { ArrowLeft, Loader2, CreditCard, Building2, Wallet } from 'lucide-react'
 import { API_URL } from '@/config/api';
 import { PayUSecureForm } from '@/components/PayUSecureForm';
 import { PayUDisclosures } from '@/components/PayUDisclosures';
+import { toast } from 'sonner';
+import { apiFormData } from '@/lib/api';
 
 interface Order {
   id: string;
@@ -46,6 +48,7 @@ interface PaymentMethods {
 export function PaymentPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [order, setOrder] = useState<Order | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethods | null>(null);
@@ -54,14 +57,18 @@ export function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Payment method selection
-  const [selectedMethod, setSelectedMethod] = useState<'card' | 'pbl' | 'blik'>('pbl');
+  const [selectedMethod, setSelectedMethod] = useState<'card' | 'pbl' | 'blik' | 'credits'>('pbl');
   const [selectedPbl, setSelectedPbl] = useState<string>('');
   const [blikCode, setBlikCode] = useState<string>('');
   const [cardToken, setCardToken] = useState<string>('');
 
   useEffect(() => {
     if (orderId) {
+      // Fetch existing order
       Promise.all([fetchOrder(), fetchPaymentMethods()]);
+    } else {
+      setError('No order ID provided');
+      setLoading(false);
     }
   }, [orderId]);
 
@@ -86,9 +93,9 @@ export function PaymentPage() {
       const data = await response.json();
       setOrder(data.order);
 
-      // Redirect if already paid
+      // Redirect if already paid (but not if on_hold - that means awaiting payment)
       if (data.order.payment_status === 'paid') {
-        navigate(`/orders/${orderId}`);
+        navigate(`/orders/${data.order.id}`);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load order');
@@ -133,6 +140,29 @@ export function PaymentPage() {
 
       // Build payMethods object based on selection
       let payMethodsData: any = null;
+
+      if (selectedMethod === 'credits') {
+        // Handle credits payment using existing order update system
+        const creditsResponse = await fetch(`${API_URL}/orders/${order.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            payment_method: 'credits'
+          })
+        });
+
+        if (!creditsResponse.ok) {
+          const errorData = await creditsResponse.json();
+          throw new Error(errorData.error || 'Credits payment failed');
+        }
+
+        // Credits payment successful - redirect to order details
+        navigate(`/orders/${order.id}`);
+        return;
+      }
 
       switch (selectedMethod) {
         case 'card':
@@ -217,7 +247,7 @@ export function PaymentPage() {
   const handlePaymentSuccess = () => {
     // Redirect to order details after successful payment
     setTimeout(() => {
-      navigate(`/orders/${orderId}`);
+      navigate(`/orders/${order?.id || orderId}`);
     }, 2000);
   };
 
@@ -261,11 +291,11 @@ export function PaymentPage() {
       <div className="max-w-5xl mx-auto space-y-6 py-8">
         <Button
           variant="ghost"
-          onClick={() => navigate(`/orders/${orderId}`)}
+          onClick={() => navigate('/orders')}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Order
+          Back to Orders
         </Button>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -340,10 +370,10 @@ export function PaymentPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={selectedMethod} onValueChange={(v) => setSelectedMethod(v as any)}>
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="pbl">
                     <Building2 className="h-4 w-4 mr-2" />
-                    Bank
+                    Online
                   </TabsTrigger>
                   <TabsTrigger value="card">
                     <CreditCard className="h-4 w-4 mr-2" />
@@ -353,9 +383,13 @@ export function PaymentPage() {
                     <Wallet className="h-4 w-4 mr-2" />
                     BLIK
                   </TabsTrigger>
+                  <TabsTrigger value="credits">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Credits
+                  </TabsTrigger>
                 </TabsList>
 
-                {/* Bank Transfer (PBL) */}
+                {/* Online Banking (PBL) */}
                 <TabsContent value="pbl" className="space-y-4 mt-4">
                   <Label>Select Your Bank</Label>
                   {paymentMethods && paymentMethods.pblPayMethods.length > 0 ? (
@@ -385,10 +419,16 @@ export function PaymentPage() {
 
                 {/* Card Payment */}
                 <TabsContent value="card" className="space-y-4 mt-4">
-                  <PayUSecureForm
-                    onTokenReceived={setCardToken}
-                    amount={order.price}
-                  />
+                  {selectedMethod === 'card' ? (
+                    <PayUSecureForm
+                      onTokenReceived={setCardToken}
+                      amount={order.price}
+                    />
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      Switch to Card tab to load payment form
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* BLIK Payment */}
@@ -407,6 +447,24 @@ export function PaymentPage() {
                     <p className="text-sm text-muted-foreground">
                       Open your banking app and generate a BLIK code
                     </p>
+                  </div>
+                </TabsContent>
+
+                {/* Credits Payment */}
+                <TabsContent value="credits" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h3 className="font-medium">Pay with Store Credits</h3>
+                        <p className="text-sm text-muted-foreground">Use your account balance to pay for this order</p>
+                      </div>
+                      <Wallet className="h-8 w-8 text-primary" />
+                    </div>
+                    <Alert>
+                      <AlertDescription>
+                        Your credits will be deducted instantly after clicking "Pay with Credits".
+                      </AlertDescription>
+                    </Alert>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -431,7 +489,16 @@ export function PaymentPage() {
                       Processing...
                     </>
                   ) : (
-                    <>Pay {order.price.toFixed(2)} PLN</>
+                    <>
+                      {selectedMethod === 'credits' ? (
+                        <>
+                          <Wallet className="mr-2 h-4 w-4" />
+                          Pay with Credits ({order.price.toFixed(2)} PLN)
+                        </>
+                      ) : (
+                        <>Pay {order.price.toFixed(2)} PLN</>
+                      )}
+                    </>
                   )}
                 </Button>
 

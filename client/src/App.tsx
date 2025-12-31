@@ -30,7 +30,6 @@ import EditOrder from "./pages/EditOrder";
 import EditProject from "./pages/EditProject";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
-import Payment from "./pages/Payment";
 import PaymentPage from "./pages/PaymentPage";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
@@ -94,11 +93,10 @@ const App = () => {
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />
-                <Route path="/orders/:orderId/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
                 <Route path="/projects/:projectName/edit" element={<ProtectedRoute><EditProject /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                <Route path="/payment/:orderId?" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />

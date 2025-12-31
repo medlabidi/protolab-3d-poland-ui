@@ -94,6 +94,7 @@ const NewPrint = () => {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [material, setMaterial] = useState("");
   const [quality, setQuality] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -700,7 +701,7 @@ const NewPrint = () => {
     toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${formatPrintTime(printTimeHours)}`);
   };
 
-  const proceedToPayment = () => {
+  const proceedToPayment = async () => {
     // Check which mode we're in
     if (uploadMode === 'project') {
       // Project mode validation
@@ -770,29 +771,61 @@ const NewPrint = () => {
       const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
       const totalAmount = projectTotal + deliveryPrice;
 
-      // Navigate to payment page with project order data
-      navigate('/payment', {
-        state: {
-          orderData: {
-            isProject: true,
-            projectName: projectName || 'Untitled Project',
-            files: projectFiles.map(pf => ({
-              file: pf.file,
-              material: pf.material,
-              quality: pf.quality,
-              quantity: pf.quantity,
-              modelAnalysis: pf.modelAnalysis,
-              estimatedPrice: calculateProjectFilePrice(pf)?.totalPrice || 0,
-            })),
-            deliveryOption: selectedDeliveryOption,
-            locker: selectedLocker,
-            shippingAddress,
-            projectTotal,
-            deliveryPrice,
-            totalAmount,
+      try {
+        setIsProcessing(true);
+        const orderIds: string[] = [];
+
+        // Create orders for each file
+        for (const pf of projectFiles) {
+          const formData = new FormData();
+          formData.append('file', pf.file);
+          formData.append('material', pf.material.split('-')[0]);
+          formData.append('color', pf.material.split('-')[1] || 'white');
+          formData.append('layerHeight', pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1');
+          formData.append('infill', pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '50' : '100');
+          formData.append('quantity', pf.quantity.toString());
+          formData.append('shippingMethod', selectedDeliveryOption);
+          formData.append('paymentMethod', 'pending');
+          formData.append('price', (calculateProjectFilePrice(pf)?.totalPrice || 0).toString());
+          formData.append('projectName', projectName || 'Untitled Project');
+
+          // Add delivery details
+          if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+            formData.append('shippingAddress', JSON.stringify({
+              lockerCode: selectedLocker.name,
+              lockerAddress: selectedLocker.address
+            }));
+          } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
+            formData.append('shippingAddress', JSON.stringify(shippingAddress));
+          } else if (selectedDeliveryOption === 'pickup') {
+            formData.append('shippingAddress', JSON.stringify({
+              type: 'pickup',
+              address: 'Zielonogórska 13, 30-406 Kraków'
+            }));
           }
+
+          const response = await apiFormData('/orders', formData);
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create order');
+          }
+
+          const result = await response.json();
+          orderIds.push(result.id);
         }
-      });
+
+        // Navigate to PaymentPage with first order ID
+        if (orderIds.length > 0) {
+          toast.success('Orders created. Redirecting to payment...');
+          navigate(`/payment/${orderIds[0]}`);
+        }
+      } catch (error) {
+        console.error('Order creation error:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to create orders');
+      } finally {
+        setIsProcessing(false);
+      }
       return;
     }
 
@@ -842,23 +875,54 @@ const NewPrint = () => {
     const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
     const totalAmount = estimatedPrice + deliveryPrice;
 
-    // Navigate to payment page with order data
-    navigate('/payment', {
-      state: {
-        orderData: {
-          file,
-          material,
-          quality,
-          quantity,
-          deliveryOption: selectedDeliveryOption,
-          locker: selectedLocker,
-          shippingAddress,
-          priceBreakdown,
-          deliveryPrice,
-          totalAmount,
-        }
+    try {
+      setIsProcessing(true);
+      
+      // Create order first
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('material', material.split('-')[0]);
+      formData.append('color', material.split('-')[1] || 'white');
+      formData.append('layerHeight', quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
+      formData.append('quantity', quantity.toString());
+      formData.append('shippingMethod', selectedDeliveryOption);
+      formData.append('paymentMethod', 'pending');
+      formData.append('price', totalAmount.toString());
+
+      // Add delivery details
+      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+        formData.append('shippingAddress', JSON.stringify({
+          lockerCode: selectedLocker.name,
+          lockerAddress: selectedLocker.address
+        }));
+      } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
+        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+      } else if (selectedDeliveryOption === 'pickup') {
+        formData.append('shippingAddress', JSON.stringify({
+          type: 'pickup',
+          address: 'Zielonogórska 13, 30-406 Kraków'
+        }));
       }
-    });
+
+      const response = await apiFormData('/orders', formData);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create order');
+      }
+
+      const result = await response.json();
+      
+      // Navigate to PaymentPage with order ID
+      toast.success('Order created. Redirecting to payment...');
+      navigate(`/payment/${result.id}`);
+    } catch (error) {
+      console.error('Order creation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create order');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const submitOrder = async () => {

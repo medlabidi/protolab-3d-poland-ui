@@ -1898,6 +1898,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     color: color || 'white',
     quantity: quantity || 1,
     price: price || 0,
+    payment_status: 'on_hold', // Use on_hold for new orders awaiting payment (constraint allows: paid, on_hold, refunding, refunded)
     shipping_method: shippingMethod || 'pickup',
     layer_height: parseFloat(layerHeight || '0.2'),
     infill: parseInt(infill || '20', 10),
@@ -2063,6 +2064,91 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
     .eq('id', orderId)
     .single();
 
+  // Handle payment method processing before updating
+  if (req.body.payment_method === 'credits') {
+    console.log('=== PROCESSING CREDITS PAYMENT ===');
+    
+    // Get current order to check price
+    const { data: currentOrderData } = await supabase
+      .from('orders')
+      .select('price, payment_status')
+      .eq('id', orderId)
+      .single();
+    
+    if (!currentOrderData) {
+      return res.status(404).json({ error: 'Order not found for payment processing' });
+    }
+    
+    if (currentOrderData.payment_status === 'paid') {
+      return res.status(400).json({ error: 'Order is already paid' });
+    }
+    
+    const orderPrice = currentOrderData.price || 0;
+    
+    // Get current credit balance
+    const { data: creditData, error: creditFetchError } = await supabase
+      .from('credits')
+      .select('balance')
+      .eq('user_id', user.userId)
+      .maybeSingle();
+    
+    if (creditFetchError) {
+      console.error('Failed to fetch credit balance:', creditFetchError);
+      return res.status(500).json({ error: 'Failed to fetch credit balance' });
+    }
+    
+    const currentBalance = creditData?.balance || 0;
+    
+    // Check if user has sufficient credits
+    if (currentBalance < orderPrice) {
+      return res.status(400).json({ 
+        error: 'Insufficient credits',
+        balance: currentBalance,
+        required: orderPrice 
+      });
+    }
+    
+    // Deduct credits
+    const newBalance = currentBalance - orderPrice;
+    const { error: updateError } = await supabase
+      .from('credits')
+      .upsert({ 
+        user_id: user.userId,
+        balance: newBalance, 
+        updated_at: new Date().toISOString() 
+      }, {
+        onConflict: 'user_id'
+      });
+    
+    if (updateError) {
+      console.error('Failed to deduct credits:', updateError);
+      return res.status(500).json({ error: 'Failed to deduct credits' });
+    }
+    
+    // Create transaction record
+    const { error: transactionError } = await supabase
+      .from('credits_transactions')
+      .insert([{
+        user_id: user.userId,
+        amount: -orderPrice,
+        type: 'debit',
+        description: `Payment for order #${orderId}`,
+        order_id: orderId,
+        balance_after: newBalance,
+      }]);
+    
+    if (transactionError) {
+      console.error('Failed to create credit transaction record:', transactionError);
+    }
+    
+    console.log(`💳 [CREDITS] Deducted ${orderPrice} PLN from user ${user.userId}. New balance: ${newBalance} PLN`);
+    
+    // Add payment completion data to update
+    req.body.payment_status = 'paid';
+    req.body.payment_method = 'credits';
+    req.body.paid_amount = orderPrice;
+  }
+
   // Extract all possible fields from request body
   const updateData: any = {};
   const allowedFields = [
@@ -2070,7 +2156,8 @@ async function handleUpdateOrder(req: AuthenticatedRequest, res: VercelResponse)
     'payment_status', 'price', 'layer_height', 'infill', 'quality',
     'support_type', 'infill_pattern', 'custom_layer_height', 'custom_infill',
     'advanced_mode', 'shipping_method', 'tracking_number', 'estimated_delivery',
-    'refund_method', 'refund_amount', 'refund_reason', 'refund_bank_details'
+    'refund_method', 'refund_amount', 'refund_reason', 'refund_bank_details',
+    'payment_method', 'paid_amount'
   ];
 
   for (const field of allowedFields) {

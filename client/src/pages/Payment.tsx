@@ -157,13 +157,12 @@ const Payment = () => {
 
 
 
-  const handleCreateOrder = async () => {
+  const handleProceedToPayment = async () => {
     setIsProcessing(true);
 
     try {
       // For upgrades, redirect to PaymentPage with upgrade info
       if (isUpgradePayment && upgradeData) {
-        // For now, handle upgrade payments inline (TODO: integrate with PaymentPage)
         toast.info('Upgrade payment flow needs integration');
         navigate('/orders');
         return;
@@ -174,101 +173,13 @@ const Payment = () => {
         return;
       }
 
-      // Create order(s) in database first
-      if (orderData.isProject) {
-        // Project (multi-file) order - create all orders
-        const orderIds: string[] = [];
-
-        for (const projectFile of orderData.files) {
-          const formData = new FormData();
-          formData.append('file', projectFile.file);
-          formData.append('material', projectFile.material.split('-')[0]);
-          formData.append('color', projectFile.material.split('-')[1] || 'white');
-          formData.append('layerHeight', projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
-          formData.append('infill', projectFile.quality === 'draft' ? '10' : projectFile.quality === 'standard' ? '20' : projectFile.quality === 'high' ? '50' : '100');
-          formData.append('quantity', projectFile.quantity.toString());
-          formData.append('shippingMethod', orderData.deliveryOption);
-          formData.append('paymentMethod', 'pending'); // Will be set after payment
-          formData.append('price', projectFile.estimatedPrice.toString());
-          formData.append('projectName', orderData.projectName);
-
-          // Add delivery-specific details
-          if (orderData.deliveryOption === 'inpost' && orderData.locker) {
-            formData.append('shippingAddress', JSON.stringify({
-              lockerCode: orderData.locker.name,
-              lockerAddress: orderData.locker.address
-            }));
-          } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
-            formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
-          } else if (orderData.deliveryOption === 'pickup') {
-            formData.append('shippingAddress', JSON.stringify({
-              type: 'pickup',
-              address: 'Zielonogórska 13, 30-406 Kraków'
-            }));
-          }
-
-          const response = await apiFormData('/orders', formData);
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create order');
-          }
-
-          const orderResult = await response.json();
-          orderIds.push(orderResult.order.id);
-        }
-
-        // For projects, redirect to payment page with first order ID
-        // TODO: Handle project-wide payments better
-        if (orderIds.length > 0) {
-          toast.success('Orders created. Redirecting to payment...');
-          navigate(`/payment/${orderIds[0]}`);
-        }
-      } else {
-        // Single file order
-        const formData = new FormData();
-        formData.append('file', orderData.file);
-        formData.append('material', orderData.material.split('-')[0]);
-        formData.append('color', orderData.material.split('-')[1] || 'white');
-        formData.append('layerHeight', orderData.quality === 'draft' ? '0.3' : orderData.quality === 'standard' ? '0.2' : orderData.quality === 'high' ? '0.15' : '0.1');
-        formData.append('infill', orderData.quality === 'draft' ? '10' : orderData.quality === 'standard' ? '20' : orderData.quality === 'high' ? '50' : '100');
-        formData.append('quantity', orderData.quantity.toString());
-        formData.append('shippingMethod', orderData.deliveryOption);
-        formData.append('paymentMethod', 'pending'); // Will be set after payment
-        formData.append('price', orderData.totalAmount.toString());
-
-        // Add delivery-specific details
-        if (orderData.deliveryOption === 'inpost' && orderData.locker) {
-          formData.append('shippingAddress', JSON.stringify({
-            lockerCode: orderData.locker.name,
-            lockerAddress: orderData.locker.address
-          }));
-        } else if (orderData.deliveryOption === 'dpd' && orderData.shippingAddress) {
-          formData.append('shippingAddress', JSON.stringify(orderData.shippingAddress));
-        } else if (orderData.deliveryOption === 'pickup') {
-          formData.append('shippingAddress', JSON.stringify({
-            type: 'pickup',
-            address: 'Zielonogórska 13, 30-406 Kraków'
-          }));
-        }
-
-        const response = await apiFormData('/orders', formData);
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to create order');
-        }
-
-        const orderResult = await response.json();
-
-        // Redirect to PaymentPage with order ID
-        toast.success('Order created. Redirecting to payment...');
-        navigate(`/payment/${orderResult.order.id}`);
-      }
+      // Pass order data to PaymentPage for order creation there
+      navigate('/payment/new', { 
+        state: { orderData, generateInvoice } 
+      });
     } catch (error) {
-      console.error('Order creation error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create order');
-    } finally {
+      console.error('Navigation error:', error);
+      toast.error('Failed to proceed to payment');
       setIsProcessing(false);
     }
   };
@@ -575,7 +486,7 @@ const Payment = () => {
                   )}
 
                   <Button
-                    onClick={handleCreateOrder}
+                    onClick={handleProceedToPayment}
                     disabled={isProcessing}
                     className="w-full h-14 text-lg mt-4"
                     size="lg"
