@@ -74,19 +74,25 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
       return;
     }
 
+    // Use sandbox SDK URL for testing
+    const sdkUrl = 'https://secure.snd.payu.com/javascript/sdk'; // Sandbox SDK
+    console.log('[PAYU-SECURE-FORM] Loading SDK from:', sdkUrl);
+
     const script = document.createElement('script');
-    script.src = 'https://secure.payu.com/javascript/sdk';
+    script.src = sdkUrl;
     script.type = 'text/javascript';
     script.async = true;
 
     script.onload = () => {
       console.log('[PAYU-SECURE-FORM] SDK loaded successfully');
       scriptLoadedRef.current = true;
-      initializeSecureForm();
+      setTimeout(() => {
+        initializeSecureForm();
+      }, 100); // Small delay to ensure SDK is fully initialized
     };
 
     script.onerror = () => {
-      console.error('[PAYU-SECURE-FORM] Failed to load SDK');
+      console.error('[PAYU-SECURE-FORM] Failed to load SDK from:', sdkUrl);
       setError('Failed to load payment form. Please refresh the page.');
       setLoading(false);
     };
@@ -101,13 +107,18 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
     }
 
     try {
+      console.log('[PAYU-SECURE-FORM] Checking PayU availability:', !!window.PayU);
+      console.log('[PAYU-SECURE-FORM] SecureForm available:', !!(window.PayU?.SecureForm));
+
       if (!window.PayU || !window.PayU.SecureForm) {
-        setError('PayU SDK not available');
+        console.error('[PAYU-SECURE-FORM] PayU SDK not available');
+        setError('PayU SDK not available. Please refresh the page.');
         setLoading(false);
         return;
       }
 
       // Initialize Secure Form
+      console.log('[PAYU-SECURE-FORM] Initializing SecureForm...');
       window.PayU.SecureForm.init({ lang: 'pl' });
 
       // Add card form
@@ -135,12 +146,12 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
       // Render in container
       cardFormRef.current.render('#payu-card-form');
 
-      console.log('[PAYU-SECURE-FORM] Form initialized');
+      console.log('[PAYU-SECURE-FORM] Form initialized successfully');
       setLoading(false);
 
     } catch (err) {
       console.error('[PAYU-SECURE-FORM] Initialization error:', err);
-      setError('Failed to initialize payment form');
+      setError(`Failed to initialize payment form: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setLoading(false);
     }
   };
