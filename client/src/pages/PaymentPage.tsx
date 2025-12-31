@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Loader2, CreditCard, Building2, Wallet } from 'lucide-react';
+import { ArrowLeft, Loader2, CreditCard, Wallet } from 'lucide-react';
 import { API_URL } from '@/config/api';
 import { toast } from 'sonner';
 import { apiFormData } from '@/lib/api';
@@ -55,8 +55,7 @@ export function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Payment method selection
-  const [selectedMethod, setSelectedMethod] = useState<'card' | 'pbl' | 'blik' | 'credits'>('pbl');
-  const [selectedPbl, setSelectedPbl] = useState<string>('');
+  const [selectedMethod, setSelectedMethod] = useState<'card' | 'blik' | 'credits'>('card');
   const [blikCode, setBlikCode] = useState<string>('');
 
   useEffect(() => {
@@ -168,18 +167,6 @@ export function PaymentPage() {
             payMethod: {
               type: 'CARD_TOKEN',
               value: 'redirect', // PayU will handle card collection
-            },
-          };
-          break;
-
-        case 'pbl':
-          if (!selectedPbl) {
-            throw new Error('Please select a payment method');
-          }
-          payMethodsData = {
-            payMethod: {
-              type: 'PBL',
-              value: selectedPbl,
             },
           };
           break;
@@ -365,11 +352,7 @@ export function PaymentPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={selectedMethod} onValueChange={(v) => setSelectedMethod(v as any)}>
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="pbl">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Online
-                  </TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="card">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Card
@@ -384,35 +367,7 @@ export function PaymentPage() {
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Online Banking (PBL) */}
-                <TabsContent value="pbl" className="space-y-4 mt-4">
-                  <Label>Select Your Bank</Label>
-                  {paymentMethods && paymentMethods.pblPayMethods.length > 0 ? (
-                    <RadioGroup value={selectedPbl} onValueChange={setSelectedPbl}>
-                      <div className="grid grid-cols-2 gap-3">
-                        {paymentMethods.pblPayMethods
-                          .filter(method => method.status === 'ENABLED')
-                          .map((method) => (
-                            <div key={method.value} className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted">
-                              <RadioGroupItem value={method.value} id={method.value} />
-                              <Label htmlFor={method.value} className="flex items-center gap-2 cursor-pointer flex-1">
-                                {method.brandImageUrl && (
-                                  <img src={method.brandImageUrl} alt={method.name} className="h-6 w-auto" />
-                                )}
-                                <span className="text-sm">{method.name}</span>
-                              </Label>
-                            </div>
-                          ))}
-                      </div>
-                    </RadioGroup>
-                  ) : (
-                    <Alert>
-                      <AlertDescription>Loading payment methods...</AlertDescription>
-                    </Alert>
-                  )}
-                </TabsContent>
-
-                {/* Card Payment */}
+{/* Card Payment */}
                 <TabsContent value="card" className="space-y-4 mt-4">
                   <div className="space-y-4">
                     <div className="p-6 border rounded-lg bg-muted/50">
