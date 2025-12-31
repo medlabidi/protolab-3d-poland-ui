@@ -70,6 +70,7 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
 
     // Check if already loaded
     if (scriptLoadedRef.current || window.PayU) {
+      console.log('[PAYU-SECURE-FORM] SDK already available, initializing...');
       initializeSecureForm();
       return;
     }
@@ -84,15 +85,33 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
     script.async = true;
 
     script.onload = () => {
-      console.log('[PAYU-SECURE-FORM] SDK loaded successfully');
+      console.log('[PAYU-SECURE-FORM] SDK script loaded');
       scriptLoadedRef.current = true;
-      setTimeout(() => {
-        initializeSecureForm();
-      }, 100); // Small delay to ensure SDK is fully initialized
+      
+      // Give more time for SDK to initialize
+      let retryCount = 0;
+      const maxRetries = 10;
+      
+      const checkSDK = () => {
+        if (window.PayU && window.PayU.SecureForm) {
+          console.log('[PAYU-SECURE-FORM] SDK fully available after', retryCount, 'retries');
+          initializeSecureForm();
+        } else if (retryCount < maxRetries) {
+          retryCount++;
+          console.log('[PAYU-SECURE-FORM] SDK not ready, retry', retryCount, 'of', maxRetries);
+          setTimeout(checkSDK, 200);
+        } else {
+          console.error('[PAYU-SECURE-FORM] SDK failed to initialize after', maxRetries, 'retries');
+          setError('PayU SDK failed to initialize. Please refresh the page.');
+          setLoading(false);
+        }
+      };
+      
+      setTimeout(checkSDK, 100);
     };
 
-    script.onerror = () => {
-      console.error('[PAYU-SECURE-FORM] Failed to load SDK from:', sdkUrl);
+    script.onerror = (e) => {
+      console.error('[PAYU-SECURE-FORM] Failed to load SDK from:', sdkUrl, e);
       setError('Failed to load payment form. Please refresh the page.');
       setLoading(false);
     };
