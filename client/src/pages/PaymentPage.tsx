@@ -9,8 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Loader2, CreditCard, Building2, Wallet } from 'lucide-react';
 import { API_URL } from '@/config/api';
-import { PayUSecureForm } from '@/components/PayUSecureForm';
-import { PayUDisclosures } from '@/components/PayUDisclosures';
 import { toast } from 'sonner';
 import { apiFormData } from '@/lib/api';
 
@@ -60,7 +58,6 @@ export function PaymentPage() {
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'pbl' | 'blik' | 'credits'>('pbl');
   const [selectedPbl, setSelectedPbl] = useState<string>('');
   const [blikCode, setBlikCode] = useState<string>('');
-  const [cardToken, setCardToken] = useState<string>('');
 
   useEffect(() => {
     if (orderId) {
@@ -166,13 +163,11 @@ export function PaymentPage() {
 
       switch (selectedMethod) {
         case 'card':
-          if (!cardToken) {
-            throw new Error('Please enter card details');
-          }
+          // For card payments, we'll redirect to PayU without requiring token
           payMethodsData = {
             payMethod: {
               type: 'CARD_TOKEN',
-              value: cardToken,
+              value: 'redirect', // PayU will handle card collection
             },
           };
           break;
@@ -419,16 +414,23 @@ export function PaymentPage() {
 
                 {/* Card Payment */}
                 <TabsContent value="card" className="space-y-4 mt-4">
-                  {selectedMethod === 'card' ? (
-                    <PayUSecureForm
-                      onTokenReceived={setCardToken}
-                      amount={order.price}
-                    />
-                  ) : (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Switch to Card tab to load payment form
+                  <div className="space-y-4">
+                    <div className="p-6 border rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <CreditCard className="h-6 w-6 text-primary" />
+                        <h3 className="font-semibold">Secure Card Payment</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        You'll be redirected to PayU's secure payment page to enter your card details safely.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-12 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">VISA</div>
+                        <div className="h-8 w-12 bg-red-500 rounded text-white text-xs flex items-center justify-center font-bold">MC</div>
+                        <div className="h-8 w-12 bg-blue-800 rounded text-white text-xs flex items-center justify-center font-bold">AMEX</div>
+                        <span className="text-xs text-muted-foreground ml-2">+ more cards accepted</span>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </TabsContent>
 
                 {/* BLIK Payment */}
@@ -479,7 +481,7 @@ export function PaymentPage() {
               <div className="mt-6 space-y-4">
                 <Button
                   onClick={handlePayment}
-                  disabled={processing || (selectedMethod === 'card' && !cardToken) || (selectedMethod === 'pbl' && !selectedPbl)}
+                  disabled={processing || (selectedMethod === 'pbl' && !selectedPbl)}
                   className="w-full"
                   size="lg"
                 >
