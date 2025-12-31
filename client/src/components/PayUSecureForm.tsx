@@ -99,11 +99,11 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
       const maxRetries = 20; // Increased retries
       
       const checkSDK = () => {
-        // More thorough SDK availability check
+        // More thorough SDK availability check with proper type guards
         const hasPayU = typeof window !== 'undefined' && window.PayU;
-        const hasSecureForm = hasPayU && window.PayU.SecureForm;
-        const hasInit = hasSecureForm && typeof window.PayU.SecureForm.init === 'function';
-        const hasAdd = hasSecureForm && typeof window.PayU.SecureForm.add === 'function';
+        const hasSecureForm = hasPayU && window.PayU?.SecureForm;
+        const hasInit = hasSecureForm && typeof window.PayU?.SecureForm?.init === 'function';
+        const hasAdd = hasSecureForm && typeof window.PayU?.SecureForm?.add === 'function';
         
         console.log('[PAYU-SECURE-FORM] SDK Check:', {
           hasPayU: !!hasPayU,
