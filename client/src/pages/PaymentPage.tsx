@@ -110,11 +110,6 @@ export function PaymentPage() {
 
       const data = await response.json();
       setPaymentMethods(data.data);
-      
-      // Set default PBL selection if available
-      if (data.data.pblPayMethods?.length > 0) {
-        setSelectedPbl(data.data.pblPayMethods[0].value);
-      }
     } catch (err: any) {
       console.error('Failed to load payment methods:', err);
       // Continue even if payment methods fail - fallback to basic options
@@ -436,7 +431,7 @@ export function PaymentPage() {
               <div className="mt-6 space-y-4">
                 <Button
                   onClick={handlePayment}
-                  disabled={processing || (selectedMethod === 'pbl' && !selectedPbl)}
+                  disabled={processing || (selectedMethod === 'blik' && (!blikCode || blikCode.length !== 6))}
                   className="w-full"
                   size="lg"
                 >
@@ -458,9 +453,6 @@ export function PaymentPage() {
                     </>
                   )}
                 </Button>
-
-                {/* Legal Disclosures */}
-                <PayUDisclosures lang="pl" />
               </div>
             </CardContent>
           </Card>
