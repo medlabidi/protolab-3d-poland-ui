@@ -95,11 +95,26 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
     const htmlContent = await response.text();
     console.log('[PAYU-CREATE] Received HTML payment page from PayU');
     
-    // Return the HTML content for the frontend to display
+    // Fix relative URLs in PayU HTML to be absolute
+    let fixedHtml = htmlContent;
+    
+    // Convert relative CSS/JS links to absolute PayU URLs
+    fixedHtml = fixedHtml.replace(
+      /href="\/([^"]+\.(css))"/g,
+      'href="https://secure.snd.payu.com/$1"'
+    );
+    fixedHtml = fixedHtml.replace(
+      /src="\/([^"]+\.(js))"/g, 
+      'src="https://secure.snd.payu.com/$1"'
+    );
+    
+    console.log('[PAYU-CREATE] Fixed HTML asset URLs for PayU');
+    
+    // Return the fixed HTML content for the frontend to display
     return {
       success: true,
       isHtml: true,
-      htmlContent: htmlContent,
+      htmlContent: fixedHtml,
       statusCode: 'SUCCESS'
     };
   }
@@ -189,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { error: updateError } = await supabase
       .from('orders')
       .update({ 
-        payment_status: 'pending',
+        payment_status: 'on_hold', // Use on_hold instead of pending
         payment_method: payMethods?.payMethod?.value || 'redirect',
       })
       .eq('id', orderId);
