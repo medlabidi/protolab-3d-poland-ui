@@ -3,15 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Box, Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-// import { useLanguage } from "@/contexts/LanguageContext";
+import { Logo } from "@/components/Logo";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SignUp = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-// const { t } = useLanguage();
+  const { t } = useLanguage();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -71,7 +72,7 @@ const SignUp = () => {
             setZipCode(data.address.postcode || "");
             setCountry(data.address.country || "");
             
-            toast.success("Location detected! You can edit if needed.");
+            toast.success(t('signup.toasts.locationDetected'));
           }
         } catch (error) {
           console.log("Reverse geocoding failed (optional):", error);
@@ -103,26 +104,26 @@ const SignUp = () => {
 
     // Validation
     if (!name || !email || !password || !confirmPassword) {
-      toast.error("Name, email, and password are required");
+      toast.error(t('signup.toasts.requiredFields'));
       setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(t('signup.toasts.passwordsMismatch'));
       setIsLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(t('signup.toasts.passwordTooShort'));
       setIsLoading(false);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address");
+      toast.error(t('signup.toasts.invalidEmail'));
       setIsLoading(false);
       return;
     }
@@ -151,16 +152,16 @@ const SignUp = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || "Registration failed");
+        toast.error(data.error || t('signup.toasts.registrationFailed'));
         setIsLoading(false);
         return;
       }
 
-      toast.success("✅ " + (data.message || "Registration successful! Please check your email to verify your account."), {
+      toast.success("✅ " + (data.message || t('signup.toasts.registrationSuccess')), {
         duration: 6000,
       });
       
-      toast.info("📧 Check your inbox for the verification link", {
+      toast.info("📧 " + t('signup.toasts.checkInbox'), {
         duration: 5000,
       });
       
@@ -168,7 +169,7 @@ const SignUp = () => {
         navigate("/signin");
       }, 2000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Connection error");
+      toast.error(error instanceof Error ? error.message : t('signup.toasts.connectionError'));
     } finally {
       setIsLoading(false);
     }
@@ -176,7 +177,7 @@ const SignUp = () => {
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocation not supported");
+      toast.error(t('signup.toasts.geolocationNotSupported'));
       return;
     }
 
@@ -197,7 +198,7 @@ const SignUp = () => {
             setCity(data.address.city || data.address.town || "");
             setZipCode(data.address.postcode || "");
             setCountry(data.address.country || "");
-            toast.success("Location updated!");
+            toast.success(t('signup.toasts.locationUpdated'));
           }
         } catch (error) {
           console.error("Reverse geocoding failed:", error);
@@ -207,7 +208,7 @@ const SignUp = () => {
       },
       () => {
         setIsDetectingLocation(false);
-        toast.error("Could not get your location");
+        toast.error(t('signup.toasts.locationFailed'));
       }
     );
   };
@@ -217,50 +218,48 @@ const SignUp = () => {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-3 text-center">
           <div className="flex justify-center">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <Box className="w-7 h-7 text-primary-foreground" />
-            </div>
+            <Logo size="lg" showText={false} />
           </div>
-          <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Sign up to start using our 3D printing services</CardDescription>
+          <CardTitle className="text-2xl">{t('signup.title')}</CardTitle>
+          <CardDescription>{t('signup.subtitle')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="name">{t('signup.fields.fullName')} *</Label>
               <Input 
                 id="name" 
-                placeholder="John Doe" 
+                placeholder={t('signup.placeholders.fullName')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">{t('signup.fields.email')} *</Label>
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="your@email.com" 
+                placeholder={t('signup.placeholders.email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">{t('signup.fields.password')} *</Label>
               <Input 
                 id="password" 
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder={t('signup.placeholders.password')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword">{t('signup.fields.confirmPassword')} *</Label>
               <Input 
                 id="confirmPassword" 
                 type="password"
@@ -270,20 +269,20 @@ const SignUp = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone (Optional)</Label>
+              <Label htmlFor="phone">{t('signup.fields.phone')}</Label>
               <Input 
                 id="phone" 
                 type="tel"
-                placeholder="+1 (555) 123-4567"
+                placeholder={t('signup.placeholders.phone')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">Address (Optional)</Label>
+              <Label htmlFor="address">{t('signup.fields.address')}</Label>
               <Input 
                 id="address" 
-                placeholder="123 Main St"
+                placeholder={t('signup.placeholders.address')}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
               />
@@ -292,7 +291,7 @@ const SignUp = () => {
             <div className="pt-2 border-t space-y-3">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary" />
-                <Label className="text-sm font-semibold">Delivery Location</Label>
+                <Label className="text-sm font-semibold">{t('signup.fields.deliveryLocation')}</Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -303,26 +302,26 @@ const SignUp = () => {
                   {isDetectingLocation ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    "Detect"
+                    t('signup.buttons.detect')
                   )}
                 </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="city" className="text-xs">City</Label>
+                  <Label htmlFor="city" className="text-xs">{t('signup.fields.city')}</Label>
                   <Input 
                     id="city" 
-                    placeholder="New York"
+                    placeholder={t('signup.placeholders.city')}
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode" className="text-xs">Zip Code</Label>
+                  <Label htmlFor="zipCode" className="text-xs">{t('signup.fields.zipCode')}</Label>
                   <Input 
                     id="zipCode" 
-                    placeholder="10001"
+                    placeholder={t('signup.placeholders.zipCode')}
                     value={zipCode}
                     onChange={(e) => setZipCode(e.target.value)}
                   />
@@ -330,10 +329,10 @@ const SignUp = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="country" className="text-xs">Country</Label>
+                <Label htmlFor="country" className="text-xs">{t('signup.fields.country')}</Label>
                 <Input 
                   id="country" 
-                  placeholder="United States"
+                  placeholder={t('signup.placeholders.country')}
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                 />
@@ -341,7 +340,7 @@ const SignUp = () => {
 
               {latitude && longitude && (
                 <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                  📍 Coordinates: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                  📍 {t('signup.coordinates')}: {latitude.toFixed(4)}, {longitude.toFixed(4)}
                 </div>
               )}
             </div>
@@ -351,19 +350,19 @@ const SignUp = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  {t('signup.buttons.creating')}
                 </>
               ) : (
-                "Create Account"
+                t('signup.buttons.createAccount')
               )}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              By signing up, you agree to our Terms of Service and Privacy Policy
+              {t('signup.termsNotice')}
             </p>
             <div className="text-center text-sm">
-              Already have an account?{" "}
+              {t('signup.alreadyHaveAccount')}{" "}
               <Link to="/signin" className="text-primary hover:underline font-semibold">
-                Sign in
+                {t('signup.signIn')}
               </Link>
             </div>
           </CardFooter>

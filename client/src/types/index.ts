@@ -45,4 +45,8 @@ export interface OrderCreateInput {
   infill: number;
   quantity: number;
   shippingMethod: ShippingMethod;
+  supportType?: 'none' | 'normal' | 'tree';
+  infillPattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
+  customLayerHeight?: number;
+  customInfill?: number;
 }

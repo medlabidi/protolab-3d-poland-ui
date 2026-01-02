@@ -1,0 +1,4899 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\playwright.config.ts",
+    "rootDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "C:/Users/MED/Documents/GitHub/protolab-3d-poland-ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "01-user-signup-flow.spec.ts",
+      "file": "01-user-signup-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "User Signup and Onboarding Flow",
+          "file": "01-user-signup-flow.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should complete full signup workflow from landing to dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "interrupted",
+                      "duration": 2904,
+                      "error": {
+                        "message": "Error: page.waitForURL: Target page, context or browser has been closed\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+                        "stack": "Error: page.waitForURL: Target page, context or browser has been closed\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:30:18\n    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:22:5",
+                        "location": {
+                          "file": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts",
+                          "column": 18,
+                          "line": 30
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 28 |\u001b[39m       \n \u001b[90m 29 |\u001b[39m       \u001b[36mawait\u001b[39m signupButton\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(\u001b[35m/.*\\/(signup|register).*/i\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'✅ Navigated to signup page'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 32 |\u001b[39m     })\u001b[33m;\u001b[39m\n \u001b[90m 33 |\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts",
+                            "column": 18,
+                            "line": 30
+                          },
+                          "message": "Error: page.waitForURL: Target page, context or browser has been closed\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n\n\u001b[0m \u001b[90m 28 |\u001b[39m       \n \u001b[90m 29 |\u001b[39m       \u001b[36mawait\u001b[39m signupButton\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(\u001b[35m/.*\\/(signup|register).*/i\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'✅ Navigated to signup page'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 32 |\u001b[39m     })\u001b[33m;\u001b[39m\n \u001b[90m 33 |\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:30:18\u001b[22m\n\u001b[2m    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:22:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "\n🧪 Testing signup flow with email: test.user.1766812024044@protolab-test.com\n"
+                        },
+                        {
+                          "text": "✅ Homepage loaded successfully\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "steps": [
+                        {
+                          "title": "Navigate to homepage",
+                          "duration": 920
+                        },
+                        {
+                          "title": "Find and click signup button",
+                          "duration": 1828,
+                          "error": {
+                            "message": "Error: page.waitForURL: Target page, context or browser has been closed\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+                            "stack": "Error: page.waitForURL: Target page, context or browser has been closed\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================\n    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:30:18\n    at C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts:22:5",
+                            "location": {
+                              "file": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts",
+                              "column": 18,
+                              "line": 30
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 28 |\u001b[39m       \n \u001b[90m 29 |\u001b[39m       \u001b[36mawait\u001b[39m signupButton\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(\u001b[35m/.*\\/(signup|register).*/i\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'✅ Navigated to signup page'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 32 |\u001b[39m     })\u001b[33m;\u001b[39m\n \u001b[90m 33 |\u001b[39m\u001b[0m"
+                          }
+                        }
+                      ],
+                      "startTime": "2025-12-27T05:07:03.762Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\test-results\\01-user-signup-flow-User-S-ccd09-w-from-landing-to-dashboard-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\MED\\Documents\\GitHub\\protolab-3d-poland-ui\\e2e\\01-user-signup-flow.spec.ts",
+                        "column": 18,
+                        "line": 30
+                      }
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-15ffe60b1d959259328e",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should prevent duplicate email signup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-23454c11c236240f56c3",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 99,
+              "column": 7
+            },
+            {
+              "title": "should complete full signup workflow from landing to dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-7edc3ac066a0d683eb52",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should prevent duplicate email signup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-4e783e7510736f02b92e",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 99,
+              "column": 7
+            },
+            {
+              "title": "should complete full signup workflow from landing to dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-8eac33a520b28a3fba9a",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should prevent duplicate email signup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-b9d9b8394b0d51be3d43",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 99,
+              "column": 7
+            },
+            {
+              "title": "should complete full signup workflow from landing to dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-01630c0f066900802887",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should prevent duplicate email signup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-5adc5ccde85353a5de78",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 99,
+              "column": 7
+            },
+            {
+              "title": "should complete full signup workflow from landing to dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-a8260a59a0d6d60a7d82",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should prevent duplicate email signup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "5ae2cadf3c8eec173557-51b47258beaa64f4425e",
+              "file": "01-user-signup-flow.spec.ts",
+              "line": 99,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "02-user-login-flow.spec.ts",
+      "file": "02-user-login-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "User Login Flow",
+          "file": "02-user-login-flow.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should login successfully with valid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-c6aa3aa9b8658a957cc7",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 8,
+              "column": 7
+            },
+            {
+              "title": "should show error for invalid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-fe91aebd63447d72968b",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "should maintain session across page refreshes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-ebc5d54bd6a1678c1da9",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "should login successfully with valid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-220b4a0e2eb929e95578",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 8,
+              "column": 7
+            },
+            {
+              "title": "should show error for invalid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-03f3839003dd6c9dbcb8",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "should maintain session across page refreshes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-0935932d42772c74937f",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "should login successfully with valid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-25c475c3b073a57690e6",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 8,
+              "column": 7
+            },
+            {
+              "title": "should show error for invalid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-c53b565db116b16975a1",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "should maintain session across page refreshes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-0fea3b1dfa69c6491bfa",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "should login successfully with valid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-671b47c746125521117f",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 8,
+              "column": 7
+            },
+            {
+              "title": "should show error for invalid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-8f66f20a92fe7dbe205b",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "should maintain session across page refreshes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-b85aa05f24a6b6b44c52",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "should login successfully with valid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-5947a69600588ad00ed3",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 8,
+              "column": 7
+            },
+            {
+              "title": "should show error for invalid credentials",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-80c720c93d8541a5799b",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "should maintain session across page refreshes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "3f483f08db59e73876a9-71001d3fd8e7e383a753",
+              "file": "02-user-login-flow.spec.ts",
+              "line": 76,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "03-order-creation-flow.spec.ts",
+      "file": "03-order-creation-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Order Creation Flow",
+          "file": "03-order-creation-flow.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should create new order with STL file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-0047effc227aeb65e91a",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 18,
+              "column": 7
+            },
+            {
+              "title": "should validate required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-6bb3798f837bd87a1127",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 135,
+              "column": 7
+            },
+            {
+              "title": "should create new order with STL file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-4b5c44bc926d66418547",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 18,
+              "column": 7
+            },
+            {
+              "title": "should validate required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-509b41554f1fe8847cc5",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 135,
+              "column": 7
+            },
+            {
+              "title": "should create new order with STL file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-65912bae81bcb0f08744",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 18,
+              "column": 7
+            },
+            {
+              "title": "should validate required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-1681c1261aa1cfe6f504",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 135,
+              "column": 7
+            },
+            {
+              "title": "should create new order with STL file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-2dfee99d452e9f2b10cc",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 18,
+              "column": 7
+            },
+            {
+              "title": "should validate required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-69326f4c89c1d5d80b4c",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 135,
+              "column": 7
+            },
+            {
+              "title": "should create new order with STL file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-f12678f04f69d2220b3a",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 18,
+              "column": 7
+            },
+            {
+              "title": "should validate required fields",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "439ab0737b6fae033e10-0fa849f5c2825ed1b860",
+              "file": "03-order-creation-flow.spec.ts",
+              "line": 135,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "04-payment-flow.spec.ts",
+      "file": "04-payment-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Payment and Checkout Flow",
+          "file": "04-payment-flow.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should display payment options for pending order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-b5086f8cb6492920a8d8",
+              "file": "04-payment-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should show payment status on order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-3b9382ff37b409cd14cc",
+              "file": "04-payment-flow.spec.ts",
+              "line": 63,
+              "column": 7
+            },
+            {
+              "title": "should display payment options for pending order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-826213ae5896b0f7f0eb",
+              "file": "04-payment-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should show payment status on order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-1149a91a6fafc7111362",
+              "file": "04-payment-flow.spec.ts",
+              "line": 63,
+              "column": 7
+            },
+            {
+              "title": "should display payment options for pending order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-9e21f439aa90f3e7eec8",
+              "file": "04-payment-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should show payment status on order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-135f45656054908d024e",
+              "file": "04-payment-flow.spec.ts",
+              "line": 63,
+              "column": 7
+            },
+            {
+              "title": "should display payment options for pending order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-0521397fefb489361169",
+              "file": "04-payment-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should show payment status on order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-cddbfe789a0f46c88513",
+              "file": "04-payment-flow.spec.ts",
+              "line": 63,
+              "column": 7
+            },
+            {
+              "title": "should display payment options for pending order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-849794ee497e461654ef",
+              "file": "04-payment-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should show payment status on order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8e153444c828925947bc-a71299c822a21d3a589a",
+              "file": "04-payment-flow.spec.ts",
+              "line": 63,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "05-messaging-flow.spec.ts",
+      "file": "05-messaging-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Messaging and Support Flow",
+          "file": "05-messaging-flow.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should send message to support about an order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "776cf26dbc5467fda5bd-1b825a57a6be0e1e770f",
+              "file": "05-messaging-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should send message to support about an order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "776cf26dbc5467fda5bd-509be0971341af3f14e7",
+              "file": "05-messaging-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should send message to support about an order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "776cf26dbc5467fda5bd-b260b74545273e14b298",
+              "file": "05-messaging-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should send message to support about an order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "776cf26dbc5467fda5bd-0ee9cd75e7fda98ffce7",
+              "file": "05-messaging-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should send message to support about an order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "776cf26dbc5467fda5bd-95e78c3bf7ddb4eafeee",
+              "file": "05-messaging-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "06-admin-flow.spec.ts",
+      "file": "06-admin-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Admin Dashboard Flow",
+          "file": "06-admin-flow.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should access admin dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-1f4c4566e09428b39e3c",
+              "file": "06-admin-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should view and manage orders",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-93f86f145156efe6f712",
+              "file": "06-admin-flow.spec.ts",
+              "line": 38,
+              "column": 7
+            },
+            {
+              "title": "should view and respond to messages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-23fab9404558f4906f2a",
+              "file": "06-admin-flow.spec.ts",
+              "line": 112,
+              "column": 7
+            },
+            {
+              "title": "should view user management",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-a74612857ebf3f0ab437",
+              "file": "06-admin-flow.spec.ts",
+              "line": 159,
+              "column": 7
+            },
+            {
+              "title": "should access admin dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-0c00182237fb13a7316d",
+              "file": "06-admin-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should view and manage orders",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-d97ed116a27ee9f68c21",
+              "file": "06-admin-flow.spec.ts",
+              "line": 38,
+              "column": 7
+            },
+            {
+              "title": "should view and respond to messages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-6bc4378b374acd627193",
+              "file": "06-admin-flow.spec.ts",
+              "line": 112,
+              "column": 7
+            },
+            {
+              "title": "should view user management",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-a35819af6e233834ab3d",
+              "file": "06-admin-flow.spec.ts",
+              "line": 159,
+              "column": 7
+            },
+            {
+              "title": "should access admin dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-a67767dae329a0f1f1e4",
+              "file": "06-admin-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should view and manage orders",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-050452a9f4eb5ea730fb",
+              "file": "06-admin-flow.spec.ts",
+              "line": 38,
+              "column": 7
+            },
+            {
+              "title": "should view and respond to messages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-bfe89eac41566e4e8103",
+              "file": "06-admin-flow.spec.ts",
+              "line": 112,
+              "column": 7
+            },
+            {
+              "title": "should view user management",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-356031bcbe74f473f1a3",
+              "file": "06-admin-flow.spec.ts",
+              "line": 159,
+              "column": 7
+            },
+            {
+              "title": "should access admin dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-5a1ea72011af10a9db77",
+              "file": "06-admin-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should view and manage orders",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-5cc104f5a73f34b88eaf",
+              "file": "06-admin-flow.spec.ts",
+              "line": 38,
+              "column": 7
+            },
+            {
+              "title": "should view and respond to messages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-c7f7a6f6089980737d95",
+              "file": "06-admin-flow.spec.ts",
+              "line": 112,
+              "column": 7
+            },
+            {
+              "title": "should view user management",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-43e94c9ed8a8dfe46968",
+              "file": "06-admin-flow.spec.ts",
+              "line": 159,
+              "column": 7
+            },
+            {
+              "title": "should access admin dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-03223980ce0e9f62b06d",
+              "file": "06-admin-flow.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should view and manage orders",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-1ed8f03ca679d675117b",
+              "file": "06-admin-flow.spec.ts",
+              "line": 38,
+              "column": 7
+            },
+            {
+              "title": "should view and respond to messages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-bb09ba9a2523772e35a6",
+              "file": "06-admin-flow.spec.ts",
+              "line": 112,
+              "column": 7
+            },
+            {
+              "title": "should view user management",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "42690e209e9a56b20298-25d3556f8ee82724aa6b",
+              "file": "06-admin-flow.spec.ts",
+              "line": 159,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "07-profile-settings.spec.ts",
+      "file": "07-profile-settings.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "User Profile and Settings",
+          "file": "07-profile-settings.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should access and view profile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-f35966c0299b76dbb52a",
+              "file": "07-profile-settings.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should update profile information",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-41832042c51d2a27c2c1",
+              "file": "07-profile-settings.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should logout successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-8823450e694d9e2a8fa8",
+              "file": "07-profile-settings.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should access and view profile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-51b0e081ee77b6b387ec",
+              "file": "07-profile-settings.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should update profile information",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-b3d3971dd3cb2edfd616",
+              "file": "07-profile-settings.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should logout successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-29a193119be4c172e95d",
+              "file": "07-profile-settings.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should access and view profile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-d4b84977c60094e6df81",
+              "file": "07-profile-settings.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should update profile information",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-ddadce1ea02901bbe7cd",
+              "file": "07-profile-settings.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should logout successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-333f3331bd0e3e707088",
+              "file": "07-profile-settings.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should access and view profile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-072fd7f1a3148c253da7",
+              "file": "07-profile-settings.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should update profile information",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-c301589685b7db07d829",
+              "file": "07-profile-settings.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should logout successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-1e4e418c8efc3152b44a",
+              "file": "07-profile-settings.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should access and view profile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-7ec4d5cb2a883026ea30",
+              "file": "07-profile-settings.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should update profile information",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-cafca8930f850471591c",
+              "file": "07-profile-settings.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should logout successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "267de5d8ce1acc5fb839-d670ba9390833914811a",
+              "file": "07-profile-settings.spec.ts",
+              "line": 73,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "08-edge-cases.spec.ts",
+      "file": "08-edge-cases.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Edge Cases and Error Handling",
+          "file": "08-edge-cases.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should handle network errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-9401086c2ba5a6078468",
+              "file": "08-edge-cases.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should validate file size limits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-669781c2656929ba5fef",
+              "file": "08-edge-cases.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "should handle expired session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-d6bfa7ec9d4555d7eb2a",
+              "file": "08-edge-cases.spec.ts",
+              "line": 49,
+              "column": 7
+            },
+            {
+              "title": "should handle invalid order IDs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-05fb1d23de15ea140e88",
+              "file": "08-edge-cases.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should handle network errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-4db31bba093f85852904",
+              "file": "08-edge-cases.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should validate file size limits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-b7cf6c0548d9fda7fc08",
+              "file": "08-edge-cases.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "should handle expired session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-420cf40636bff00f153d",
+              "file": "08-edge-cases.spec.ts",
+              "line": 49,
+              "column": 7
+            },
+            {
+              "title": "should handle invalid order IDs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-9f5807ba947bf075a157",
+              "file": "08-edge-cases.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should handle network errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-2f0b5de02f10dbacecef",
+              "file": "08-edge-cases.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should validate file size limits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-cff9eb8bf4f16a424d30",
+              "file": "08-edge-cases.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "should handle expired session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-668af5153a595034160d",
+              "file": "08-edge-cases.spec.ts",
+              "line": 49,
+              "column": 7
+            },
+            {
+              "title": "should handle invalid order IDs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-a8086c6840ecf14c0a9d",
+              "file": "08-edge-cases.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should handle network errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-e2bf2473bc1a50be3e27",
+              "file": "08-edge-cases.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should validate file size limits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-5945f46bd95e206a1b7e",
+              "file": "08-edge-cases.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "should handle expired session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-6288751d257733630219",
+              "file": "08-edge-cases.spec.ts",
+              "line": 49,
+              "column": 7
+            },
+            {
+              "title": "should handle invalid order IDs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-395f936e69917dd13d2f",
+              "file": "08-edge-cases.spec.ts",
+              "line": 73,
+              "column": 7
+            },
+            {
+              "title": "should handle network errors gracefully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-76ac34b40b8b31e38227",
+              "file": "08-edge-cases.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should validate file size limits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-d94ce2e36ea4e827e409",
+              "file": "08-edge-cases.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "should handle expired session",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-40a8fbb3a6e2aadfbeab",
+              "file": "08-edge-cases.spec.ts",
+              "line": 49,
+              "column": 7
+            },
+            {
+              "title": "should handle invalid order IDs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "deffda2ce3b81c79064b-ca21f9a505412da47e40",
+              "file": "08-edge-cases.spec.ts",
+              "line": 73,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "order-flow.spec.ts",
+      "file": "order-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Complete Order Flow",
+          "file": "order-flow.spec.ts",
+          "line": 152,
+          "column": 6,
+          "specs": [
+            {
+              "title": "1. User can login successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6f726b244f5ef7f23f40",
+              "file": "order-flow.spec.ts",
+              "line": 167,
+              "column": 7
+            },
+            {
+              "title": "2. User can upload 3D model file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-dce9a39b26d8f78162f2",
+              "file": "order-flow.spec.ts",
+              "line": 184,
+              "column": 7
+            },
+            {
+              "title": "3. User can select material and quality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9817ccffe04895985303",
+              "file": "order-flow.spec.ts",
+              "line": 202,
+              "column": 7
+            },
+            {
+              "title": "4. User can select delivery method - Local Pickup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-495531fa5943d6e8dd21",
+              "file": "order-flow.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "5. User can select delivery method - DPD Courier",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-2c5baf62fe29ce6d2171",
+              "file": "order-flow.spec.ts",
+              "line": 248,
+              "column": 7
+            },
+            {
+              "title": "6. User can calculate price",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-8f6f8c44dc522f2b7399",
+              "file": "order-flow.spec.ts",
+              "line": 266,
+              "column": 7
+            },
+            {
+              "title": "7. User can proceed to payment page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-27ca73f236f77bb46082",
+              "file": "order-flow.spec.ts",
+              "line": 302,
+              "column": 7
+            },
+            {
+              "title": "8. Payment page shows correct order summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-cdd8ee98c228cdd21751",
+              "file": "order-flow.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "9. User can select BLIK payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-f82830643b9b2360fc79",
+              "file": "order-flow.spec.ts",
+              "line": 358,
+              "column": 7
+            },
+            {
+              "title": "10. User can select Card payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-513ddf420041c66f0e55",
+              "file": "order-flow.spec.ts",
+              "line": 394,
+              "column": 7
+            },
+            {
+              "title": "11. User can select Bank Transfer payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9bec39431b25995ade81",
+              "file": "order-flow.spec.ts",
+              "line": 431,
+              "column": 7
+            },
+            {
+              "title": "12. Complete order flow - end to end",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-49e3625381760527851c",
+              "file": "order-flow.spec.ts",
+              "line": 460,
+              "column": 7
+            },
+            {
+              "title": "13. Order appears in dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-67fa567ad3db376194cc",
+              "file": "order-flow.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "14. User can view order details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9b439807c77769cc1581",
+              "file": "order-flow.spec.ts",
+              "line": 518,
+              "column": 7
+            },
+            {
+              "title": "1. User can login successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-a6129569d7d20700207c",
+              "file": "order-flow.spec.ts",
+              "line": 167,
+              "column": 7
+            },
+            {
+              "title": "2. User can upload 3D model file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-feeaee1cd848e7d15cde",
+              "file": "order-flow.spec.ts",
+              "line": 184,
+              "column": 7
+            },
+            {
+              "title": "3. User can select material and quality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-28542df1d51482c32c57",
+              "file": "order-flow.spec.ts",
+              "line": 202,
+              "column": 7
+            },
+            {
+              "title": "4. User can select delivery method - Local Pickup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9e41fc96bbe4a1e7d67d",
+              "file": "order-flow.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "5. User can select delivery method - DPD Courier",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-c1b9d0bc5e5faf58f0d5",
+              "file": "order-flow.spec.ts",
+              "line": 248,
+              "column": 7
+            },
+            {
+              "title": "6. User can calculate price",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-acc72862a8a2abd488b4",
+              "file": "order-flow.spec.ts",
+              "line": 266,
+              "column": 7
+            },
+            {
+              "title": "7. User can proceed to payment page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-a899b3f7ca265b31e780",
+              "file": "order-flow.spec.ts",
+              "line": 302,
+              "column": 7
+            },
+            {
+              "title": "8. Payment page shows correct order summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-d1cd5b10ac8ccd59f834",
+              "file": "order-flow.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "9. User can select BLIK payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-4caa0157e60d48c5e8ee",
+              "file": "order-flow.spec.ts",
+              "line": 358,
+              "column": 7
+            },
+            {
+              "title": "10. User can select Card payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-1000e5cffcc1e27df940",
+              "file": "order-flow.spec.ts",
+              "line": 394,
+              "column": 7
+            },
+            {
+              "title": "11. User can select Bank Transfer payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-cb1a87535663312b05d0",
+              "file": "order-flow.spec.ts",
+              "line": 431,
+              "column": 7
+            },
+            {
+              "title": "12. Complete order flow - end to end",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-8df5a68b690a4d6482a5",
+              "file": "order-flow.spec.ts",
+              "line": 460,
+              "column": 7
+            },
+            {
+              "title": "13. Order appears in dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-7736af8a7ff34ca21e8b",
+              "file": "order-flow.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "14. User can view order details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-97493613523050d75264",
+              "file": "order-flow.spec.ts",
+              "line": 518,
+              "column": 7
+            },
+            {
+              "title": "1. User can login successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-8b3ba73b4aff29ac2008",
+              "file": "order-flow.spec.ts",
+              "line": 167,
+              "column": 7
+            },
+            {
+              "title": "2. User can upload 3D model file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-affb5be535698e94f56c",
+              "file": "order-flow.spec.ts",
+              "line": 184,
+              "column": 7
+            },
+            {
+              "title": "3. User can select material and quality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-70a7a6e047666abf0b6d",
+              "file": "order-flow.spec.ts",
+              "line": 202,
+              "column": 7
+            },
+            {
+              "title": "4. User can select delivery method - Local Pickup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-f306318ac6fed95e506e",
+              "file": "order-flow.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "5. User can select delivery method - DPD Courier",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-30ee6b0e109ebb83a21d",
+              "file": "order-flow.spec.ts",
+              "line": 248,
+              "column": 7
+            },
+            {
+              "title": "6. User can calculate price",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-b043085faa595de42dc1",
+              "file": "order-flow.spec.ts",
+              "line": 266,
+              "column": 7
+            },
+            {
+              "title": "7. User can proceed to payment page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-287deec0ea6262857449",
+              "file": "order-flow.spec.ts",
+              "line": 302,
+              "column": 7
+            },
+            {
+              "title": "8. Payment page shows correct order summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-376a2eabdbba16bfb555",
+              "file": "order-flow.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "9. User can select BLIK payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-2a33c15a343d2038d8ba",
+              "file": "order-flow.spec.ts",
+              "line": 358,
+              "column": 7
+            },
+            {
+              "title": "10. User can select Card payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-37d41e716e6ef93d60e4",
+              "file": "order-flow.spec.ts",
+              "line": 394,
+              "column": 7
+            },
+            {
+              "title": "11. User can select Bank Transfer payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-0672e570fe9c7f06db2a",
+              "file": "order-flow.spec.ts",
+              "line": 431,
+              "column": 7
+            },
+            {
+              "title": "12. Complete order flow - end to end",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-2b6052a9557a99e5ab51",
+              "file": "order-flow.spec.ts",
+              "line": 460,
+              "column": 7
+            },
+            {
+              "title": "13. Order appears in dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6001c102929f4128563b",
+              "file": "order-flow.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "14. User can view order details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-185d0ea0dcc2058eea8a",
+              "file": "order-flow.spec.ts",
+              "line": 518,
+              "column": 7
+            },
+            {
+              "title": "1. User can login successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-5a40bff4b834289b4423",
+              "file": "order-flow.spec.ts",
+              "line": 167,
+              "column": 7
+            },
+            {
+              "title": "2. User can upload 3D model file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-82fd2bdae464df064a40",
+              "file": "order-flow.spec.ts",
+              "line": 184,
+              "column": 7
+            },
+            {
+              "title": "3. User can select material and quality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-b5a9e1d5f31e739e33f1",
+              "file": "order-flow.spec.ts",
+              "line": 202,
+              "column": 7
+            },
+            {
+              "title": "4. User can select delivery method - Local Pickup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-900e404f622f34c1b48a",
+              "file": "order-flow.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "5. User can select delivery method - DPD Courier",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-ed2375c92304b9ae2342",
+              "file": "order-flow.spec.ts",
+              "line": 248,
+              "column": 7
+            },
+            {
+              "title": "6. User can calculate price",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6482fb2c9ceb9efe0ab5",
+              "file": "order-flow.spec.ts",
+              "line": 266,
+              "column": 7
+            },
+            {
+              "title": "7. User can proceed to payment page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-7a5735b573bb8e17d7a1",
+              "file": "order-flow.spec.ts",
+              "line": 302,
+              "column": 7
+            },
+            {
+              "title": "8. Payment page shows correct order summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-5c6c6f739aba4f50974b",
+              "file": "order-flow.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "9. User can select BLIK payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-c9c4bfe4887c79de6c89",
+              "file": "order-flow.spec.ts",
+              "line": 358,
+              "column": 7
+            },
+            {
+              "title": "10. User can select Card payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-025d98a1cef4b15c1217",
+              "file": "order-flow.spec.ts",
+              "line": 394,
+              "column": 7
+            },
+            {
+              "title": "11. User can select Bank Transfer payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-19e8a45933b9460a97f8",
+              "file": "order-flow.spec.ts",
+              "line": 431,
+              "column": 7
+            },
+            {
+              "title": "12. Complete order flow - end to end",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-f403ef71f869479d2e4a",
+              "file": "order-flow.spec.ts",
+              "line": 460,
+              "column": 7
+            },
+            {
+              "title": "13. Order appears in dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-dc7de38fb36595db95f7",
+              "file": "order-flow.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "14. User can view order details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-fe2d153e7a3edad1ce03",
+              "file": "order-flow.spec.ts",
+              "line": 518,
+              "column": 7
+            },
+            {
+              "title": "1. User can login successfully",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6da32024707ddd1a90e3",
+              "file": "order-flow.spec.ts",
+              "line": 167,
+              "column": 7
+            },
+            {
+              "title": "2. User can upload 3D model file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9f2be1678c09f7e185bc",
+              "file": "order-flow.spec.ts",
+              "line": 184,
+              "column": 7
+            },
+            {
+              "title": "3. User can select material and quality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-e853b6f2bd796701cfe9",
+              "file": "order-flow.spec.ts",
+              "line": 202,
+              "column": 7
+            },
+            {
+              "title": "4. User can select delivery method - Local Pickup",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-37539f9265f96efd3832",
+              "file": "order-flow.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "5. User can select delivery method - DPD Courier",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-20d21d5b05ae5f52c343",
+              "file": "order-flow.spec.ts",
+              "line": 248,
+              "column": 7
+            },
+            {
+              "title": "6. User can calculate price",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-d747250f39410227133a",
+              "file": "order-flow.spec.ts",
+              "line": 266,
+              "column": 7
+            },
+            {
+              "title": "7. User can proceed to payment page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-987cacdd335ad01d7abe",
+              "file": "order-flow.spec.ts",
+              "line": 302,
+              "column": 7
+            },
+            {
+              "title": "8. Payment page shows correct order summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-a88158daf0a60a5d40b7",
+              "file": "order-flow.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "9. User can select BLIK payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-cccd1a99b24cb47ffd73",
+              "file": "order-flow.spec.ts",
+              "line": 358,
+              "column": 7
+            },
+            {
+              "title": "10. User can select Card payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-99e2f59aa3f3e9823f3a",
+              "file": "order-flow.spec.ts",
+              "line": 394,
+              "column": 7
+            },
+            {
+              "title": "11. User can select Bank Transfer payment method",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-70503983e1273a74cac6",
+              "file": "order-flow.spec.ts",
+              "line": 431,
+              "column": 7
+            },
+            {
+              "title": "12. Complete order flow - end to end",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-b0c7707cffe723c0042d",
+              "file": "order-flow.spec.ts",
+              "line": 460,
+              "column": 7
+            },
+            {
+              "title": "13. Order appears in dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-dbd523df446c6fbda74c",
+              "file": "order-flow.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "14. User can view order details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-dfbb9781ad6a100253c0",
+              "file": "order-flow.spec.ts",
+              "line": 518,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Order API Tests",
+          "file": "order-flow.spec.ts",
+          "line": 537,
+          "column": 6,
+          "specs": [
+            {
+              "title": "API: Create order endpoint responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-ccc10e102e8ff2742a6c",
+              "file": "order-flow.spec.ts",
+              "line": 538,
+              "column": 7
+            },
+            {
+              "title": "API: Orders endpoint requires authentication",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-5c0a13cd34ec8880388d",
+              "file": "order-flow.spec.ts",
+              "line": 544,
+              "column": 7
+            },
+            {
+              "title": "API: Create order endpoint responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-23d4c51b3b83602dad48",
+              "file": "order-flow.spec.ts",
+              "line": 538,
+              "column": 7
+            },
+            {
+              "title": "API: Orders endpoint requires authentication",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-2628190cd846dc92ec8a",
+              "file": "order-flow.spec.ts",
+              "line": 544,
+              "column": 7
+            },
+            {
+              "title": "API: Create order endpoint responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-3e504f1564c302352565",
+              "file": "order-flow.spec.ts",
+              "line": 538,
+              "column": 7
+            },
+            {
+              "title": "API: Orders endpoint requires authentication",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-1e0e256ef63dc189777f",
+              "file": "order-flow.spec.ts",
+              "line": 544,
+              "column": 7
+            },
+            {
+              "title": "API: Create order endpoint responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6b9a067ac1628b248e50",
+              "file": "order-flow.spec.ts",
+              "line": 538,
+              "column": 7
+            },
+            {
+              "title": "API: Orders endpoint requires authentication",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-b2977dfd20f732ddf664",
+              "file": "order-flow.spec.ts",
+              "line": 544,
+              "column": 7
+            },
+            {
+              "title": "API: Create order endpoint responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-2e9d901b4c84f466625f",
+              "file": "order-flow.spec.ts",
+              "line": 538,
+              "column": 7
+            },
+            {
+              "title": "API: Orders endpoint requires authentication",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-3141b0969b4cbc3b20b1",
+              "file": "order-flow.spec.ts",
+              "line": 544,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Form Validation",
+          "file": "order-flow.spec.ts",
+          "line": 551,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Cannot proceed without file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-34d2182e84fc32ffed2b",
+              "file": "order-flow.spec.ts",
+              "line": 552,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without material selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-ce1aef072dda02e96412",
+              "file": "order-flow.spec.ts",
+              "line": 563,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without delivery selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-5120fa0740ef1a5d343b",
+              "file": "order-flow.spec.ts",
+              "line": 587,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-43f6e38c9a17b9b9ca58",
+              "file": "order-flow.spec.ts",
+              "line": 552,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without material selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-ff0a4980fdbdc1a0938f",
+              "file": "order-flow.spec.ts",
+              "line": 563,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without delivery selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-65363f958fe428f83524",
+              "file": "order-flow.spec.ts",
+              "line": 587,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-9dc056640011e63f3cd7",
+              "file": "order-flow.spec.ts",
+              "line": 552,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without material selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-de4378048a3d35a1187b",
+              "file": "order-flow.spec.ts",
+              "line": 563,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without delivery selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-405ba758f9e3f5ef09f7",
+              "file": "order-flow.spec.ts",
+              "line": 587,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-6e2c3296d0e41d025062",
+              "file": "order-flow.spec.ts",
+              "line": 552,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without material selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-86eb7a0226cae84bb3f9",
+              "file": "order-flow.spec.ts",
+              "line": 563,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without delivery selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-366e02b42d307467a6bb",
+              "file": "order-flow.spec.ts",
+              "line": 587,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without file upload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-1e19189039a8173d9064",
+              "file": "order-flow.spec.ts",
+              "line": 552,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without material selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-79c3a422011497b7cb88",
+              "file": "order-flow.spec.ts",
+              "line": 563,
+              "column": 7
+            },
+            {
+              "title": "Cannot proceed without delivery selection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b33061f5483ab26aabfe-da584cb0f8b4bbed4934",
+              "file": "order-flow.spec.ts",
+              "line": 587,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "user-admin-workflow.spec.ts",
+      "file": "user-admin-workflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Complete User-Admin Workflow",
+          "file": "user-admin-workflow.spec.ts",
+          "line": 221,
+          "column": 6,
+          "specs": [
+            {
+              "title": "1. User creates print job and it appears in admin panel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-2cd0fbbbd0a5e20a2f5b",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "2. User sends message about print job and admin responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-30665392c9e4f5046065",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 359,
+              "column": 7
+            },
+            {
+              "title": "3. User requests refund and admin approves it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-306a6ba91cf34e4bbf5a",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "4. Admin changes print job status and user receives notification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-1e4d9cc099cc6db8fb30",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 561,
+              "column": 7
+            },
+            {
+              "title": "5. Verify complete workflow summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-b697fc6bdb4bfb513268",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 674,
+              "column": 7
+            },
+            {
+              "title": "1. User creates print job and it appears in admin panel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-1ebc1a9c2a5774aee3d0",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "2. User sends message about print job and admin responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-81d3703f0eea6948b95b",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 359,
+              "column": 7
+            },
+            {
+              "title": "3. User requests refund and admin approves it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-925c4a0580dfbef90b9f",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "4. Admin changes print job status and user receives notification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-d11f92ad648a77bb6ed4",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 561,
+              "column": 7
+            },
+            {
+              "title": "5. Verify complete workflow summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-a26de8f338cd10acc1a8",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 674,
+              "column": 7
+            },
+            {
+              "title": "1. User creates print job and it appears in admin panel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-d08f982472b38df4f237",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "2. User sends message about print job and admin responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-1a283ffaefa6b4e8943a",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 359,
+              "column": 7
+            },
+            {
+              "title": "3. User requests refund and admin approves it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-65db9f0bf5847a3f0e42",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "4. Admin changes print job status and user receives notification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-2e0b369a36140445ccb7",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 561,
+              "column": 7
+            },
+            {
+              "title": "5. Verify complete workflow summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-d7b90d1d829b8c0f4067",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 674,
+              "column": 7
+            },
+            {
+              "title": "1. User creates print job and it appears in admin panel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-a5a61eb9c57d1ad40ab0",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "2. User sends message about print job and admin responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-21eaa7c55d073a4beb4c",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 359,
+              "column": 7
+            },
+            {
+              "title": "3. User requests refund and admin approves it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-537637a1fd945afe94e0",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "4. Admin changes print job status and user receives notification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-c012b4b9c21599f4f55b",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 561,
+              "column": 7
+            },
+            {
+              "title": "5. Verify complete workflow summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-05088b132dd6d603e656",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 674,
+              "column": 7
+            },
+            {
+              "title": "1. User creates print job and it appears in admin panel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-2f7b731fd20708e17d0f",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "2. User sends message about print job and admin responds",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-de835c4409167c69b803",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 359,
+              "column": 7
+            },
+            {
+              "title": "3. User requests refund and admin approves it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-5531af422f63f4fda8b7",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 467,
+              "column": 7
+            },
+            {
+              "title": "4. Admin changes print job status and user receives notification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-85cba32924c50ac5b1db",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 561,
+              "column": 7
+            },
+            {
+              "title": "5. Verify complete workflow summary",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f5a80e9feadac7f1bf6-054f2a5058a1cc6e8348",
+              "file": "user-admin-workflow.spec.ts",
+              "line": 674,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-12-27T05:07:02.243Z",
+    "duration": 5018.627,
+    "expected": 0,
+    "skipped": 225,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

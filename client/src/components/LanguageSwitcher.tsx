@@ -10,24 +10,27 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const languages = [
-  { code: "en", name: "English", flag: "🇬🇧" },
   { code: "pl", name: "Polski", flag: "🇵🇱" },
+  { code: "en", name: "English", flag: "🇺🇸" },
+  { code: "ru", name: "Русский", flag: "🇷🇺" },
 ];
 
 export const LanguageSwitcher = () => {
   const { language, setLanguage, t } = useLanguage();
 
-  const handleLanguageChange = (langCode: "en" | "pl") => {
+  const handleLanguageChange = (langCode: "pl" | "en" | "ru") => {
     setLanguage(langCode);
     const langName = languages.find((l) => l.code === langCode)?.name;
-    toast.success(`${t.common.languageChanged} ${langName}`);
+    toast.success(`${t('common.languageChanged')} ${langName}`);
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Globe className="h-4 w-4" />
+        <Button 
+          size="sm" 
+          className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm hover:scale-105 transition-all"
+        >
           {languages.find((l) => l.code === language)?.flag}
         </Button>
       </DropdownMenuTrigger>
@@ -35,7 +38,7 @@ export const LanguageSwitcher = () => {
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => handleLanguageChange(lang.code as "en" | "pl")}
+            onClick={() => handleLanguageChange(lang.code as "pl" | "en" | "ru")}
             className="gap-2"
           >
             <span>{lang.flag}</span>

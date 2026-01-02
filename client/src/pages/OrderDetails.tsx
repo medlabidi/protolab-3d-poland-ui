@@ -2,42 +2,280 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
+import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
 import { OrderTimeline } from "@/components/OrderTimeline";
-import { ArrowLeft, Star } from "lucide-react";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { ArrowLeft, Star, Loader2, MessageSquare } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+interface Order {
+  id: string;
+  status: OrderStatus;
+  payment_status?: PaymentStatus;
+  paid_amount?: number;
+  created_at: string;
+  material: string;
+  color: string;
+  layer_height: string;
+  infill: string;
+  quantity: number;
+  file_name: string;
+  file_url: string;
+  shipping_method: string;
+  shipping_address?: string;
+  price: number;
+  material_weight?: number;
+  print_time?: number;
+  tracking_code?: string;
+  review?: string;
+  notes?: string;
+  // Advanced settings
+  support_type?: 'none' | 'normal' | 'tree';
+  infill_pattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
+  custom_layer_height?: string;
+  custom_infill?: string;
+}
 
 const OrderDetails = () => {
   const navigate = useNavigate();
-  const { orderId } = useParams();
+  const { t } = useLanguage();
+  const { orderId } = useParams<{ orderId: string }>();
   const [rating, setRating] = useState(0);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reviewText, setReviewText] = useState("");
+  const [startingConversation, setStartingConversation] = useState(false);
 
-  // Mock data
-  const order = {
-    id: orderId || "ORD-001",
-    status: "printing" as OrderStatus,
-    date: "2024-01-15",
-    material: "PLA",
-    color: "Blue",
-    quality: "High Quality",
-    quantity: 2,
-    layerHeight: "0.2mm",
-    infill: "20%",
-    pattern: "Honeycomb",
-    purpose: "Functional prototype for mechanical testing",
-    shipping: "InPost Locker",
-    subtotal: "89.00",
-    shipping_cost: "12.00",
-    total: "101.00",
+  console.log('OrderDetails component mounted, orderId:', orderId);
+
+  useEffect(() => {
+    if (!orderId) {
+      console.error('No orderId in URL params!');
+      setError('Order ID is missing');
+      setLoading(false);
+      return;
+    }
+    fetchOrder();
+  }, [orderId]);
+
+  const refreshAccessToken = async (): Promise<string | null> => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return null;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.tokens.accessToken);
+        localStorage.setItem('refreshToken', data.tokens.refreshToken);
+        return data.tokens.accessToken;
+      }
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+    }
+    
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    navigate('/login');
+    return null;
   };
 
-  const handleReviewSubmit = () => {
-    toast.success("Review submitted successfully!");
+  const fetchOrder = async (retry = true) => {
+    try {
+      setLoading(true);
+      let token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.error('No access token found, redirecting to login');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Fetching order:', orderId);
+      let response = await fetch(`${API_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('Order response status:', response.status);
+
+      if (response.status === 401 && retry) {
+        console.log('Token expired, refreshing...');
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchOrder(false);
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Order fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch order: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Order data received:', JSON.stringify(data, null, 2));
+      
+      // Handle both { order } and direct order response
+      const orderData = data.order || data;
+      
+      if (!orderData || !orderData.id) {
+        console.error('Invalid order data structure:', data);
+        throw new Error('Invalid order data received');
+      }
+      
+      console.log('Setting order:', orderData);
+      setOrder(orderData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching order:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load order');
+      toast.error('Failed to load order details');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const canReview = order.status === "finished" || order.status === "delivered";
+  const handleReviewSubmit = async () => {
+    if (rating === 0) {
+      toast.error(t('orderDetails.review.selectRating'));
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/orders/${orderId}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          review: `${rating} stars: ${reviewText}` 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit review');
+      }
+
+      toast.success(t('orderDetails.review.submitted'));
+      fetchOrder(); // Refresh order data
+    } catch (err) {
+      toast.error(t('orderDetails.review.failed'));
+    }
+  };
+
+  const handleJobConversation = async () => {
+    setStartingConversation(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/order/${orderId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          subject: `Job conversation for order #${orderId?.slice(0, 8)}` 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to open conversation');
+      }
+
+      const data = await response.json();
+      const conversationId = data.conversation?.id;
+      
+      // Navigate to conversations page with the conversation ID
+      navigate(`/conversations?open=${conversationId}`);
+    } catch (err) {
+      console.error('Error opening conversation:', err);
+      toast.error(t('orderDetails.conversation.failed'));
+    } finally {
+      setStartingConversation(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatPrice = (price: number | null | undefined) => {
+    return `${(price ?? 0).toFixed(2)} PLN`;
+  };
+
+  const capitalizeFirst = (str: string) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const getQualityLabel = (layerHeight: string) => {
+    const height = parseFloat(layerHeight);
+    if (height <= 0.1) return t('orderDetails.quality.ultra');
+    if (height <= 0.15) return t('orderDetails.quality.high');
+    if (height <= 0.2) return t('orderDetails.quality.standard');
+    return t('orderDetails.quality.draft');
+  };
+
+  const getShippingLabel = (method: string) => {
+    switch (method) {
+      case 'inpost': return t('orderDetails.shipping.inpost');
+      case 'courier': return t('orderDetails.shipping.courier');
+      case 'pickup': return t('orderDetails.shipping.pickup');
+      default: return capitalizeFirst(method);
+    }
+  };
+
+  const canReview = order && (order.status === "finished" || order.status === "delivered") && !order.review;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <DashboardSidebar />
+        <main className="flex-1 p-8">
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">{t('orderDetails.loading')}</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <DashboardSidebar />
+        <main className="flex-1 p-8">
+          <div className="max-w-5xl mx-auto text-center py-12">
+            <p className="text-destructive text-lg">{error || t('orderDetails.notFound')}</p>
+            <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
+              {t('orderDetails.backToOrders')}
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -50,18 +288,37 @@ const OrderDetails = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Order {order.id}</h1>
-              <p className="text-muted-foreground">Placed on {order.date}</p>
+              <h1 className="text-3xl font-bold">{t('orderDetails.orderTitle')} #{order?.id?.slice(0, 8) || 'Unknown'}</h1>
+              <p className="text-muted-foreground">{t('orderDetails.placedOn')} {order?.created_at ? formatDate(order.created_at) : 'Unknown'}</p>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2 items-center">
+              <Button 
+                variant="outline" 
+                onClick={handleJobConversation}
+                disabled={startingConversation}
+                className="gap-2"
+              >
+                {startingConversation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-4 w-4" />
+                )}
+                {t('orderDetails.jobConversation')}
+              </Button>
               <StatusBadge status={order.status} />
+              {order.payment_status && (
+                <PaymentStatusBadge 
+                  status={order.payment_status} 
+                  amount={order.paid_amount}
+                />
+              )}
             </div>
           </div>
 
           {/* Timeline */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Progress</CardTitle>
+              <CardTitle>{t('orderDetails.orderProgress')}</CardTitle>
             </CardHeader>
             <CardContent>
               <OrderTimeline currentStatus={order.status} />
@@ -72,14 +329,16 @@ const OrderDetails = () => {
             {/* File Preview */}
             <Card>
               <CardHeader>
-                <CardTitle>3D Model</CardTitle>
+                <CardTitle>{t('orderDetails.model3d')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="aspect-square bg-muted rounded-lg border flex items-center justify-center">
-                  <p className="text-muted-foreground">3D model preview</p>
-                </div>
+                <ModelViewerUrl 
+                  url={order.file_url} 
+                  fileName={order.file_name}
+                  height="300px"
+                />
                 <p className="text-sm text-muted-foreground mt-4">
-                  File: prototype_v3.stl
+                  {t('orderDetails.file')}: {order.file_name}
                 </p>
               </CardContent>
             </Card>
@@ -87,77 +346,149 @@ const OrderDetails = () => {
             {/* Parameters */}
             <Card>
               <CardHeader>
-                <CardTitle>Print Parameters</CardTitle>
+                <CardTitle>{t('orderDetails.printParameters')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Material</span>
-                  <span className="font-medium">{order.material}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.material')}</span>
+                  <span className="font-medium">{order.material?.toUpperCase() || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Color</span>
-                  <span className="font-medium">{order.color}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.color')}</span>
+                  <span className="font-medium">{capitalizeFirst(order.color || '')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Quality</span>
-                  <span className="font-medium">{order.quality}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.quality')}</span>
+                  <span className="font-medium">{order.layer_height ? getQualityLabel(order.layer_height) : 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Quantity</span>
-                  <span className="font-medium">{order.quantity}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.quantity')}</span>
+                  <span className="font-medium">{order.quantity || 1}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Layer Height</span>
-                  <span className="font-medium">{order.layerHeight}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.layerHeight')}</span>
+                  <span className="font-medium">{order.layer_height || 'N/A'}mm</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Infill</span>
-                  <span className="font-medium">{order.infill} ({order.pattern})</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.infill')}</span>
+                  <span className="font-medium">{order.infill || 0}%</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span className="font-medium">{order.shipping}</span>
+                  <span className="text-muted-foreground">{t('orderDetails.params.shipping')}</span>
+                  <span className="font-medium">{order.shipping_method ? getShippingLabel(order.shipping_method) : 'N/A'}</span>
                 </div>
+                {order.shipping_address && (
+                  <div className="flex justify-between py-2 border-t">
+                    <span className="text-muted-foreground">{t('orderDetails.params.address')}</span>
+                    <span className="font-medium text-right max-w-[200px]">{order.shipping_address}</span>
+                  </div>
+                )}
+                
+                {/* Advanced Settings (if any are set) */}
+                {(order.support_type && order.support_type !== 'none') || 
+                 (order.infill_pattern && order.infill_pattern !== 'grid') || 
+                 order.custom_layer_height || 
+                 order.custom_infill ? (
+                  <div className="pt-4 mt-4 border-t">
+                    <p className="text-sm font-semibold mb-3 text-primary">Advanced Settings</p>
+                    
+                    {order.support_type && order.support_type !== 'none' && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Support Type</span>
+                        <span className="font-medium">{capitalizeFirst(order.support_type)}</span>
+                      </div>
+                    )}
+                    
+                    {order.infill_pattern && order.infill_pattern !== 'grid' && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Infill Pattern</span>
+                        <span className="font-medium">{capitalizeFirst(order.infill_pattern)}</span>
+                      </div>
+                    )}
+                    
+                    {order.custom_layer_height && (
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">Custom Layer Height</span>
+                        <span className="font-medium">{order.custom_layer_height}mm</span>
+                      </div>
+                    )}
+                    
+                    {order.custom_infill && (
+                      <div className="flex justify-between py-2">
+                        <span className="text-muted-foreground">Custom Infill</span>
+                        <span className="font-medium">{order.custom_infill}%</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>
 
-          {/* Purpose */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Purpose</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{order.purpose}</p>
-            </CardContent>
-          </Card>
+          {/* Technical Details */}
+          {(order.material_weight || order.print_time) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('orderDetails.technicalDetails')}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid md:grid-cols-2 gap-4">
+                {order.material_weight != null && order.material_weight > 0 && (
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">{t('orderDetails.params.materialWeight')}</span>
+                    <span className="font-medium">{(order.material_weight * 1000).toFixed(1)}g</span>
+                  </div>
+                )}
+                {order.print_time != null && order.print_time > 0 && (
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">{t('orderDetails.params.printTime')}</span>
+                    <span className="font-medium">{Math.floor(order.print_time / 60)}h {order.print_time % 60}min</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Price Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Price Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{order.subtotal} PLN</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>{order.shipping_cost} PLN</span>
-              </div>
-              <div className="flex justify-between py-3 border-t text-lg font-bold">
-                <span>Total</span>
-                <span className="text-primary">{order.total} PLN</span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Tracking */}
+          {order.tracking_code && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('orderDetails.tracking')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-mono text-lg">{order.tracking_code}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notes */}
+          {order.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('orderDetails.notes')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{order.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Existing Review */}
+          {order.review && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('orderDetails.yourReview')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{order.review}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Review Section */}
           {canReview && (
             <Card>
               <CardHeader>
-                <CardTitle>Leave a Review</CardTitle>
+                <CardTitle>{t('orderDetails.leaveReview')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -178,10 +509,12 @@ const OrderDetails = () => {
                   ))}
                 </div>
                 <Textarea
-                  placeholder="Share your experience with this print order..."
+                  placeholder={t('orderDetails.reviewPlaceholder')}
                   rows={4}
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
                 />
-                <Button onClick={handleReviewSubmit}>Submit Review</Button>
+                <Button onClick={handleReviewSubmit}>{t('orderDetails.submitReview')}</Button>
               </CardContent>
             </Card>
           )}

@@ -19,12 +19,6 @@ if (result.error) {
   console.log('✅ .env loaded successfully');
 }
 
-// TEST - À supprimer après
-console.log('🔍 MONGO_URI loaded:', process.env.MONGO_URI ? 'YES ✅' : 'NO ❌');
-if (process.env.MONGO_URI) {
-  console.log('🔍 Connection string starts with:', process.env.MONGO_URI.substring(0, 30) + '...');
-}
-
 import createApp from './express-app';
 import { connectDatabase } from './config/database';
 import { logger } from './config/logger';

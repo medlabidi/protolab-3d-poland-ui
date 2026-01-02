@@ -1,575 +1,426 @@
 import { Resend } from 'resend';
 import { logger } from '../config/logger';
+import { SupportedLanguage, defaultLanguage } from '../i18n';
+import {
+  generateRegistrationConfirmationEmail,
+  generateVerificationEmail,
+  generateWelcomeEmail,
+  generatePasswordResetEmail,
+  generatePaymentConfirmationEmail,
+  generateRefundEmail,
+  generateInvoiceEmail,
+} from './email-templates';
 
 // Email configuration
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_5uvYahPi_CXKRTzv5UWZMMG7r7zsHsC44';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8081';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'protolablogin@proton.me';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_dev_key';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@protolab.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@protolab.local';
 
-// Create Resend client
-const resend = new Resend(RESEND_API_KEY);
+// DEVELOPMENT MODE: Set to 'console' to log emails instead of sending them
+// PRODUCTION MODE: Set to 'resend' to actually send emails via Resend API
+const EMAIL_MODE = process.env.EMAIL_MODE || 'console'; // 'console' or 'resend'
+
+// Create Resend client only if email mode is 'resend' and we have a valid API key
+const resend = EMAIL_MODE === 'resend' && RESEND_API_KEY && !RESEND_API_KEY.includes('_dev_key')
+  ? new Resend(RESEND_API_KEY) 
+  : null;
+
+// Enable actual email sending only if resend client is initialized
+const isEmailEnabled = resend !== null;
+
+// Log email configuration on startup
+console.log(`\n📧 Email Service Configuration:`);
+console.log(`   MODE: ${EMAIL_MODE}`);
+console.log(`   FROM: ${FROM_EMAIL}`);
+console.log(`   ADMIN: ${ADMIN_EMAIL}`);
+console.log(`   ENABLED: ${isEmailEnabled ? '✓ YES (emails will be sent)' : '✗ NO (console only)'}\n`);
 
 export class EmailService {
+  /**
+   * Send registration confirmation email
+   */
+  async sendRegistrationConfirmation(
+    toEmail: string,
+    userName: string,
+    lang: SupportedLanguage = defaultLanguage
+  ): Promise<void> {
+    const { subject, html, text } = generateRegistrationConfirmationEmail(userName, lang);
+    
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 REGISTRATION CONFIRMATION EMAIL (NOT SENT - Email Disabled)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      logger.info(`Attempting to send registration confirmation via Resend to ${toEmail}`);
+      const result = await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info({ result }, `Registration confirmation sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send registration confirmation to ${toEmail}`);
+      // Don't throw - this is not critical
+    }
+  }
+
+  /**
+   * Send email verification link
+   */
   async sendVerificationEmail(
     toEmail: string,
     userName: string,
-    verificationToken: string
+    verificationToken: string,
+    lang: SupportedLanguage = defaultLanguage
   ): Promise<void> {
     const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
     const verificationLink = `${API_BASE}/api/auth/verify-email?token=${verificationToken}`;
-
-    const mailOptions = {
-      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
-      to: toEmail,
-      subject: 'Verify Your ProtoLab Account',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-            .code { background: #e9ecef; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 16px; letter-spacing: 2px; text-align: center; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔧 Welcome to ProtoLab 3D Poland!</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>Thank you for registering with ProtoLab 3D Poland. We're excited to have you on board!</p>
-              <p>To complete your registration and start using our 3D printing services, please verify your email address by clicking the button below:</p>
-              
-              <div style="text-align: center;">
-                <a href="${verificationLink}" class="button">✅ Verify Email Address</a>
-              </div>
-
-              <p>Or copy and paste this link into your browser:</p>
-              <div class="code">${verificationLink}</div>
-
-              <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
-              <p>Once verified, you'll be automatically logged in to your dashboard.</p>
-
-              <p>If you didn't create an account with ProtoLab, please ignore this email.</p>
-
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-
-              <p><strong>What's next?</strong></p>
-              <ul>
-                <li>📦 Upload your 3D models</li>
-                <li>🎨 Choose materials and colors</li>
-                <li>🚀 Track your orders in real-time</li>
-                <li>📍 Flexible delivery options</li>
-              </ul>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
-              <p>If you have any questions, reply to this email or contact our support team.</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `
-        Welcome to ProtoLab 3D Poland!
-
-        Hello ${userName}!
-
-        Thank you for registering. To complete your registration, please verify your email address by visiting:
-
-        ${verificationLink}
-
-        This link will expire in 24 hours.
-
-        If you didn't create an account, please ignore this email.
-
-        Best regards,
-        ProtoLab 3D Poland Team
-      `,
-    };
+    
+    const { subject, html, text } = generateVerificationEmail(userName, verificationLink, lang);
 
     try {
-      await resend.emails.send({
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 VERIFICATION EMAIL (NOT SENT - Email Disabled)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Verification Link: ${verificationLink}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      logger.info(`Attempting to send verification email via Resend to ${toEmail}`);
+      const result = await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
-        subject: 'Verify Your ProtoLab Account',
-        html: mailOptions.html,
+        subject,
+        html,
       });
-      logger.info(`Verification email sent to ${toEmail} via Resend`);
+      logger.info({ result }, `Verification email sent to ${toEmail}`);
     } catch (error) {
       logger.error({ err: error }, `Failed to send verification email to ${toEmail}`);
       throw new Error('Failed to send verification email');
     }
   }
 
-  async sendSubmissionConfirmation(toEmail: string, userName: string): Promise<void> {
-    const mailOptions = {
-      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
-      to: toEmail,
-      subject: 'Registration Request Submitted - ProtoLab 3D Poland',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>📝 Registration Submitted</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>Your registration request has been <strong>submitted successfully</strong>.</p>
-              
-              <div class="info-box">
-                <p><strong>⏳ What happens next?</strong></p>
-                <p>Your account is currently under review by our admin team. You will receive an email confirmation once your account is approved.</p>
-              </div>
-
-              <p>This process typically takes <strong>24-48 hours</strong>. We appreciate your patience!</p>
-
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-
-              <p><strong>Registration Details:</strong></p>
-              <ul>
-                <li>📧 Email: ${toEmail}</li>
-                <li>👤 Name: ${userName}</li>
-                <li>📅 Submitted: ${new Date().toLocaleString()}</li>
-              </ul>
-
-              <p>If you have any questions, feel free to contact us at ${ADMIN_EMAIL}</p>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `
-        Registration Submitted - ProtoLab 3D Poland
-
-        Hello ${userName}!
-
-        Your registration request has been submitted successfully.
-
-        Your account is currently under review by our admin team. You will receive an email confirmation once your account is approved.
-
-        This process typically takes 24-48 hours.
-
-        Registration Details:
-        - Email: ${toEmail}
-        - Name: ${userName}
-        - Submitted: ${new Date().toLocaleString()}
-
-        Best regards,
-        ProtoLab 3D Poland Team
-      `,
-    };
-
-    try {
-      await resend.emails.send({
-        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
-        to: toEmail,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-      });
-      logger.info(`Submission confirmation sent to ${toEmail} via Resend`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to send submission confirmation to ${toEmail}`);
-      throw new Error('Failed to send submission confirmation');
-    }
-  }
-
-  async sendAdminNotification(
+  /**
+   * Send welcome email after email verification
+   */
+  async sendWelcomeEmail(
+    toEmail: string,
     userName: string,
-    userEmail: string,
-    phone: string | undefined,
-    address: string | undefined,
-    city: string | undefined,
-    zipCode: string | undefined,
-    country: string | undefined,
-    approvalToken: string
+    lang: SupportedLanguage = defaultLanguage
   ): Promise<void> {
-    const approveLink = `${FRONTEND_URL}/api/auth/approve-user?token=${approvalToken}`;
-    const rejectLink = `${FRONTEND_URL}/api/auth/reject-user?token=${approvalToken}`;
-    const API_BASE = process.env.BACKEND_URL || 'http://localhost:5000';
-    const apiApproveLink = `${API_BASE}/api/auth/approve-user?token=${approvalToken}`;
-    const apiRejectLink = `${API_BASE}/api/auth/reject-user?token=${approvalToken}`;
-
-    const mailOptions = {
-      from: `"ProtoLab Registration System" <${FROM_EMAIL}>`,
-      to: ADMIN_EMAIL,
-      subject: `🔔 New Registration: ${userName} - Action Required`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 650px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .user-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ddd; }
-            .detail-row { padding: 10px 0; border-bottom: 1px solid #eee; }
-            .detail-label { font-weight: bold; color: #555; display: inline-block; width: 120px; }
-            .button { display: inline-block; padding: 15px 40px; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; font-weight: bold; }
-            .approve-btn { background: #4CAF50; }
-            .reject-btn { background: #f44336; }
-            .actions { text-align: center; margin: 30px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔔 New User Registration</h1>
-              <p>Action Required - Approve or Reject</p>
-            </div>
-            <div class="content">
-              <h2>Registration Details</h2>
-              
-              <div class="user-details">
-                <div class="detail-row">
-                  <span class="detail-label">👤 Name:</span>
-                  <span>${userName}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">📧 Email:</span>
-                  <span>${userEmail}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">📱 Phone:</span>
-                  <span>${phone || 'Not provided'}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">🏠 Address:</span>
-                  <span>${address || 'Not provided'}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">🏙️ City:</span>
-                  <span>${city || 'Not provided'}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">📮 Zip Code:</span>
-                  <span>${zipCode || 'Not provided'}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">🌍 Country:</span>
-                  <span>${country || 'Not provided'}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">📅 Submitted:</span>
-                  <span>${new Date().toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div class="actions">
-                <h3>Take Action:</h3>
-                <a href="${apiApproveLink}" class="button approve-btn">✅ Approve User</a>
-                <a href="${apiRejectLink}" class="button reject-btn">❌ Reject User</a>
-              </div>
-
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-
-              <p style="font-size: 12px; color: #666;">
-                <strong>Note:</strong> Clicking the buttons above will immediately approve or reject this user's registration.
-                The user will be notified automatically via email.
-              </p>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Admin Notification System</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `
-        NEW USER REGISTRATION - ACTION REQUIRED
-
-        Registration Details:
-        - Name: ${userName}
-        - Email: ${userEmail}
-        - Phone: ${phone || 'Not provided'}
-        - Address: ${address || 'Not provided'}
-        - City: ${city || 'Not provided'}
-        - Zip Code: ${zipCode || 'Not provided'}
-        - Country: ${country || 'Not provided'}
-        - Submitted: ${new Date().toLocaleString()}
-
-        To approve this user, visit:
-        ${apiApproveLink}
-
-        To reject this user, visit:
-        ${apiRejectLink}
-
-        ProtoLab 3D Poland Admin Team
-      `,
-    };
+    const { subject, html, text } = generateWelcomeEmail(userName, lang);
 
     try {
-      await resend.emails.send({
-        from: `ProtoLab Registration System <${FROM_EMAIL}>`,
-        to: ADMIN_EMAIL,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-      });
-      logger.info(`Admin notification sent for user: ${userEmail} via Resend`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to send admin notification for ${userEmail}`);
-      throw new Error('Failed to send admin notification');
-    }
-  }
-
-  async sendApprovalEmail(toEmail: string, userName: string): Promise<void> {
-    const mailOptions = {
-      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
-      to: toEmail,
-      subject: '✅ Account Approved - Welcome to ProtoLab 3D Poland!',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .success-box { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎉 Account Approved!</h1>
-            </div>
-            <div class="content">
-              <h2>Congratulations, ${userName}!</h2>
-              
-              <div class="success-box">
-                <p><strong>✅ Your account has been approved by our admin team!</strong></p>
-                <p>You can now log in and start using ProtoLab 3D Poland's services.</p>
-              </div>
-
-              <div style="text-align: center;">
-                <a href="${FRONTEND_URL}/login" class="button">Login to Dashboard</a>
-              </div>
-
-              <h3>Getting Started:</h3>
-              <ol>
-                <li>Log in with your registered email and password</li>
-                <li>Upload your 3D model files (STL, OBJ, etc.)</li>
-                <li>Select material, color, and print settings</li>
-                <li>Choose your delivery method</li>
-                <li>Track your order in real-time</li>
-              </ol>
-
-              <p>Need help? Our team is here to assist you every step of the way!</p>
-              <p>Contact us at: ${ADMIN_EMAIL}</p>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `
-        Account Approved - ProtoLab 3D Poland
-
-        Congratulations, ${userName}!
-
-        Your account has been approved by our admin team!
-
-        You can now log in and start using ProtoLab 3D Poland's services.
-
-        Login at: ${FRONTEND_URL}/login
-
-        Getting Started:
-        1. Log in with your registered email and password
-        2. Upload your 3D model files
-        3. Select material and print settings
-        4. Track your order in real-time
-
-        Need help? Contact us at: ${ADMIN_EMAIL}
-
-        Best regards,
-        ProtoLab 3D Poland Team
-      `,
-    };
-
-    try {
-      await resend.emails.send({
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 WELCOME EMAIL (NOT SENT - Email Disabled)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
         from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
         to: toEmail,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
+        subject,
+        html,
       });
-      logger.info(`Approval email sent to ${toEmail} via Resend`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to send approval email to ${toEmail}`);
-      throw new Error('Failed to send approval email');
-    }
-  }
-
-  async sendRejectionEmail(toEmail: string, userName: string, reason?: string): Promise<void> {
-    const mailOptions = {
-      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
-      to: toEmail,
-      subject: 'Registration Status - ProtoLab 3D Poland',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Registration Update</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName},</h2>
-              <p>Thank you for your interest in ProtoLab 3D Poland.</p>
-              
-              <div class="info-box">
-                <p>After careful review, we are unable to approve your registration at this time.</p>
-                ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-              </div>
-
-              <p>If you believe this is an error or would like to provide additional information, please contact us at:</p>
-              <p><strong>${ADMIN_EMAIL}</strong></p>
-
-              <p>We appreciate your understanding.</p>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `
-        Registration Status - ProtoLab 3D Poland
-
-        Hello ${userName},
-
-        Thank you for your interest in ProtoLab 3D Poland.
-
-        After careful review, we are unable to approve your registration at this time.
-        ${reason ? `\nReason: ${reason}` : ''}
-
-        If you believe this is an error or would like to provide additional information, please contact us at: ${ADMIN_EMAIL}
-
-        Best regards,
-        ProtoLab 3D Poland Team
-      `,
-    };
-
-    try {
-      await resend.emails.send({
-        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
-        to: toEmail,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-      });
-      logger.info(`Rejection email sent to ${toEmail} via Resend`);
-    } catch (error) {
-      logger.error({ err: error }, `Failed to send rejection email to ${toEmail}`);
-      throw new Error('Failed to send rejection email');
-    }
-  }
-
-  async sendWelcomeEmail(toEmail: string, userName: string): Promise<void> {
-    const mailOptions = {
-      from: `"ProtoLab 3D Poland" <${FROM_EMAIL}>`,
-      to: toEmail,
-      subject: 'Welcome to ProtoLab 3D Poland! 🎉',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎉 Welcome Aboard!</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>Your email has been verified successfully! You're all set to start using ProtoLab 3D Poland.</p>
-              
-              <div style="text-align: center;">
-                <a href="${FRONTEND_URL}/dashboard" class="button">Go to Dashboard</a>
-              </div>
-
-              <h3>Getting Started:</h3>
-              <ol>
-                <li>Upload your 3D model files (STL, OBJ)</li>
-                <li>Select material, color, and print settings</li>
-                <li>Choose your delivery method</li>
-                <li>Track your order in real-time</li>
-              </ol>
-
-              <p>Need help? Our team is here to assist you every step of the way!</p>
-            </div>
-            <div class="footer">
-              <p>ProtoLab 3D Poland - Professional 3D Printing Services</p>
-              <p>&copy; ${new Date().getFullYear()} ProtoLab 3D Poland. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-    };
-
-    try {
-      await resend.emails.send({
-        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
-        to: toEmail,
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-      });
-      logger.info(`Welcome email sent to ${toEmail} via Resend`);
+      logger.info(`Welcome email sent to ${toEmail}`);
     } catch (error) {
       logger.error({ err: error }, `Failed to send welcome email to ${toEmail}`);
+      // Don't throw - not critical
+    }
+  }
+
+  /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(
+    toEmail: string,
+    userName: string,
+    resetToken: string,
+    lang: SupportedLanguage = defaultLanguage
+  ): Promise<void> {
+    const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const { subject, html, text } = generatePasswordResetEmail(userName, resetUrl, lang);
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 PASSWORD RESET EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Reset URL: ${resetUrl}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Password reset email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send password reset email to ${toEmail}`);
+      throw new Error('Failed to send password reset email');
+    }
+  }
+
+  /**
+   * Send payment confirmation email
+   */
+  async sendPaymentConfirmationEmail(
+    toEmail: string,
+    userName: string,
+    orderDetails: {
+      orderNumber?: string;
+      projectName?: string;
+      totalAmount: number;
+      itemCount: number;
+      paymentMethod: string;
+    },
+    lang: SupportedLanguage = defaultLanguage
+  ): Promise<void> {
+    const { subject, html, text } = generatePaymentConfirmationEmail(userName, orderDetails, lang);
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 PAYMENT CONFIRMATION EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Order: ${orderDetails.orderNumber || orderDetails.projectName}`);
+        console.log(`Amount: ${orderDetails.totalAmount.toFixed(2)} PLN`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Payment confirmation email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send payment confirmation email to ${toEmail}`);
+      // Don't throw - not critical
+    }
+  }
+
+  /**
+   * Send refund request confirmation email
+   */
+  async sendRefundRequestEmail(
+    toEmail: string,
+    userName: string,
+    refundDetails: {
+      orderNumber: string;
+      refundAmount: number;
+      reason: string;
+      refundMethod: string;
+    },
+    lang: SupportedLanguage = defaultLanguage
+  ): Promise<void> {
+    const { subject, html, text } = generateRefundEmail(userName, refundDetails, lang);
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 REFUND REQUEST EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Order: #${refundDetails.orderNumber}`);
+        console.log(`Refund Amount: ${refundDetails.refundAmount.toFixed(2)} PLN`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Refund request email sent to ${toEmail}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send refund request email to ${toEmail}`);
+      // Don't throw - not critical
+    }
+  }
+
+  /**
+   * Send invoice email
+   * Note: The invoice email template is simplified. For full invoice functionality,
+   * you may want to generate and attach a PDF invoice.
+   */
+  async sendInvoiceEmail(
+    toEmail: string,
+    userName: string,
+    invoiceDetails: {
+      invoiceNumber: string;
+      invoiceDate: string;
+      dueDate: string;
+      orderNumber?: string;
+      projectName?: string;
+      items: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+      subtotal: number;
+      vatRate: number;
+      vatAmount: number;
+      totalAmount: number;
+      paymentMethod: string;
+      billingInfo: {
+        companyName: string;
+        taxId: string;
+        vatNumber?: string;
+        address: string;
+        city: string;
+        zipCode: string;
+        country: string;
+      };
+    },
+    lang: SupportedLanguage = defaultLanguage
+  ): Promise<{ invoiceNumber: string; success: boolean }> {
+    const { subject, html, text } = generateInvoiceEmail(
+      userName,
+      {
+        invoiceNumber: invoiceDetails.invoiceNumber,
+        orderNumber: invoiceDetails.orderNumber,
+        totalAmount: invoiceDetails.totalAmount,
+      },
+      lang
+    );
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`🧾 INVOICE EMAIL (Console Mode)`);
+        console.log(`To: ${toEmail} | Lang: ${lang}`);
+        console.log(`Invoice No: ${invoiceDetails.invoiceNumber}`);
+        console.log(`Date: ${invoiceDetails.invoiceDate}`);
+        console.log(`Company: ${invoiceDetails.billingInfo.companyName}`);
+        console.log(`NIP: ${invoiceDetails.billingInfo.taxId}`);
+        console.log(`Total: ${invoiceDetails.totalAmount.toFixed(2)} PLN`);
+        console.log(`${'='.repeat(80)}\n`);
+        return { invoiceNumber: invoiceDetails.invoiceNumber, success: true };
+      }
+      
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Invoice email sent to ${toEmail}, Invoice: ${invoiceDetails.invoiceNumber}`);
+      return { invoiceNumber: invoiceDetails.invoiceNumber, success: true };
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send invoice email to ${toEmail}`);
+      return { invoiceNumber: invoiceDetails.invoiceNumber, success: false };
+    }
+  }
+
+  /**
+   * Send order status change notification email
+   */
+  async sendOrderStatusChangeEmail(
+    toEmail: string,
+    userName: string,
+    orderNumber: string,
+    newStatus: string,
+    orderId: string
+  ): Promise<void> {
+    const statusMessages: Record<string, string> = {
+      'submitted': 'has been received and is awaiting review',
+      'in_queue': 'is now in the printing queue',
+      'printing': 'is currently being printed',
+      'finished': 'has been completed and is ready',
+      'delivered': 'has been delivered',
+      'on_hold': 'has been placed on hold',
+      'suspended': 'has been suspended'
+    };
+
+    const statusMessage = statusMessages[newStatus] || `status has been updated to ${newStatus.replace('_', ' ')}`;
+    const subject = `Order Status Update - ${orderNumber}`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .status-badge { display: inline-block; padding: 8px 16px; background: #667eea; color: white; border-radius: 20px; font-weight: bold; margin: 15px 0; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Order Status Update</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your order <strong>${orderNumber}</strong> ${statusMessage}.</p>
+            <div style="text-align: center;">
+              <span class="status-badge">${newStatus.replace('_', ' ').toUpperCase()}</span>
+            </div>
+            <p>You can view your order details and track its progress by clicking the button below:</p>
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders/${orderId}" class="button">View Order Details</a>
+            </div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>Best regards,<br>ProtoLab 3D Poland Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 ORDER STATUS CHANGE EMAIL (NOT SENT - Email Disabled)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`Order: ${orderNumber} | New Status: ${newStatus}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Status change email sent to ${toEmail} for order ${orderNumber}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send status change email to ${toEmail}`);
+      // Don't throw - this is not critical
     }
   }
 }

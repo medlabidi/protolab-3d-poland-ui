@@ -11,6 +11,13 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import orderRoutes from './routes/order.routes';
 import adminRoutes from './routes/admin.routes';
+import creditsRoutes from './routes/credits.routes';
+import conversationsRoutes from './routes/conversations.routes';
+import paymentRoutes from './routes/payment.routes';
+import materialsRoutes from './routes/materials.routes';
+import printersRoutes from './routes/printers.routes';
+import shippingRoutes from './routes/shipping.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const createApp = (): Application => {
   const app = express();
@@ -36,11 +43,13 @@ const createApp = (): Application => {
   // Handle OPTIONS preflight requests explicitly
   app.options('*', cors());
   
-  // Rate limiting
+  // Rate limiting (more lenient for development)
   const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '200'), // Increased from 100 to 200
     message: 'Too many requests from this IP, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
   });
   app.use(limiter);
   
@@ -48,8 +57,8 @@ const createApp = (): Application => {
   app.use(pinoHttp({ logger }));
   
   // Body parsing
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
   app.use(cookieParser());
   
   // Health check
@@ -62,6 +71,13 @@ const createApp = (): Application => {
   app.use('/api/users', userRoutes);
   app.use('/api/orders', orderRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/credits', creditsRoutes);
+  app.use('/api/conversations', conversationsRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/api/materials', materialsRoutes);
+  app.use('/api/printers', printersRoutes);
+  app.use('/api/admin/shipping', shippingRoutes);
+  app.use('/api/admin/analytics', analyticsRoutes);
   
   // Error handling
   app.use(notFoundHandler);

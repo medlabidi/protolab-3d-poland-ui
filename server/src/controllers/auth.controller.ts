@@ -10,6 +10,7 @@ export class AuthController {
       logger.info(`User registered (email verification required): ${user.email}`);
       
       res.status(201).json({
+        success: true,
         message,
         user: {
           id: user.id,
@@ -28,73 +29,18 @@ export class AuthController {
       const { token } = req.query;
       
       if (!token || typeof token !== 'string') {
-        throw new Error('Verification token is required');
+        res.status(400).json({ success: false, error: 'Verification token is required' });
+        return;
       }
       
       const { user, tokens } = await authService.verifyEmail(token);
       
       logger.info(`Email verified for user: ${user.email}`);
       
-      // Return HTML response that redirects to frontend with tokens
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Email Verified - ProtoLab 3D Poland</title>
-          <style>
-            body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-            .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-            .icon { font-size: 64px; margin-bottom: 20px; }
-            h1 { color: #4CAF50; margin: 0 0 20px 0; }
-            p { color: #666; line-height: 1.6; margin-bottom: 20px; }
-            .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
-            .loader { margin: 20px 0; }
-          </style>
-          <script>
-            // Store tokens and user info in localStorage
-            localStorage.setItem('accessToken', '${tokens.accessToken}');
-            localStorage.setItem('refreshToken', '${tokens.refreshToken}');
-            localStorage.setItem('user', JSON.stringify({
-              id: '${user.id}',
-              name: '${user.name}',
-              email: '${user.email}',
-              role: '${user.role}'
-            }));
-            localStorage.setItem('isLoggedIn', 'true');
-            
-            // Redirect to dashboard
-            setTimeout(() => {
-              window.location.href = '${frontendUrl}/dashboard';
-            }, 2000);
-          </script>
-        </head>
-        <body>
-          <div class="container">
-            <div class="icon">✅</div>
-            <h1>Email Verified Successfully!</h1>
-            <p>Welcome to ProtoLab 3D Poland, <strong>${user.name}</strong>!</p>
-            <p>Your email has been verified. Redirecting to dashboard...</p>
-            <div class="loader">⏳</div>
-            <a href="${frontendUrl}/dashboard" class="button">Continue to Dashboard</a>
-          </div>
-        </body>
-        </html>
-      `);
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { email, password } = req.body;
-      const { user, tokens } = await authService.login(email, password);
-      
-      logger.info(`User logged in: ${user.email}`);
-      
+      // Return JSON response with tokens
       res.json({
-        message: 'Login successful',
+        success: true,
+        message: 'Email verified successfully',
         user: {
           id: user.id,
           name: user.name,
@@ -108,18 +54,46 @@ export class AuthController {
     }
   }
   
+  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, password } = req.body;
+      const { user, tokens } = await authService.login(email, password);
+      
+      logger.info(`User logged in: ${user.email}`);
+      
+      res.json({
+        success: true,
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          zip_code: user.zip_code,
+          country: user.country,
+        },
+        tokens,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
   async refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { refreshToken } = req.body;
       
       if (!refreshToken) {
-        res.status(400).json({ error: 'Refresh token required' });
+        res.status(400).json({ success: false, error: 'Refresh token required' });
         return;
       }
       
       const tokens = await authService.refresh(refreshToken);
       
-      res.json({ tokens });
+      res.json({ success: true, tokens });
     } catch (error) {
       next(error);
     }
@@ -133,93 +107,185 @@ export class AuthController {
         await authService.logout(refreshToken);
       }
       
-      res.json({ message: 'Logout successful' });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async approveUser(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { token } = req.query;
-      
-      if (!token || typeof token !== 'string') {
-        res.status(400).json({ error: 'Approval token required' });
-        return;
-      }
-      
-      const result = await authService.approveUser(token);
-      
-      logger.info(`User approved with token: ${token.substring(0, 10)}...`);
-      
-      // Return HTML response for better UX when admin clicks email link
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>User Approved - ProtoLab 3D Poland</title>
-          <style>
-            body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-            .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-            .success-icon { font-size: 64px; margin-bottom: 20px; }
-            h1 { color: #4CAF50; margin: 0 0 20px 0; }
-            p { color: #666; line-height: 1.6; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="success-icon">✅</div>
-            <h1>User Approved Successfully!</h1>
-            <p>${result.message}</p>
-            <p>The user has been notified via email and can now log in to their account.</p>
-          </div>
-        </body>
-        </html>
-      `);
+      res.json({ success: true, message: 'Logout successful' });
     } catch (error) {
       next(error);
     }
   }
 
-  async rejectUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async googleCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { token } = req.query;
-      const { reason } = req.body;
+      const { googleToken } = req.body;
       
-      if (!token || typeof token !== 'string') {
-        res.status(400).json({ error: 'Approval token required' });
+      if (!googleToken) {
+        res.status(400).json({ success: false, error: 'Google token required' });
         return;
       }
       
-      const result = await authService.rejectUser(token, reason);
+      const { user, tokens } = await authService.googleAuth(googleToken);
       
-      logger.info(`User rejected with token: ${token.substring(0, 10)}...`);
+      logger.info(`User authenticated via Google: ${user.email}`);
       
-      // Return HTML response for better UX when admin clicks email link
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>User Rejected - ProtoLab 3D Poland</title>
-          <style>
-            body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-            .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-            .icon { font-size: 64px; margin-bottom: 20px; }
-            h1 { color: #f44336; margin: 0 0 20px 0; }
-            p { color: #666; line-height: 1.6; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="icon">❌</div>
-            <h1>User Registration Rejected</h1>
-            <p>${result.message}</p>
-            <p>The user has been notified via email.</p>
-          </div>
-        </body>
-        </html>
-      `);
+      res.json({
+        success: true,
+        message: 'Google authentication successful',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          zip_code: user.zip_code,
+          country: user.country,
+        },
+        tokens,
+      });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const { name, phone, address, city, zipCode, country } = req.body;
+      
+      const updatedUser = await authService.updateProfile(userId, {
+        name,
+        phone,
+        address,
+        city,
+        zipCode,
+        country,
+      });
+
+      logger.info(`Profile updated for user: ${updatedUser.email}`);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          address: updatedUser.address,
+          city: updatedUser.city,
+          zip_code: updatedUser.zip_code,
+          country: updatedUser.country,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ error: 'Current password and new password are required' });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({ error: 'New password must be at least 6 characters' });
+        return;
+      }
+
+      await authService.changePassword(userId, currentPassword, newPassword);
+
+      logger.info(`Password changed for user: ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const user = await authService.getUserById(userId);
+      
+      if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          address: user.address,
+          createdAt: user.createdAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ error: 'Email is required' });
+        return;
+      }
+
+      const result = await authService.forgotPassword(email);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        res.status(400).json({ error: 'Token and password are required' });
+        return;
+      }
+
+      const result = await authService.resetPassword(token, password);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Invalid or expired')) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       next(error);
     }
   }

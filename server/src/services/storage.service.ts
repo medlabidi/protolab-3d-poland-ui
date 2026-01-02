@@ -102,3 +102,58 @@ export async function listTempFiles(sessionId: string): Promise<string[]> {
 
   return data?.map((f) => f.name) || [];
 }
+
+// Helper: Upload file directly to print-jobs bucket (for new orders)
+export async function uploadPrintJobFile(
+  orderId: string,
+  filename: string,
+  fileBuffer: Buffer,
+  mimeType: string
+): Promise<{ path: string; url: string }> {
+  const filePath = `${orderId}/${filename}`;
+  const bucketName = process.env.SUPABASE_BUCKET_JOBS!;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+      upsert: true, // Allow overwrite if file exists
+    });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  // Generate a signed URL that expires in 1 year (for long-term access)
+  const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+    .from(bucketName)
+    .createSignedUrl(data.path, 60 * 60 * 24 * 365); // 1 year expiry
+
+  if (signedUrlError) {
+    // Fallback to public URL if signed URL fails
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(bucketName)
+      .getPublicUrl(data.path);
+    
+    return {
+      path: data.path,
+      url: publicUrlData.publicUrl,
+    };
+  }
+
+  return {
+    path: data.path,
+    url: signedUrlData.signedUrl,
+  };
+}
+
+// Helper: Get a fresh signed URL for a file (for viewing existing orders)
+export async function getSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
+  const bucketName = process.env.SUPABASE_BUCKET_JOBS!;
+  
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .createSignedUrl(filePath, expiresIn);
+
+  if (error) throw new Error(`Failed to create signed URL: ${error.message}`);
+  
+  return data.signedUrl;
+}

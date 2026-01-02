@@ -1,11 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/protolablogo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ProtoLab - On-Demand 3D Printing in Poland</title>
     <meta name="description" content="Professional 3D printing services in Poland. Upload your model, get instant pricing, and receive high-quality prints delivered to your door." />
     <meta name="author" content="ProtoLab" />
+    
+    <!-- Google Fonts - Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+      // Prevent FOUC by setting theme before page renders
+      (function() {
+        const theme = localStorage.getItem('protolab-ui-theme') || 'system';
+        const root = document.documentElement;
+        
+        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          root.classList.remove('light');
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+          root.classList.add('light');
+        }
+      })();
+    </script>
 
     <meta property="og:title" content="ProtoLab - 3D Printing Services Poland" />
     <meta property="og:description" content="Professional 3D printing with instant quotes. PLA, ABS, PETG, TPU, Nylon & Resin printing available." />

@@ -1,36 +1,38 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd client && npm install && npm run build",
+  "outputDirectory": "client/dist",
+  "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "mahmoud": true
+    }
+  },
+  "rewrites": [
     {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "client/dist"
-      }
+      "source": "/api/:path*",
+      "destination": "/api/index.ts"
     },
     {
-      "src": "api/**/*.ts",
-      "use": "@vercel/node"
+      "source": "/health",
+      "destination": "/api/health.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index"
-    },
-    {
-      "src": "/health",
-      "dest": "/api/health"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/dist/index.html"
+  "functions": {
+    "api/*.ts": {
+      "memory": 1024,
+      "maxDuration": 30
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "VITE_API_URL": "/api",
+      "VITE_SUPABASE_URL": "https://ejauqqpatmqbxxhbmkzp.supabase.co",
+      "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqYXVxcXBhdG1xYnh4aGJta3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMzQ4MTEsImV4cCI6MjA3OTYxMDgxMX0.8YyeFRXCljXaUdKBDiBBxg3hjwP3haAyNitSLrq-duc"
+    }
   }
 }
