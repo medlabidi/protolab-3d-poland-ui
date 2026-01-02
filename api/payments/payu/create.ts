@@ -63,6 +63,7 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
   });
 
   console.log('[PAYU-CREATE] PayU response status:', response.status);
+  console.log('[PAYU-CREATE] PayU response URL:', response.url);
   
   // PayU returns 302 for successful order creation with redirectUri in Location header
   if (response.status === 302) {
@@ -81,9 +82,27 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
     throw new Error(`PayU order creation failed: ${response.status} ${errorText}`);
   }
 
-  const result = await response.json();
-  console.log('[PAYU-CREATE] Order created:', result);
-  return result;
+  // Check content type to determine how to parse the response
+  const contentType = response.headers.get('content-type');
+  console.log('[PAYU-CREATE] Response content-type:', contentType);
+  
+  if (contentType && contentType.includes('application/json')) {
+    const result = await response.json();
+    console.log('[PAYU-CREATE] Order created:', result);
+    return result;
+  } else {
+    // PayU returned HTML - this IS the payment page
+    const htmlContent = await response.text();
+    console.log('[PAYU-CREATE] Received HTML payment page from PayU');
+    
+    // Return the HTML content for the frontend to display
+    return {
+      success: true,
+      isHtml: true,
+      htmlContent: htmlContent,
+      statusCode: 'SUCCESS'
+    };
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -152,8 +171,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lastName,
         language: 'pl',
       },
-      notifyUrl: `${process.env.FRONTEND_URL}/api/payments/payu/notify`,
-      continueUrl: `${process.env.FRONTEND_URL}/payment-success`,
+      notifyUrl: `https://protolab.info/api/payments/payu/notify`,
+      continueUrl: `https://protolab.info/payment-success`,
     };
 
     // Add payment method if specified (for BLIK, cards, etc.)
@@ -188,6 +207,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       redirectUri: payuResult.redirectUri,
       statusCode: payuResult.statusCode,
       orderId: payuResult.orderId || 'created',
+      isHtml: payuResult.isHtml || false,
+      htmlContent: payuResult.htmlContent || null,
     });
 
   } catch (error) {
