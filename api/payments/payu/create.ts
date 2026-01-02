@@ -98,21 +98,31 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
     // Fix relative URLs in PayU HTML to be absolute
     let fixedHtml = htmlContent;
     
-    // Convert ALL relative paths to absolute PayU URLs
+    console.log('[PAYU-CREATE] Original HTML length:', htmlContent.length);
+    console.log('[PAYU-CREATE] Sample HTML content:', htmlContent.substring(0, 500));
+    
+    // Convert ALL relative paths to absolute PayU URLs - more comprehensive approach
     fixedHtml = fixedHtml.replace(
-      /href="\/([^"]+)"/g,
-      'href="https://secure.snd.payu.com/$1"'
+      /href=(["'])\/([^"']+)\1/g,
+      'href=$1https://secure.snd.payu.com/$2$1'
     );
     fixedHtml = fixedHtml.replace(
-      /src="\/([^"]+)"/g, 
-      'src="https://secure.snd.payu.com/$1"'
+      /src=(["'])\/([^"']+)\1/g, 
+      'src=$1https://secure.snd.payu.com/$2$1'
     );
     fixedHtml = fixedHtml.replace(
-      /action="\/([^"]+)"/g,
-      'action="https://secure.snd.payu.com/$1"'
+      /action=(["'])\/([^"']+)\1/g,
+      'action=$1https://secure.snd.payu.com/$2$1'
+    );
+    
+    // Also fix any remaining relative paths that might not have quotes
+    fixedHtml = fixedHtml.replace(
+      /url\(\/([^)]+)\)/g,
+      'url(https://secure.snd.payu.com/$1)'
     );
     
     console.log('[PAYU-CREATE] Fixed HTML asset URLs for PayU');
+    console.log('[PAYU-CREATE] Fixed HTML length:', fixedHtml.length);
     
     // Return the fixed HTML content for the frontend to display
     return {
