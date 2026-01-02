@@ -16,6 +16,7 @@ import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DP
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 import { apiFormData } from "@/lib/api";
+import { API_URL } from "@/config/api";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -331,6 +332,68 @@ const NewPrint = () => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
   }, []);
+
+  // Function to redirect directly to PayU payment
+  const redirectToPayUPayment = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        toast.error('Please log in to continue');
+        navigate('/login');
+        return;
+      }
+
+      // Get order details first
+      const orderResponse = await fetch(`${API_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const orderData = await orderResponse.json();
+      const order = orderData.order;
+
+      // Create PayU payment request
+      const payuResponse = await fetch(`${API_URL}/payments/payu/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          amount: order.price,
+          description: `Order #${order.id.slice(0, 8)} - ${order.file_name}`,
+          userId: order.user_id,
+          payMethods: undefined, // Let PayU show all available methods
+        }),
+      });
+
+      if (!payuResponse.ok) {
+        const errorData = await payuResponse.json();
+        throw new Error(errorData.error || 'Payment creation failed');
+      }
+
+      const payuData = await payuResponse.json();
+
+      // Redirect directly to PayU payment page
+      if (payuData.redirectUri) {
+        window.location.href = payuData.redirectUri;
+      } else {
+        throw new Error('No payment redirect URL received');
+      }
+
+    } catch (error) {
+      console.error('PayU redirect error:', error);
+      toast.error(error instanceof Error ? error.message : 'Payment redirect failed');
+      // Fallback to our payment page if direct redirect fails
+      navigate(`/payment/${orderId}`);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -815,10 +878,10 @@ const NewPrint = () => {
           orderIds.push(result.id);
         }
 
-        // Navigate to PaymentPage with first order ID
+        // Create PayU payment for first order and redirect directly
         if (orderIds.length > 0) {
-          toast.success('Orders created. Redirecting to payment...');
-          navigate(`/payment/${orderIds[0]}`);
+          toast.success('Orders created. Redirecting to PayU payment...');
+          await redirectToPayUPayment(orderIds[0]);
         }
       } catch (error) {
         console.error('Order creation error:', error);
@@ -914,9 +977,9 @@ const NewPrint = () => {
 
       const result = await response.json();
       
-      // Navigate to PaymentPage with order ID
-      toast.success('Order created. Redirecting to payment...');
-      navigate(`/payment/${result.id}`);
+      // Create PayU payment and redirect directly
+      toast.success('Order created. Redirecting to PayU payment...');
+      await redirectToPayUPayment(result.id);
     } catch (error) {
       console.error('Order creation error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create order');

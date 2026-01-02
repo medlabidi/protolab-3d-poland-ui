@@ -8,7 +8,7 @@
 const https = require('https');
 
 // Test configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://protolabb-4h8cd7mnq-med-labidis-projects.vercel.app/api';
 const TEST_BLIK_CODE = '777123'; // Valid test code for sandbox
 
 let accessToken = '';
