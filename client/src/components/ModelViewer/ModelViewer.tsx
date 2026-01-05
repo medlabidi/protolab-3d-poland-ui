@@ -143,6 +143,18 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
 
     loadModel(file)
       .then((loadedGeometry) => {
+        // Handle 3MF files (null geometry = no preview available)
+        if (!loadedGeometry) {
+          const is3MF = file.name.toLowerCase().endsWith('.3mf');
+          if (is3MF) {
+            setGeometry(null);
+            setError('3MF_NO_PREVIEW: 3MF files are accepted for printing but cannot be previewed. The file will still be processed for pricing and ordering.');
+            onError?.('3MF_NO_PREVIEW');
+            setLoading(false);
+            return;
+          }
+        }
+        
         setGeometry(loadedGeometry);
         setError(null);
         onError?.(null);
@@ -184,7 +196,6 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Error loading model:', err);
         const errorMessage = err.message || 'Failed to load model';
         setError(errorMessage);
         onError?.(errorMessage);

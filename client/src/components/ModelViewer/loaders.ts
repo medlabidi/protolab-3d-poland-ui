@@ -302,16 +302,12 @@ export const loadOBJFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
   });
 };
 
-export const loadModel = async (file: File): Promise<THREE.BufferGeometry> => {
+export const loadModel = async (file: File): Promise<THREE.BufferGeometry | null> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
   
-  // Handle 3MF files early with informational message (not an error)
+  // Handle 3MF files - return null to indicate no preview (not an error)
   if (extension === '3mf') {
-    // Create a minimal placeholder geometry for 3MF files
-    // This allows processing to continue without 3D preview
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
-    throw new Error('3MF_NO_PREVIEW:3MF files are accepted for printing but cannot be previewed. The file will still be processed for pricing and ordering.');
+    return null;
   }
   
   // Validate the file before attempting to parse
