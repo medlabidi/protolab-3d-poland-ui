@@ -220,11 +220,13 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
                 {(() => {
                   const errorInfo = getErrorInfo(error);
                   const IconComponent = errorInfo.icon;
+                  // Strip technical prefix from error message
+                  const displayError = error.replace(/^3MF_NO_PREVIEW:/, '').trim();
                   return (
                     <>
                       <IconComponent className={`w-12 h-12 ${errorInfo.color} mx-auto mb-2`} />
                       <p className={`text-sm font-bold ${errorInfo.color} mb-1`}>{errorInfo.title}</p>
-                      <p className="text-xs text-muted-foreground">{error}</p>
+                      <p className="text-xs text-muted-foreground">{displayError}</p>
                     </>
                   );
                 })()}

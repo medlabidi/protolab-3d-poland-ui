@@ -311,7 +311,7 @@ export const loadModel = async (file: File): Promise<THREE.BufferGeometry> => {
     // This allows processing to continue without 3D preview
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
-    throw new Error('3MF_NO_PREVIEW: 3MF files are accepted for printing but cannot be previewed. Click "Calculate Price" to continue.');
+    throw new Error('3MF_NO_PREVIEW:3MF files are accepted for printing but cannot be previewed. The file will still be processed for pricing and ordering.');
   }
   
   // Validate the file before attempting to parse
