@@ -1212,7 +1212,7 @@ const NewPrint = () => {
                       type="file"
                       id="file-upload"
                       className="hidden"
-                      accept=".stl,.obj,.step"
+                      accept=".stl,.obj,.3mf"
                       onChange={handleFileChange}
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
@@ -1310,7 +1310,7 @@ const NewPrint = () => {
                         type="file"
                         id="project-file-upload"
                         className="hidden"
-                        accept=".stl,.obj,.step"
+                        accept=".stl,.obj,.3mf"
                         multiple
                         onChange={handleProjectFileChange}
                       />

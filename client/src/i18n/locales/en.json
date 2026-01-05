@@ -715,7 +715,7 @@
     "projectMultiple": "Project (Multiple Files)",
     "dropFileHere": "Drop your file here!",
     "clickToUpload": "Click to upload or drag and drop",
-    "fileFormats": "STL, OBJ, or STEP files",
+    "fileFormats": "STL, OBJ, or 3MF files",
     "analysisComplete": "Analysis Complete",
     "estWeight": "Est. Weight",
     "estPrintTime": "Est. Print Time",

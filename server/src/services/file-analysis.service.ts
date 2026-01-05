@@ -199,6 +199,98 @@ function estimateMaterialWeight(
   return effectiveVolume * materialDensity;
 }
 
+// Parse OBJ file
+function parseOBJ(buffer: Buffer): { vertices: number[][]; triangles: number } {
+  const text = buffer.toString('utf-8');
+  const lines = text.split('\n');
+  const vertexPositions: number[][] = [];
+  const vertices: number[][] = [];
+  let triangles = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Vertex positions
+    if (trimmed.startsWith('v ')) {
+      const parts = trimmed.split(/\s+/);
+      if (parts.length >= 4) {
+        vertexPositions.push([
+          parseFloat(parts[1]),
+          parseFloat(parts[2]),
+          parseFloat(parts[3])
+        ]);
+      }
+    }
+    
+    // Faces (triangles)
+    if (trimmed.startsWith('f ')) {
+      const parts = trimmed.split(/\s+/).slice(1);
+      const faceIndices: number[] = [];
+      
+      for (const part of parts) {
+        const idx = parseInt(part.split('/')[0]) - 1; // OBJ indices are 1-based
+        if (idx >= 0 && idx < vertexPositions.length) {
+          faceIndices.push(idx);
+        }
+      }
+      
+      // Triangulate face (convert quads to triangles)
+      if (faceIndices.length >= 3) {
+        for (let i = 1; i < faceIndices.length - 1; i++) {
+          vertices.push(vertexPositions[faceIndices[0]]);
+          vertices.push(vertexPositions[faceIndices[i]]);
+          vertices.push(vertexPositions[faceIndices[i + 1]]);
+          triangles++;
+        }
+      }
+    }
+  }
+
+  return { vertices, triangles };
+}
+
+// Parse 3MF file (simplified - extracts basic mesh data)
+function parse3MF(buffer: Buffer): { vertices: number[][]; triangles: number } {
+  try {
+    const text = buffer.toString('utf-8');
+    const vertices: number[][] = [];
+    let triangles = 0;
+
+    // Extract vertices from <vertices> section
+    const vertexMatches = text.matchAll(/<vertex\s+x="([-+]?\d*\.?\d+)"\s+y="([-+]?\d*\.?\d+)"\s+z="([-+]?\d*\.?\d+)"/g);
+    const vertexPositions: number[][] = [];
+    
+    for (const match of vertexMatches) {
+      vertexPositions.push([
+        parseFloat(match[1]),
+        parseFloat(match[2]),
+        parseFloat(match[3])
+      ]);
+    }
+
+    // Extract triangles from <triangles> section
+    const triangleMatches = text.matchAll(/<triangle\s+v1="(\d+)"\s+v2="(\d+)"\s+v3="(\d+)"/g);
+    
+    for (const match of triangleMatches) {
+      const v1 = parseInt(match[1]);
+      const v2 = parseInt(match[2]);
+      const v3 = parseInt(match[3]);
+      
+      if (v1 < vertexPositions.length && v2 < vertexPositions.length && v3 < vertexPositions.length) {
+        vertices.push(vertexPositions[v1]);
+        vertices.push(vertexPositions[v2]);
+        vertices.push(vertexPositions[v3]);
+        triangles++;
+      }
+    }
+
+    return { vertices, triangles };
+  } catch (err) {
+    console.error('Failed to parse 3MF:', err);
+    return { vertices: [], triangles: 0 };
+  }
+}
+
 // Main analysis function
 export async function analyzeFile(
   fileBuffer: Buffer,
@@ -217,8 +309,15 @@ export async function analyzeFile(
       const result = isASCII ? parseSTLASCII(fileBuffer) : parseSTLBinary(fileBuffer);
       vertices = result.vertices;
       triangles = result.triangles;
+    } else if (fileType === 'OBJ') {
+      const result = parseOBJ(fileBuffer);
+      vertices = result.vertices;
+      triangles = result.triangles;
+    } else if (fileType === '3MF') {
+      const result = parse3MF(fileBuffer);
+      vertices = result.vertices;
+      triangles = result.triangles;
     }
-    // TODO: Implement OBJ and 3MF parsers
   } catch (err) {
     console.error(`Failed to parse ${fileType} file:`, err);
   }

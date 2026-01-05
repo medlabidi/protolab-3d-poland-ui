@@ -732,7 +732,7 @@
     "projectMultiple": "Projekt (wiele plików)",
     "dropFileHere": "Upuść plik tutaj!",
     "clickToUpload": "Kliknij, aby przesłać lub przeciągnij i upuść",
-    "fileFormats": "Pliki STL, OBJ lub STEP",
+    "fileFormats": "Pliki STL, OBJ lub 3MF",
     "analysisComplete": "Analiza zakończona",
     "estWeight": "Szac. waga",
     "estPrintTime": "Szac. czas druku",
