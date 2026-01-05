@@ -16,6 +16,11 @@ interface ModelViewerProps {
 const getErrorInfo = (errorMessage: string): { icon: typeof AlertTriangle; title: string; color: string } => {
   const lowerError = errorMessage.toLowerCase();
   
+  // Special case for 3MF files (informational, not an error)
+  if (errorMessage.includes('3MF_NO_PREVIEW')) {
+    return { icon: BoxIcon, title: '3MF File Accepted', color: 'text-blue-500' };
+  }
+  
   if (lowerError.includes('empty') || lowerError.includes('no valid 3d geometry')) {
     return { icon: FileX, title: 'Empty or Invalid File', color: 'text-orange-500' };
   }
