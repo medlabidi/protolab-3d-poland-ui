@@ -151,8 +151,8 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
             setError('3MF_NO_PREVIEW: 3MF files are accepted for printing but cannot be previewed. The file will still be processed for pricing and ordering.');
             onError?.('3MF_NO_PREVIEW');
             setLoading(false);
-            return;
           }
+          return;
         }
         
         setGeometry(loadedGeometry);
