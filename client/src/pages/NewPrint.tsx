@@ -495,6 +495,14 @@ const NewPrint = () => {
   };
 
   const handleModelError = (error: string | null) => {
+    // Special handling for 3MF files - this is informational, not a blocking error
+    if (error && error.includes('3MF_NO_PREVIEW')) {
+      setModelError(null); // Don't block price calculation for 3MF
+      setIsModelLoading(false);
+      toast.info("3MF file uploaded. Preview unavailable, but you can proceed with pricing.");
+      return;
+    }
+    
     setModelError(error);
     setIsModelLoading(false);
     if (error) {
