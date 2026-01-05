@@ -42,7 +42,7 @@ async function getPayUToken(): Promise<string> {
     throw new Error(`PayU authentication failed: ${response.status} ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { access_token: string; expires_in: number };
   console.log('[PAYU-CREATE] Authentication successful');
   return data.access_token;
 }
@@ -192,12 +192,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       notifyUrl: `https://protolab.info/api/payments/payu/notify`,
       continueUrl: `https://protolab.info/payment-success`,
+      ...(payMethods && { payMethods }), // Conditionally add payMethods
     };
-
-    // Add payment method if specified (for BLIK, cards, etc.)
-    if (payMethods) {
-      orderPayload.payMethods = payMethods;
-    }
 
     console.log('[PAYU-CREATE] Order payload:', JSON.stringify(orderPayload, null, 2));
 
