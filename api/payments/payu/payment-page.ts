@@ -39,8 +39,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).send('Payment session not found or expired');
     }
 
-    // Rewrite asset URLs to point to our proxy
-    // This rewrites paths like /js/file.js to /api/payments/payu/js/file.js
+    // Rewrite asset URLs to point to our proxy with cache-busting parameter
+    // This rewrites paths like /js/file.js to /api/payments/payu/js/file.js?v=timestamp
+    const cacheBuster = Date.now();
     let modifiedHtml = htmlContent;
     
     // First, add a base tag to ensure all relative URLs resolve correctly
@@ -49,16 +50,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       '<head><base href="/api/payments/payu/">'
     );
     
-    // Rewrite script src (both absolute and relative)
-    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, 'src="/api/payments/payu/$1"');
-    modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, "src='/api/payments/payu/$1'");
+    // Rewrite script src (both absolute and relative) with cache buster
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, `src="/api/payments/payu/$1?v=${cacheBuster}"`);
+    modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, `src='/api/payments/payu/$1?v=${cacheBuster}'`);
     
-    // Rewrite link href (for CSS)
-    modifiedHtml = modifiedHtml.replace(/href="\/([^"]+\.css[^"]*)"/g, 'href="/api/payments/payu/$1"');
-    modifiedHtml = modifiedHtml.replace(/href='\/([^']+\.css[^']*)'/g, "href='/api/payments/payu/$1'");
+    // Rewrite link href (for CSS) with cache buster
+    modifiedHtml = modifiedHtml.replace(/href="\/([^"]+\.css[^"]*)"/g, `href="/api/payments/payu/$1?v=${cacheBuster}"`);
+    modifiedHtml = modifiedHtml.replace(/href='\/([^']+\.css[^']*)'/g, `href='/api/payments/payu/$1?v=${cacheBuster}'`);
     
-    // Rewrite img src
-    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+\.(png|jpg|jpeg|gif|svg|webp)[^"]*)"/gi, 'src="/api/payments/payu/$1"');
+    // Rewrite img src with cache buster
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+\.(png|jpg|jpeg|gif|svg|webp)[^"]*)"/gi, `src="/api/payments/payu/$1?v=${cacheBuster}"`);
     
     // Serve the modified HTML content
     res.setHeader('Content-Type', 'text/html');
