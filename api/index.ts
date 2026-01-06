@@ -993,7 +993,28 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleAddCredits(req as AuthenticatedRequest, res);
     }
     
-    // Payment routes (PayU)
+    // Payment routes (PayU) - MUST be before conversations routes
+    // Proxy PayU static assets (JS, CSS, images)
+    if (path.match(/^\/payments\/payu\/(js|css|img|fonts)\//)) {
+      const assetPath = path.replace('/payments/payu/', '/');
+      const payuUrl = `https://secure.snd.payu.com${assetPath}`;
+      console.log('[PAYU-PROXY] Proxying asset:', payuUrl);
+      
+      try {
+        const assetResponse = await fetch(payuUrl);
+        const contentType = assetResponse.headers.get('content-type');
+        if (contentType) {
+          res.setHeader('Content-Type', contentType);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        const buffer = await assetResponse.arrayBuffer();
+        return res.send(Buffer.from(buffer));
+      } catch (error) {
+        console.error('[PAYU-PROXY] Asset fetch error:', error);
+        return res.status(404).send('Asset not found');
+      }
+    }
+    
     if (path === '/payments/payu/create' && req.method === 'POST') {
       const payuHandler = (await import('./payments/payu/create')).default;
       return await payuHandler(req, res);
