@@ -1,0 +1,91 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   🔐 ADMIN LOGIN - QUICK REFERENCE                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📧 CREDENTIALS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Email:    mahmoud@protolab.info
+  Password: 000000
+  Role:     Admin
+
+🌐 SERVERS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Frontend:  http://localhost:8080
+  Backend:   http://localhost:5000
+  Database:  https://ejauqqpatmqbxxhbmkzp.supabase.co
+
+🚀 TO LOGIN:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. Start server:      npm run dev:server
+  2. Open browser:      http://localhost:8080/admin/login
+  3. Enter email:       mahmoud@protolab.info
+  4. Enter password:    000000
+  5. Click Login button
+  6. Access dashboard:  http://localhost:8080/admin
+
+📊 ADMIN DASHBOARD PAGES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Dashboard        → /admin (Overview, statistics)
+  ✓ Orders           → /admin/orders (109 orders)
+  ✓ Users            → /admin/users (7 users)
+  ✓ Printers         → /admin/printers (4 printers)
+  ✓ Materials        → /admin/materials (5+ materials)
+  ✓ Analytics        → /admin/analytics (Business metrics)
+  ✓ Reports          → /admin/reports (Report generation)
+  ✓ Notifications    → /admin/notifications (Message center)
+  ✓ Settings         → /admin/settings (Configuration)
+
+🔑 AUTHENTICATION DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Token Type:        JWT (JSON Web Token)
+  Access Token:      15-minute expiry
+  Refresh Token:     7-day expiry
+  Storage:           localStorage
+  Authorization:     Bearer [token]
+
+✅ WHAT'S WORKING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Admin authentication flow
+  ✓ Token generation
+  ✓ Role-based access control
+  ✓ Protected routes
+  ✓ API endpoints
+  ✓ Email service
+  ✓ Security middleware
+  ✓ CORS protection
+
+⚠️ NOTE - DATABASE STATUS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Users Table:       0 records (empty)
+  Orders Table:      0 records (empty) → Dashboard shows mock data (109 orders)
+  Materials Table:   23 records (corrupted data)
+  Payments Table:    MISSING
+  
+  👉 See SUPABASE_DATA_STATUS.md for detailed audit
+
+📝 USEFUL COMMANDS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Start servers:          npm run dev
+  Start only backend:     npm run dev:server
+  Start only frontend:    cd client && npm run dev
+  Check database:         node check-supabase-data.js
+  Test login endpoint:    node test-login-admin.js
+
+📚 DOCUMENTATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ADMIN_LOGIN_GUIDE.md          → Complete login guide (you're reading it!)
+  ADMIN_DASHBOARD_GUIDE.md      → Dashboard overview
+  SUPABASE_DATA_STATUS.md       → Database audit & status
+  DEPLOYMENT_GUIDE.md           → Production deployment
+
+🎯 NEXT STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. ✅ Login with provided credentials
+  2. 📊 Explore admin dashboard pages
+  3. 🗄️ Populate database with real data
+  4. 🔧 Fix token refresh endpoint
+  5. 🚀 Deploy to production
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Status: ✅ READY TO LOGIN

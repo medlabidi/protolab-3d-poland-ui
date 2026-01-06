@@ -14,6 +14,7 @@ import {
   Bell,
   FileText,
   Palette,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -34,6 +35,11 @@ const menuItems = [
     title: "Users",
     icon: Users,
     path: "/admin/users",
+  },
+  {
+    title: "Conversations",
+    icon: MessageSquare,
+    path: "/admin/conversations",
   },
   {
     title: "Printers",

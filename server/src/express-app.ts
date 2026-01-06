@@ -18,7 +18,11 @@ const createApp = (): Application => {
   const app = express();
   
   // Security middleware
-  app.use(helmet());
+  // Temporarily disabled to test JSON parsing error
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
   
   // CORS configuration - Allow both ports 8080 and 8081
   const allowedOrigins = ['http://localhost:8080', 'http://localhost:8081'];
