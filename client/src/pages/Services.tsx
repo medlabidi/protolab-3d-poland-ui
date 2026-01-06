@@ -533,7 +533,7 @@ const Services = () => {
               <ul className="space-y-3">
                 <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/new-print")}>{t('landing.footerPrinting')}</li>
                 <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/services/design")}>{t('landing.footerDesign')}</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/services/consulting")}>{t('landing.footerPrototyping')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/design-assistance")}>{t('landing.footerPrototyping')}</li>
               </ul>
             </div>
             <div>
