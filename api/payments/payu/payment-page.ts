@@ -43,7 +43,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // This rewrites paths like /js/file.js to /api/payments/payu/js/file.js
     let modifiedHtml = htmlContent;
     
-    // Rewrite script src
+    // First, add a base tag to ensure all relative URLs resolve correctly
+    modifiedHtml = modifiedHtml.replace(
+      '<head>',
+      '<head><base href="/api/payments/payu/">'
+    );
+    
+    // Rewrite script src (both absolute and relative)
     modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, 'src="/api/payments/payu/$1"');
     modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, "src='/api/payments/payu/$1'");
     
