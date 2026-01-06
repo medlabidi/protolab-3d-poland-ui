@@ -17,7 +17,7 @@ import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { 
   ArrowLeft, Package, User, Calendar, DollarSign, 
   Truck, FileText, Clock, Weight, Layers, Info,
-  Mail, Phone, MapPin, CreditCard, Palette
+  Mail, Phone, MapPin, CreditCard, Palette, Download
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -390,19 +390,38 @@ const AdminOrderDetails = () => {
             {/* Model Viewer */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="border-b border-gray-800">
-                <CardTitle className="text-white flex items-center gap-2">
-                  {order.order_type === 'design' ? (
-                    <>
-                      <Palette className="w-5 h-5 text-purple-400" />
-                      Fichier de référence
-                    </>
-                  ) : (
-                    <>
-                      <Package className="w-5 h-5 text-blue-400" />
-                      Modèle 3D
-                    </>
-                  )}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white flex items-center gap-2">
+                    {order.order_type === 'design' ? (
+                      <>
+                        <Palette className="w-5 h-5 text-purple-400" />
+                      Reference File
+                      </>
+                    ) : (
+                      <>
+                        <Package className="w-5 h-5 text-blue-400" />
+                      3D Model
+                      </>
+                    )}
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = order.file_url;
+                      link.download = order.file_name;
+                      link.target = '_blank';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="border-blue-500 text-blue-300 hover:bg-blue-500/20"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download 3D
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="bg-gray-800 rounded-lg overflow-hidden">
@@ -412,7 +431,7 @@ const AdminOrderDetails = () => {
                   />
                 </div>
                 <div className="mt-4 p-3 bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-400">Fichier</p>
+                  <p className="text-sm text-gray-400">File</p>
                   <p className="text-white font-medium">{order.file_name}</p>
                 </div>
               </CardContent>

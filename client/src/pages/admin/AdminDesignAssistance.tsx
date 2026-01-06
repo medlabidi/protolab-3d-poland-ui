@@ -1,44 +1,78 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Eye, Pencil, MessageSquare, CheckCircle, Clock, Search } from "lucide-react";
+import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
+import { Eye, Palette, Download, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { OrderTimeline } from "@/components/OrderTimeline";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-interface DesignRequest {
+interface Order {
   id: string;
-  user_id: string;
-  user_email?: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: OrderStatus;
+  file_name: string;
+  file_url?: string;
+  price: number;
+  payment_status?: PaymentStatus;
+  paid_amount?: number;
   created_at: string;
-  updated_at: string;
-  budget?: number;
-  deadline?: string;
-  files?: string[];
+  user_email?: string;
+  material?: string;
+  color?: string;
+  layer_height?: string;
+  infill?: string;
+  quantity?: number;
+  shipping_method?: string;
+  shipping_address?: string;
+  material_weight?: string;
+  print_time?: string;
+  tracking_code?: string;
+  notes?: string;
+  order_type?: 'print' | 'design';
+  design_description?: string;
+  design_requirements?: string;
+  reference_images?: string[];
+  parent_order_id?: string;
+  users?: { name: string; email: string };
 }
 
 const AdminDesignAssistance = () => {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<DesignRequest[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
 
   useEffect(() => {
-    fetchDesignRequests();
+    fetchOrders();
   }, []);
 
-  const fetchDesignRequests = async () => {
+  const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/design-requests`, {
+      const response = await fetch(`${API_URL}/admin/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -46,100 +80,112 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setRequests(data.requests || []);
+        // Filter only design assistance orders
+        const designOrders = (data.orders || []).filter((order: Order) => order.order_type === 'design');
+        setOrders(designOrders);
       } else {
-        // For now, use mock data if endpoint doesn't exist
-        setRequests([
-          {
-            id: '1',
-            user_id: 'user1',
-            user_email: 'client@example.com',
-            title: 'Custom phone case design',
-            description: 'Need a custom phone case with logo',
-            status: 'pending',
-            priority: 'high',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            budget: 150,
-          },
-          {
-            id: '2',
-            user_id: 'user2',
-            user_email: 'test@example.com',
-            title: 'Mechanical part modification',
-            description: 'Modify existing STL file for better fit',
-            status: 'in_progress',
-            priority: 'urgent',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            updated_at: new Date().toISOString(),
-            budget: 300,
-          },
-        ]);
+        toast.error('Failed to fetch design assistance orders');
       }
     } catch (error) {
-      console.error('Error fetching design requests:', error);
-      toast.error('Error loading design requests');
+      console.error('Error fetching design assistance orders:', error);
+      toast.error('Error loading design assistance orders');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredRequests = requests.filter((req) =>
-    req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.user_email?.toLowerCase().includes(searchQuery.toLowerCase())
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success('Status updated successfully');
+        fetchOrders();
+      } else {
+        throw new Error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const fetchOrderDetails = async (orderId: string) => {
+    setLoadingOrderDetails(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const data = await response.json();
+      setSelectedOrder(data.order);
+      setShowOrderDetails(true);
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+      toast.error('Failed to load order details');
+    } finally {
+      setLoadingOrderDetails(false);
+    }
+  };
+
+  const handleDownload3DFile = (order: Order) => {
+    if (!order.file_url) {
+      toast.error('No file available for download');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = order.file_url;
+    link.download = order.file_name || 'design-file';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Download started');
+  };
+
+  const filteredOrders = orders.filter((order) =>
+    order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.file_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.design_description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const formatPrice = (price: number | undefined) => {
+    if (!price) return 'N/A';
+    return `${price.toFixed(2)} PLN`;
+  };
+
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       day: '2-digit',
-      month: '2-digit',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { color: string; label: string }> = {
-      pending: { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'En attente' },
-      in_progress: { color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'En cours' },
-      completed: { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'Terminé' },
-      cancelled: { color: 'bg-red-500/20 text-red-400 border-red-500/30', label: 'Annulé' },
-    };
-
-    const variant = variants[status] || variants.pending;
-    return (
-      <Badge className={`${variant.color} border`}>
-        {variant.label}
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const variants: Record<string, { color: string; label: string }> = {
-      low: { color: 'bg-gray-500/20 text-gray-400', label: 'Basse' },
-      medium: { color: 'bg-blue-500/20 text-blue-400', label: 'Moyenne' },
-      high: { color: 'bg-orange-500/20 text-orange-400', label: 'Haute' },
-      urgent: { color: 'bg-red-500/20 text-red-400', label: 'Urgent' },
-    };
-
-    const variant = variants[priority] || variants.medium;
-    return (
-      <Badge className={variant.color}>
-        {variant.label}
-      </Badge>
-    );
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8">
-          <div className="flex items-center justify-center h-full">
-            <div className="text-white text-xl">Loading design requests...</div>
-          </div>
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
         </main>
       </div>
     );
@@ -149,23 +195,23 @@ const AdminDesignAssistance = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Pencil className="w-8 h-8 text-purple-500" />
-                Design Assistance
+                <Palette className="w-8 h-8 text-purple-500" />
+                Design Assistance Orders
               </h1>
-              <p className="text-gray-400 mt-1">Manage custom design requests and assistance</p>
+              <p className="text-gray-400 mt-1">Manage custom design requests and assistance orders</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
                   type="text"
-                  placeholder="Search requests..."
+                  placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
@@ -179,7 +225,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{requests.length}</div>
+                  <div className="text-3xl font-bold text-white">{orders.length}</div>
                   <p className="text-sm text-gray-400 mt-1">Total Requests</p>
                 </div>
               </CardContent>
@@ -188,7 +234,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-yellow-500">
-                    {requests.filter(r => r.status === 'pending').length}
+                    {orders.filter(o => o.status === 'submitted' || o.status === 'in_queue').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Pending</p>
                 </div>
@@ -198,7 +244,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-500">
-                    {requests.filter(r => r.status === 'in_progress').length}
+                    {orders.filter(o => o.status === 'printing').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">In Progress</p>
                 </div>
@@ -208,7 +254,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-500">
-                    {requests.filter(r => r.status === 'completed').length}
+                    {orders.filter(o => o.status === 'finished' || o.status === 'delivered').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Completed</p>
                 </div>
@@ -216,78 +262,85 @@ const AdminDesignAssistance = () => {
             </Card>
           </div>
 
-          {/* Requests List */}
+          {/* Orders Table */}
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">All Design Requests</CardTitle>
+              <CardTitle className="text-white">All Design Assistance Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredRequests.length === 0 ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
+                  <div>Order ID</div>
+                  <div>Project Name</div>
+                  <div>User</div>
+                  <div>Description</div>
+                  <div>Status</div>
+                  <div>Payment</div>
+                  <div>Price</div>
+                  <div className="text-right">Actions</div>
+                </div>
+                
+                {filteredOrders.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
-                    <Pencil className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No design requests found</p>
+                    <Palette className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No design assistance orders found</p>
                   </div>
                 ) : (
-                  filteredRequests.map((request) => (
-                    <Card key={request.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold text-white">{request.title}</h3>
-                              {getStatusBadge(request.status)}
-                              {getPriorityBadge(request.priority)}
-                            </div>
-                            
-                            <p className="text-gray-400 text-sm mb-4">{request.description}</p>
-                            
-                            <div className="flex items-center gap-6 text-sm text-gray-500">
-                              <div className="flex items-center gap-2">
-                                <span>👤</span>
-                                <span>{request.user_email}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                <span>{formatDate(request.created_at)}</span>
-                              </div>
-                              {request.budget && (
-                                <div className="flex items-center gap-2">
-                                  <span>💰</span>
-                                  <span className="font-semibold text-green-400">{request.budget} PLN</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 ml-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="hover:bg-purple-500/20 text-purple-400"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="hover:bg-blue-500/20 text-blue-400"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </Button>
-                            {request.status !== 'completed' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-green-500/20 text-green-400"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  filteredOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="grid grid-cols-8 gap-4 items-center py-4 px-4 rounded-lg hover:bg-gray-800/50 transition-colors border-b border-gray-800/50"
+                    >
+                      <div className="font-mono text-sm text-gray-300">
+                        #{order.id.slice(0, 8)}
+                      </div>
+                      <div className="text-sm text-white truncate" title={order.file_name}>
+                        {order.file_name}
+                      </div>
+                      <div className="text-sm text-gray-400 truncate">
+                        {order.user_email || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-400 truncate" title={order.design_description}>
+                        {order.design_description || 'No description'}
+                      </div>
+                      <div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">In Progress</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                            <SelectItem value="suspended">Suspended</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        {order.payment_status && (
+                          <PaymentStatusBadge status={order.payment_status} />
+                        )}
+                      </div>
+                      <div className="font-bold text-green-400">
+                        {formatPrice(order.price)}
+                      </div>
+                      <div className="text-right flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-purple-500/20 text-purple-400"
+                          onClick={() => fetchOrderDetails(order.id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
@@ -295,6 +348,178 @@ const AdminDesignAssistance = () => {
           </Card>
         </div>
       </main>
+      {/* Order Details Dialog */}
+      <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl text-white">Design Assistance Order Details</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Order ID: {selectedOrder?.id}
+                </DialogDescription>
+              </div>
+              {selectedOrder?.file_url && (
+                <Button
+                  onClick={() => selectedOrder && handleDownload3DFile(selectedOrder)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download File
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+
+          {loadingOrderDetails ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          ) : selectedOrder ? (
+            <div className="space-y-6">
+              {/* 3D Model Viewer */}
+              {selectedOrder.file_url && (
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Reference File / 3D Model</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-950 rounded-lg p-4">
+                      <ModelViewerUrl url={selectedOrder.file_url} fileName={selectedOrder.file_name} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Design Details */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Design Project Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-400">Project Name</label>
+                      <p className="text-white font-medium">{selectedOrder.file_name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Status</label>
+                      <p className="text-white font-medium capitalize">{selectedOrder.status}</p>
+                    </div>
+                  </div>
+
+                  {selectedOrder.design_description && (
+                    <div>
+                      <label className="text-sm text-gray-400">Description</label>
+                      <p className="text-white">{selectedOrder.design_description}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.design_requirements && (
+                    <div>
+                      <label className="text-sm text-gray-400">Requirements</label>
+                      <p className="text-white whitespace-pre-wrap">{selectedOrder.design_requirements}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
+                    <div>
+                      <label className="text-sm text-gray-400">Reference Images</label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {selectedOrder.reference_images.map((img, idx) => (
+                          <img 
+                            key={idx} 
+                            src={img} 
+                            alt={`Reference ${idx + 1}`} 
+                            className="w-full h-32 object-cover rounded border border-gray-700"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedOrder.parent_order_id && (
+                    <div>
+                      <label className="text-sm text-gray-400">Linked to Print Order</label>
+                      <p className="text-purple-400 font-mono">#{selectedOrder.parent_order_id.slice(0, 8)}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Customer & Payment Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Customer Info</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">Email</label>
+                      <p className="text-white">{selectedOrder.user_email || selectedOrder.users?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Name</label>
+                      <p className="text-white">{selectedOrder.users?.name || 'N/A'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Payment Info</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">Price</label>
+                      <p className="text-white font-bold text-xl">{formatPrice(selectedOrder.price)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Payment Status</label>
+                      <div className="mt-1">
+                        {selectedOrder.payment_status && (
+                          <PaymentStatusBadge status={selectedOrder.payment_status} amount={selectedOrder.paid_amount} />
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Order Timeline */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Order Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <OrderTimeline currentStatus={selectedOrder.status} />
+                </CardContent>
+              </Card>
+
+              {selectedOrder.notes && (
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-white whitespace-pre-wrap">{selectedOrder.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              No order details available
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrderDetails(false)} className="border-gray-700 text-white hover:bg-gray-800">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
