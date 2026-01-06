@@ -993,6 +993,20 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleAddCredits(req as AuthenticatedRequest, res);
     }
     
+    // Payment routes (PayU)
+    if (path === '/payments/payu/create' && req.method === 'POST') {
+      const payuHandler = (await import('./payments/payu/create')).default;
+      return await payuHandler(req, res);
+    }
+    if (path === '/payments/payu/notify' && req.method === 'POST') {
+      const notifyHandler = (await import('./payments/payu/notify')).default;
+      return await notifyHandler(req, res);
+    }
+    if (path.match(/^\/payments\/payu\/payment-page/) && (req.method === 'GET' || req.method === 'POST')) {
+      const pageHandler = (await import('./payments/payu/payment-page')).default;
+      return await pageHandler(req, res);
+    }
+    
     // Conversations routes
     if (path === '/conversations' && req.method === 'GET') {
       return await handleGetConversations(req as AuthenticatedRequest, res);
