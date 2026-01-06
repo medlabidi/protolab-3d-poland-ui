@@ -10,7 +10,19 @@
   },
   "rewrites": [
     {
-      "source": "/api/payments/payu/(js|css|img|fonts)/:path*",
+      "source": "/api/payments/payu/js/:path*",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/api/payments/payu/css/:path*",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/api/payments/payu/img/:path*",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/api/payments/payu/fonts/:path*",
       "destination": "/api/index.ts"
     },
     {
