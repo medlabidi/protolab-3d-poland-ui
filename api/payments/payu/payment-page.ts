@@ -39,9 +39,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).send('Payment session not found or expired');
     }
 
-    // Serve the HTML content directly
+    // Rewrite asset URLs to point to our proxy
+    // This rewrites paths like /js/file.js to /payments/payu/js/file.js
+    let modifiedHtml = htmlContent;
+    
+    // Rewrite script src
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, 'src="/payments/payu/$1"');
+    modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, "src='/payments/payu/$1'");
+    
+    // Rewrite link href (for CSS)
+    modifiedHtml = modifiedHtml.replace(/href="\/([^"]+\.css[^"]*)"/g, 'href="/payments/payu/$1"');
+    modifiedHtml = modifiedHtml.replace(/href='\/([^']+\.css[^']*)'/g, "href='/payments/payu/$1'");
+    
+    // Rewrite img src
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+\.(png|jpg|jpeg|gif|svg|webp)[^"]*)"/gi, 'src="/payments/payu/$1"');
+    
+    // Serve the modified HTML content
     res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(htmlContent);
+    return res.status(200).send(modifiedHtml);
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
