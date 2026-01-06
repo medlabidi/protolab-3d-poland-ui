@@ -5,6 +5,8 @@ const paymentSessions = new Map<string, string>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { method } = req;
+  
+  console.log('[PAYMENT-PAGE-HANDLER] Called with method:', method, 'URL:', req.url);
 
   if (method === 'POST') {
     // Store PayU HTML content
