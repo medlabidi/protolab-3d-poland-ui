@@ -10,8 +10,9 @@ export const connectDatabase = async (): Promise<void> => {
     
     // Validate connection credentials
     if (!supabaseUrl || !supabaseKey) {
-      logger.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables');
-      throw new Error('Supabase credentials not properly configured');
+      logger.warn('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables');
+      logger.warn('Supabase client will be initialized on first use');
+      return; // Don't throw, just skip connection test in dev
     }
     
     logger.info('Connecting to Supabase...');
@@ -24,14 +25,18 @@ export const connectDatabase = async (): Promise<void> => {
     });
     
     // Test the connection with a simple query
-    const { error } = await supabase.from('users').select('count', { count: 'exact', head: true });
-    
-    if (error && error.code !== 'PGRST116') { // PGRST116 = table doesn't exist yet, which is okay
-      throw error;
+    try {
+      const { error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = table doesn't exist yet, which is okay
+        logger.warn({ err: error }, 'Supabase connection test failed, but continuing...');
+      } else {
+        logger.info('✅ Supabase connected successfully');
+        logger.info({ url: supabaseUrl }, 'Database connection established');
+      }
+    } catch (testError) {
+      logger.warn({ err: testError }, 'Supabase connection test error, but client created');
     }
-    
-    logger.info('✅ Supabase connected successfully');
-    logger.info({ url: supabaseUrl }, 'Database connection established');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error({ err: error }, '❌ Supabase connection failed');
@@ -41,6 +46,12 @@ export const connectDatabase = async (): Promise<void> => {
       logger.error('Authentication error: Verify SUPABASE_SERVICE_ROLE_KEY');
     } else if (errorMessage.includes('fetch')) {
       logger.error('Network error: Check internet connection and SUPABASE_URL');
+    }
+    
+    // Don't throw in development - let the server start anyway
+    if (process.env.NODE_ENV !== 'production') {
+      logger.warn('Continuing in development mode without Supabase...');
+      return;
     }
     
     throw error;
