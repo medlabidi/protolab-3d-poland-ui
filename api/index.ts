@@ -995,8 +995,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     
     // Payment routes (PayU) - MUST be before conversations routes
     // Proxy PayU static assets (JS, CSS, images)
-    if (path.match(/^\/payments\/payu\/(js|css|img|fonts)\//)) {
-      const assetPath = path.replace('/payments/payu/', '/');
+    if (path.match(/^\/api\/payments\/payu\/(js|css|img|fonts)\//)) {
+      const assetPath = path.replace('/api/payments/payu/', '/');
       const payuUrl = `https://secure.snd.payu.com${assetPath}`;
       console.log('[PAYU-PROXY] Proxying asset:', payuUrl);
       
