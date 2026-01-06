@@ -40,19 +40,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Rewrite asset URLs to point to our proxy
-    // This rewrites paths like /js/file.js to /payments/payu/js/file.js
+    // This rewrites paths like /js/file.js to /api/payments/payu/js/file.js
     let modifiedHtml = htmlContent;
     
     // Rewrite script src
-    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, 'src="/payments/payu/$1"');
-    modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, "src='/payments/payu/$1'");
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+)"/g, 'src="/api/payments/payu/$1"');
+    modifiedHtml = modifiedHtml.replace(/src='\/([^']+)'/g, "src='/api/payments/payu/$1'");
     
     // Rewrite link href (for CSS)
-    modifiedHtml = modifiedHtml.replace(/href="\/([^"]+\.css[^"]*)"/g, 'href="/payments/payu/$1"');
-    modifiedHtml = modifiedHtml.replace(/href='\/([^']+\.css[^']*)'/g, "href='/payments/payu/$1'");
+    modifiedHtml = modifiedHtml.replace(/href="\/([^"]+\.css[^"]*)"/g, 'href="/api/payments/payu/$1"');
+    modifiedHtml = modifiedHtml.replace(/href='\/([^']+\.css[^']*)'/g, "href='/api/payments/payu/$1'");
     
     // Rewrite img src
-    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+\.(png|jpg|jpeg|gif|svg|webp)[^"]*)"/gi, 'src="/payments/payu/$1"');
+    modifiedHtml = modifiedHtml.replace(/src="\/([^"]+\.(png|jpg|jpeg|gif|svg|webp)[^"]*)"/gi, 'src="/api/payments/payu/$1"');
     
     // Serve the modified HTML content
     res.setHeader('Content-Type', 'text/html');
