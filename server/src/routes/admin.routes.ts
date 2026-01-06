@@ -19,6 +19,9 @@ router.use(requireAdmin);
 
 // Order management
 router.get('/orders', adminController.getAllOrders);
+router.get('/orders/type/:type', adminController.getOrdersByType);
+router.get('/orders/:id', adminController.getOrderById);
+router.post('/orders/:designOrderId/create-print', adminController.createPrintFromDesign);
 router.patch('/orders/:id/status', validate(updateOrderStatusSchema), adminController.updateOrderStatus);
 router.patch('/orders/:id/pricing', validate(updateOrderPricingSchema), adminController.updateOrderPricing);
 router.patch('/orders/:id/tracking', validate(updateOrderTrackingSchema), adminController.updateOrderTracking);

@@ -941,7 +941,15 @@ const Orders = () => {
                                       <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
                                     </div>
                                     <div className="font-bold text-primary">{formatPrice(order.price)}</div>
-                                    <div className="text-right">
+                                    <div className="text-right flex items-center justify-end gap-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => navigate(`/orders/${order.id}`)}
+                                        className="hover:bg-primary/10"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button variant="ghost" size="sm">
@@ -1043,7 +1051,15 @@ const Orders = () => {
                             <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
                           </div>
                           <div className="font-bold gradient-text">{formatPrice(order.price)}</div>
-                          <div className="text-right">
+                          <div className="text-right flex items-center justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/orders/${order.id}`)}
+                              className="hover:bg-primary/10 hover:border-primary"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -1159,7 +1175,15 @@ const Orders = () => {
                               <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
                             </div>
                             <div className="font-bold text-muted-foreground">{formatPrice(order.price)}</div>
-                            <div className="text-right">
+                            <div className="text-right flex items-center justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => navigate(`/orders/${order.id}`)}
+                                className="hover:bg-primary/10 hover:border-primary"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm">
@@ -1247,7 +1271,15 @@ const Orders = () => {
                               <span className="text-muted-foreground ml-1">({capitalizeFirst(order.color)})</span>
                             </div>
                             <div className="font-bold text-muted-foreground">{formatPrice(order.price)}</div>
-                            <div className="text-right">
+                            <div className="text-right flex items-center justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => navigate(`/orders/${order.id}`)}
+                                className="hover:bg-primary/10 hover:border-primary"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm">

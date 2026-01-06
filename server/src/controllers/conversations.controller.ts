@@ -65,20 +65,25 @@ export class ConversationsController {
       const { conversationId } = req.params;
       const limit = parseInt(req.query.limit as string) || 100;
       
+      logger.info({ userId, conversationId, limit }, 'User fetching messages');
+      
       // Verify user owns this conversation
       const conversation = await conversationsService.getConversation(conversationId, userId);
       if (!conversation) {
+        logger.warn({ userId, conversationId }, 'Conversation not found for user');
         res.status(404).json({ error: 'Conversation not found' });
         return;
       }
       
       const messages = await conversationsService.getMessages(conversationId, limit);
+      logger.info({ conversationId, count: messages.length }, 'Messages fetched successfully');
       
       // Mark messages as read
       await conversationsService.markMessagesAsRead(conversationId, userId);
       
       res.json({ messages });
     } catch (error) {
+      logger.error({ err: error, userId: req.user?.id, conversationId: req.params.conversationId }, 'Error in getMessages');
       next(error);
     }
   }

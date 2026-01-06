@@ -60,6 +60,10 @@ export interface OrderCreateInput {
   shippingAddress?: string;
   price?: number;
   projectName?: string;
+  orderType?: 'print' | 'design';
+  designDescription?: string;
+  designRequirements?: string;
+  referenceImages?: string[];
 }
 
 // Re-export pricing types for backward compatibility

@@ -441,11 +441,13 @@ const AdminConversations = () => {
                     {loadingMessages ? (
                       <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                        <span className="ml-2 text-sm text-gray-400">Chargement des messages...</span>
                       </div>
                     ) : messages.length === 0 ? (
                       <div className="text-center text-gray-500 py-8">
-                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No messages yet</p>
+                        <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                        <p className="font-medium text-gray-400">Aucun message</p>
+                        <p className="text-sm text-gray-500 mt-2">Le client n'a pas encore envoyé de message</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -453,39 +455,50 @@ const AdminConversations = () => {
                           <div
                             key={message.id}
                             className={cn(
-                              "flex gap-3",
-                              message.sender_type === 'user' ? 'justify-start' : 'justify-end'
+                              "flex gap-3 items-end",
+                              message.sender_type === 'engineer' && 'flex-row-reverse'
                             )}
                           >
-                            {message.sender_type === 'user' && (
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <User className="w-4 h-4 text-white" />
-                                </div>
-                              </div>
-                            )}
-
-                            <div
-                              className={cn(
-                                "max-w-xs lg:max-w-md rounded-lg p-3 break-words",
-                                message.sender_type === 'user'
-                                  ? 'bg-gray-800 text-gray-100'
-                                  : 'bg-blue-600 text-white'
-                              )}
-                            >
-                              <p className="text-sm">{message.message}</p>
-                              <p className="text-xs opacity-70 mt-1">
-                                {formatDate(message.created_at)}
-                              </p>
+                            {/* Avatar */}
+                            <div className={cn(
+                              "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-md",
+                              message.sender_type === 'user' && "bg-gradient-to-br from-blue-500 to-blue-600",
+                              message.sender_type === 'engineer' && "bg-gradient-to-br from-green-500 to-green-600"
+                            )}>
+                              <User className="w-4 h-4 text-white" />
                             </div>
 
-                            {message.sender_type === 'engineer' && (
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                                  <User className="w-4 h-4 text-white" />
-                                </div>
+                            {/* Message Bubble */}
+                            <div className="flex flex-col max-w-[70%] gap-1">
+                              {/* Sender Label */}
+                              <span className={cn(
+                                "text-xs font-semibold px-2",
+                                message.sender_type === 'user' && "text-blue-400",
+                                message.sender_type === 'engineer' && "text-green-400 text-right"
+                              )}>
+                                {message.sender_type === 'user' ? 'Client' : 'Vous (Équipe Support)'}
+                              </span>
+                              
+                              {/* Message Content */}
+                              <div
+                                className={cn(
+                                  "rounded-2xl px-4 py-3 shadow-sm",
+                                  message.sender_type === 'user'
+                                    ? 'bg-gray-800 text-gray-100 border border-gray-700 rounded-tl-md'
+                                    : 'bg-gradient-to-br from-green-600 to-green-700 text-white rounded-tr-md'
+                                )}
+                              >
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.message}</p>
                               </div>
-                            )}
+                              
+                              {/* Timestamp */}
+                              <span className={cn(
+                                "text-xs text-gray-500 px-2",
+                                message.sender_type === 'engineer' && "text-right"
+                              )}>
+                                {formatDate(message.created_at)}
+                              </span>
+                            </div>
                           </div>
                         ))}
                         <div ref={messagesEndRef} />
@@ -494,27 +507,33 @@ const AdminConversations = () => {
                   </ScrollArea>
 
                   {/* Message Input */}
-                  <div className="border-t border-gray-800 p-4 flex-shrink-0">
+                  <div className="border-t border-gray-800 p-4 flex-shrink-0 bg-gray-900/50">
                     <form onSubmit={handleSendMessage} className="flex gap-2">
                       <Input
-                        placeholder="Type your reply..."
+                        placeholder="💬 Répondre au client..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         disabled={sendingMessage}
-                        className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                        className="flex-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                       />
                       <Button
                         type="submit"
-                        disabled={sendingMessage || !newMessage.trim()}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        disabled={!newMessage.trim() || sendingMessage}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6"
                       >
                         {sendingMessage ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Send className="w-4 h-4" />
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Envoyer
+                          </>
                         )}
                       </Button>
                     </form>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Répondre en tant qu'ingénieur support
+                    </p>
                   </div>
                 </>
               ) : (

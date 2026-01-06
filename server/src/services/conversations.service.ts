@@ -198,7 +198,12 @@ export class ConversationsService {
       .limit(limit);
     
     if (error) {
-      logger.error({ err: error }, `Failed to get messages for conversation ${conversationId}`);
+      logger.error({ err: error, conversationId, errorCode: error.code }, `Failed to get messages for conversation ${conversationId}`);
+      // If table doesn't exist, return empty array
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        logger.warn('conversation_messages table does not exist yet');
+        return [];
+      }
       return [];
     }
     

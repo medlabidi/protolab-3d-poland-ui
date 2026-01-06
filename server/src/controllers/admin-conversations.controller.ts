@@ -68,7 +68,7 @@ export const adminConversationsController = {
         (data || []).map(async (conversation: any) => {
           try {
             const { data: messages } = await supabase
-              .from('messages')
+              .from('conversation_messages')
               .select('*')
               .eq('conversation_id', conversation.id)
               .order('created_at', { ascending: false })
@@ -78,7 +78,7 @@ export const adminConversationsController = {
             
             // Count unread messages from users (for admins)
             const { data: unreadMessages } = await supabase
-              .from('messages')
+              .from('conversation_messages')
               .select('id')
               .eq('conversation_id', conversation.id)
               .eq('sender_type', 'user')
@@ -186,14 +186,27 @@ export const adminConversationsController = {
       const { conversationId } = req.params;
       const { limit = 50 } = req.query;
 
+      logger.info({ conversationId, limit }, 'Fetching messages for conversation');
+
       const { data, error } = await supabase
-        .from('messages')
+        .from('conversation_messages')
         .select('*, users:sender_id(id, name, email, avatar)')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
         .limit(limit as number);
 
-      if (error) throw error;
+      if (error) {
+        logger.error({ err: error, conversationId }, 'Supabase error fetching messages');
+        // If table doesn't exist, return empty array
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          return res.json({
+            success: true,
+            messages: [],
+            warning: 'conversation_messages table not yet initialized',
+          });
+        }
+        throw error;
+      }
 
       const enrichedMessages = data?.map((message: any) => ({
         ...message,
@@ -201,13 +214,19 @@ export const adminConversationsController = {
         users: undefined,
       }));
 
+      logger.info({ conversationId, count: enrichedMessages?.length || 0 }, 'Messages fetched successfully');
+
       res.json({
         success: true,
-        messages: enrichedMessages,
+        messages: enrichedMessages || [],
       });
     } catch (error) {
-      logger.error({ err: error }, 'Error fetching messages');
-      res.status(500).json({ error: 'Failed to fetch messages' });
+      logger.error({ err: error, conversationId: req.params.conversationId }, 'Error fetching messages');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch messages';
+      res.status(500).json({ 
+        error: 'Failed to fetch messages',
+        details: errorMessage,
+      });
     }
   },
 
@@ -238,7 +257,7 @@ export const adminConversationsController = {
 
       // Create message
       const { data, error } = await supabase
-        .from('messages')
+        .from('conversation_messages')
         .insert({
           conversation_id: conversationId,
           sender_type: 'engineer',
@@ -317,7 +336,7 @@ export const adminConversationsController = {
       const { conversationId } = req.params;
 
       const { error } = await supabase
-        .from('messages')
+        .from('conversation_messages')
         .update({ is_read: true })
         .eq('conversation_id', conversationId)
         .eq('sender_type', 'user');

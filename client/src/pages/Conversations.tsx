@@ -105,6 +105,7 @@ const Conversations = () => {
       if (!response.ok) throw new Error('Failed to fetch conversations');
 
       const data = await response.json();
+      console.log('💬 Conversations récupérées:', data.conversations?.length || 0);
       setConversations(data.conversations || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -127,6 +128,8 @@ const Conversations = () => {
       if (!response.ok) throw new Error('Failed to fetch messages');
 
       const data = await response.json();
+      console.log('📨 Messages récupérés:', data.messages?.length || 0, 'messages');
+      console.log('📋 Contenu:', data.messages);
       setMessages(data.messages || []);
       
       // Update conversation unread count locally
@@ -164,6 +167,7 @@ const Conversations = () => {
       if (!response.ok) throw new Error('Failed to send message');
 
       const data = await response.json();
+      console.log('✉️ Message envoyé:', data.message);
       setMessages(prev => [...prev, data.message]);
       setNewMessage("");
       
@@ -358,6 +362,13 @@ const Conversations = () => {
                     {loadingMessages ? (
                       <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        <span className="ml-2 text-sm text-muted-foreground">Chargement des messages...</span>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                        <MessageCircle className="w-16 h-16 text-muted-foreground/30 mb-4" />
+                        <p className="text-muted-foreground font-medium">Aucun message</p>
+                        <p className="text-sm text-muted-foreground/70 mt-2">Commencez la conversation en envoyant un message</p>
                       </div>
                     ) : (
                       <ScrollArea className="h-full p-4">
@@ -366,36 +377,52 @@ const Conversations = () => {
                             <div
                               key={message.id}
                               className={cn(
-                                "flex gap-3",
+                                "flex gap-3 animate-fade-in",
                                 message.sender_type === 'user' && "flex-row-reverse"
                               )}
                             >
+                              {/* Avatar */}
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                                message.sender_type === 'user' && "bg-primary text-primary-foreground",
-                                message.sender_type === 'engineer' && "bg-blue-500 text-white",
-                                message.sender_type === 'system' && "bg-muted text-muted-foreground"
+                                "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
+                                message.sender_type === 'user' && "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground",
+                                message.sender_type === 'engineer' && "bg-gradient-to-br from-blue-500 to-blue-600 text-white",
+                                message.sender_type === 'system' && "bg-gradient-to-br from-gray-400 to-gray-500 text-white"
                               )}>
                                 {getSenderIcon(message.sender_type)}
                               </div>
-                              <div className={cn(
-                                "max-w-[70%] rounded-2xl px-4 py-2",
-                                message.sender_type === 'user' && "bg-primary text-primary-foreground rounded-tr-sm",
-                                message.sender_type === 'engineer' && "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-tl-sm",
-                                message.sender_type === 'system' && "bg-muted text-muted-foreground text-center mx-auto text-sm italic"
-                              )}>
-                                {message.sender_type === 'engineer' && (
-                                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
-                                    {t('conversations.engineeringSupport')}
-                                  </p>
+                              
+                              {/* Message Bubble */}
+                              <div className="flex flex-col max-w-[70%] gap-1">
+                                {/* Sender Label */}
+                                {message.sender_type !== 'user' && (
+                                  <span className={cn(
+                                    "text-xs font-semibold px-2",
+                                    message.sender_type === 'engineer' && "text-blue-600 dark:text-blue-400",
+                                    message.sender_type === 'system' && "text-gray-600 dark:text-gray-400"
+                                  )}>
+                                    {message.sender_type === 'engineer' ? t('conversations.engineeringSupport') : 'Système'}
+                                  </span>
                                 )}
-                                <p className="text-sm whitespace-pre-wrap">{message.message}</p>
-                                <p className={cn(
-                                  "text-xs mt-1 opacity-70",
+                                
+                                {/* Message Content */}
+                                <div className={cn(
+                                  "rounded-2xl px-4 py-3 shadow-sm",
+                                  message.sender_type === 'user' && "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-md",
+                                  message.sender_type === 'engineer' && "bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-800 rounded-tl-md",
+                                  message.sender_type === 'system' && "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-center italic"
+                                )}>
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                    {message.message}
+                                  </p>
+                                </div>
+                                
+                                {/* Timestamp */}
+                                <span className={cn(
+                                  "text-xs text-muted-foreground px-2",
                                   message.sender_type === 'user' && "text-right"
                                 )}>
                                   {formatTime(message.created_at)}
-                                </p>
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -406,31 +433,43 @@ const Conversations = () => {
                   </CardContent>
 
                   {/* Message Input */}
-                  <div className="p-4 border-t">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t('conversations.typeMessage')}
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        disabled={sendingMessage || selectedConversation.status === 'closed'}
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
-                      >
-                        {sendingMessage ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                    {selectedConversation.status === 'closed' && (
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        {t('conversations.conversationClosed')}
-                      </p>
+                  <div className="p-4 border-t bg-muted/30">
+                    {selectedConversation.status === 'closed' ? (
+                      <div className="text-center py-3">
+                        <p className="text-sm text-muted-foreground">
+                          🔒 {t('conversations.conversationClosed')}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="💬 Écrivez votre message..."
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            disabled={sendingMessage}
+                            className="flex-1 bg-background"
+                          />
+                          <Button
+                            onClick={sendMessage}
+                            disabled={!newMessage.trim() || sendingMessage}
+                            className="px-6"
+                          >
+                            {sendingMessage ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Send className="w-4 h-4 mr-2" />
+                                Envoyer
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                          Appuyez sur Entrée pour envoyer
+                        </p>
+                      </>
                     )}
                   </div>
                 </>

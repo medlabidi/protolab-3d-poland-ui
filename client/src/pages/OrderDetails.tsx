@@ -81,12 +81,18 @@ const OrderDetails = () => {
   const fetchOrder = async (retry = true) => {
     try {
       setLoading(true);
+      setError(null);
       let token = localStorage.getItem('accessToken');
       
       if (!token) {
+        console.error('No access token found');
+        toast.error('Session expired. Please login again.');
         navigate('/login');
         return;
       }
+      
+      console.log('Fetching order:', orderId);
+      console.log('API URL:', `${API_URL}/orders/${orderId}`);
       
       let response = await fetch(`${API_URL}/orders/${orderId}`, {
         headers: {
@@ -94,7 +100,10 @@ const OrderDetails = () => {
         },
       });
 
+      console.log('Response status:', response.status);
+
       if (response.status === 401 && retry) {
+        console.log('Token expired, refreshing...');
         const newToken = await refreshAccessToken();
         if (newToken) {
           return fetchOrder(false);
@@ -103,14 +112,25 @@ const OrderDetails = () => {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to fetch order');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || `Failed to fetch order (${response.status})`);
       }
 
       const data = await response.json();
+      console.log('Order data received:', data);
+      
+      if (!data.order) {
+        throw new Error('No order data in response');
+      }
+      
       setOrder(data.order);
+      toast.success('Order loaded successfully');
     } catch (err) {
       console.error('Error fetching order:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load order');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load order';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -245,41 +265,52 @@ const OrderDetails = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
       
       <main className="flex-1 p-8">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/orders")}>
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header Section */}
+          <div className="flex items-start gap-4 animate-slide-up">
+            <Button variant="outline" size="icon" onClick={() => navigate("/orders")} className="mt-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{t('orderDetails.orderTitle')} #{order.id.slice(0, 8)}</h1>
-              <p className="text-muted-foreground">{t('orderDetails.placedOn')} {formatDate(order.created_at)}</p>
-            </div>
-            <div className="ml-auto flex gap-2 items-center">
-              <Button 
-                variant="outline" 
-                onClick={handleJobConversation}
-                disabled={startingConversation}
-                className="gap-2"
-              >
-                {startingConversation ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MessageSquare className="h-4 w-4" />
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold gradient-text">Commande #{order.id.slice(0, 8)}</h1>
+                <StatusBadge status={order.status} />
+                {order.payment_status && (
+                  <PaymentStatusBadge 
+                    status={order.payment_status} 
+                    amount={order.paid_amount}
+                  />
                 )}
-                {t('orderDetails.jobConversation')}
-              </Button>
-              <StatusBadge status={order.status} />
-              {order.payment_status && (
-                <PaymentStatusBadge 
-                  status={order.payment_status} 
-                  amount={order.paid_amount}
-                />
-              )}
+              </div>
+              <div className="flex gap-4 text-sm text-muted-foreground">
+                <span>📅 Créée le {formatDate(order.created_at)}</span>
+                <span>•</span>
+                <span>💰 Prix total: {order.price.toFixed(2)} PLN</span>
+                {order.paid_amount && (
+                  <>
+                    <span>•</span>
+                    <span>✅ Payé: {order.paid_amount.toFixed(2)} PLN</span>
+                  </>
+                )}
+              </div>
             </div>
+            <Button 
+              variant="default" 
+              onClick={handleJobConversation}
+              disabled={startingConversation}
+              className="gap-2"
+            >
+              {startingConversation ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4" />
+              )}
+              {t('orderDetails.jobConversation')}
+            </Button>
           </div>
 
           {/* Timeline */}
@@ -311,139 +342,205 @@ const OrderDetails = () => {
             </Card>
 
             {/* Parameters */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.printParameters')}</CardTitle>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardTitle className="flex items-center gap-2">
+                  ⚙️ {t('orderDetails.printParameters')}
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.material')}</span>
-                  <span className="font-medium">{order.material?.toUpperCase()}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.color')}</span>
-                  <span className="font-medium">{capitalizeFirst(order.color)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.quality')}</span>
-                  <span className="font-medium">{getQualityLabel(order.layer_height)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.quantity')}</span>
-                  <span className="font-medium">{order.quantity}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.layerHeight')}</span>
-                  <span className="font-medium">{order.layer_height}mm</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('orderDetails.params.infill')}</span>
-                  <span className="font-medium">{order.infill}%</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">{t('orderDetails.params.shipping')}</span>
-                  <span className="font-medium">{getShippingLabel(order.shipping_method)}</span>
-                </div>
-                {order.shipping_address && (
-                  <div className="flex justify-between py-2 border-t">
-                    <span className="text-muted-foreground">{t('orderDetails.params.address')}</span>
-                    <span className="font-medium text-right max-w-[200px]">{order.shipping_address}</span>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Matériau</span>
+                    <p className="font-semibold text-lg">{order.material?.toUpperCase()}</p>
                   </div>
-                )}
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Couleur</span>
+                    <p className="font-semibold text-lg">{capitalizeFirst(order.color)}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Qualité</span>
+                    <p className="font-semibold">{getQualityLabel(order.layer_height)}</p>
+                    <p className="text-xs text-muted-foreground">{order.layer_height}mm / couche</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Remplissage</span>
+                    <p className="font-semibold">{order.infill}%</p>
+                  </div>
+                </div>
+                
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground">📦 Quantité</span>
+                    <span className="font-bold text-xl">{order.quantity}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground">🚚 Livraison</span>
+                    <span className="font-medium">{getShippingLabel(order.shipping_method)}</span>
+                  </div>
+                  {order.shipping_address && (
+                    <div className="bg-muted/50 rounded-lg p-3 mt-2">
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide block mb-1">📍 Adresse</span>
+                      <p className="text-sm font-medium">{order.shipping_address}</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Technical Details */}
-          {(order.material_weight || order.print_time) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.technicalDetails')}</CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
-                {order.material_weight && (
-                  <div className="flex justify-between py-2">
-                    <span className="text-muted-foreground">{t('orderDetails.params.materialWeight')}</span>
-                    <span className="font-medium">{(order.material_weight * 1000).toFixed(1)}g</span>
+          {/* Technical Details & Summary */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Technical Stats */}
+            {order.material_weight && (
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">⚖️</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {(order.material_weight * 1000).toFixed(1)}g
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Poids matériau</p>
                   </div>
-                )}
-                {order.print_time && (
-                  <div className="flex justify-between py-2">
-                    <span className="text-muted-foreground">{t('orderDetails.params.printTime')}</span>
-                    <span className="font-medium">{Math.floor(order.print_time / 60)}h {order.print_time % 60}min</span>
+                </CardContent>
+              </Card>
+            )}
+            
+            {order.print_time && (
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">⏱️</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {Math.floor(order.print_time / 60)}h {order.print_time % 60}min
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Temps d'impression</p>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Price Summary */}
+            <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">💰</div>
+                  <div className="text-3xl font-bold text-primary">
+                    {order.price.toFixed(2)} PLN
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">Prix total</p>
+                  {order.paid_amount && order.paid_amount > 0 && (
+                    <div className="mt-2 text-sm text-green-600 dark:text-green-400 font-medium">
+                      ✅ {order.paid_amount.toFixed(2)} PLN payé
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-          )}
+          </div>
 
           {/* Tracking */}
           {order.tracking_code && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.tracking')}</CardTitle>
+            <Card className="border-2 border-primary/20 hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardTitle className="flex items-center gap-2">
+                  📦 {t('orderDetails.tracking')}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="font-mono text-lg">{order.tracking_code}</p>
+              <CardContent className="pt-6">
+                <div className="bg-muted/50 rounded-lg p-4 text-center">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Code de suivi</p>
+                  <p className="font-mono text-2xl font-bold text-primary">{order.tracking_code}</p>
+                  <Button variant="outline" className="mt-4" onClick={() => navigator.clipboard.writeText(order.tracking_code!)}>
+                    📋 Copier le code
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Notes */}
           {order.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.notes')}</CardTitle>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-amber-500/10 to-amber-500/5">
+                <CardTitle className="flex items-center gap-2">
+                  📝 {t('orderDetails.notes')}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{order.notes}</p>
+              <CardContent className="pt-6">
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
+                  <p className="whitespace-pre-wrap text-sm">{order.notes}</p>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Existing Review */}
           {order.review && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.yourReview')}</CardTitle>
+            <Card className="border-2 border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-green-500/10 to-green-500/5">
+                <CardTitle className="flex items-center gap-2">
+                  ⭐ {t('orderDetails.yourReview')}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{order.review}</p>
+              <CardContent className="pt-6">
+                <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                  <p className="text-sm whitespace-pre-wrap">{order.review}</p>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {/* Review Section */}
           {canReview && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('orderDetails.leaveReview')}</CardTitle>
+            <Card className="border-2 border-primary hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardTitle className="flex items-center gap-2">
+                  ⭐ {t('orderDetails.leaveReview')}
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setRating(star)}
-                      className="transition-transform hover:scale-110"
-                    >
-                      <Star
-                        className={`w-8 h-8 ${
-                          star <= rating
-                            ? "fill-primary text-primary"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </button>
-                  ))}
+              <CardContent className="space-y-4 pt-6">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-3">Votre évaluation</p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className="transition-all hover:scale-125 focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-1"
+                      >
+                        <Star
+                          className={`w-10 h-10 transition-colors ${
+                            star <= rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground hover:text-yellow-300"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <Textarea
-                  placeholder={t('orderDetails.reviewPlaceholder')}
-                  rows={4}
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                />
-                <Button onClick={handleReviewSubmit}>{t('orderDetails.submitReview')}</Button>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Votre commentaire</p>
+                  <Textarea
+                    placeholder={t('orderDetails.reviewPlaceholder')}
+                    rows={5}
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    className="resize-none"
+                  />
+                </div>
+                <Button 
+                  onClick={handleReviewSubmit}
+                  disabled={!rating || !reviewText.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  ⭐ {t('orderDetails.submitReview')}
+                </Button>
               </CardContent>
             </Card>
           )}

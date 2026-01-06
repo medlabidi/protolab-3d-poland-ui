@@ -38,6 +38,9 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrderDetails from "./pages/admin/AdminOrderDetails";
+import AdminPrintJobs from "./pages/admin/AdminPrintJobs";
+import AdminDesignAssistance from "./pages/admin/AdminDesignAssistance";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminConversations from "./pages/admin/AdminConversations";
 import AdminPrinters from "./pages/admin/AdminPrinters";
@@ -96,6 +99,9 @@ const App = () => {
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
                 <Route path="/admin/orders" element={<AdminProtectedRoute><AdminOrders /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetails /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/print-jobs" element={<AdminProtectedRoute><AdminPrintJobs /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/design-assistance" element={<AdminProtectedRoute><AdminDesignAssistance /></AdminProtectedRoute>} />
                 <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
                 <Route path="/admin/conversations" element={<AdminProtectedRoute><AdminConversations /></AdminProtectedRoute>} />
                 <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />

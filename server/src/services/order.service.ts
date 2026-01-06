@@ -1,4 +1,4 @@
-import { Order, IOrder, OrderStatus, PaymentStatus } from '../models/Order';
+import { Order, IOrder, OrderStatus, PaymentStatus, OrderType } from '../models/Order';
 import { OrderCreateInput } from '../types';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
@@ -11,8 +11,12 @@ export class OrderService {
     // Use price from client calculation, or default to 0 if not provided
     const orderPrice = data.price || 0;
     
+    // Determine order type based on data
+    const orderType: OrderType = data.orderType || 'print';
+    
     const order = await Order.create({
       user_id: userId,
+      order_type: orderType,
       file_name: data.fileName,
       file_url: data.fileUrl,
       material: data.material,
@@ -27,6 +31,9 @@ export class OrderService {
       status: 'submitted',
       payment_status: 'paid',
       project_name: data.projectName,
+      design_description: data.designDescription,
+      design_requirements: data.designRequirements,
+      reference_images: data.referenceImages,
     });
     
     // Auto-create conversation log for the order
@@ -43,6 +50,70 @@ export class OrderService {
     }
     
     return order;
+  }
+
+  async getOrdersByType(orderType: OrderType): Promise<IOrder[]> {
+    return await Order.findByType(orderType);
+  }
+
+  async createPrintFromDesign(designOrderId: string, printData: {
+    material: string;
+    color: string;
+    layerHeight: number;
+    infill: number;
+    quantity: number;
+    price: number;
+  }): Promise<IOrder> {
+    const supabase = getSupabase();
+    
+    // Get the design order
+    const { data: designOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', designOrderId)
+      .single();
+    
+    if (fetchError || !designOrder) {
+      throw new Error('Design order not found');
+    }
+    
+    if (designOrder.order_type !== 'design') {
+      throw new Error('Parent order must be a design order');
+    }
+    
+    // Create new print order linked to design order
+    const printOrder = await Order.create({
+      user_id: designOrder.user_id,
+      order_type: 'print',
+      parent_order_id: designOrderId,
+      file_name: designOrder.file_name,
+      file_url: designOrder.file_url,
+      material: printData.material,
+      color: printData.color,
+      layer_height: printData.layerHeight,
+      infill: printData.infill,
+      quantity: printData.quantity,
+      shipping_method: designOrder.shipping_method,
+      shipping_address: designOrder.shipping_address,
+      price: printData.price,
+      paid_amount: printData.price,
+      status: 'submitted',
+      payment_status: 'paid',
+      project_name: `Print de: ${designOrder.project_name || designOrder.file_name}`,
+    });
+    
+    // Auto-create conversation
+    try {
+      await conversationsService.getOrCreateConversation(
+        designOrder.user_id,
+        printOrder.id,
+        `Print job from design ${designOrder.file_name}`
+      );
+    } catch (err) {
+      logger.error({ err }, `Failed to auto-create conversation for print order ${printOrder.id}`);
+    }
+    
+    return printOrder;
   }
   
   async getOrderById(orderId: string, userId?: string): Promise<IOrder | null> {
