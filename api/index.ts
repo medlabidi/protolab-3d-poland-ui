@@ -891,6 +891,13 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   const path = url.split('?')[0].replace('/api', '');
   const contentType = req.headers['content-type'] || '';
   
+  // Debug logging for PayU asset requests
+  if (path.includes('/payments/payu/')) {
+    console.log('[DEBUG] PayU request - Full URL:', url);
+    console.log('[DEBUG] PayU request - Path after /api strip:', path);
+    console.log('[DEBUG] PayU request - Method:', req.method);
+  }
+  
   // Parse JSON body for non-multipart requests
   if (req.method !== 'GET' && !contentType.includes('multipart/form-data') && !req.body) {
     req.body = await parseJsonBody(req);
