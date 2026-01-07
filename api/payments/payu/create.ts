@@ -161,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         language: 'pl',
       },
       notifyUrl: `https://protolab.info/api/payments/payu/notify`,
-      continueUrl: `https://protolab.info/payment-success`,
+      continueUrl: `https://protolab.info/payment-success?orderId=${orderId}`,
     };
     
     // Add payMethods if provided

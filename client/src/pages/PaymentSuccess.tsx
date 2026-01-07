@@ -34,33 +34,43 @@ const PaymentSuccess = () => {
         sessionStorage.removeItem('pendingCreditPurchase');
       }
 
-      // Wait a bit for PayU notification to be processed
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait a bit for PayU webhook notification to be processed
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Check if this is a credit purchase
-      if (orderId.startsWith('credit_')) {
-        // Fetch updated credit balance
-        const response = await apiFetch('/credits/balance');
-        if (response.ok) {
-          const data = await response.json();
+      // Fetch order details to verify payment status
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://protolab.info/api'}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const order = data.order || data;
+        setOrderDetails(order);
+        
+        // Check payment status from database (updated by webhook)
+        if (order.payment_status === 'completed' || order.payment_status === 'paid') {
           setStatus('success');
-          toast.success(`Payment successful! Your new balance is ${data.balance} PLN`);
+          toast.success('Payment successful! Your order is confirmed.');
+        } else if (order.payment_status === 'pending') {
+          setStatus('checking');
+          toast.info('Payment is being processed. This may take a few moments.');
+          // Retry after a delay
+          setTimeout(() => checkPaymentStatus(), 3000);
         } else {
-          setStatus('success');
-          toast.success('Payment successful! Credits will be added shortly.');
+          setStatus('failed');
+          toast.error('Payment verification failed. Please contact support.');
         }
       } else {
-        // Regular order payment
-        const response = await apiFetch(`/orders/${orderId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setOrderDetails(data);
-          setStatus('success');
-          toast.success('Payment successful! Your order is being processed.');
-        } else {
-          setStatus('success');
-          toast.success('Payment successful! Order details will be updated shortly.');
-        }
+        setStatus('failed');
+        toast.error('Failed to verify payment status');
       }
     } catch (error) {
       console.error('Payment check error:', error);
@@ -70,8 +80,9 @@ const PaymentSuccess = () => {
   };
 
   const handleContinue = () => {
-    if (orderDetails?.orderId?.startsWith('credit_')) {
-      navigate('/credits');
+    const orderId = searchParams.get('orderId');
+    if (orderId) {
+      navigate(`/orders/${orderId}`);
     } else {
       navigate('/orders');
     }
@@ -123,15 +134,25 @@ const PaymentSuccess = () => {
             {orderDetails && (
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Amount:</span>
-                  <span className="font-medium">{orderDetails.amount} PLN</span>
+                  <span className="text-gray-600">Order ID:</span>
+                  <span className="font-mono text-xs">{orderDetails.id || searchParams.get('orderId')}</span>
                 </div>
-                {orderDetails.orderId && (
+                {orderDetails.price && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Reference:</span>
-                    <span className="font-mono text-xs">{orderDetails.orderId}</span>
+                    <span className="text-gray-600">Amount:</span>
+                    <span className="font-medium">{orderDetails.price} PLN</span>
                   </div>
                 )}
+                {orderDetails.file_name && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">File:</span>
+                    <span className="font-medium truncate max-w-[200px]">{orderDetails.file_name}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-medium capitalize">{orderDetails.payment_status || 'Processing'}</span>
+                </div>
               </div>
             )}
 
