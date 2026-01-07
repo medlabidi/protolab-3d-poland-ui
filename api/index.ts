@@ -1035,7 +1035,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await notifyHandler(req, res);
     }
     if (path.match(/^\/payments\/payu\/payment-page/) && (req.method === 'GET' || req.method === 'POST')) {
+      console.log('[MAIN-ROUTER] payment-page route matched! Method:', req.method, 'Path:', path);
       const pageHandler = (await import('./payments/payu/payment-page')).default;
+      console.log('[MAIN-ROUTER] Handler imported, calling now...');
       return await pageHandler(req, res);
     }
     
