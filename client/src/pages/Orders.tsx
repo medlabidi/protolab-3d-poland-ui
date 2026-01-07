@@ -1117,6 +1117,21 @@ const Orders = () => {
                                   {t('orders.orderActions.downloadFile')}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
+                                {/* Show Complete Payment for unpaid orders */}
+                                {(order.payment_status === 'pending' || order.payment_status === 'on_hold') && (
+                                  <DropdownMenuItem onClick={() => navigate(`/checkout?orderId=${order.id}`)}>
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    Complete Payment
+                                  </DropdownMenuItem>
+                                )}
+                                {/* Show Refund only for paid orders */}
+                                {order.payment_status === 'paid' && (
+                                  <DropdownMenuItem onClick={() => navigate(`/refund?orderId=${order.id}`)}>
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Request Refund
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className={canDeleteOrder(order.status) ? "" : "text-muted-foreground cursor-not-allowed"}
                                   disabled={!canDeleteOrder(order.status)}

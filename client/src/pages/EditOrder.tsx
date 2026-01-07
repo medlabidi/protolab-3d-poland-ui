@@ -42,6 +42,7 @@ interface Order {
   shipping_method: string;
   shipping_address?: string;
   price: number;
+  payment_status?: string;
   material_weight?: number;
   print_time?: number;
   model_volume_cm3?: number;
@@ -885,6 +886,11 @@ const EditOrder = () => {
     }
   };
 
+  const handleCompletePayment = () => {
+    if (!order) return;
+    navigate(`/checkout?orderId=${order.id}`);
+  };
+
   const handleCancelOrder = () => {
     if (!order) return;
     
@@ -1425,8 +1431,37 @@ const EditOrder = () => {
             </CardContent>
           </Card>
 
-          {/* Cancel Order Section */}
-          {canEditPrintParams && (
+          {/* Complete Payment Section - Only for unpaid orders */}
+          {canEditPrintParams && (order?.payment_status === 'pending' || order?.payment_status === 'on_hold') && (
+            <Card className="border-blue-500/50 animate-scale-in" style={{ animationDelay: '0.4s' }}>
+              <CardHeader>
+                <CardTitle className="text-blue-600 dark:text-blue-400">Complete Payment</CardTitle>
+                <CardDescription>
+                  This order is not paid yet. Complete the payment to process your order.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  onClick={handleCompletePayment}
+                  size="lg"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  Proceed to Payment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelOrder}
+                  size="lg"
+                  className="w-full"
+                >
+                  Cancel Order
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cancel Order Section - Only for paid orders */}
+          {canEditPrintParams && order?.payment_status === 'paid' && (
             <Card className="border-destructive/50 animate-scale-in" style={{ animationDelay: '0.4s' }}>
               <CardHeader>
                 <CardTitle className="text-destructive">{t('editOrder.cancelOrder')}</CardTitle>
