@@ -48,7 +48,7 @@ async function getPayUToken(): Promise<string> {
 }
 
 /**
- * Create PayU order
+ * Create PayU order - Standard REST API implementation
  */
 async function createPayUOrder(token: string, orderData: any): Promise<any> {
   console.log('[PAYU-CREATE] Creating PayU order...');
@@ -60,68 +60,38 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify(orderData),
+    redirect: 'manual', // Don't follow redirects automatically
   });
 
   console.log('[PAYU-CREATE] PayU response status:', response.status);
-  console.log('[PAYU-CREATE] PayU response URL:', response.url);
   
-  // PayU returns 302 for successful order creation with redirectUri in Location header
+  // PayU returns 302 with redirectUri in Location header
   if (response.status === 302) {
     const redirectUri = response.headers.get('location');
-    console.log('[PAYU-CREATE] Order created successfully, redirect to:', redirectUri);
+    console.log('[PAYU-CREATE] Got redirect URI:', redirectUri);
+    
     return {
-      success: true,
-      redirectUri: redirectUri,
-      statusCode: 'SUCCESS'
+      redirectUri,
+      statusCode: 'SUCCESS',
     };
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[PAYU-CREATE] Order creation failed:', response.status, errorText);
-    throw new Error(`PayU order creation failed: ${response.status} ${errorText}`);
-  }
-
-  // Check content type to determine how to parse the response
-  const contentType = response.headers.get('content-type');
-  console.log('[PAYU-CREATE] Response content-type:', contentType);
-  
-  if (contentType && contentType.includes('application/json')) {
+  // PayU may return 200/201 with JSON containing redirectUri
+  if (response.ok) {
     const result = await response.json();
     console.log('[PAYU-CREATE] Order created:', result);
-    return result;
-  } else {
-    // PayU returned HTML - this IS the payment page
-    const htmlContent = await response.text();
-    console.log('[PAYU-CREATE] Received HTML payment page from PayU');
     
-    // Fix relative URLs in PayU HTML to be absolute
-    let fixedHtml = htmlContent;
-    
-    // Convert ALL relative paths to absolute PayU URLs
-    fixedHtml = fixedHtml.replace(
-      /href="\/([^"]+)"/g,
-      'href="https://secure.snd.payu.com/$1"'
-    );
-    fixedHtml = fixedHtml.replace(
-      /src="\/([^"]+)"/g, 
-      'src="https://secure.snd.payu.com/$1"'
-    );
-    fixedHtml = fixedHtml.replace(
-      /action="\/([^"]+)"/g,
-      'action="https://secure.snd.payu.com/$1"'
-    );
-    
-    console.log('[PAYU-CREATE] Fixed HTML asset URLs for PayU');
-    
-    // Return the fixed HTML content for the frontend to display
     return {
-      success: true,
-      isHtml: true,
-      htmlContent: fixedHtml,
-      statusCode: 'SUCCESS'
+      redirectUri: result.redirectUri,
+      orderId: result.orderId,
+      statusCode: result.status?.statusCode || 'SUCCESS',
     };
   }
+
+  // Error case
+  const errorText = await response.text();
+  console.error('[PAYU-CREATE] Order creation failed:', response.status, errorText);
+  throw new Error(`PayU order creation failed: ${response.status}`);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -218,16 +188,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Continue anyway, PayU order was created successfully
     }
 
-    console.log('[PAYU-CREATE] Success! Returning redirect URI');
+    console.log('[PAYU-CREATE] Success! Redirect URI:', payuResult.redirectUri);
 
-    // Return response
+    // Return simple response with redirectUri (standard PayU flow)
     return res.status(200).json({
       success: true,
       redirectUri: payuResult.redirectUri,
       statusCode: payuResult.statusCode,
-      orderId: payuResult.orderId || 'created',
-      isHtml: payuResult.isHtml || false,
-      htmlContent: payuResult.htmlContent || null,
+      orderId: payuResult.orderId,
     });
 
   } catch (error) {

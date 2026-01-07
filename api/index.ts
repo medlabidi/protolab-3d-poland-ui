@@ -879,14 +879,6 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
 export default async (req: VercelRequest, res: VercelResponse) => {
   console.log('[ENTRY] Function invoked:', req.method, req.url);
   
-  // Disable caching for payment-page to force fresh responses
-  if (req.url?.includes('/payments/payu/payment-page') && req.method === 'GET') {
-    console.log('[CACHE] Setting no-cache headers for payment-page GET');
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-  }
-  
   // Set CORS headers immediately
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', (process.env.CORS_ORIGIN || '*').trim());
@@ -1014,28 +1006,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleAddCredits(req as AuthenticatedRequest, res);
     }
     
-    // Payment routes (PayU) - MUST be before conversations routes
-    // Proxy PayU static assets (JS, CSS, images)
-    if (path.match(/^\/payments\/payu\/(js|css|img|fonts)\//)) {
-      const assetPath = path.replace('/payments/payu/', '/');
-      const payuUrl = `https://secure.snd.payu.com${assetPath}`;
-      console.log('[PAYU-PROXY] Proxying asset:', payuUrl);
-      
-      try {
-        const assetResponse = await fetch(payuUrl);
-        const contentType = assetResponse.headers.get('content-type');
-        if (contentType) {
-          res.setHeader('Content-Type', contentType);
-        }
-        res.setHeader('Cache-Control', 'public, max-age=31536000');
-        const buffer = await assetResponse.arrayBuffer();
-        return res.send(Buffer.from(buffer));
-      } catch (error) {
-        console.error('[PAYU-PROXY] Asset fetch error:', error);
-        return res.status(404).send('Asset not found');
-      }
-    }
-    
+    // Payment routes (PayU)
     if (path === '/payments/payu/create' && req.method === 'POST') {
       const payuHandler = (await import('./payments/payu/create')).default;
       return await payuHandler(req, res);
@@ -1043,12 +1014,6 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/payments/payu/notify' && req.method === 'POST') {
       const notifyHandler = (await import('./payments/payu/notify')).default;
       return await notifyHandler(req, res);
-    }
-    if (path.match(/^\/payments\/payu\/payment-page/) && (req.method === 'GET' || req.method === 'POST')) {
-      console.log('[MAIN-ROUTER] payment-page route matched! Method:', req.method, 'Path:', path);
-      const pageHandler = (await import('./payments/payu/payment-page')).default;
-      console.log('[MAIN-ROUTER] Handler imported, calling now...');
-      return await pageHandler(req, res);
     }
     
     // Conversations routes

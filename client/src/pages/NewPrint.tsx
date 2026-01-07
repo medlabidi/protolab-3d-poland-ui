@@ -381,49 +381,17 @@ const NewPrint = () => {
       const payuData = await payuResponse.json();
       console.log('PayU response data:', payuData);
 
-      // Handle HTML response (PayU payment page content)
-      if (payuData.isHtml && payuData.htmlContent) {
-        console.log('Received PayU HTML content, creating payment page...');
-        
-        // Generate unique session ID
-        const sessionId = `payment_${order.id}_${Date.now()}`;
-        
-        // Store the HTML content on the server
-        const storeResponse = await fetch(`${API_URL}/payments/payu/payment-page`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            sessionId: sessionId,
-            htmlContent: payuData.htmlContent,
-          }),
-        });
-
-        if (!storeResponse.ok) {
-          throw new Error('Failed to store payment page content');
-        }
-
-        // Redirect to the payment page
-        const paymentPageUrl = `${API_URL}/payments/payu/payment-page?sessionId=${sessionId}`;
-        console.log('Redirecting to PayU payment page:', paymentPageUrl);
-        window.location.href = paymentPageUrl;
-        return;
-      }
-
-      // Handle redirect URL response (traditional flow)
+      // Redirect to PayU payment page (standard flow)
       if (payuData.redirectUri) {
-        console.log('Redirecting to PayU:', payuData.redirectUri);
+        console.log('Redirecting to PayU payment page:', payuData.redirectUri);
         window.location.href = payuData.redirectUri;
       } else {
-        throw new Error('No payment redirect URL received');
+        throw new Error('No payment redirect URL received from PayU');
       }
 
     } catch (error) {
       console.error('PayU redirect error:', error);
       toast.error(error instanceof Error ? error.message : 'Payment redirect failed');
-      // Don't fallback - let user try again or show the error
       setIsProcessing(false);
     }
   };
