@@ -409,26 +409,43 @@ export function Checkout() {
                   <span className="text-gray-600 dark:text-gray-300">Material:</span>
                   <span className="font-medium dark:text-gray-100">{order.material} - {order.color}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                  <span className="font-medium dark:text-gray-100">{order.layer_height}mm layer height</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Infill:</span>
-                  <span className="font-medium dark:text-gray-100">{order.infill}%</span>
-                </div>
+                {/* Show quality details based on standard vs advanced mode */}
+                {(order.layer_height === 0.2 && order.infill === 20) ? (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                    <span className="font-medium dark:text-gray-100">Standard</span>
+                  </div>
+                ) : (order.layer_height === 0.3 && order.infill === 10) ? (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                    <span className="font-medium dark:text-gray-100">Draft</span>
+                  </div>
+                ) : (order.layer_height === 0.15 && order.infill === 50) ? (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                    <span className="font-medium dark:text-gray-100">High</span>
+                  </div>
+                ) : (order.layer_height === 0.1 && order.infill === 100) ? (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                    <span className="font-medium dark:text-gray-100">Ultra High</span>
+                  </div>
+                ) : (
+                  // Advanced mode - show technical parameters
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
+                      <span className="font-medium dark:text-gray-100">{order.layer_height}mm</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Infill:</span>
+                      <span className="font-medium dark:text-gray-100">{order.infill}%</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">Quantity:</span>
                   <span className="font-medium dark:text-gray-100">{order.quantity}</span>
-                </div>
-                <Separator className="dark:bg-gray-600" />
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Weight:</span>
-                  <span className="font-medium dark:text-gray-100">{order.material_weight?.toFixed(1)}g</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Print Time:</span>
-                  <span className="font-medium dark:text-gray-100">{(order.print_time || 0).toFixed(1)}h</span>
                 </div>
               </CardContent>
             </Card>

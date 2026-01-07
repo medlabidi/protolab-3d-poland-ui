@@ -11,6 +11,8 @@ const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'checking' | 'success' | 'failed'>('checking');
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 10; // Max 30 seconds (10 retries x 3 seconds)
 
   useEffect(() => {
     checkPaymentStatus();
@@ -60,10 +62,18 @@ const PaymentSuccess = () => {
           setStatus('success');
           toast.success('Payment successful! Your order is confirmed.');
         } else if (order.payment_status === 'pending' || order.payment_status === 'on_hold') {
-          setStatus('checking');
-          toast.info('Payment is being processed. This may take a few moments.');
-          // Retry after a delay
-          setTimeout(() => checkPaymentStatus(), 3000);
+          if (retryCount >= MAX_RETRIES) {
+            setStatus('success'); // Assume success after max retries, webhook will update eventually
+            toast.warning('Payment verification taking longer than expected. Check your order status in a few minutes.');
+          } else {
+            setStatus('checking');
+            if (retryCount === 0) {
+              toast.info('Payment is being processed. This may take a few moments.');
+            }
+            // Retry after a delay
+            setRetryCount(prev => prev + 1);
+            setTimeout(() => checkPaymentStatus(), 3000);
+          }
         } else if (order.payment_status === 'failed') {
           setStatus('failed');
           toast.error('Payment failed. Please try again or contact support.');
