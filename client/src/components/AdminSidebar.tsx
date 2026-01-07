@@ -128,16 +128,34 @@ export const AdminSidebar = () => {
   return (
     <aside
       className={cn(
-        "bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 min-h-screen sticky top-0",
+        "bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 min-h-screen sticky top-0 relative",
         collapsed ? "w-20" : "w-64"
       )}
     >
+      {/* Toggle Button - Top Right */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-6 z-50 w-6 h-6 p-0 bg-gray-800 hover:bg-blue-600 border border-gray-700 rounded-full shadow-lg transition-all duration-200 hidden lg:flex items-center justify-center"
+      >
+        {collapsed ? (
+          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+        ) : (
+          <ChevronLeft className="w-3.5 h-3.5 text-gray-400" />
+        )}
+      </Button>
+
       {/* Logo */}
       <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <Logo size={collapsed ? "md" : "lg"} showText={!collapsed} textClassName="text-white" />
-          {!collapsed && (
-            <p className="text-xs text-gray-500">Admin Panel</p>
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
+          {collapsed ? (
+            <Logo size="md" showText={false} />
+          ) : (
+            <>
+              <Logo size="lg" showText={true} textClassName="text-white" />
+              <p className="text-xs text-gray-500">Admin Panel</p>
+            </>
           )}
         </div>
       </div>
@@ -272,22 +290,6 @@ export const AdminSidebar = () => {
         >
           <LogOut className="w-5 h-5" />
           {!collapsed && <span className="ml-3">Logout</span>}
-        </Button>
-
-        {/* Collapse button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            "w-full justify-center text-gray-500 hover:text-white hover:bg-gray-800",
-          )}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <ChevronLeft className="w-5 h-5" />
-          )}
         </Button>
       </div>
     </aside>

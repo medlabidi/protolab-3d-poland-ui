@@ -146,14 +146,31 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('accessToken');
       
+      console.log('🔐 Admin Token:', token ? 'Present' : 'Missing');
+      console.log('🌐 API URL:', `${API_URL}/admin/orders`);
+      
       // Fetch all orders (admin endpoint)
       const ordersResponse = await fetch(`${API_URL}/admin/orders`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
+      console.log('📡 Orders Response Status:', ordersResponse.status);
+      
+      if (!ordersResponse.ok) {
+        const errorText = await ordersResponse.text();
+        console.error('❌ Failed to fetch orders:', {
+          status: ordersResponse.status,
+          statusText: ordersResponse.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to fetch orders: ${ordersResponse.status} ${errorText}`);
+      }
+
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
+        console.log('📦 Orders Data:', ordersData);
         const orders = ordersData.orders || [];
+        console.log('📊 Total Orders Count:', orders.length);
 
         // Categorize orders by order_type field (fallback to file_name detection)
         const printOrders = orders.filter((o: any) => {
@@ -221,7 +238,10 @@ const AdminDashboard = () => {
         // Users endpoint may not exist yet
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('❌ Failed to fetch dashboard data:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -359,7 +379,7 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
             <p className="text-gray-400">Welcome back! Here's what's happening with your business.</p>
           </div>
-http://localhost:8081/admin/orders/2b2a8576-db27-4286-af77-deec6de81e77
+
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {statCards.map((stat, index) => (
@@ -521,12 +541,12 @@ http://localhost:8081/admin/orders/2b2a8576-db27-4286-af77-deec6de81e77
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="in_queue">In Queue</SelectItem>
-                                <SelectItem value="printing">Printing</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
+                                <SelectItem value="in_queue">In Review</SelectItem>
+                                <SelectItem value="printing">In Progress</SelectItem>
+                                <SelectItem value="finished">Completed</SelectItem>
                                 <SelectItem value="delivered">Delivered</SelectItem>
                                 <SelectItem value="on_hold">On Hold</SelectItem>
-                                <SelectItem value="suspended">Suspended</SelectItem>
+                                <SelectItem value="suspended">Cancelled</SelectItem>
                               </SelectContent>
                             </Select>
                             <Button 
@@ -600,10 +620,10 @@ http://localhost:8081/admin/orders/2b2a8576-db27-4286-af77-deec6de81e77
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {selectedOrder?.order_type === 'design' ? '🎨 Design Assistance' : '📦 Print Job'} - Details
+              {selectedOrder?.order_type === 'design' ? '🎨 Design Assistance Request' : '📦 Print Job'} 
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Complete order information
+              {selectedOrder?.file_name || 'Order details and specifications'}
             </DialogDescription>
           </DialogHeader>
 
@@ -724,51 +744,80 @@ http://localhost:8081/admin/orders/2b2a8576-db27-4286-af77-deec6de81e77
                 </div>
               )}
 
-              {/* Order Details Grid */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-gray-200">Print Parameters</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Material</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.material || 'Not specified'}</p>
+              {/* Order Details Grid - Only for Print Jobs */}
+              {selectedOrder.order_type !== 'design' && (
+                <>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-200">Print Parameters</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Material</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.material || 'Not specified'}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Color</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.color || 'Not specified'}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Layer Height</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.layer_height || 'Not specified'}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Infill</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.infill || 'Not specified'}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Quantity</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.quantity || 1}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Price</p>
+                        <p className="font-medium text-white mt-1">{formatPrice(selectedOrder.price)}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Color</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.color || 'Not specified'}</p>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Layer Height</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.layer_height || 'Not specified'}</p>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Infill</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.infill || 'Not specified'}</p>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Quantity</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.quantity || 1}</p>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Price</p>
-                    <p className="font-medium text-white mt-1">{formatPrice(selectedOrder.price)}</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Technical Stats */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-gray-200">Technical Stats</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Material Weight</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.material_weight || 'Not calculated'}</p>
+                  {/* Technical Stats */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-200">Technical Stats</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Material Weight</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.material_weight || 'Not calculated'}</p>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                        <p className="text-sm text-gray-400">Print Time</p>
+                        <p className="font-medium text-white mt-1">{selectedOrder.print_time || 'Not calculated'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-400">Print Time</p>
-                    <p className="font-medium text-white mt-1">{selectedOrder.print_time || 'Not calculated'}</p>
+                </>
+              )}
+
+              {/* Design Order Info - Only for Design Jobs */}
+              {selectedOrder.order_type === 'design' && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-gray-200">Order Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <p className="text-sm text-gray-400">Price</p>
+                      <p className="font-medium text-white mt-1">{formatPrice(selectedOrder.price)}</p>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <p className="text-sm text-gray-400">Status</p>
+                      <p className="font-medium text-white mt-1">{capitalizeFirst(selectedOrder.status)}</p>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <p className="text-sm text-gray-400">Order Number</p>
+                      <p className="font-medium text-white mt-1">{selectedOrder.order_number || selectedOrder.id.slice(0, 8).toUpperCase()}</p>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                      <p className="text-sm text-gray-400">Date Created</p>
+                      <p className="font-medium text-white mt-1">{formatDate(selectedOrder.created_at)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Shipping Information */}
               <div>

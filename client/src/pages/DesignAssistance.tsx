@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { API_URL } from "@/config/api";
 
 interface DesignRequest {
   id: string;
@@ -37,11 +38,9 @@ const DesignAssistance = () => {
     ideaDescription: "",
     usage: "mechanical" as 'mechanical' | 'decorative' | 'functional' | 'other',
     usageDetails: "",
-    technicalConstraints: "",
     approximateDimensions: "",
-    tolerancePrecision: "",
     desiredMaterial: "",
-    color: "",
+    requestChat: false,
   });
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -72,26 +71,91 @@ const DesignAssistance = () => {
       return;
     }
 
-    // Simulate request submission and immediate completion
-    const mockRequest: DesignRequest = {
-      id: `REQ-${Date.now()}`,
-      ideaDescription: formData.ideaDescription,
-      usage: formData.usage,
-      usageDetails: formData.usageDetails,
-      status: 'completed',
-      adminFile: {
-        url: '/mock-3d-model.stl',
-        name: 'custom-design.stl',
-      },
-    };
+    try {
+      // Simulate request submission and immediate completion
+      const mockRequest: DesignRequest = {
+        id: `REQ-${Date.now()}`,
+        ideaDescription: formData.ideaDescription,
+        usage: formData.usage,
+        usageDetails: formData.usageDetails,
+        status: 'completed',
+        adminFile: {
+          url: '/mock-3d-model.stl',
+          name: 'custom-design.stl',
+        },
+      };
 
-    setCurrentRequest(mockRequest);
-    setShowCompletionDialog(true);
+      setCurrentRequest(mockRequest);
 
-    toast({
-      title: "Request Submitted",
-      description: "Your 3D design is being created...",
-    });
+      // If chat is requested, create a conversation
+      if (formData.requestChat) {
+        const token = localStorage.getItem('accessToken');
+        
+        try {
+          // Create conversation for this order
+          const conversationResponse = await fetch(`${API_URL}/conversations/order/${mockRequest.id}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (conversationResponse.ok) {
+            const conversationData = await conversationResponse.json();
+            const conversationId = conversationData.conversation.id;
+
+            // Send automatic message to admin
+            const messageText = `🎨 Design Assistance Request - ${mockRequest.id}\n\n` +
+              `📋 Type: ${formData.usage}\n` +
+              `📝 Description: ${formData.ideaDescription}\n\n` +
+              `✨ Additional Details: ${formData.usageDetails}\n` +
+              `📏 Dimensions: ${formData.approximateDimensions || 'Not specified'}\n` +
+              `🧱 Material: ${formData.desiredMaterial || 'Not specified'}\n\n` +
+              `💬 User requested to discuss this design. Please review and respond.`;
+
+            await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: messageText,
+              }),
+            });
+
+            toast({
+              title: "Chat Request Sent",
+              description: "A conversation has been created. The admin will be notified.",
+            });
+          }
+        } catch (error) {
+          console.error('Failed to create conversation:', error);
+          toast({
+            title: "Chat Request Failed",
+            description: "Could not create conversation, but your design request was submitted.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      setShowCompletionDialog(true);
+
+      toast({
+        title: "Request Submitted",
+        description: formData.requestChat 
+          ? "Your design request and chat have been sent to the admin!"
+          : "Your 3D design is being created...",
+      });
+    } catch (error) {
+      console.error('Submission error:', error);
+      toast({
+        title: "Submission Failed",
+        description: "Could not submit your design request. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleApprove = () => {
@@ -121,11 +185,9 @@ const DesignAssistance = () => {
       ideaDescription: "",
       usage: "mechanical",
       usageDetails: "",
-      technicalConstraints: "",
       approximateDimensions: "",
-      tolerancePrecision: "",
       desiredMaterial: "",
-      color: "",
+      requestChat: false,
     });
     setAttachedFiles([]);
   };
@@ -349,78 +411,63 @@ const DesignAssistance = () => {
                   />
                 </div>
 
-                {/* Technical Constraints */}
+                {/* Approximate Dimensions */}
                 <div className="space-y-2">
-                  <Label htmlFor="technicalConstraints" className="text-base font-semibold">Technical Constraints</Label>
-                  <Textarea
-                    id="technicalConstraints"
-                    placeholder="Any specific technical requirements? E.g., Heat resistance, water-tight, load-bearing capacity, moving parts, assembly requirements..."
-                    rows={3}
-                    value={formData.technicalConstraints}
-                    onChange={(e) => setFormData({ ...formData, technicalConstraints: e.target.value })}
-                    className="resize-none border-2 focus:border-primary"
+                  <Label htmlFor="approximateDimensions" className="text-base font-semibold">Approximate Dimensions</Label>
+                  <Input
+                    id="approximateDimensions"
+                    placeholder="E.g., 100mm x 50mm x 30mm (L x W x H)"
+                    value={formData.approximateDimensions}
+                    onChange={(e) => setFormData({ ...formData, approximateDimensions: e.target.value })}
+                    className="border-2 focus:border-primary"
                   />
                 </div>
 
-                {/* Grid for Material and Dimensions */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Approximate Dimensions */}
-                  <div className="space-y-2">
-                    <Label htmlFor="approximateDimensions" className="text-base font-semibold">Approximate Dimensions</Label>
-                    <Input
-                      id="approximateDimensions"
-                      placeholder="E.g., 100mm x 50mm x 30mm (L x W x H)"
-                      value={formData.approximateDimensions}
-                      onChange={(e) => setFormData({ ...formData, approximateDimensions: e.target.value })}
-                      className="border-2 focus:border-primary"
-                    />
-                  </div>
-
-                  {/* Tolerance/Precision */}
-                  <div className="space-y-2">
-                    <Label htmlFor="tolerancePrecision" className="text-base font-semibold">Tolerance/Precision</Label>
-                    <Input
-                      id="tolerancePrecision"
-                      placeholder="E.g., ±0.5mm, ±1mm, tight tolerance required..."
-                      value={formData.tolerancePrecision}
-                      onChange={(e) => setFormData({ ...formData, tolerancePrecision: e.target.value })}
-                      className="border-2 focus:border-primary"
-                    />
-                  </div>
+                {/* Desired Material */}
+                <div className="space-y-2">
+                  <Label htmlFor="desiredMaterial" className="text-base font-semibold">Desired Material</Label>
+                  <select
+                    id="desiredMaterial"
+                    value={formData.desiredMaterial}
+                    onChange={(e) => setFormData({ ...formData, desiredMaterial: e.target.value })}
+                    className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg focus:border-primary focus:outline-none bg-background"
+                  >
+                    <option value="">Select a material...</option>
+                    <option value="pla">PLA</option>
+                    <option value="abs">ABS</option>
+                    <option value="petg">PETG</option>
+                    <option value="tpu">TPU (Flexible)</option>
+                    <option value="resin">Resin</option>
+                    <option value="unsure">Not sure / Recommend best option</option>
+                  </select>
                 </div>
 
-                {/* Grid for Material and Color */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Desired Material */}
-                  <div className="space-y-2">
-                    <Label htmlFor="desiredMaterial" className="text-base font-semibold">Desired Material</Label>
-                    <select
-                      id="desiredMaterial"
-                      value={formData.desiredMaterial}
-                      onChange={(e) => setFormData({ ...formData, desiredMaterial: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg focus:border-primary focus:outline-none bg-background"
-                    >
-                      <option value="">Select a material...</option>
-                      <option value="pla">PLA</option>
-                      <option value="abs">ABS</option>
-                      <option value="petg">PETG</option>
-                      <option value="tpu">TPU (Flexible)</option>
-                      <option value="resin">Resin</option>
-                      <option value="unsure">Not sure / Recommend best option</option>
-                    </select>
-                  </div>
-
-                  {/* Color */}
-                  <div className="space-y-2">
-                    <Label htmlFor="color" className="text-base font-semibold">Color (If Known)</Label>
-                    <Input
-                      id="color"
-                      placeholder="E.g., Black, White, Red, Custom color code..."
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="border-2 focus:border-primary"
+                {/* Request Chat Checkbox */}
+                <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="requestChat"
+                      checked={formData.requestChat}
+                      onChange={(e) => setFormData({ ...formData, requestChat: e.target.checked })}
+                      className="mt-1 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                     />
+                    <div className="flex-1">
+                      <Label htmlFor="requestChat" className="text-base font-semibold cursor-pointer">
+                        💬 Request Chat with Admin
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        If you need to discuss details or have questions, check this box to open a conversation with the admin. You'll be notified when the admin responds.
+                      </p>
+                    </div>
                   </div>
+                  {formData.requestChat && (
+                    <div className="ml-8 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-700 dark:text-blue-400">
+                        ✓ A conversation will be automatically created when you submit this request. You can view it in the Conversations section.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}

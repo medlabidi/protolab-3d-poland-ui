@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, Boxes, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -44,11 +44,15 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [printJobs, setPrintJobs] = useState<any[]>([]);
+  const [designJobs, setDesignJobs] = useState<any[]>([]);
   const [creditBalance, setCreditBalance] = useState<number>(0);
   const [stats, setStats] = useState({
     activeOrders: 0,
     completedPrints: 0,
     totalSpent: `0 ${t('common.pln')}`,
+    printJobsCount: 0,
+    designJobsCount: 0,
   });
 
   useEffect(() => {
@@ -108,15 +112,42 @@ const Dashboard = () => {
       }
 
       if (!response.ok) {
-        console.error('Failed to fetch orders:', response.status, response.statusText);
+        console.error('❌ Failed to fetch orders:', response.status, response.statusText);
+        toast.error(`Failed to load orders: ${response.statusText}`);
         setLoading(false);
         return;
       }
 
       const data = await response.json();
+      console.log('📦 Raw API Response:', data);
+      
       const userOrders = data.orders || [];
+      console.log('📊 User Orders Count:', userOrders.length);
+      
       setAllOrders(userOrders); // Store all orders for operations
       setOrders(userOrders.slice(0, 5)); // Display only recent 5 orders
+
+      // Séparer les orders par type (compatible avec le dashboard admin)
+      const printOrders = userOrders.filter((o: any) => {
+        if (o.order_type) {
+          return o.order_type === 'print';
+        }
+        // Fallback: les orders sans order_type sont considérés comme print jobs
+        const fileName = (o.file_name || '').toLowerCase();
+        return !fileName.includes('design') && !fileName.includes('assistance');
+      });
+      
+      const designOrders = userOrders.filter((o: any) => {
+        if (o.order_type) {
+          return o.order_type === 'design';
+        }
+        // Fallback: détecter par file_name
+        const fileName = (o.file_name || '').toLowerCase();
+        return fileName.includes('design') || fileName.includes('assistance');
+      });
+
+      setPrintJobs(printOrders.slice(0, 5));
+      setDesignJobs(designOrders.slice(0, 5));
 
       // Calculate stats from real data
       const active = userOrders.filter((o: any) => 
@@ -140,9 +171,20 @@ const Dashboard = () => {
         activeOrders: active,
         completedPrints: completed,
         totalSpent: `${total.toFixed(2)} ${t('common.pln')}`,
+        printJobsCount: printOrders.length,
+        designJobsCount: designOrders.length,
+      });
+
+      console.log('📊 Dashboard Data:', {
+        total: userOrders.length,
+        printJobs: printOrders.length,
+        designJobs: designOrders.length,
+        active,
+        completed
       });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('❌ Failed to fetch dashboard data:', error);
+      toast.error('Unable to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -396,6 +438,123 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Order Type Sections - Print Jobs & Design Assistance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Print Jobs Card */}
+            <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Boxes className="w-5 h-5 text-blue-500" />
+                    Print Jobs
+                    <span className="text-sm font-normal text-muted-foreground">({stats.printJobsCount})</span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/orders')}
+                    className="hover:bg-blue-500/10 hover:border-blue-500"
+                  >
+                    View All
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {printJobs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Boxes className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">No print jobs yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {printJobs.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-blue-500/5 transition-colors cursor-pointer border border-transparent hover:border-blue-500/20"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.material} • {new Date(order.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <StatusBadge status={order.status as OrderStatus} />
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Design Assistance Card */}
+            <Card className="shadow-xl border-2 border-transparent hover:border-purple-500/20 transition-all bg-gradient-to-br from-card to-purple-500/5">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-purple-500" />
+                    Design Assistance
+                    <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/services/design')}
+                    className="hover:bg-purple-500/10 hover:border-purple-500"
+                  >
+                    New Request
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {designJobs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">No design requests yet</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/services/design')}
+                      className="mt-2 text-xs"
+                    >
+                      Request Design Help
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {designJobs.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-500/5 transition-colors cursor-pointer border border-transparent hover:border-purple-500/20"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Palette className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {order.design_description ? order.design_description.substring(0, 40) + '...' : new Date(order.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <StatusBadge status={order.status as OrderStatus} />
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Recent Orders & Projects */}
