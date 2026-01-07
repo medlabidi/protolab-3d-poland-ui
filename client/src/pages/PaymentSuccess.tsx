@@ -59,11 +59,14 @@ const PaymentSuccess = () => {
         if (order.payment_status === 'completed' || order.payment_status === 'paid') {
           setStatus('success');
           toast.success('Payment successful! Your order is confirmed.');
-        } else if (order.payment_status === 'pending') {
+        } else if (order.payment_status === 'pending' || order.payment_status === 'on_hold') {
           setStatus('checking');
           toast.info('Payment is being processed. This may take a few moments.');
           // Retry after a delay
           setTimeout(() => checkPaymentStatus(), 3000);
+        } else if (order.payment_status === 'failed') {
+          setStatus('failed');
+          toast.error('Payment failed. Please try again or contact support.');
         } else {
           setStatus('failed');
           toast.error('Payment verification failed. Please contact support.');
@@ -89,16 +92,16 @@ const PaymentSuccess = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <Card className="max-w-md w-full dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="text-center">
           {status === 'checking' && (
             <>
               <div className="mx-auto mb-4">
-                <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+                <Loader2 className="w-16 h-16 text-blue-500 dark:text-blue-400 animate-spin" />
               </div>
-              <CardTitle className="text-2xl">Processing Payment</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl dark:text-gray-100">Processing Payment</CardTitle>
+              <CardDescription className="dark:text-gray-300">
                 Please wait while we confirm your payment...
               </CardDescription>
             </>
@@ -107,10 +110,10 @@ const PaymentSuccess = () => {
           {status === 'success' && (
             <>
               <div className="mx-auto mb-4">
-                <CheckCircle2 className="w-16 h-16 text-green-500" />
+                <CheckCircle2 className="w-16 h-16 text-green-500 dark:text-green-400" />
               </div>
-              <CardTitle className="text-2xl text-green-600">Payment Successful!</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl text-green-600 dark:text-green-400">Payment Successful!</CardTitle>
+              <CardDescription className="dark:text-gray-300">
                 Thank you for your payment. Your transaction has been completed.
               </CardDescription>
             </>
@@ -119,10 +122,10 @@ const PaymentSuccess = () => {
           {status === 'failed' && (
             <>
               <div className="mx-auto mb-4">
-                <XCircle className="w-16 h-16 text-red-500" />
+                <XCircle className="w-16 h-16 text-red-500 dark:text-red-400" />
               </div>
-              <CardTitle className="text-2xl text-red-600">Payment Failed</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl text-red-600 dark:text-red-400">Payment Failed</CardTitle>
+              <CardDescription className="dark:text-gray-300">
                 We couldn't verify your payment. Please check your account or contact support.
               </CardDescription>
             </>
@@ -132,26 +135,26 @@ const PaymentSuccess = () => {
         {status !== 'checking' && (
           <CardContent className="space-y-4">
             {orderDetails && (
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Order ID:</span>
-                  <span className="font-mono text-xs">{orderDetails.id || searchParams.get('orderId')}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Order ID:</span>
+                  <span className="font-mono text-xs dark:text-gray-200">{orderDetails.id || searchParams.get('orderId')}</span>
                 </div>
                 {orderDetails.price && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Amount:</span>
-                    <span className="font-medium">{orderDetails.price} PLN</span>
+                    <span className="text-gray-600 dark:text-gray-300">Amount:</span>
+                    <span className="font-medium dark:text-gray-100">{orderDetails.price} PLN</span>
                   </div>
                 )}
                 {orderDetails.file_name && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">File:</span>
-                    <span className="font-medium truncate max-w-[200px]">{orderDetails.file_name}</span>
+                    <span className="text-gray-600 dark:text-gray-300">File:</span>
+                    <span className="font-medium dark:text-gray-100 truncate max-w-[200px]">{orderDetails.file_name}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-medium capitalize">{orderDetails.payment_status || 'Processing'}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Status:</span>
+                  <span className="font-medium dark:text-gray-100 capitalize">{orderDetails.payment_status || 'Processing'}</span>
                 </div>
               </div>
             )}
@@ -177,7 +180,7 @@ const PaymentSuccess = () => {
               )}
             </div>
 
-            <p className="text-xs text-center text-gray-500">
+            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
               If you have any questions, please contact our support team.
             </p>
           </CardContent>

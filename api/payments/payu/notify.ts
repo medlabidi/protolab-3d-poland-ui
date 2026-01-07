@@ -39,8 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     switch (order.status) {
       case 'COMPLETED':
-        orderStatus = 'pending'; // Order is paid, awaiting processing
-        paymentStatus = 'completed';
+        orderStatus = 'in_queue'; // Order is paid, ready for processing
+        paymentStatus = 'paid'; // Use 'paid' consistently
         break;
       case 'CANCELED':
         orderStatus = 'payment_failed';

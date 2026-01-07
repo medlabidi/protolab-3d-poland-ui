@@ -174,11 +174,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Step 3: Create PayU order
     const payuResult = await createPayUOrder(token, orderPayload);
     
-    // Step 4: Update database if successful
+    // Step 4: Update database - set to 'pending' until webhook confirms payment
     const { error: updateError } = await supabase
       .from('orders')
       .update({ 
-        payment_status: 'paid', // Use paid status for PayU orders
+        payment_status: 'pending', // Will be updated to 'paid' by webhook when COMPLETED
         payment_method: payMethods?.payMethod?.value || 'redirect',
       })
       .eq('id', orderId);
