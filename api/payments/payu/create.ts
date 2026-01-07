@@ -101,8 +101,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log('[PAYU-CREATE] Starting PayU order creation...');
-    const { orderId, amount, description, userId, payMethods } = req.body;
-    console.log('[PAYU-CREATE] Request body:', { orderId, amount, description, userId, payMethods });
+    const { 
+      orderId, 
+      amount, 
+      description, 
+      userId, 
+      payMethods,
+      shippingAddress,
+      requestInvoice,
+      businessInfo
+    } = req.body;
+    console.log('[PAYU-CREATE] Request body:', { 
+      orderId, 
+      amount, 
+      description, 
+      userId, 
+      payMethods,
+      shippingAddress,
+      requestInvoice,
+      businessInfo
+    });
 
     if (!orderId || !amount || !description || !userId) {
       return res.status(400).json({ 
@@ -114,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[PAYU-CREATE] Fetching user details...');
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('email, name')
+      .select('email, name, phone')
       .eq('id', userId)
       .single();
 
@@ -136,10 +154,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const firstName = nameParts[0] || 'Customer';
     const lastName = nameParts.slice(1).join(' ') || '';
 
+    // Get phone from user profile or shipping address
+    let phone = userData.phone || shippingAddress?.phone || '';
+
     // Step 1: Authenticate with PayU
     const token = await getPayUToken();
 
-    // Step 2: Prepare order payload
+    // Step 2: Prepare buyer object with full data
+    const buyer: any = {
+      email: userData.email,
+      firstName,
+      lastName,
+      language: 'pl',
+    };
+
+    // Add phone if available
+    if (phone) {
+      buyer.phone = phone;
+    }
+
+    // Add delivery address for courier/DPD delivery
+    if (shippingAddress && (shippingAddress.street || shippingAddress.fullName)) {
+      buyer.delivery = {
+        street: shippingAddress.street || '',
+        postalCode: shippingAddress.postalCode || shippingAddress.postal_code || '',
+        city: shippingAddress.city || '',
+        countryCode: 'PL',
+      };
+      
+      // Add recipient name if different from buyer
+      if (shippingAddress.fullName) {
+        buyer.delivery.recipientName = shippingAddress.fullName;
+        buyer.delivery.recipientEmail = userData.email;
+        if (shippingAddress.phone) {
+          buyer.delivery.recipientPhone = shippingAddress.phone;
+        }
+      }
+    }
+
+    // Step 3: Prepare order payload
     const orderPayload: any = {
       customerIp,
       merchantPosId: PAYU_CONFIG.posId,
@@ -154,12 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           quantity: '1',
         },
       ],
-      buyer: {
-        email: userData.email,
-        firstName,
-        lastName,
-        language: 'pl',
-      },
+      buyer,
       notifyUrl: `https://protolab.info/api/payments/payu/notify`,
       continueUrl: `https://protolab.info/payment-success?orderId=${orderId}`,
     };
@@ -175,12 +223,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payuResult = await createPayUOrder(token, orderPayload);
     
     // Step 4: Update database - set to 'pending' until webhook confirms payment
+    const updateData: any = { 
+      payment_status: 'pending', // Will be updated to 'paid' by webhook when COMPLETED
+      payment_method: payMethods?.payMethod?.value || 'redirect',
+    };
+
+    // Add invoice info if requested
+    if (requestInvoice && businessInfo) {
+      updateData.invoice_required = true;
+      updateData.invoice_business_info = JSON.stringify(businessInfo);
+    }
+
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ 
-        payment_status: 'pending', // Will be updated to 'paid' by webhook when COMPLETED
-        payment_method: payMethods?.payMethod?.value || 'redirect',
-      })
+      .update(updateData)
       .eq('id', orderId);
 
     if (updateError) {

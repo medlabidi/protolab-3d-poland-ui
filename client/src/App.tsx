@@ -34,6 +34,7 @@ import PaymentPage from "./pages/PaymentPage";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import Checkout from "./pages/Checkout";
 import Conversations from "./pages/Conversations";
 import Business from "./pages/Business";
 import PayUTest from "./pages/PayUTest"; // TEMPORARY - Delete after testing
@@ -100,6 +101,7 @@ const App = () => {
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
                 <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
                 

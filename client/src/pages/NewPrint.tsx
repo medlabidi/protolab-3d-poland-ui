@@ -986,9 +986,9 @@ const NewPrint = () => {
 
       const result = await response.json();
       
-      // Create PayU payment and redirect directly
-      toast.success('Order created. Redirecting to PayU payment...');
-      await redirectToPayUPayment(result.id);
+      // Navigate to checkout page for review before payment
+      toast.success('Order created. Please review your order before payment.');
+      navigate(`/checkout?orderId=${result.id}`);
     } catch (error) {
       console.error('Order creation error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create order');
