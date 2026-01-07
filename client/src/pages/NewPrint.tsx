@@ -331,6 +331,36 @@ const NewPrint = () => {
     // Check if user is logged in
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
+
+    // Restore form state if coming back from checkout
+    const savedState = sessionStorage.getItem('newPrintFormState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        let restored = false;
+        
+        if (state.material) { setMaterial(state.material); restored = true; }
+        if (state.quality) { setQuality(state.quality); restored = true; }
+        if (state.quantity) { setQuantity(state.quantity); restored = true; }
+        if (state.advancedMode !== undefined) { setAdvancedMode(state.advancedMode); restored = true; }
+        if (state.customLayerHeight) { setCustomLayerHeight(state.customLayerHeight); restored = true; }
+        if (state.customInfill) { setCustomInfill(state.customInfill); restored = true; }
+        if (state.supportType) { setSupportType(state.supportType); restored = true; }
+        if (state.infillPattern) { setInfillPattern(state.infillPattern); restored = true; }
+        if (state.selectedDeliveryOption) { setSelectedDeliveryOption(state.selectedDeliveryOption); restored = true; }
+        if (state.shippingAddress) { setShippingAddress(state.shippingAddress); restored = true; }
+        if (state.selectedLocker) { setSelectedLocker(state.selectedLocker); restored = true; }
+        
+        if (restored) {
+          toast.info('Your previous settings have been restored. Please re-upload your file if needed.');
+        }
+        
+        // Clear saved state after restoration
+        sessionStorage.removeItem('newPrintFormState');
+      } catch (error) {
+        console.error('Failed to restore form state:', error);
+      }
+    }
   }, []);
 
   // Function to redirect directly to PayU payment
@@ -985,6 +1015,22 @@ const NewPrint = () => {
       }
 
       const result = await response.json();
+      
+      // Save form state before navigating to checkout
+      const formState = {
+        material,
+        quality,
+        quantity,
+        advancedMode,
+        customLayerHeight,
+        customInfill,
+        supportType,
+        infillPattern,
+        selectedDeliveryOption,
+        shippingAddress,
+        selectedLocker,
+      };
+      sessionStorage.setItem('newPrintFormState', JSON.stringify(formState));
       
       // Navigate to checkout page for review before payment
       toast.success('Order created. Please review your order before payment.');
