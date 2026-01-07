@@ -980,6 +980,33 @@ const NewPrint = () => {
     try {
       setIsProcessing(true);
       
+      // Check if there's a previous pending order from going back
+      const savedState = sessionStorage.getItem('newPrintFormState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          if (state.orderId) {
+            // Cancel the previous pending order
+            const token = localStorage.getItem('accessToken');
+            await fetch(`${API_URL}/orders/${state.orderId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                status: 'cancelled',
+                payment_status: 'cancelled'
+              }),
+            });
+            console.log('Cancelled previous pending order:', state.orderId);
+          }
+        } catch (error) {
+          console.error('Failed to cancel previous order:', error);
+          // Continue anyway
+        }
+      }
+      
       // Create order first
       const formData = new FormData();
       formData.append('file', file);
@@ -1016,8 +1043,9 @@ const NewPrint = () => {
 
       const result = await response.json();
       
-      // Save form state before navigating to checkout
+      // Save form state and orderId before navigating to checkout
       const formState = {
+        orderId: result.id,
         material,
         quality,
         quantity,
