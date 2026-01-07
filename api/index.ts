@@ -877,6 +877,16 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
 
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
+  console.log('[ENTRY] Function invoked:', req.method, req.url);
+  
+  // Disable caching for payment-page to force fresh responses
+  if (req.url?.includes('/payments/payu/payment-page') && req.method === 'GET') {
+    console.log('[CACHE] Setting no-cache headers for payment-page GET');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  
   // Set CORS headers immediately
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', (process.env.CORS_ORIGIN || '*').trim());
