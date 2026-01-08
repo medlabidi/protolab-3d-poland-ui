@@ -6,45 +6,57 @@
 
 BEGIN;
 
--- Ajouter order_type column
+-- ============================================
+-- Colonnes principales pour Design Assistance
+-- ============================================
+
+-- Type d'order: 'print' ou 'design'
 ALTER TABLE orders 
 ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'print';
 
--- Ajouter design_description
+-- Description de l'idée (champ: ideaDescription)
 ALTER TABLE orders 
-ADD COLUMN IF NOT EXISTS design_description TEXT;
+ADD COLUMN IF NOT EXISTS idea_description TEXT;
 
--- Ajouter design_requirements  
-ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS design_requirements TEXT;
-
--- Ajouter reference_images (JSON pour stocker les URLs des images)
-ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS reference_images JSONB DEFAULT '[]'::jsonb;
-
--- Ajouter parent_order_id (pour lier les print orders aux design orders)
-ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS parent_order_id UUID REFERENCES orders(id) ON DELETE SET NULL;
-
--- Ajouter approximate_dimensions
-ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS approximate_dimensions VARCHAR(100);
-
--- Ajouter desired_material
-ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS desired_material VARCHAR(50);
-
--- Ajouter usage_type
+-- Type d'utilisation: mechanical, decorative, functional, other (champ: usage)
 ALTER TABLE orders
 ADD COLUMN IF NOT EXISTS usage_type VARCHAR(50);
 
--- Ajouter usage_details
+-- Détails supplémentaires (champ: usageDetails)
 ALTER TABLE orders
 ADD COLUMN IF NOT EXISTS usage_details TEXT;
 
--- Ajouter request_chat flag
+-- Dimensions approximatives (champ: approximateDimensions)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS approximate_dimensions VARCHAR(100);
+
+-- Matériau souhaité (champ: desiredMaterial)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS desired_material VARCHAR(50);
+
+-- Demande de chat avec admin (champ: requestChat)
 ALTER TABLE orders
 ADD COLUMN IF NOT EXISTS request_chat BOOLEAN DEFAULT FALSE;
+
+-- Fichiers attachés en JSON (champ: attachedFiles)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS attached_files JSONB DEFAULT '[]'::jsonb;
+
+-- ============================================
+-- Colonnes pour la gestion des design orders
+-- ============================================
+
+-- Lien vers l'order parent (pour les print orders créés depuis un design)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS parent_order_id UUID REFERENCES orders(id) ON DELETE SET NULL;
+
+-- Statut de la demande de design (draft, pending, in_progress, completed, cancelled)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS design_status VARCHAR(50) DEFAULT 'pending';
+
+-- Fichier 3D créé par l'admin (URL du fichier STL/STEP créé)
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS admin_design_file VARCHAR(500);
 
 -- Ajouter contrainte pour order_type
 DO $$ 
@@ -62,6 +74,8 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_orders_order_type ON orders(order_type);
 CREATE INDEX IF NOT EXISTS idx_orders_parent_order_id ON orders(parent_order_id);
 CREATE INDEX IF NOT EXISTS idx_orders_request_chat ON orders(request_chat) WHERE request_chat = TRUE;
+CREATE INDEX IF NOT EXISTS idx_orders_design_status ON orders(design_status) WHERE order_type = 'design';
+CREATE INDEX IF NOT EXISTS idx_orders_usage_type ON orders(usage_type);
 
 -- Backfill: Mettre à jour les orders existants qui ont "design" dans le nom
 UPDATE orders 
@@ -72,16 +86,17 @@ AND (
   file_name ILIKE '%assistance%' OR 
   file_name ILIKE '%request%'
 );
-
--- Ajouter des commentaires pour la documentation
-COMMENT ON COLUMN orders.order_type IS 'Type de commande: print (impression 3D standard) ou design (demande d''assistance design)';
-COMMENT ON COLUMN orders.design_description IS 'Description du projet de design (pour order_type=design)';
-COMMENT ON COLUMN orders.design_requirements IS 'Exigences et spécifications spécifiques (pour order_type=design)';
-COMMENT ON COLUMN orders.reference_images IS 'Tableau JSON des URLs d''images de référence (pour order_type=design)';
-COMMENT ON COLUMN orders.parent_order_id IS 'Référence à l''order parent (ex: design order qui a créé ce print order)';
+: print (impression 3D) ou design (demande d''assistance design)';
+COMMENT ON COLUMN orders.idea_description IS 'Description de l''idée du client (formulaire Design Assistance)';
+COMMENT ON COLUMN orders.usage_type IS 'Type d''utilisation: mechanical, decorative, functional, other';
+COMMENT ON COLUMN orders.usage_details IS 'Détails supplémentaires sur l''utilisation prévue';
 COMMENT ON COLUMN orders.approximate_dimensions IS 'Dimensions approximatives (ex: 100mm x 50mm x 30mm)';
-COMMENT ON COLUMN orders.desired_material IS 'Matériau souhaité (PLA, ABS, PETG, etc.)';
-COMMENT ON COLUMN orders.usage_type IS 'Type d''utilisation (mechanical, decorative, functional, other)';
+COMMENT ON COLUMN orders.desired_material IS 'Matériau souhaité: PLA, ABS, PETG, TPU, Resin, etc.';
+COMMENT ON COLUMN orders.request_chat IS 'TRUE si l''utilisateur a demandé un chat avec l''admin';
+COMMENT ON COLUMN orders.attached_files IS 'Fichiers attachés (images, PDF, 3D files) en JSON';
+COMMENT ON COLUMN orders.parent_order_id IS 'Référence au design order parent (pour print orders créés depuis un design)';
+COMMENT ON COLUMN orders.design_status IS 'Statut du design: pending, in_progress, completed, cancelled';
+COMMENT ON COLUMN orders.admin_design_file IS 'URL du fichier 3D créé parional, other)';
 COMMENT ON COLUMN orders.usage_details IS 'Détails d''utilisation supplémentaires';
 COMMENT ON COLUMN orders.request_chat IS 'Indique si l''utilisateur a demandé un chat avec l''admin';
 
@@ -95,16 +110,17 @@ SELECT
     column_default
 FROM information_schema.columns
 WHERE table_name = 'orders'
-AND column_name IN (
-    'order_type', 
-    'design_description', 
-    'design_requirements', 
-    'reference_images', 
-    'parent_order_id',
-    'approximate_dimensions',
-    'desired_material',
+AND column_name I
+    'idea_description',
     'usage_type',
     'usage_details',
+    'approximate_dimensions',
+    'desired_material',
+    'request_chat',
+    'attached_files',
+    'parent_order_id',
+    'design_status',
+    'admin_design_files',
     'request_chat'
 )
 ORDER BY ordinal_position;
@@ -125,21 +141,24 @@ BEGIN
     RAISE NOTICE '✅ Migration Design Assistance: COMPLETE';
     RAISE NOTICE '====================================';
     RAISE NOTICE '';
-    RAISE NOTICE 'Colonnes ajoutées:';
-    RAISE NOTICE '  ✓ order_type';
-    RAISE NOTICE '  ✓ design_description';
-    RAISE NOTICE '  ✓ design_requirements';
-    RAISE NOTICE '  ✓ reference_images';
-    RAISE NOTICE '  ✓ parent_order_id';
-    RAISE NOTICE '  ✓ approximate_dimensions';
-    RAISE NOTICE '  ✓ desired_material';
-    RAISE NOTICE '  ✓ usage_type';
-    RAISE NOTICE '  ✓ usage_details';
-    RAISE NOTICE '  ✓ request_chat';
+    RAISE NOTICE 'Colonnes ajout (print | design)';
+    RAISE NOTICE '  ✓ idea_description (description de l''idée)';
+    RAISE NOTICE '  ✓ usage_type (mechanical | decorative | functional | other)';
+    RAISE NOTICE '  ✓ usage_details (détails supplémentaires)';
+    RAISE NOTICE '  ✓ approximate_dimensions (dimensions)';
+    RAISE NOTICE '  ✓ desired_material (matériau)';
+    RAISE NOTICE '  ✓ request_chat (demande de chat)';
+    RAISE NOTICE '  ✓ attached_files (fichiers attachés)';
+    RAISE NOTICE '  ✓ parent_order_id (lien parent)';
+    RAISE NOTICE '  ✓ design_status (statut du design)';
+    RAISE NOTICE '  ✓ admin_design_file (fichier créé par admin)';
     RAISE NOTICE '';
     RAISE NOTICE 'Index créés:';
     RAISE NOTICE '  ✓ idx_orders_order_type';
     RAISE NOTICE '  ✓ idx_orders_parent_order_id';
+    RAISE NOTICE '  ✓ idx_orders_request_chat';
+    RAISE NOTICE '  ✓ idx_orders_design_status';
+    RAISE NOTICE '  ✓ idx_orders_usage_type_id';
     RAISE NOTICE '  ✓ idx_orders_request_chat';
     RAISE NOTICE '';
 END $$;

@@ -2,6 +2,23 @@ import { useState } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Printer,
   Power,
@@ -12,9 +29,10 @@ import {
   Download,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const AdminPrinters = () => {
-  const [printers] = useState([
+  const [printers, setPrinters] = useState([
     {
       id: 1,
       name: "Prusa i3 MK3S+",
@@ -65,6 +83,53 @@ const AdminPrinters = () => {
     },
   ]);
 
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newPrinter, setNewPrinter] = useState({
+    name: "",
+    status: "offline",
+    temperature: 25,
+    bedTemp: 25,
+  });
+
+  const handleStatusChange = (printerId: number, newStatus: string) => {
+    setPrinters(printers.map(printer => 
+      printer.id === printerId 
+        ? { ...printer, status: newStatus }
+        : printer
+    ));
+    toast.success(`Statut de l'imprimante mis à jour: ${newStatus}`);
+  };
+
+  const handleAddPrinter = () => {
+    if (!newPrinter.name.trim()) {
+      toast.error("Le nom de l'imprimante est requis");
+      return;
+    }
+
+    const printer = {
+      id: printers.length + 1,
+      name: newPrinter.name,
+      status: newPrinter.status,
+      currentJob: "None",
+      progress: 0,
+      temperature: newPrinter.temperature,
+      bedTemp: newPrinter.bedTemp,
+      uptime: "0%",
+      totalPrints: 0,
+      lastMaintenance: new Date().toISOString().split('T')[0],
+    };
+
+    setPrinters([...printers, printer]);
+    toast.success("Imprimante ajoutée avec succès!");
+    setShowAddDialog(false);
+    setNewPrinter({
+      name: "",
+      status: "offline",
+      temperature: 25,
+      bedTemp: 25,
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'online': return 'bg-green-500/20 text-green-400';
@@ -95,7 +160,10 @@ const AdminPrinters = () => {
               <h1 className="text-3xl font-bold text-white mb-2">Printers Management</h1>
               <p className="text-gray-400">Monitor and manage your 3D printer fleet</p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowAddDialog(true)}
+            >
               <Printer className="w-4 h-4 mr-2" />
               Add Printer
             </Button>
@@ -141,10 +209,28 @@ const AdminPrinters = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">{printer.name}</h3>
-                        <div className={`flex items-center gap-2 px-2 py-1 rounded-full w-fit text-sm mt-1 ${getStatusColor(printer.status)}`}>
-                          {getStatusIcon(printer.status)}
-                          {printer.status.charAt(0).toUpperCase() + printer.status.slice(1)}
-                        </div>
+                        <Select
+                          value={printer.status}
+                          onValueChange={(value) => handleStatusChange(printer.id, value)}
+                        >
+                          <SelectTrigger className={`w-fit border-0 h-auto p-0 mt-1 ${getStatusColor(printer.status)}`}>
+                            <div className="flex items-center gap-2 px-2 py-1 rounded-full text-sm">
+                              {getStatusIcon(printer.status)}
+                              <SelectValue />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="online" className="text-green-400">
+                              Online
+                            </SelectItem>
+                            <SelectItem value="offline" className="text-red-400">
+                              Offline
+                            </SelectItem>
+                            <SelectItem value="maintenance" className="text-yellow-400">
+                              Maintenance
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" className="text-gray-500 hover:text-white">
@@ -199,6 +285,83 @@ const AdminPrinters = () => {
               </Card>
             ))}
           </div>
+
+          {/* Add Printer Dialog */}
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Ajouter une nouvelle imprimante</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Remplissez les informations de la nouvelle imprimante 3D
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="printer-name" className="text-gray-300">Nom de l'imprimante *</Label>
+                  <Input
+                    id="printer-name"
+                    placeholder="Ex: Prusa i3 MK4"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={newPrinter.name}
+                    onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="printer-status" className="text-gray-300">Statut initial</Label>
+                  <Select
+                    value={newPrinter.status}
+                    onValueChange={(value) => setNewPrinter({ ...newPrinter, status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="offline">Offline</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nozzle-temp" className="text-gray-300">Temp. buse (°C)</Label>
+                    <Input
+                      id="nozzle-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.temperature}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, temperature: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bed-temp" className="text-gray-300">Temp. plateau (°C)</Label>
+                    <Input
+                      id="bed-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.bedTemp}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, bedTemp: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAddDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleAddPrinter}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Ajouter l'imprimante
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>

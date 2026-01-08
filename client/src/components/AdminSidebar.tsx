@@ -18,6 +18,7 @@ import {
   ChevronDown,
   PackageCheck,
   Pencil,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -62,24 +63,43 @@ const menuItems = [
     path: "/admin/conversations",
   },
   {
-    title: "Printers",
-    icon: Printer,
-    path: "/admin/printers",
+    title: "Resources",
+    icon: Package,
+    path: "/admin/resources",
+    subItems: [
+      {
+        title: "Printers",
+        icon: Printer,
+        path: "/admin/printers",
+      },
+      {
+        title: "Materials",
+        icon: Palette,
+        path: "/admin/materials",
+      },
+      {
+        title: "Suppliers",
+        icon: Building2,
+        path: "/admin/suppliers",
+      },
+    ],
   },
   {
-    title: "Materials",
-    icon: Palette,
-    path: "/admin/materials",
-  },
-  {
-    title: "Analytics",
+    title: "Insights",
     icon: BarChart3,
-    path: "/admin/analytics",
-  },
-  {
-    title: "Reports",
-    icon: FileText,
-    path: "/admin/reports",
+    path: "/admin/insights",
+    subItems: [
+      {
+        title: "Analytics",
+        icon: BarChart3,
+        path: "/admin/analytics",
+      },
+      {
+        title: "Reports",
+        icon: FileText,
+        path: "/admin/reports",
+      },
+    ],
   },
   {
     title: "Notifications",
