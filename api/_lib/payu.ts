@@ -266,11 +266,20 @@ export async function createPayUOrder(orderData: {
  */
 export function verifyPayUSignature(
   body: string,
-  signature: string | undefined
+  signatureHeader: string | undefined
 ): boolean {
-  if (!signature) {
+  if (!signatureHeader) {
     return false;
   }
+
+  // Parse PayU signature header format: "sender=checkout;signature=XXX;algorithm=MD5;content=DOCUMENT"
+  const signatureMatch = signatureHeader.match(/signature=([a-f0-9]+)/);
+  if (!signatureMatch) {
+    console.error('[PAYU] Could not parse signature from header:', signatureHeader);
+    return false;
+  }
+
+  const receivedSignature = signatureMatch[1];
 
   const crypto = require('crypto');
   const expectedSignature = crypto
@@ -278,7 +287,13 @@ export function verifyPayUSignature(
     .update(body + PAYU_CONFIG.md5Key)
     .digest('hex');
 
-  return signature === expectedSignature;
+  console.log('[PAYU] Signature comparison:', {
+    received: receivedSignature,
+    expected: expectedSignature,
+    match: receivedSignature === expectedSignature,
+  });
+
+  return receivedSignature === expectedSignature;
 }
 
 /**

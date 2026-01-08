@@ -21,7 +21,8 @@ function getUserIdFromToken(authHeader: string | undefined): string | null {
   try {
     // Verify custom JWT token (same as used throughout the app)
     const decoded = jwt.verify(token, jwtSecret) as any;
-    return decoded.userId || decoded.id;
+    // Token payload uses 'id' field
+    return decoded.id;
   } catch (error) {
     console.error('Token verification error:', error);
     return null;
