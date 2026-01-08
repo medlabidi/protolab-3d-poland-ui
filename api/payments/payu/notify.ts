@@ -17,9 +17,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const signature = req.headers['openpayu-signature'] as string | undefined;
     const body = JSON.stringify(req.body);
 
+    console.log('[PAYU-NOTIFY] Received notification:', {
+      hasSignature: !!signature,
+      signature: signature?.substring(0, 20) + '...',
+      bodyLength: body.length,
+      orderId: req.body?.order?.orderId,
+      extOrderId: req.body?.order?.extOrderId,
+    });
+
     // Verify signature
     if (!verifyPayUSignature(body, signature)) {
-      console.error('Invalid PayU signature');
+      console.error('[PAYU-NOTIFY] Signature verification failed:', {
+        receivedSignature: signature,
+        bodyPreview: body.substring(0, 200),
+      });
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
