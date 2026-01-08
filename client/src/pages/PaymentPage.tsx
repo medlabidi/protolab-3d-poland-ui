@@ -155,62 +155,57 @@ export function PaymentPage() {
         return;
       }
 
-      // Handle different payment methods with correct endpoints
-      let response;
-      
+      // Build payment request data
+      const paymentData: any = {
+        orderId: order.id,
+        amount: order.price.toString(),
+        description: order.order_type === 'credits_purchase' 
+          ? `Store Credit: ${order.credits_amount || order.price} PLN`
+          : `Order #${order.id.slice(0, 8)} - ${order.file_name || 'Print Job'}`,
+        userId: order.user_id,
+      };
+
+      // Add BLIK-specific parameters if BLIK method selected
       if (selectedMethod === 'blik') {
-        // BLIK payment - use dedicated BLIK endpoint
         if (!blikCode || blikCode.length !== 6) {
           throw new Error('Please enter a valid 6-digit BLIK code');
         }
 
-        response = await fetch(`${API_URL}/payments/blik`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            orderId: order.id,
-            blikCode: blikCode,
-          }),
-        });
+        paymentData.payMethods = {
+          payMethod: {
+            value: 'blik',
+            type: 'PBL',
+            authorizationCode: blikCode,
+          }
+        };
+      }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || errorData.error || 'BLIK payment failed');
-        }
+      // Call PayU create endpoint with full buyer data
+      const response = await fetch(`${API_URL}/payments/payu/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(paymentData),
+      });
 
-        const data = await response.json();
-        
-        if (data.success) {
-          toast.success('BLIK payment initiated. Please confirm in your banking app.');
-          // Redirect to success page or order details
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Payment failed');
+      }
+
+      const data = await response.json();
+
+      // For BLIK, show success message and wait for confirmation
+      if (selectedMethod === 'blik') {
+        toast.success('BLIK payment initiated. Please confirm in your banking app.');
+        // Redirect to success page for webhook to process
+        setTimeout(() => {
           navigate(`/payment-success?orderId=${order.id}`);
-        } else {
-          throw new Error(data.message || 'BLIK payment failed');
-        }
+        }, 1500);
       } else {
-        // Card or other payment methods - use standard create endpoint
-        response = await fetch(`${API_URL}/payments/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            orderId: order.id,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Payment failed');
-        }
-
-        const data = await response.json();
-
-        // Redirect to PayU payment page
+        // For other methods, redirect to PayU payment page
         if (data.redirectUri) {
           window.location.href = data.redirectUri;
         } else {
