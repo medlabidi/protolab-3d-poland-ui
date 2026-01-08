@@ -228,12 +228,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       merchantPosId: PAYU_CONFIG.posId,
       description,
       currencyCode: 'PLN',
-      totalAmount: (parseFloat(amount) * 100).toString(), // Convert to grosz
+      totalAmount: Math.round(parseFloat(amount) * 100).toString(), // Convert to grosz, round to avoid floating point issues
       extOrderId: orderId,
       products: [
         {
           name: description,
-          unitPrice: (parseFloat(amount) * 100).toString(),
+          unitPrice: Math.round(parseFloat(amount) * 100).toString(),
           quantity: '1',
         },
       ],
