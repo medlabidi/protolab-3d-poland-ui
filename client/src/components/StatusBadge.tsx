@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export type OrderStatus = "submitted" | "in_queue" | "printing" | "finished" | "delivered" | "on_hold" | "suspended";
-export type PaymentStatus = "paid" | "on_hold" | "refunding" | "refunded";
+export type PaymentStatus = "paid" | "pending" | "on_hold" | "refunding" | "refunded" | "failed" | "cancelled";
 
 interface StatusBadgeProps {
   status: OrderStatus;
@@ -49,6 +49,10 @@ const paymentStatusConfig: Record<PaymentStatus, { label: string; className: str
     label: "Paid",
     className: "bg-green-600 text-white hover:bg-green-600/90",
   },
+  pending: {
+    label: "Pending",
+    className: "bg-yellow-500 text-white hover:bg-yellow-500/90",
+  },
   on_hold: {
     label: "On Hold",
     className: "bg-amber-500 text-white hover:bg-amber-500/90",
@@ -60,6 +64,14 @@ const paymentStatusConfig: Record<PaymentStatus, { label: string; className: str
   refunded: {
     label: "Refunded",
     className: "bg-gray-500 text-white hover:bg-gray-500/90",
+  },
+  failed: {
+    label: "Failed",
+    className: "bg-red-600 text-white hover:bg-red-600/90",
+  },
+  cancelled: {
+    label: "Cancelled",
+    className: "bg-gray-600 text-white hover:bg-gray-600/90",
   },
 };
 
