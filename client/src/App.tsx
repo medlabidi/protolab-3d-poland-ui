@@ -44,6 +44,7 @@ import AdminDesignAssistance from "./pages/admin/AdminDesignAssistance";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminConversations from "./pages/admin/AdminConversations";
 import AdminPrinters from "./pages/admin/AdminPrinters";
+import AdminMaintenanceInsights from "./pages/admin/AdminMaintenanceInsights";
 import AdminMaterials from "./pages/admin/AdminMaterials";
 import AdminSuppliers from "./pages/admin/AdminSuppliers";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
@@ -106,6 +107,7 @@ const App = () => {
                 <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
                 <Route path="/admin/conversations" element={<AdminProtectedRoute><AdminConversations /></AdminProtectedRoute>} />
                 <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />
+                <Route path="/admin/printers/maintenance" element={<AdminProtectedRoute><AdminMaintenanceInsights /></AdminProtectedRoute>} />
                 <Route path="/admin/materials" element={<AdminProtectedRoute><AdminMaterials /></AdminProtectedRoute>} />
                 <Route path="/admin/suppliers" element={<AdminProtectedRoute><AdminSuppliers /></AdminProtectedRoute>} />
                 <Route path="/admin/analytics" element={<AdminProtectedRoute><AdminAnalytics /></AdminProtectedRoute>} />

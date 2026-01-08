@@ -19,6 +19,7 @@ import {
   PackageCheck,
   Pencil,
   Building2,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -71,6 +72,11 @@ const menuItems = [
         title: "Printers",
         icon: Printer,
         path: "/admin/printers",
+      },
+      {
+        title: "Maintenance",
+        icon: Wrench,
+        path: "/admin/printers/maintenance",
       },
       {
         title: "Materials",

@@ -208,6 +208,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/admin/users' && req.method === 'GET') {
       return await handleAdminGetUsers(req as AuthenticatedRequest, res);
     }
+    if (path === '/admin/user-details' && req.method === 'GET') {
+      return await handleAdminGetUserDetails(req as AuthenticatedRequest, res);
+    }
     
     // Default: API info
     return res.status(200).json({
@@ -242,6 +245,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'POST /api/conversations/:id/messages',
         'GET /api/admin/orders',
         'GET /api/admin/users',
+        'GET /api/admin/user-details?id={userId}',
       ]
     });
   } catch (error) {
@@ -1320,4 +1324,129 @@ async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelRespons
   }
   
   return res.status(200).json({ users: users || [] });
+}
+
+async function handleAdminGetUserDetails(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get user ID from query
+  const userId = req.query.id as string;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  
+  // Fetch user details
+  const { data: targetUser, error: targetUserError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  if (targetUserError || !targetUser) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  // Fetch orders statistics
+  const { data: orders, error: ordersError } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id', userId);
+  
+  const allOrders = orders || [];
+  
+  // Calculate statistics
+  const totalOrders = allOrders.length;
+  const paidOrders = allOrders.filter(o => o.payment_status === 'paid').length;
+  const pendingOrders = allOrders.filter(o => o.payment_status === 'pending').length;
+  const failedOrders = allOrders.filter(o => o.payment_status === 'failed').length;
+  const refundedOrders = allOrders.filter(o => o.payment_status === 'refunded').length;
+  
+  // Calculate total amounts
+  const totalSpent = allOrders
+    .filter(o => o.payment_status === 'paid')
+    .reduce((sum, o) => sum + (o.paid_amount || o.price || 0), 0);
+  
+  const pendingAmount = allOrders
+    .filter(o => o.payment_status === 'pending')
+    .reduce((sum, o) => sum + (o.price || 0), 0);
+  
+  // Get payment methods used
+  const paymentMethods = allOrders
+    .filter(o => o.payment_method)
+    .map(o => o.payment_method)
+    .filter((v, i, a) => a.indexOf(v) === i);
+  
+  // Check if payment account exists
+  const { data: paymentAccount } = await supabase
+    .from('user_payment_accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  
+  // Categorize user by payment behavior
+  let paymentCategory = 'new';
+  if (paidOrders === 0) {
+    paymentCategory = 'no_purchases';
+  } else if (paidOrders >= 10 && totalSpent >= 5000) {
+    paymentCategory = 'premium';
+  } else if (paidOrders >= 5 && totalSpent >= 2000) {
+    paymentCategory = 'regular';
+  } else if (paidOrders >= 1) {
+    paymentCategory = 'occasional';
+  }
+  
+  // Get recent orders
+  const recentOrders = allOrders
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+  
+  // Get payment history
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  
+  return res.status(200).json({
+    user: targetUser,
+    statistics: {
+      orders: {
+        total: totalOrders,
+        paid: paidOrders,
+        pending: pendingOrders,
+        failed: failedOrders,
+        refunded: refundedOrders,
+      },
+      amounts: {
+        total_spent: totalSpent,
+        pending_amount: pendingAmount,
+        average_order: paidOrders > 0 ? (totalSpent / paidOrders) : 0,
+      },
+      payment: {
+        methods_used: paymentMethods,
+        has_payment_account: !!paymentAccount,
+        payment_account_verified: paymentAccount?.verified || false,
+        payment_account_type: paymentAccount?.account_type || null,
+        category: paymentCategory,
+      },
+    },
+    recent_orders: recentOrders,
+    payment_history: payments || [],
+    payment_account: paymentAccount || null,
+  });
 }
