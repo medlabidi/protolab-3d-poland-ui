@@ -171,11 +171,11 @@ export function PaymentPage() {
           throw new Error('Please enter a valid 6-digit BLIK code');
         }
 
+        // Use correct PayU BLIK authorization code format
         paymentData.payMethods = {
           payMethod: {
-            value: 'blik',
-            type: 'PBL',
-            authorizationCode: blikCode,
+            type: 'BLIK_AUTHORIZATION_CODE',
+            value: blikCode,
           }
         };
       }
@@ -197,13 +197,26 @@ export function PaymentPage() {
 
       const data = await response.json();
 
-      // For BLIK, show success message and wait for confirmation
+      // For BLIK, check status before redirecting
       if (selectedMethod === 'blik') {
-        toast.success('BLIK payment initiated. Please confirm in your banking app.');
-        // Redirect to success page for webhook to process
-        setTimeout(() => {
-          navigate(`/payment-success?orderId=${order.id}`);
-        }, 1500);
+        // Check PayU response status
+        const payuStatus = data.status;
+        
+        if (payuStatus === 'SUCCESS' || payuStatus === 'WAITING_FOR_CONFIRMATION') {
+          toast.success('BLIK payment initiated. Please confirm in your banking app.');
+          // Redirect to success page to poll for payment completion
+          setTimeout(() => {
+            navigate(`/payment-success?orderId=${order.id}`);
+          }, 1500);
+        } else if (payuStatus === 'WARNING_CONTINUE_3DS' || payuStatus === 'WARNING_CONTINUE_CVV') {
+          // Shouldn't happen with BLIK but handle redirect if needed
+          if (data.redirectUri) {
+            window.location.href = data.redirectUri;
+          }
+        } else {
+          // Payment failed or invalid code
+          throw new Error(data.statusDesc || 'BLIK payment failed. Please check your code and try again.');
+        }
       } else {
         // For other methods, redirect to PayU payment page
         if (data.redirectUri) {

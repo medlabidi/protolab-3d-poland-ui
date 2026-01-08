@@ -274,12 +274,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Continue anyway, PayU order was created successfully
     }
 
-    console.log('[PAYU-CREATE] Success! Redirect URI:', payuResult.redirectUri);
+    console.log('[PAYU-CREATE] Success! PayU Response:', {
+      status: payuResult.status,
+      statusCode: payuResult.statusCode,
+      redirectUri: payuResult.redirectUri,
+      orderId: payuResult.orderId
+    });
 
-    // Return simple response with redirectUri (standard PayU flow)
+    // Return full PayU response including status (needed for BLIK)
     return res.status(200).json({
       success: true,
       redirectUri: payuResult.redirectUri,
+      status: payuResult.status, // SUCCESS, WAITING_FOR_CONFIRMATION, etc.
+      statusDesc: payuResult.statusDesc,
       statusCode: payuResult.statusCode,
       orderId: payuResult.orderId,
     });
