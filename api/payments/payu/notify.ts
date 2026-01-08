@@ -78,7 +78,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           payment_status: paymentStatus,
           status: orderStatus,
           payu_order_id: order.orderId,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', order.extOrderId);
 

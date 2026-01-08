@@ -58,7 +58,7 @@ const PaymentSuccess = () => {
         setOrderDetails(order);
         
         // Check payment status from database (updated by webhook)
-        if (order.payment_status === 'completed' || order.payment_status === 'paid') {
+        if (order.payment_status === 'paid') {
           setStatus('success');
           toast.success('Payment successful! Your order is confirmed.');
         } else if (order.payment_status === 'pending' || order.payment_status === 'on_hold') {
@@ -74,12 +74,19 @@ const PaymentSuccess = () => {
             setRetryCount(prev => prev + 1);
             setTimeout(() => checkPaymentStatus(), 3000);
           }
-        } else if (order.payment_status === 'failed') {
+        } else if (order.payment_status === 'failed' || order.payment_status === 'cancelled') {
           setStatus('failed');
           toast.error('Payment failed. Please try again or contact support.');
         } else {
-          setStatus('failed');
-          toast.error('Payment verification failed. Please contact support.');
+          // Unknown status - keep checking for a bit
+          if (retryCount >= MAX_RETRIES) {
+            setStatus('success');
+            toast.warning('Payment status unclear. Please check your orders page.');
+          } else {
+            setStatus('checking');
+            setRetryCount(prev => prev + 1);
+            setTimeout(() => checkPaymentStatus(), 3000);
+          }
         }
       } else {
         setStatus('failed');
