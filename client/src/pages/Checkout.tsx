@@ -39,6 +39,9 @@ interface Order {
   print_time: number;
   status: string;
   payment_status: string;
+  advanced_mode?: boolean;
+  support_type?: string;
+  infill_pattern?: string;
 }
 
 interface ShippingAddress {
@@ -409,30 +412,14 @@ export function Checkout() {
                   <span className="text-gray-600 dark:text-gray-300">Material:</span>
                   <span className="font-medium dark:text-gray-100">{order.material} - {order.color}</span>
                 </div>
-                {/* Show quality details based on standard vs advanced mode */}
-                {(order.layer_height === 0.2 && order.infill === 20) ? (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                    <span className="font-medium dark:text-gray-100">Standard</span>
-                  </div>
-                ) : (order.layer_height === 0.3 && order.infill === 10) ? (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                    <span className="font-medium dark:text-gray-100">Draft</span>
-                  </div>
-                ) : (order.layer_height === 0.15 && order.infill === 50) ? (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                    <span className="font-medium dark:text-gray-100">High</span>
-                  </div>
-                ) : (order.layer_height === 0.1 && order.infill === 100) ? (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                    <span className="font-medium dark:text-gray-100">Ultra High</span>
-                  </div>
-                ) : (
+                {/* Show quality or advanced settings based on advanced_mode flag */}
+                {order.advanced_mode ? (
                   // Advanced mode - show technical parameters
                   <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Mode:</span>
+                      <span className="font-medium text-primary dark:text-blue-400">Advanced Settings</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
                       <span className="font-medium dark:text-gray-100">{order.layer_height}mm</span>
@@ -441,7 +428,31 @@ export function Checkout() {
                       <span className="text-gray-600 dark:text-gray-300">Infill:</span>
                       <span className="font-medium dark:text-gray-100">{order.infill}%</span>
                     </div>
+                    {order.support_type && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Support:</span>
+                        <span className="font-medium dark:text-gray-100 capitalize">{order.support_type}</span>
+                      </div>
+                    )}
+                    {order.infill_pattern && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
+                        <span className="font-medium dark:text-gray-100 capitalize">{order.infill_pattern}</span>
+                      </div>
+                    )}
                   </>
+                ) : (
+                  // Standard mode - show quality preset
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                    <span className="font-medium dark:text-gray-100">
+                      {order.layer_height === 0.3 && order.infill === 10 ? 'Draft' :
+                       order.layer_height === 0.2 && order.infill === 20 ? 'Standard' :
+                       order.layer_height === 0.15 && order.infill === 50 ? 'High' :
+                       order.layer_height === 0.1 && order.infill === 100 ? 'Ultra High' :
+                       'Custom'}
+                    </span>
+                  </div>
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">Quantity:</span>

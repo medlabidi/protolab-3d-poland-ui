@@ -47,6 +47,7 @@ export interface IOrder {
   refund_bank_details?: string;
   order_number?: string;
   // Advanced print settings
+  advanced_mode?: boolean;
   support_type?: 'none' | 'normal' | 'tree';
   infill_pattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
   custom_layer_height?: number;
