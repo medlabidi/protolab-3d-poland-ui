@@ -185,15 +185,12 @@ export function PaymentPage() {
 
       // Add BLIK-specific parameters if BLIK method selected
       if (selectedMethod === 'blik') {
-        if (!blikCode || blikCode.length !== 6) {
-          throw new Error('Please enter a valid 6-digit BLIK code');
-        }
-
-        // Use correct PayU BLIK authorization code format
+        // Note: Using redirect mode - user will enter BLIK code on PayU page
+        // For transparent BLIK (code entry on merchant page), POS configuration must be changed by PayU
         paymentData.payMethods = {
           payMethod: {
-            type: 'BLIK_AUTHORIZATION_CODE',
-            value: blikCode,
+            type: 'PBL',
+            value: 'blik',
           }
         };
       }
@@ -215,33 +212,13 @@ export function PaymentPage() {
 
       const data = await response.json();
 
-      // For BLIK, check status before redirecting
+      // For BLIK in redirect mode, just redirect to PayU page where user enters code
       if (selectedMethod === 'blik') {
-        // Check PayU response status
-        const payuStatus = data.status || data.statusCode;
-        
-        console.log('[BLIK Payment] PayU Response:', { status: payuStatus, statusDesc: data.statusDesc });
-        
-        // Success statuses - payment was accepted
-        if (payuStatus === 'SUCCESS' || payuStatus === 'WAITING_FOR_CONFIRMATION') {
-          toast.success('BLIK payment initiated. Please confirm in your banking app.');
-          // Redirect to success page to poll for payment completion
-          setTimeout(() => {
-            navigate(`/payment-success?orderId=${order.id}`);
-          }, 1500);
-        } 
-        // Redirect needed (shouldn't happen with BLIK but handle it)
-        else if (payuStatus === 'WARNING_CONTINUE_3DS' || payuStatus === 'WARNING_CONTINUE_CVV') {
-          if (data.redirectUri) {
-            window.location.href = data.redirectUri;
-          } else {
-            throw new Error('Redirect required but no redirectUri provided');
-          }
-        } 
-        // All other statuses are errors
-        else {
-          const errorMessage = data.statusDesc || getErrorMessage(payuStatus) || 'BLIK payment failed. Please check your code and try again.';
-          throw new Error(errorMessage);
+        if (data.redirectUri) {
+          toast.success('Redirecting to BLIK payment page...');
+          window.location.href = data.redirectUri;
+        } else {
+          throw new Error('No redirect URL received from payment provider');
         }
       } else {
         // For other methods, redirect to PayU payment page
