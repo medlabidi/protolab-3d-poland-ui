@@ -45,8 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: order.status,
       amount: order.totalAmount,
       currencyCode: order.currencyCode,
-      buyer: order.buyer,
-      payMethod: order.payMethod,
+      buyer: (order as any).buyer,
+      payMethod: (order as any).payMethod,
       products: order.products,
     });
     console.log('============================================');

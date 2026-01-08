@@ -78,7 +78,7 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
 
   // PayU may return 200/201 with JSON containing redirectUri
   if (response.ok) {
-    const result = await response.json();
+    const result: any = await response.json();
     console.log('[PAYU-CREATE] Order created:', result);
     
     return {
