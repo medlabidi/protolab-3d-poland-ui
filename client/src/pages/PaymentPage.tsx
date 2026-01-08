@@ -12,6 +12,24 @@ import { API_URL } from '@/config/api';
 import { toast } from 'sonner';
 import { apiFormData } from '@/lib/api';
 
+// Helper function to get user-friendly error messages for PayU error codes
+const getErrorMessage = (statusCode: string): string | null => {
+  const errorMessages: Record<string, string> = {
+    'ERROR_VALUE_INVALID': 'Invalid BLIK code. Please check and try again.',
+    'ERROR_SYNTAX': 'Invalid BLIK code format. Code must be 6 digits.',
+    'AUT_ERROR_USER_NOT_FOUND': 'BLIK code not recognized. Please generate a new code in your banking app.',
+    'AUT_ERROR_USER_CANCELED': 'Payment was cancelled. Please try again.',
+    'AUT_ERROR_TRANSACTION_REJECTED': 'Payment was rejected by your bank.',
+    'AUT_ERROR_TIMEOUT': 'BLIK code has expired. Please generate a new code.',
+    'AUT_ERROR_INVALID_CODE': 'Invalid BLIK code. Please check your code and try again.',
+    'AUT_ERROR': 'Payment authorization failed. Please try again.',
+    'WARNING_CONTINUE_CVV': 'Additional verification required.',
+    'WARNING_CONTINUE_3DS': '3D Secure verification required.',
+  };
+  
+  return errorMessages[statusCode] || null;
+};
+
 interface Order {
   id: string;
   file_name: string;
@@ -200,22 +218,30 @@ export function PaymentPage() {
       // For BLIK, check status before redirecting
       if (selectedMethod === 'blik') {
         // Check PayU response status
-        const payuStatus = data.status;
+        const payuStatus = data.status || data.statusCode;
         
+        console.log('[BLIK Payment] PayU Response:', { status: payuStatus, statusDesc: data.statusDesc });
+        
+        // Success statuses - payment was accepted
         if (payuStatus === 'SUCCESS' || payuStatus === 'WAITING_FOR_CONFIRMATION') {
           toast.success('BLIK payment initiated. Please confirm in your banking app.');
           // Redirect to success page to poll for payment completion
           setTimeout(() => {
             navigate(`/payment-success?orderId=${order.id}`);
           }, 1500);
-        } else if (payuStatus === 'WARNING_CONTINUE_3DS' || payuStatus === 'WARNING_CONTINUE_CVV') {
-          // Shouldn't happen with BLIK but handle redirect if needed
+        } 
+        // Redirect needed (shouldn't happen with BLIK but handle it)
+        else if (payuStatus === 'WARNING_CONTINUE_3DS' || payuStatus === 'WARNING_CONTINUE_CVV') {
           if (data.redirectUri) {
             window.location.href = data.redirectUri;
+          } else {
+            throw new Error('Redirect required but no redirectUri provided');
           }
-        } else {
-          // Payment failed or invalid code
-          throw new Error(data.statusDesc || 'BLIK payment failed. Please check your code and try again.');
+        } 
+        // All other statuses are errors
+        else {
+          const errorMessage = data.statusDesc || getErrorMessage(payuStatus) || 'BLIK payment failed. Please check your code and try again.';
+          throw new Error(errorMessage);
         }
       } else {
         // For other methods, redirect to PayU payment page

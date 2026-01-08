@@ -59,10 +59,12 @@ interface PayUOrderRequest {
 interface PayUOrderResponse {
   status: {
     statusCode: string;
+    statusDesc?: string;
   };
   redirectUri?: string;
   orderId: string;
   extOrderId?: string;
+  iframeAllowed?: boolean;
 }
 
 // Cache for OAuth token
@@ -129,7 +131,7 @@ export async function createPayUOrder(orderData: {
       specificData?: any[];
     };
   };
-}): Promise<{ redirectUri?: string; payuOrderId: string; statusCode: string }> {
+}): Promise<{ redirectUri?: string; payuOrderId: string; statusCode: string; status?: string; statusDesc?: string }> {
   try {
     // Get OAuth token
     const token = await getPayUToken();
@@ -202,17 +204,21 @@ export async function createPayUOrder(orderData: {
           response.on('end', () => {
             try {
               const data = JSON.parse(responseData);
+              console.log('[PAYU] 302 redirect response data:', JSON.stringify(data, null, 2));
               resolve({
                 redirectUri: redirectUri,
                 payuOrderId: data.orderId || redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
                 statusCode: 'SUCCESS',
+                status: 'SUCCESS',
               });
             } catch (e) {
               // No JSON body, use redirect URL
+              console.log('[PAYU] 302 redirect with no JSON body, redirectUri:', redirectUri);
               resolve({
                 redirectUri: redirectUri,
                 payuOrderId: redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
                 statusCode: 'SUCCESS',
+                status: 'SUCCESS',
               });
             }
           });
@@ -230,15 +236,16 @@ export async function createPayUOrder(orderData: {
           try {
             const result = JSON.parse(responseData) as PayUOrderResponse;
 
-            if (result.status.statusCode !== 'SUCCESS') {
-              reject(new Error(`PayU order creation failed: ${result.status.statusCode}`));
-              return;
-            }
+            console.log('[PAYU] Order creation response:', JSON.stringify(result, null, 2));
 
+            // Don't reject on non-SUCCESS - let frontend handle the error status
+            // This allows proper error messages to be shown to the user
             resolve({
               redirectUri: result.redirectUri,
               payuOrderId: result.orderId,
               statusCode: result.status.statusCode,
+              status: result.status.statusCode,
+              statusDesc: result.status.statusDesc,
             });
           } catch (parseError) {
             console.error('[PAYU] Failed to parse response:', responseData);
