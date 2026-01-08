@@ -54,19 +54,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paymentStatus = 'paid'; // Use 'paid' consistently
         break;
       case 'CANCELED':
-        orderStatus = 'payment_failed';
+        orderStatus = 'suspended'; // Use valid status value
         paymentStatus = 'failed';
         break;
       case 'WAITING_FOR_CONFIRMATION':
-        orderStatus = 'pending';
-        paymentStatus = 'pending';
-        break;
       case 'PENDING':
-        orderStatus = 'pending';
+        orderStatus = 'submitted'; // Use valid status value (not 'pending')
         paymentStatus = 'pending';
         break;
       default:
-        orderStatus = 'pending';
+        console.warn(`[PAYU-NOTIFY] Unknown PayU status: ${order.status}, defaulting to submitted/pending`);
+        orderStatus = 'submitted'; // Use valid status value
         paymentStatus = 'pending';
     }
 
