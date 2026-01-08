@@ -208,15 +208,20 @@ export async function createPayUOrder(orderData: {
               resolve({
                 redirectUri: redirectUri,
                 orderId: data.orderId || redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
-                statusCode: 'SUCCESS',
-                status: 'SUCCESS',
+                statusCode: data.status?.statusCode || 'SUCCESS',
+                status: data.status?.statusCode || 'SUCCESS',
+                statusDesc: data.status?.statusDesc,
               });
             } catch (e) {
               // No JSON body, use redirect URL
-              console.log('[PAYU] 302 redirect with no JSON body, redirectUri:', redirectUri);
+              console.log('[PAYU] 302 redirect with no JSON body');
+              console.log('[PAYU] Response body:', responseData);
+              console.log('[PAYU] Redirect URI:', redirectUri);
+              const extractedOrderId = redirectUri?.match(/orderId=([^&]+)/)?.[1] || '';
+              console.log('[PAYU] Extracted orderId:', extractedOrderId);
               resolve({
                 redirectUri: redirectUri,
-                orderId: redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
+                orderId: extractedOrderId,
                 statusCode: 'SUCCESS',
                 status: 'SUCCESS',
               });
