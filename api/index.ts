@@ -1830,6 +1830,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       customInfill = getField('customInfill');
       const advancedModeField = getField('advancedMode');
       advancedMode = advancedModeField === 'true';
+      console.log(`📦 [ORDER-CREATE] Advanced Mode Field: "${advancedModeField}", Parsed: ${advancedMode}`);
       
       const shippingAddressStr = getField('shippingAddress');
       if (shippingAddressStr) {
@@ -2005,6 +2006,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   }
   if (advancedMode !== undefined) {
     orderData.advanced_mode = advancedMode;
+    console.log(`📦 [ORDER-CREATE] Setting advanced_mode in orderData: ${advancedMode}`);
   }
   
   // Add optional fields if provided
