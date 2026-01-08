@@ -281,14 +281,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       orderId: payuResult.orderId
     });
 
+    // Extract orderId from redirect URL if not provided directly
+    let finalOrderId = payuResult.orderId;
+    if (!finalOrderId && payuResult.redirectUri) {
+      const match = payuResult.redirectUri.match(/orderId=([^&]+)/);
+      if (match) {
+        finalOrderId = match[1];
+        console.log('[PAYU-CREATE] Extracted orderId from redirectUri:', finalOrderId);
+      }
+    }
+
     // Return full PayU response including status (needed for BLIK)
     return res.status(200).json({
       success: true,
       redirectUri: payuResult.redirectUri,
-      status: payuResult.status, // SUCCESS, WAITING_FOR_CONFIRMATION, etc.
+      status: payuResult.status || payuResult.statusCode, // Fallback to statusCode if status is undefined
       statusDesc: payuResult.statusDesc,
       statusCode: payuResult.statusCode,
-      orderId: payuResult.orderId,
+      orderId: finalOrderId,
     });
 
   } catch (error) {
