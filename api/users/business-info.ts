@@ -21,10 +21,12 @@ function getUserIdFromToken(authHeader: string | undefined): string | null {
   try {
     // Verify custom JWT token (same as used throughout the app)
     const decoded = jwt.verify(token, jwtSecret) as any;
+    console.log('[BUSINESS-INFO] Token decoded successfully, userId:', decoded.id);
     // Token payload uses 'id' field
     return decoded.id;
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('[BUSINESS-INFO] Token verification error:', error);
+    console.error('[BUSINESS-INFO] JWT Secret exists:', !!jwtSecret, 'Token length:', token.length);
     return null;
   }
 }
