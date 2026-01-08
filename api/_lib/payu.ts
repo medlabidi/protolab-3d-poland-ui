@@ -131,7 +131,7 @@ export async function createPayUOrder(orderData: {
       specificData?: any[];
     };
   };
-}): Promise<{ redirectUri?: string; payuOrderId: string; statusCode: string; status?: string; statusDesc?: string }> {
+}): Promise<{ redirectUri?: string; orderId: string; statusCode: string; status?: string; statusDesc?: string }> {
   try {
     // Get OAuth token
     const token = await getPayUToken();
@@ -207,7 +207,7 @@ export async function createPayUOrder(orderData: {
               console.log('[PAYU] 302 redirect response data:', JSON.stringify(data, null, 2));
               resolve({
                 redirectUri: redirectUri,
-                payuOrderId: data.orderId || redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
+                orderId: data.orderId || redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
                 statusCode: 'SUCCESS',
                 status: 'SUCCESS',
               });
@@ -216,7 +216,7 @@ export async function createPayUOrder(orderData: {
               console.log('[PAYU] 302 redirect with no JSON body, redirectUri:', redirectUri);
               resolve({
                 redirectUri: redirectUri,
-                payuOrderId: redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
+                orderId: redirectUri?.match(/orderId=([^&]+)/)?.[1] || '',
                 statusCode: 'SUCCESS',
                 status: 'SUCCESS',
               });
@@ -242,9 +242,9 @@ export async function createPayUOrder(orderData: {
             // This allows proper error messages to be shown to the user
             resolve({
               redirectUri: result.redirectUri,
-              payuOrderId: result.orderId,
+              orderId: result.orderId,
               statusCode: result.status.statusCode,
-              status: result.status.statusCode,
+              status: result.status.statusCode, // Same as statusCode for now
               statusDesc: result.status.statusDesc,
             });
           } catch (parseError) {
