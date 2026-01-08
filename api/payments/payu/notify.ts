@@ -37,12 +37,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const notification: PayUNotification = req.body;
     const { order } = notification;
 
-    console.log('PayU notification received:', {
+    console.log('========== PAYU WEBHOOK - FULL DATA ==========');
+    console.log('Complete notification:', JSON.stringify(notification, null, 2));
+    console.log('Order details:', {
       orderId: order.orderId,
       extOrderId: order.extOrderId,
       status: order.status,
       amount: order.totalAmount,
+      currencyCode: order.currencyCode,
+      buyer: order.buyer,
+      payMethod: order.payMethod,
+      products: order.products,
     });
+    console.log('============================================');
 
     // Update order status based on PayU status
     let orderStatus: string;

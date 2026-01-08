@@ -274,12 +274,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Continue anyway, PayU order was created successfully
     }
 
-    console.log('[PAYU-CREATE] Success! PayU Response:', {
+    console.log('========== PAYU CREATE ORDER - RESPONSE ==========');
+    console.log('Full PayU Result:', JSON.stringify(payuResult, null, 2));
+    console.log('Parsed fields:', {
       status: payuResult.status,
       statusCode: payuResult.statusCode,
+      statusDesc: payuResult.statusDesc,
       redirectUri: payuResult.redirectUri,
-      orderId: payuResult.orderId
+      orderId: payuResult.orderId,
+      iframeAllowed: payuResult.iframeAllowed
     });
+    console.log('===============================================');
 
     // Extract orderId from redirect URL if not provided directly
     let finalOrderId = payuResult.orderId;
