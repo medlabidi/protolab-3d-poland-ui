@@ -1,22 +1,29 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
-const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
-function getUserIdFromToken(authHeader: string | undefined): string | null {
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function getUserIdFromToken(authHeader: string | undefined): Promise<string | null> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
 
   const token = authHeader.substring(7);
   try {
-    const decoded = jwt.verify(token, jwtSecret) as any;
-    return decoded.userId;
+    // Use Supabase to verify the token
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      console.error('Auth error:', error);
+      return null;
+    }
+    return user.id;
   } catch (error) {
     console.error('Token verification error:', error);
     return null;
@@ -25,7 +32,7 @@ function getUserIdFromToken(authHeader: string | undefined): string | null {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const userId = getUserIdFromToken(req.headers.authorization);
+    const userId = await getUserIdFromToken(req.headers.authorization);
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

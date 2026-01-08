@@ -91,7 +91,16 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
   // Error case
   const errorText = await response.text();
   console.error('[PAYU-CREATE] Order creation failed:', response.status, errorText);
-  throw new Error(`PayU order creation failed: ${response.status}`);
+  console.error('[PAYU-CREATE] Failed request payload:', JSON.stringify(orderData, null, 2));
+  
+  // Try to parse error details
+  try {
+    const errorJson = JSON.parse(errorText);
+    console.error('[PAYU-CREATE] PayU error details:', JSON.stringify(errorJson, null, 2));
+    throw new Error(`PayU error: ${errorJson.status?.statusDesc || errorJson.message || errorText}`);
+  } catch (e) {
+    throw new Error(`PayU order creation failed: ${response.status} - ${errorText}`);
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -132,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[PAYU-CREATE] Fetching user details...');
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('email, name, phone')
+      .select('email, first_name, last_name, phone')
       .eq('id', userId)
       .single();
 
@@ -149,13 +158,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (req.headers['x-real-ip'] as string) || 
       '127.0.0.1';
 
-    // Split name into first and last name
-    const nameParts = userData.name?.split(' ') || [];
-    const firstName = nameParts[0] || 'Customer';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    // Use first_name and last_name directly from database
+    const firstName = userData.first_name || 'Customer';
+    const lastName = userData.last_name || firstName;
 
-    // Get phone from user profile or shipping address
+    // Get phone from user profile or shipping address and format for PayU
     let phone = userData.phone || shippingAddress?.phone || '';
+    // Ensure phone is in international format (+48XXXXXXXXX) if provided
+    if (phone && !phone.startsWith('+')) {
+      phone = '+48' + phone.replace(/\D/g, ''); // Remove non-digits and add +48
+    }
+    // Validate phone format (must be +48 followed by 9 digits)
+    if (phone && !phone.match(/^\+48\d{9}$/)) {
+      console.warn('[PAYU-CREATE] Invalid phone format, removing:', phone);
+      phone = ''; // Remove invalid phone
+    }
 
     // Step 1: Authenticate with PayU
     const token = await getPayUToken();
@@ -173,21 +190,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       buyer.phone = phone;
     }
 
-    // Add delivery address for courier/DPD delivery
-    if (shippingAddress && (shippingAddress.street || shippingAddress.fullName)) {
-      buyer.delivery = {
-        street: shippingAddress.street || '',
-        postalCode: shippingAddress.postalCode || shippingAddress.postal_code || '',
-        city: shippingAddress.city || '',
-        countryCode: 'PL',
-      };
+    // Add delivery address for courier/DPD delivery - only if we have complete data
+    if (shippingAddress && shippingAddress.street && shippingAddress.city) {
+      const postalCode = shippingAddress.postalCode || shippingAddress.postal_code || '';
       
-      // Add recipient name if different from buyer
-      if (shippingAddress.fullName) {
-        buyer.delivery.recipientName = shippingAddress.fullName;
-        buyer.delivery.recipientEmail = userData.email;
-        if (shippingAddress.phone) {
-          buyer.delivery.recipientPhone = shippingAddress.phone;
+      // Only add delivery if all required fields are present
+      if (postalCode) {
+        buyer.delivery = {
+          street: shippingAddress.street,
+          postalCode: postalCode,
+          city: shippingAddress.city,
+          countryCode: 'PL',
+        };
+        
+        // Add recipient info if available
+        if (shippingAddress.fullName) {
+          buyer.delivery.recipientName = shippingAddress.fullName;
+          buyer.delivery.recipientEmail = userData.email;
+          
+          // Format and validate recipient phone
+          if (shippingAddress.phone) {
+            let recipientPhone = shippingAddress.phone;
+            if (!recipientPhone.startsWith('+')) {
+              recipientPhone = '+48' + recipientPhone.replace(/\D/g, '');
+            }
+            if (recipientPhone.match(/^\+48\d{9}$/)) {
+              buyer.delivery.recipientPhone = recipientPhone;
+            }
+          }
         }
       }
     }

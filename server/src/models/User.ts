@@ -2,7 +2,9 @@ import { getSupabase } from '../config/database';
 
 export interface IUser {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  name?: string; // Legacy field, kept for compatibility
   email: string;
   password_hash: string;
   phone?: string;

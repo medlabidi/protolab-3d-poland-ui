@@ -14,7 +14,8 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -103,7 +104,7 @@ const SignUp = () => {
     setIsLoading(true);
 
     // Validation
-    if (!name || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       toast.error(t('signup.toasts.requiredFields'));
       setIsLoading(false);
       return;
@@ -135,7 +136,8 @@ const SignUp = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: name.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           email: email.toLowerCase().trim(),
           password: password,
           phone: phone.trim() || undefined,
@@ -226,15 +228,27 @@ const SignUp = () => {
 
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('signup.fields.fullName')} *</Label>
-              <Input 
-                id="name" 
-                placeholder={t('signup.placeholders.fullName')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required 
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">{t('signup.fields.firstName')} *</Label>
+                <Input 
+                  id="firstName" 
+                  placeholder={t('signup.placeholders.firstName')}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">{t('signup.fields.lastName')} *</Label>
+                <Input 
+                  id="lastName" 
+                  placeholder={t('signup.placeholders.lastName')}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required 
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">{t('signup.fields.email')} *</Label>
