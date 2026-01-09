@@ -223,6 +223,9 @@ const NewPrint = () => {
   // Computed weight based on material, quality, and model volume
   const estimatedWeight = useMemo(() => {
     if (!modelAnalysis || !material) return null;
+    
+    // In advanced mode, need customInfill. In normal mode, need quality.
+    if (advancedMode && !customInfill) return null;
     if (!advancedMode && !quality) return null;
     
     const materialType = material.split('-')[0];
@@ -241,7 +244,11 @@ const NewPrint = () => {
 
   // Computed print time based on model volume and quality
   const estimatedPrintTime = useMemo(() => {
-    if (!modelAnalysis || !quality) return null;
+    if (!modelAnalysis) return null;
+    
+    // In advanced mode, need custom layer height and infill. In normal mode, need quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) return null;
+    if (!advancedMode && !quality) return null;
     
     // Use custom values if advanced settings are enabled, otherwise use quality-based defaults
     const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
@@ -258,13 +265,6 @@ const NewPrint = () => {
     // Time = volume / speed (in hours)
     let printTimeHours = effectiveVolume / speedCm3PerHour;
     
-    // Support structures add extra time
-    if (supportType === 'normal') {
-      printTimeHours *= 1.10; // +10% for normal supports
-    } else if (supportType === 'tree') {
-      printTimeHours *= 1.05; // +5% for tree supports (faster)
-    }
-    
     // Infill pattern affects print time
     if (infillPattern === 'honeycomb' || infillPattern === 'gyroid') {
       printTimeHours *= 1.05; // +5% for complex patterns
@@ -272,7 +272,7 @@ const NewPrint = () => {
     
     // Add setup time (15 minutes minimum)
     return Math.max(0.25, printTimeHours);
-  }, [modelAnalysis, quality, advancedMode, customLayerHeight, customInfill, supportType, infillPattern]);
+  }, [modelAnalysis, quality, advancedMode, customLayerHeight, customInfill, infillPattern]);
 
   // Format print time for display
   const formatPrintTime = (hours: number | null): string => {
