@@ -45,6 +45,8 @@ interface ProjectFile {
   isExpanded: boolean;
   estimatedPrice: number | null;
   priceBreakdown: PriceBreakdown | null;
+  estimatedWeight: number | null;
+  estimatedPrintTime: number | null;
   advancedMode?: boolean;
   customLayerHeight?: string;
   customInfill?: string;
@@ -602,13 +604,16 @@ const NewPrint = () => {
   };
 
   // Calculate price for a single project file
-  const calculateProjectFilePrice = (projectFile: ProjectFile): PriceBreakdown | null => {
+  const calculateProjectFilePrice = (projectFile: ProjectFile): { breakdown: PriceBreakdown; weight: number; printTime: number } | null => {
     if (!projectFile.material || !projectFile.modelAnalysis) {
       return null;
     }
     
-    // In advanced mode, need quality OR custom settings
+    // In advanced mode, need custom settings. In normal mode, need quality.
     if (!projectFile.advancedMode && !projectFile.quality) {
+      return null;
+    }
+    if (projectFile.advancedMode && (!projectFile.customLayerHeight || !projectFile.customInfill)) {
       return null;
     }
 
@@ -625,10 +630,19 @@ const NewPrint = () => {
     
     const materialWeightGrams = effectiveVolume * density;
     
-    const speedCm3PerHour = projectFile.advancedMode && projectFile.customLayerHeight
-      ? PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10
-      : (PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10);
-    const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
+    // Calculate print time
+    const layerHeight = projectFile.advancedMode && projectFile.customLayerHeight
+      ? projectFile.customLayerHeight
+      : (projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
+    const speedCm3PerHour = SPEED_BY_LAYER_HEIGHT[layerHeight] || 10;
+    let printTimeHours = effectiveVolume / speedCm3PerHour;
+    
+    // Infill pattern affects print time
+    if (projectFile.infillPattern === 'honeycomb' || projectFile.infillPattern === 'gyroid') {
+      printTimeHours *= 1.05; // +5% for complex patterns
+    }
+    
+    printTimeHours = Math.max(0.25, printTimeHours);
     
     // Get price from database materials
     const materialData = materials.find(m => 
@@ -648,21 +662,25 @@ const NewPrint = () => {
     const totalPrice = Math.round((Cinternal + vat) * projectFile.quantity * 100) / 100;
 
     return {
-      materialCost: Math.round(Cmaterial * 100) / 100,
-      energyCost: Math.round(Cenergy * 100) / 100,
-      serviceFee: Math.round(Clabor * 100) / 100,
-      depreciation: Math.round(Cdepreciation * 100) / 100,
-      maintenance: Math.round(Cmaintenance * 100) / 100,
-      internalCost: Math.round(Cinternal * 100) / 100,
-      vat: Math.round(vat * 100) / 100,
-      totalPrice,
+      breakdown: {
+        materialCost: Math.round(Cmaterial * 100) / 100,
+        energyCost: Math.round(Cenergy * 100) / 100,
+        serviceFee: Math.round(Clabor * 100) / 100,
+        depreciation: Math.round(Cdepreciation * 100) / 100,
+        maintenance: Math.round(Cmaintenance * 100) / 100,
+        internalCost: Math.round(Cinternal * 100) / 100,
+        vat: Math.round(vat * 100) / 100,
+        totalPrice,
+      },
+      weight: materialWeightGrams,
+      printTime: printTimeHours,
     };
   };
 
   const calculateAllProjectPrices = () => {
     let hasErrors = false;
     const updatedFiles = projectFiles.map(pf => {
-      if (!pf.material || !pf.quality) {
+      if (!pf.material || (!pf.advancedMode && !pf.quality)) {
         hasErrors = true;
         return pf;
       }
@@ -828,7 +846,7 @@ const NewPrint = () => {
 
   // Auto-calculate prices for project files
   useEffect(() => {
-    if (projectFiles.length === 0 || !printerSpecs) return;
+    if (projectFiles.length === 0 || !printerSpecs || !materials.length) return;
 
     let hasChanges = false;
     const updatedFiles = projectFiles.map(pf => {
@@ -841,11 +859,20 @@ const NewPrint = () => {
       if (!pf.advancedMode && !pf.quality) {
         return pf;
       }
+      if (pf.advancedMode && (!pf.customLayerHeight || !pf.customInfill)) {
+        return pf;
+      }
 
-      const breakdown = calculateProjectFilePrice(pf);
-      if (breakdown && breakdown.totalPrice !== pf.estimatedPrice) {
+      const result = calculateProjectFilePrice(pf);
+      if (result && result.breakdown.totalPrice !== pf.estimatedPrice) {
         hasChanges = true;
-        return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown.totalPrice };
+        return { 
+          ...pf, 
+          priceBreakdown: result.breakdown, 
+          estimatedPrice: result.breakdown.totalPrice,
+          estimatedWeight: result.weight,
+          estimatedPrintTime: result.printTime
+        };
       }
       return pf;
     });
@@ -854,7 +881,17 @@ const NewPrint = () => {
       setProjectFiles(updatedFiles);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectFiles, printerSpecs, materials]);
+  }, [JSON.stringify(projectFiles.map(pf => ({
+    id: pf.id,
+    material: pf.material,
+    quality: pf.quality,
+    quantity: pf.quantity,
+    advancedMode: pf.advancedMode,
+    customLayerHeight: pf.customLayerHeight,
+    customInfill: pf.customInfill,
+    infillPattern: pf.infillPattern,
+    volumeCm3: pf.modelAnalysis?.volumeCm3
+  }))), printerSpecs, materials]);
 
   const proceedToPayment = async () => {
     // Check which mode we're in
@@ -913,8 +950,8 @@ const NewPrint = () => {
 
       // Calculate total price for project
       const projectTotal = projectFiles.reduce((sum, pf) => {
-        const breakdown = calculateProjectFilePrice(pf);
-        return sum + (breakdown?.totalPrice || 0);
+        const result = calculateProjectFilePrice(pf);
+        return sum + (result?.breakdown.totalPrice || 0);
       }, 0);
 
       if (projectTotal <= 0) {
@@ -949,7 +986,7 @@ const NewPrint = () => {
           formData.append('quantity', pf.quantity.toString());
           formData.append('shippingMethod', selectedDeliveryOption);
           formData.append('paymentMethod', 'pending');
-          formData.append('price', (calculateProjectFilePrice(pf)?.totalPrice || 0).toString());
+          formData.append('price', (calculateProjectFilePrice(pf)?.breakdown.totalPrice || 0).toString());
           formData.append('projectName', projectName || 'Untitled Project');
           
           // Add advanced mode flag
@@ -1715,7 +1752,7 @@ const NewPrint = () => {
 
                                   {/* File Stats */}
                                   {pf.modelAnalysis && (
-                                    <div className="grid grid-cols-3 gap-3 text-center">
+                                    <div className="grid grid-cols-4 gap-3 text-center">
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
                                         <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
@@ -1723,13 +1760,13 @@ const NewPrint = () => {
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
                                         <p className="font-bold text-primary">
-                                          {pf.material && pf.quality ? (() => {
-                                            const materialType = pf.material.split('-')[0];
-                                            const density = MATERIAL_DENSITIES[materialType] || 1.24;
-                                            const infillPercent = INFILL_BY_QUALITY[pf.quality] || 20;
-                                            const effectiveVolume = pf.modelAnalysis!.volumeCm3 * (1 + (infillPercent / 100));
-                                            return `${(effectiveVolume * density).toFixed(1)}g`;
-                                          })() : '--'}
+                                          {pf.estimatedWeight ? `${pf.estimatedWeight.toFixed(1)}g` : '--'}
+                                        </p>
+                                      </div>
+                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Print Time</p>
+                                        <p className="font-bold text-primary">
+                                          {pf.estimatedPrintTime ? formatPrintTime(pf.estimatedPrintTime) : '--'}
                                         </p>
                                       </div>
                                       <div className="p-2 bg-muted/50 rounded-lg">
