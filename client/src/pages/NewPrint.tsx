@@ -891,12 +891,18 @@ const NewPrint = () => {
           formData.append('material', pf.material.split('-')[0]);
           formData.append('color', pf.material.split('-')[1] || 'white');
           formData.append('layerHeight', pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1');
-          formData.append('infill', pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '50' : '100');
+          formData.append('infill', pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40');
           formData.append('quantity', pf.quantity.toString());
           formData.append('shippingMethod', selectedDeliveryOption);
           formData.append('paymentMethod', 'pending');
           formData.append('price', (calculateProjectFilePrice(pf)?.totalPrice || 0).toString());
           formData.append('projectName', projectName || 'Untitled Project');
+          
+          // Add advanced mode flag (project mode doesn't support advanced settings yet)
+          formData.append('advancedMode', 'false');
+          
+          // Add quality preset
+          formData.append('quality', pf.quality);
 
           // Add delivery details
           if (selectedDeliveryOption === 'inpost' && selectedLocker) {
@@ -1467,16 +1473,15 @@ const NewPrint = () => {
                                     {pf.isLoading && <span className="text-xs text-yellow-600">{t('common.loading')}</span>}
                                     {pf.error && <span className="text-xs text-red-600">{t('common.error')}</span>}
                                     {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
+                                    <div 
+                                      className="p-1 hover:bg-muted rounded cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removeProjectFile(pf.id);
                                       }}
                                     >
                                       <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
-                                    </Button>
+                                    </div>
                                     {pf.isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                   </div>
                                 </div>
