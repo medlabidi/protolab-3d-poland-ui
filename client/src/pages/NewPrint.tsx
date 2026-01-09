@@ -45,6 +45,11 @@ interface ProjectFile {
   isExpanded: boolean;
   estimatedPrice: number | null;
   priceBreakdown: PriceBreakdown | null;
+  advancedMode?: boolean;
+  customLayerHeight?: string;
+  customInfill?: string;
+  supportType?: string;
+  infillPattern?: string;
 }
 
 // Memoized ModelViewer wrapper to prevent re-renders when other project file properties change
@@ -538,6 +543,11 @@ const NewPrint = () => {
           isExpanded: false,
           estimatedPrice: null,
           priceBreakdown: null,
+          advancedMode: false,
+          customLayerHeight: '',
+          customInfill: '',
+          supportType: 'none',
+          infillPattern: 'grid',
         });
       }
     }
@@ -599,20 +609,46 @@ const NewPrint = () => {
 
   // Calculate price for a single project file
   const calculateProjectFilePrice = (projectFile: ProjectFile): PriceBreakdown | null => {
-    if (!projectFile.material || !projectFile.quality || !projectFile.modelAnalysis) {
+    if (!projectFile.material || !projectFile.modelAnalysis) {
+      return null;
+    }
+    
+    // In advanced mode, need quality OR custom settings
+    if (!projectFile.advancedMode && !projectFile.quality) {
       return null;
     }
 
     const materialType = projectFile.material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[projectFile.quality] || 20;
+    
+    // Use custom infill if advanced mode, otherwise quality preset
+    const infillPercent = projectFile.advancedMode && projectFile.customInfill
+      ? parseInt(projectFile.customInfill, 10)
+      : (INFILL_BY_QUALITY[projectFile.quality] || 20);
     
     const volumeCm3 = projectFile.modelAnalysis.volumeCm3;
-    const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
+    let effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
+    
+    // Add support material cost
+    if (projectFile.supportType === 'normal') {
+      effectiveVolume = effectiveVolume * 1.15; // +15% material
+    } else if (projectFile.supportType === 'tree') {
+      effectiveVolume = effectiveVolume * 1.10; // +10% material
+    }
+    
     const materialWeightGrams = effectiveVolume * density;
     
-    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10;
-    const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
+    const speedCm3PerHour = projectFile.advancedMode && projectFile.customLayerHeight
+      ? PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10
+      : (PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10);
+    let printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
+    
+    // Add support time
+    if (projectFile.supportType === 'normal') {
+      printTimeHours = printTimeHours * 1.10; // +10% time
+    } else if (projectFile.supportType === 'tree') {
+      printTimeHours = printTimeHours * 1.05; // +5% time
+    }
     
     // Get price from database materials
     const materialData = materials.find(m => 
@@ -890,19 +926,41 @@ const NewPrint = () => {
           formData.append('file', pf.file);
           formData.append('material', pf.material.split('-')[0]);
           formData.append('color', pf.material.split('-')[1] || 'white');
-          formData.append('layerHeight', pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1');
-          formData.append('infill', pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40');
+          
+          // Use custom values if advanced mode, otherwise quality preset
+          const layerHeight = pf.advancedMode && pf.customLayerHeight ? pf.customLayerHeight :
+                             (pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1');
+          formData.append('layerHeight', layerHeight);
+          
+          const infill = pf.advancedMode && pf.customInfill ? pf.customInfill :
+                        (pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40');
+          formData.append('infill', infill);
+          
           formData.append('quantity', pf.quantity.toString());
           formData.append('shippingMethod', selectedDeliveryOption);
           formData.append('paymentMethod', 'pending');
           formData.append('price', (calculateProjectFilePrice(pf)?.totalPrice || 0).toString());
           formData.append('projectName', projectName || 'Untitled Project');
           
-          // Add advanced mode flag (project mode doesn't support advanced settings yet)
-          formData.append('advancedMode', 'false');
+          // Add advanced mode flag
+          formData.append('advancedMode', (pf.advancedMode || false).toString());
           
-          // Add quality preset
-          formData.append('quality', pf.quality);
+          // Add quality preset if not in advanced mode
+          if (!pf.advancedMode) {
+            formData.append('quality', pf.quality);
+          }
+          
+          // Add advanced settings only if advanced mode is enabled
+          if (pf.advancedMode) {
+            formData.append('supportType', pf.supportType || 'none');
+            formData.append('infillPattern', pf.infillPattern || 'grid');
+            if (pf.customLayerHeight) {
+              formData.append('customLayerHeight', pf.customLayerHeight);
+            }
+            if (pf.customInfill) {
+              formData.append('customInfill', pf.customInfill);
+            }
+          }
 
           // Add delivery details
           if (selectedDeliveryOption === 'inpost' && selectedLocker) {
@@ -1569,6 +1627,96 @@ const NewPrint = () => {
                                       />
                                     </div>
                                   </div>
+
+                                  {/* Advanced Settings Toggle */}
+                                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-primary/10">
+                                    <div>
+                                      <p className="font-semibold text-sm">Advanced Settings</p>
+                                      <p className="text-xs text-muted-foreground">Configure detailed print parameters</p>
+                                    </div>
+                                    <Checkbox
+                                      checked={pf.advancedMode || false}
+                                      onCheckedChange={(checked) => {
+                                        updateProjectFile(pf.id, { 
+                                          advancedMode: checked as boolean,
+                                          // Set defaults from quality preset when enabling
+                                          customLayerHeight: checked && pf.quality ? 
+                                            (pf.quality === 'draft' ? '0.3' : 
+                                             pf.quality === 'standard' ? '0.2' : 
+                                             pf.quality === 'high' ? '0.15' : '0.1') : '',
+                                          customInfill: checked && pf.quality ?
+                                            (pf.quality === 'draft' ? '10' :
+                                             pf.quality === 'standard' ? '20' :
+                                             pf.quality === 'high' ? '30' : '40') : ''
+                                        });
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* Advanced Settings Fields */}
+                                  {pf.advancedMode && (
+                                    <div className="space-y-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <AlertCircle className="w-4 h-4 text-primary" />
+                                        <span className="font-semibold text-sm text-primary">Advanced Mode Active</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Layer Height (mm)</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="e.g., 0.20"
+                                            value={pf.customLayerHeight || ''}
+                                            onChange={(e) => updateProjectFile(pf.id, { customLayerHeight: e.target.value })}
+                                            className="h-9"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Infill (%)</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="e.g., 20"
+                                            value={pf.customInfill || ''}
+                                            onChange={(e) => updateProjectFile(pf.id, { customInfill: e.target.value })}
+                                            className="h-9"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Support Type</Label>
+                                          <Select 
+                                            value={pf.supportType || 'none'} 
+                                            onValueChange={(v) => updateProjectFile(pf.id, { supportType: v })}
+                                          >
+                                            <SelectTrigger className="h-9">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="none">None</SelectItem>
+                                              <SelectItem value="normal">Normal</SelectItem>
+                                              <SelectItem value="tree">Tree</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Infill Pattern</Label>
+                                          <Select 
+                                            value={pf.infillPattern || 'grid'} 
+                                            onValueChange={(v) => updateProjectFile(pf.id, { infillPattern: v })}
+                                          >
+                                            <SelectTrigger className="h-9">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="grid">Grid</SelectItem>
+                                              <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                                              <SelectItem value="triangles">Triangles</SelectItem>
+                                              <SelectItem value="gyroid">Gyroid</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
 
                                   {/* File Stats */}
                                   {pf.modelAnalysis && (
