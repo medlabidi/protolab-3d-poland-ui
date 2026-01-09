@@ -539,6 +539,8 @@ const NewPrint = () => {
           isExpanded: false,
           estimatedPrice: null,
           priceBreakdown: null,
+          estimatedWeight: null,
+          estimatedPrintTime: null,
           advancedMode: false,
           customLayerHeight: '',
           customInfill: '',
@@ -692,8 +694,14 @@ const NewPrint = () => {
         hasErrors = true;
         return pf;
       }
-      const breakdown = calculateProjectFilePrice(pf);
-      return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown?.totalPrice || null };
+      const result = calculateProjectFilePrice(pf);
+      return { 
+        ...pf, 
+        priceBreakdown: result?.breakdown || null, 
+        estimatedPrice: result?.breakdown.totalPrice || null,
+        estimatedWeight: result?.weight || null,
+        estimatedPrintTime: result?.printTime || null
+      };
     });
 
     if (hasErrors) {
