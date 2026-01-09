@@ -3,10 +3,15 @@
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
   "framework": null,
+  "installCommand": "npm install",
   "git": {
     "deploymentEnabled": {
       "mahmoud": true
     }
+  },
+  "github": {
+    "silent": true,
+    "autoJobCancelation": true
   },
   "rewrites": [
     {
