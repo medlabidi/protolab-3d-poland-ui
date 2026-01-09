@@ -803,6 +803,13 @@ const NewPrint = () => {
     toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${formatPrintTime(printTimeHours)}`);
   };
 
+  // Auto-calculate price when required fields change
+  useEffect(() => {
+    if (file && !modelError && material && quality && modelAnalysis) {
+      calculatePrice();
+    }
+  }, [file, modelError, material, quality, quantity, advancedMode, customLayerHeight, customInfill, supportType, infillPattern, modelAnalysis]);
+
   const proceedToPayment = async () => {
     // Check which mode we're in
     if (uploadMode === 'project') {
@@ -949,9 +956,9 @@ const NewPrint = () => {
       return;
     }
 
-    // Validate price calculation
+    // Price should be calculated automatically, but double-check
     if (!estimatedPrice || !priceBreakdown) {
-      toast.error("Please calculate the price first");
+      toast.error("Price calculation in progress, please wait");
       return;
     }
 
@@ -1090,9 +1097,9 @@ const NewPrint = () => {
       return;
     }
 
-    // Validate price calculation
+    // Price should be calculated automatically
     if (!estimatedPrice) {
-      toast.error(t('newPrint.toasts.calculatePriceFirst'));
+      toast.error("Price calculation in progress, please wait");
       return;
     }
 
@@ -1783,15 +1790,7 @@ const NewPrint = () => {
                     🔒 {t('newPrint.loginRequired')}
                   </span>
                 </Button>
-              ) : uploadMode === 'single' ? (
-                <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
-                  <span className="relative z-10 flex items-center">
-                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {t('newPrint.calculatePrice')}
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </Button>
-              ) : (
+              ) : uploadMode === 'project' ? (
                 <Button onClick={calculateAllProjectPrices} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default" disabled={projectFiles.length === 0}>
                   <span className="relative z-10 flex items-center">
                     <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
@@ -1799,7 +1798,7 @@ const NewPrint = () => {
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
-              )}
+              ) : null}
 
               {/* Single file price breakdown */}
               {uploadMode === 'single' && estimatedPrice !== null && priceBreakdown && (
