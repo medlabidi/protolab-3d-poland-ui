@@ -1019,12 +1019,49 @@ const NewPrint = () => {
       formData.append('file', file);
       formData.append('material', material.split('-')[0]);
       formData.append('color', material.split('-')[1] || 'white');
-      formData.append('layerHeight', quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
+      
+      // Use custom layer height if advanced settings enabled, otherwise quality preset
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+                         (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('layerHeight', layerHeight);
+      
+      // Use custom infill if advanced settings enabled, otherwise quality preset
+      const infill = advancedMode && customInfill ? customInfill :
+                    (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
+      formData.append('infill', infill);
+      
       formData.append('quantity', quantity.toString());
       formData.append('shippingMethod', selectedDeliveryOption);
       formData.append('paymentMethod', 'pending');
       formData.append('price', totalAmount.toString());
+      
+      // Add advanced mode flag
+      formData.append('advancedMode', advancedMode.toString());
+      
+      // Add advanced settings
+      formData.append('supportType', supportType);
+      formData.append('infillPattern', infillPattern);
+      
+      // Add custom values if advanced mode was used
+      if (advancedMode) {
+        if (customLayerHeight) {
+          formData.append('customLayerHeight', customLayerHeight);
+        }
+        if (customInfill) {
+          formData.append('customInfill', customInfill);
+        }
+      }
+      
+      // Add material weight and print time for accurate price recalculation later
+      if (estimatedWeight && estimatedPrintTime) {
+        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
+        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+      }
+      
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+      }
 
       // Add delivery details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {
