@@ -902,6 +902,13 @@ const NewPrint = () => {
   }))), printerSpecs, materials]);
 
   const proceedToPayment = async () => {
+    // Check authentication first
+    if (!isLoggedIn) {
+      toast.error("Please log in to create orders");
+      navigate('/signin');
+      return;
+    }
+
     // Check which mode we're in
     if (uploadMode === 'project') {
       // Project mode validation
@@ -1034,8 +1041,15 @@ const NewPrint = () => {
           const response = await apiFormData('/orders', formData);
 
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create order');
+            let errorMessage = 'Failed to create order';
+            try {
+              const error = await response.json();
+              errorMessage = error.message || errorMessage;
+            } catch {
+              // If response is not JSON, use status text
+              errorMessage = response.status === 403 ? 'Authentication required. Please log in.' : `Server error: ${response.status}`;
+            }
+            throw new Error(errorMessage);
           }
 
           const result = await response.json();
@@ -1207,8 +1221,15 @@ const NewPrint = () => {
       const response = await apiFormData('/orders', formData);
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create order');
+        let errorMessage = 'Failed to create order';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.status === 403 ? 'Authentication required. Please log in.' : `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
