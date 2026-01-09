@@ -1603,6 +1603,7 @@ const NewPrint = () => {
                                       <Select 
                                         value={pf.quality} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { quality: v })}
+                                        disabled={pf.advancedMode}
                                       >
                                         <SelectTrigger className="h-10">
                                           <SelectValue placeholder="Select" />
