@@ -39,6 +39,7 @@ interface Order {
   print_time: number;
   status: string;
   payment_status: string;
+  quality?: string;
   advanced_mode?: boolean;
   support_type?: string;
   infill_pattern?: string;
@@ -446,11 +447,17 @@ export function Checkout() {
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-300">Quality:</span>
                     <span className="font-medium dark:text-gray-100">
-                      {order.layer_height === 0.3 && order.infill === 10 ? 'Draft' :
-                       order.layer_height === 0.2 && order.infill === 20 ? 'Standard' :
-                       order.layer_height === 0.15 && order.infill === 50 ? 'High' :
-                       order.layer_height === 0.1 && order.infill === 100 ? 'Ultra High' :
-                       'Custom'}
+                      {order.quality ? 
+                        (order.quality === 'draft' ? 'Draft' :
+                         order.quality === 'standard' ? 'Standard' :
+                         order.quality === 'high' ? 'High Quality' :
+                         order.quality === 'ultra' ? 'Ultra High Quality' : 'Custom') :
+                        // Fallback to detecting from values
+                        (order.layer_height === 0.3 && order.infill === 10 ? 'Draft' :
+                         order.layer_height === 0.2 && order.infill === 20 ? 'Standard' :
+                         order.layer_height === 0.15 && order.infill === 30 ? 'High Quality' :
+                         order.layer_height === 0.1 && order.infill === 40 ? 'Ultra High Quality' :
+                         'Custom')}
                     </span>
                   </div>
                 )}

@@ -1824,6 +1824,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       creditsAmount = parseFloat(getField('credits_amount') || '0');
       layerHeight = getField('layerHeight');
       infill = getField('infill');
+      const quality = getField('quality');
       supportType = getField('supportType');
       infillPattern = getField('infillPattern');
       customLayerHeight = getField('customLayerHeight');
@@ -2007,6 +2008,9 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   if (advancedMode !== undefined) {
     orderData.advanced_mode = advancedMode;
     console.log(`📦 [ORDER-CREATE] Setting advanced_mode in orderData: ${advancedMode}`);
+  }
+  if (quality !== undefined && quality !== null && quality !== '') {
+    orderData.quality = quality;
   }
   
   // Add optional fields if provided

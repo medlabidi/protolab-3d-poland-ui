@@ -1038,9 +1038,16 @@ const NewPrint = () => {
       // Add advanced mode flag
       formData.append('advancedMode', advancedMode.toString());
       
-      // Add advanced settings
-      formData.append('supportType', supportType);
-      formData.append('infillPattern', infillPattern);
+      // Add quality preset if not in advanced mode
+      if (!advancedMode) {
+        formData.append('quality', quality);
+      }
+      
+      // Add advanced settings only if advanced mode is enabled
+      if (advancedMode) {
+        formData.append('supportType', supportType);
+        formData.append('infillPattern', infillPattern);
+      }
       
       // Add custom values if advanced mode was used
       if (advancedMode) {
