@@ -1790,6 +1790,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   let shippingAddress: any;
   let layerHeight: string | undefined;
   let infill: string | undefined;
+  let quality: string | undefined;
   let supportType: string | undefined;
   let infillPattern: string | undefined;
   let customLayerHeight: string | undefined;
@@ -1824,7 +1825,7 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
       creditsAmount = parseFloat(getField('credits_amount') || '0');
       layerHeight = getField('layerHeight');
       infill = getField('infill');
-      const quality = getField('quality');
+      quality = getField('quality');
       supportType = getField('supportType');
       infillPattern = getField('infillPattern');
       customLayerHeight = getField('customLayerHeight');
