@@ -1797,6 +1797,20 @@ const NewPrint = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="supportType">Support Type</Label>
+                      <Select value={supportType} onValueChange={setSupportType}>
+                        <SelectTrigger id="supportType">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="normal">Normal (+15% material, +10% time)</SelectItem>
+                          <SelectItem value="tree">Tree (+10% material, +5% time)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="infillPattern">Infill Pattern</Label>
                       <Select value={infillPattern} onValueChange={setInfillPattern}>
                         <SelectTrigger id="infillPattern">
@@ -1804,9 +1818,9 @@ const NewPrint = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="grid">Grid</SelectItem>
-                          <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                          <SelectItem value="honeycomb">Honeycomb (+5% time)</SelectItem>
                           <SelectItem value="triangles">Triangles</SelectItem>
-                          <SelectItem value="gyroid">Gyroid</SelectItem>
+                          <SelectItem value="gyroid">Gyroid (+5% time)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

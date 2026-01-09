@@ -429,18 +429,14 @@ export function Checkout() {
                       <span className="text-gray-600 dark:text-gray-300">Infill:</span>
                       <span className="font-medium dark:text-gray-100">{order.infill}%</span>
                     </div>
-                    {order.support_type && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-300">Support:</span>
-                        <span className="font-medium dark:text-gray-100 capitalize">{order.support_type}</span>
-                      </div>
-                    )}
-                    {order.infill_pattern && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
-                        <span className="font-medium dark:text-gray-100 capitalize">{order.infill_pattern}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Support:</span>
+                      <span className="font-medium dark:text-gray-100 capitalize">{order.support_type || 'none'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
+                      <span className="font-medium dark:text-gray-100 capitalize">{order.infill_pattern || 'grid'}</span>
+                    </div>
                   </>
                 ) : (
                   // Standard mode - show quality preset
