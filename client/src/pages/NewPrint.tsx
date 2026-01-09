@@ -220,7 +220,8 @@ const NewPrint = () => {
 
   // Computed weight based on material, quality, and model volume
   const estimatedWeight = useMemo(() => {
-    if (!modelAnalysis || !material || !quality) return null;
+    if (!modelAnalysis || !material) return null;
+    if (!advancedMode && !quality) return null;
     
     const materialType = material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
@@ -231,17 +232,10 @@ const NewPrint = () => {
     
     // Weight = volume × density × (1 + infill%)
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
-    let weight = effectiveVolume * density;
-    
-    // Support structures add extra material
-    if (supportType === 'normal') {
-      weight *= 1.15; // +15% for normal supports
-    } else if (supportType === 'tree') {
-      weight *= 1.10; // +10% for tree supports
-    }
+    const weight = effectiveVolume * density;
     
     return weight;
-  }, [modelAnalysis, material, quality, advancedMode, customInfill, supportType]);
+  }, [modelAnalysis, material, quality, advancedMode, customInfill]);
 
   // Computed print time based on model volume and quality
   const estimatedPrintTime = useMemo(() => {
@@ -834,8 +828,9 @@ const NewPrint = () => {
 
   // Auto-calculate prices for project files
   useEffect(() => {
-    if (projectFiles.length === 0) return;
+    if (projectFiles.length === 0 || !printerSpecs) return;
 
+    let hasChanges = false;
     const updatedFiles = projectFiles.map(pf => {
       // Only calculate if file has all required data
       if (!pf.modelAnalysis || pf.error || !pf.material) {
@@ -849,20 +844,17 @@ const NewPrint = () => {
 
       const breakdown = calculateProjectFilePrice(pf);
       if (breakdown && breakdown.totalPrice !== pf.estimatedPrice) {
+        hasChanges = true;
         return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown.totalPrice };
       }
       return pf;
     });
 
-    // Only update if there are actual changes
-    const hasChanges = updatedFiles.some((file, index) => 
-      file.estimatedPrice !== projectFiles[index].estimatedPrice
-    );
-
     if (hasChanges) {
       setProjectFiles(updatedFiles);
     }
-  }, [projectFiles.map(pf => `${pf.id}-${pf.material}-${pf.quality}-${pf.quantity}-${pf.advancedMode}-${pf.customLayerHeight}-${pf.customInfill}-${pf.infillPattern}-${pf.modelAnalysis?.volumeCm3}`).join(',')]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectFiles, printerSpecs, materials]);
 
   const proceedToPayment = async () => {
     // Check which mode we're in
@@ -1989,14 +1981,6 @@ const NewPrint = () => {
                   <span className="flex items-center">
                     🔒 {t('newPrint.loginRequired')}
                   </span>
-                </Button>
-              ) : uploadMode === 'project' ? (
-                <Button onClick={calculateAllProjectPrices} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default" disabled={projectFiles.length === 0}>
-                  <span className="relative z-10 flex items-center">
-                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {t('newPrint.calculateAllPrices')} ({projectFiles.length} {t('newPrint.files')})
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
               ) : null}
 
