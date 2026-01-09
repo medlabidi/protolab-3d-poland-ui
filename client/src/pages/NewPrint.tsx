@@ -627,28 +627,14 @@ const NewPrint = () => {
       : (INFILL_BY_QUALITY[projectFile.quality] || 20);
     
     const volumeCm3 = projectFile.modelAnalysis.volumeCm3;
-    let effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
-    
-    // Add support material cost
-    if (projectFile.supportType === 'normal') {
-      effectiveVolume = effectiveVolume * 1.15; // +15% material
-    } else if (projectFile.supportType === 'tree') {
-      effectiveVolume = effectiveVolume * 1.10; // +10% material
-    }
+    const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
     
     const materialWeightGrams = effectiveVolume * density;
     
     const speedCm3PerHour = projectFile.advancedMode && projectFile.customLayerHeight
       ? PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10
       : (PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10);
-    let printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
-    
-    // Add support time
-    if (projectFile.supportType === 'normal') {
-      printTimeHours = printTimeHours * 1.10; // +10% time
-    } else if (projectFile.supportType === 'tree') {
-      printTimeHours = printTimeHours * 1.05; // +5% time
-    }
+    const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
     
     // Get price from database materials
     const materialData = materials.find(m => 
@@ -846,6 +832,38 @@ const NewPrint = () => {
     }
   }, [file, modelError, material, quality, quantity, advancedMode, customLayerHeight, customInfill, supportType, infillPattern, modelAnalysis]);
 
+  // Auto-calculate prices for project files
+  useEffect(() => {
+    if (projectFiles.length === 0) return;
+
+    const updatedFiles = projectFiles.map(pf => {
+      // Only calculate if file has all required data
+      if (!pf.modelAnalysis || pf.error || !pf.material) {
+        return pf;
+      }
+
+      // In advanced mode, need custom values. In normal mode, need quality.
+      if (!pf.advancedMode && !pf.quality) {
+        return pf;
+      }
+
+      const breakdown = calculateProjectFilePrice(pf);
+      if (breakdown && breakdown.totalPrice !== pf.estimatedPrice) {
+        return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown.totalPrice };
+      }
+      return pf;
+    });
+
+    // Only update if there are actual changes
+    const hasChanges = updatedFiles.some((file, index) => 
+      file.estimatedPrice !== projectFiles[index].estimatedPrice
+    );
+
+    if (hasChanges) {
+      setProjectFiles(updatedFiles);
+    }
+  }, [projectFiles.map(pf => `${pf.id}-${pf.material}-${pf.quality}-${pf.quantity}-${pf.advancedMode}-${pf.customLayerHeight}-${pf.customInfill}-${pf.infillPattern}-${pf.modelAnalysis?.volumeCm3}`).join(',')]);
+
   const proceedToPayment = async () => {
     // Check which mode we're in
     if (uploadMode === 'project') {
@@ -952,7 +970,6 @@ const NewPrint = () => {
           
           // Add advanced settings only if advanced mode is enabled
           if (pf.advancedMode) {
-            formData.append('supportType', pf.supportType || 'none');
             formData.append('infillPattern', pf.infillPattern || 'grid');
             if (pf.customLayerHeight) {
               formData.append('customLayerHeight', pf.customLayerHeight);
@@ -988,10 +1005,12 @@ const NewPrint = () => {
           orderIds.push(result.id);
         }
 
-        // Create PayU payment for first order and redirect directly
+        // Navigate to checkout page to review all orders
         if (orderIds.length > 0) {
-          toast.success('Orders created. Redirecting to PayU payment...');
-          await redirectToPayUPayment(orderIds[0]);
+          // Save order IDs to session storage for checkout page
+          sessionStorage.setItem('projectOrderIds', JSON.stringify(orderIds));
+          toast.success(`${orderIds.length} orders created. Please review before payment.`);
+          navigate(`/checkout?orderId=${orderIds[0]}&projectOrders=true`);
         }
       } catch (error) {
         console.error('Order creation error:', error);
@@ -1109,7 +1128,6 @@ const NewPrint = () => {
       
       // Add advanced settings only if advanced mode is enabled
       if (advancedMode) {
-        formData.append('supportType', supportType);
         formData.append('infillPattern', infillPattern);
       }
       
@@ -1683,22 +1701,6 @@ const NewPrint = () => {
                                           />
                                         </div>
                                         <div className="space-y-1">
-                                          <Label className="text-xs">Support Type</Label>
-                                          <Select 
-                                            value={pf.supportType || 'none'} 
-                                            onValueChange={(v) => updateProjectFile(pf.id, { supportType: v })}
-                                          >
-                                            <SelectTrigger className="h-9">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="none">None</SelectItem>
-                                              <SelectItem value="normal">Normal</SelectItem>
-                                              <SelectItem value="tree">Tree</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        <div className="space-y-1">
                                           <Label className="text-xs">Infill Pattern</Label>
                                           <Select 
                                             value={pf.infillPattern || 'grid'} 
@@ -1943,20 +1945,6 @@ const NewPrint = () => {
                         value={customInfill || ''}
                         onChange={(e) => setCustomInfill(e.target.value)}
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="supportType">Support Type</Label>
-                      <Select value={supportType} onValueChange={setSupportType}>
-                        <SelectTrigger id="supportType">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="normal">Normal (+15% material, +10% time)</SelectItem>
-                          <SelectItem value="tree">Tree (+10% material, +5% time)</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     <div className="space-y-2">

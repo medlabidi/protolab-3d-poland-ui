@@ -69,8 +69,10 @@ export function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const isProjectOrders = searchParams.get('projectOrders') === 'true';
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [projectOrders, setProjectOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,13 +88,70 @@ export function Checkout() {
 
   useEffect(() => {
     if (orderId) {
-      fetchOrder();
+      if (isProjectOrders) {
+        fetchProjectOrders();
+      } else {
+        fetchOrder();
+      }
       fetchBusinessInfo();
     } else {
       setError('No order ID provided');
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, isProjectOrders]);
+
+  const fetchProjectOrders = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // Get order IDs from session storage
+      const orderIdsStr = sessionStorage.getItem('projectOrderIds');
+      if (!orderIdsStr) {
+        throw new Error('No project orders found');
+      }
+
+      const orderIds = JSON.parse(orderIdsStr);
+      const orders: Order[] = [];
+
+      // Fetch all orders
+      for (const id of orderIds) {
+        const response = await fetch(`${API_URL}/orders/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch order ${id}`);
+        }
+
+        const data = await response.json();
+        orders.push(data.order || data);
+      }
+
+      setProjectOrders(orders);
+      // Set first order as main order for address
+      if (orders.length > 0) {
+        setOrder(orders[0]);
+        if (orders[0].shipping_address) {
+          try {
+            setShippingAddress(JSON.parse(orders[0].shipping_address));
+          } catch (e) {
+            console.error('Failed to parse shipping address:', e);
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load project orders');
+      toast.error('Failed to load order details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchOrder = async () => {
     try {
@@ -396,73 +455,138 @@ export function Checkout() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Left Column - Order Details */}
           <div className="md:col-span-2 space-y-6">
-            {/* Order Summary */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Order Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">File:</span>
-                  <span className="font-medium dark:text-gray-100">{order.file_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Material:</span>
-                  <span className="font-medium dark:text-gray-100">{order.material} - {order.color}</span>
-                </div>
-                {/* Show quality or advanced settings based on advanced_mode flag */}
-                {order.advanced_mode ? (
-                  // Advanced mode - show technical parameters
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Mode:</span>
-                      <span className="font-medium text-primary dark:text-blue-400">Advanced Settings</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
-                      <span className="font-medium dark:text-gray-100">{order.layer_height}mm</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Infill:</span>
-                      <span className="font-medium dark:text-gray-100">{order.infill}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Support:</span>
-                      <span className="font-medium dark:text-gray-100 capitalize">{order.support_type || 'none'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
-                      <span className="font-medium dark:text-gray-100 capitalize">{order.infill_pattern || 'grid'}</span>
-                    </div>
-                  </>
-                ) : (
-                  // Standard mode - show quality preset
+            {/* Order Summary - Show all orders if project mode */}
+            {isProjectOrders && projectOrders.length > 0 ? (
+              <>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Project Orders ({projectOrders.length} items)
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                
+                {projectOrders.map((projectOrder, index) => (
+                  <Card key={projectOrder.id} className="dark:bg-gray-800 dark:border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        Order #{index + 1}: {projectOrder.file_name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Material:</span>
+                        <span className="font-medium dark:text-gray-100">{projectOrder.material} - {projectOrder.color}</span>
+                      </div>
+                      {projectOrder.advanced_mode ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Mode:</span>
+                            <span className="font-medium text-primary dark:text-blue-400">Advanced Settings</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
+                            <span className="font-medium dark:text-gray-100">{projectOrder.layer_height}mm</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Infill:</span>
+                            <span className="font-medium dark:text-gray-100">{projectOrder.infill}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
+                            <span className="font-medium dark:text-gray-100 capitalize">{projectOrder.infill_pattern || 'grid'}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                          <span className="font-medium dark:text-gray-100">
+                            {projectOrder.quality ? 
+                              (projectOrder.quality === 'draft' ? 'Draft' :
+                               projectOrder.quality === 'standard' ? 'Standard' :
+                               projectOrder.quality === 'high' ? 'High Quality' :
+                               projectOrder.quality === 'ultra' ? 'Ultra High Quality' : 'Custom') :
+                              'Custom'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Quantity:</span>
+                        <span className="font-medium dark:text-gray-100">{projectOrder.quantity}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-600 dark:text-gray-300 font-semibold">Price:</span>
+                        <span className="font-bold text-primary">{projectOrder.price.toFixed(2)} PLN</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            ) : (
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Order Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Quality:</span>
-                    <span className="font-medium dark:text-gray-100">
-                      {order.quality ? 
-                        (order.quality === 'draft' ? 'Draft' :
-                         order.quality === 'standard' ? 'Standard' :
-                         order.quality === 'high' ? 'High Quality' :
-                         order.quality === 'ultra' ? 'Ultra High Quality' : 'Custom') :
-                        // Fallback to detecting from values
-                        (order.layer_height === 0.3 && order.infill === 10 ? 'Draft' :
-                         order.layer_height === 0.2 && order.infill === 20 ? 'Standard' :
-                         order.layer_height === 0.15 && order.infill === 30 ? 'High Quality' :
-                         order.layer_height === 0.1 && order.infill === 40 ? 'Ultra High Quality' :
-                         'Custom')}
-                    </span>
+                    <span className="text-gray-600 dark:text-gray-300">File:</span>
+                    <span className="font-medium dark:text-gray-100">{order.file_name}</span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Quantity:</span>
-                  <span className="font-medium dark:text-gray-100">{order.quantity}</span>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Material:</span>
+                    <span className="font-medium dark:text-gray-100">{order.material} - {order.color}</span>
+                  </div>
+                  {/* Show quality or advanced settings based on advanced_mode flag */}
+                  {order.advanced_mode ? (
+                    // Advanced mode - show technical parameters
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Mode:</span>
+                        <span className="font-medium text-primary dark:text-blue-400">Advanced Settings</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
+                        <span className="font-medium dark:text-gray-100">{order.layer_height}mm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Infill:</span>
+                        <span className="font-medium dark:text-gray-100">{order.infill}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
+                        <span className="font-medium dark:text-gray-100 capitalize">{order.infill_pattern || 'grid'}</span>
+                      </div>
+                    </>
+                  ) : (
+                    // Standard mode - show quality preset
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                      <span className="font-medium dark:text-gray-100">
+                        {order.quality ? 
+                          (order.quality === 'draft' ? 'Draft' :
+                           order.quality === 'standard' ? 'Standard' :
+                           order.quality === 'high' ? 'High Quality' :
+                           order.quality === 'ultra' ? 'Ultra High Quality' : 'Custom') :
+                          // Fallback to detecting from values
+                          (order.layer_height === 0.3 && order.infill === 10 ? 'Draft' :
+                           order.layer_height === 0.2 && order.infill === 20 ? 'Standard' :
+                           order.layer_height === 0.15 && order.infill === 30 ? 'High Quality' :
+                           order.layer_height === 0.1 && order.infill === 40 ? 'Ultra High Quality' :
+                           'Custom')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Quantity:</span>
+                    <span className="font-medium dark:text-gray-100">{order.quantity}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Delivery Information */}
             {renderDeliveryInfo()}
@@ -574,15 +698,35 @@ export function Checkout() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300">Print Cost:</span>
-                    <span className="dark:text-gray-100">{order.price.toFixed(2)} PLN</span>
-                  </div>
-                  <Separator className="dark:bg-gray-600" />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span className="dark:text-gray-100">Total:</span>
-                    <span className="text-blue-600 dark:text-blue-400">{order.price.toFixed(2)} PLN</span>
-                  </div>
+                  {isProjectOrders && projectOrders.length > 0 ? (
+                    <>
+                      {projectOrders.map((projectOrder, index) => (
+                        <div key={projectOrder.id} className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300">Order #{index + 1}:</span>
+                          <span className="dark:text-gray-100">{projectOrder.price.toFixed(2)} PLN</span>
+                        </div>
+                      ))}
+                      <Separator className="dark:bg-gray-600" />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span className="dark:text-gray-100">Total:</span>
+                        <span className="text-blue-600 dark:text-blue-400">
+                          {projectOrders.reduce((sum, po) => sum + po.price, 0).toFixed(2)} PLN
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-300">Print Cost:</span>
+                        <span className="dark:text-gray-100">{order.price.toFixed(2)} PLN</span>
+                      </div>
+                      <Separator className="dark:bg-gray-600" />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span className="dark:text-gray-100">Total:</span>
+                        <span className="text-blue-600 dark:text-blue-400">{order.price.toFixed(2)} PLN</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <Button
