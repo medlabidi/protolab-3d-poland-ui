@@ -955,6 +955,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleGetOrder(req as AuthenticatedRequest, res);
     }
     if (path === '/orders' && req.method === 'POST') {
+      console.log('🔵 [ROUTE] POST /orders matched, calling handleCreateOrder');
+      console.log('🔵 [ROUTE] Content-Type:', req.headers['content-type']);
+      console.log('🔵 [ROUTE] Authorization:', req.headers.authorization ? 'Present' : 'Missing');
       return await handleCreateOrder(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/orders\/[^/]+$/) && (req.method === 'PUT' || req.method === 'PATCH')) {
@@ -1770,8 +1773,16 @@ async function handleGetOrder(req: AuthenticatedRequest, res: VercelResponse) {
 }
 
 async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse) {
+  console.log('🔵 [ORDER-CREATE] handleCreateOrder called');
+  console.log('🔵 [ORDER-CREATE] Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+  
   const user = requireAuth(req, res);
-  if (!user) return;
+  if (!user) {
+    console.log('❌ [ORDER-CREATE] requireAuth failed - no user');
+    return;
+  }
+  
+  console.log('✅ [ORDER-CREATE] User authenticated:', user.userId);
   
   const supabase = getSupabase();
   
