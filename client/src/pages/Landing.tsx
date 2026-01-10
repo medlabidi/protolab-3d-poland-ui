@@ -192,11 +192,11 @@ const Landing = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 animate-slide-up">
         <div className="backdrop-blur-md bg-background/30 border-b border-white/10">
-          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer">
-              <Logo size="sm" textClassName="text-xl" />
+          <div className="container mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-primary group cursor-pointer">
+              <Logo size="sm" textClassName="text-lg sm:text-xl" />
             </div>
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-4 lg:gap-6">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate("/about")} 
@@ -212,20 +212,20 @@ const Landing = () => {
                 {t('nav.services')}
               </Button>
             </nav>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitcher />
               {isLoggedIn ? (
                 <Button 
                   onClick={() => navigate("/dashboard")} 
-                  className="bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  className="bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
                 >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  {t('dashboard.overview')}
+                  <LayoutDashboard className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('dashboard.overview')}</span>
                 </Button>
               ) : (
                 <Button 
                   onClick={() => navigate("/login")} 
-                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm hover:scale-105 transition-all"
+                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm hover:scale-105 transition-all text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
                 >
                   {t('landing.login')}
                 </Button>
@@ -236,7 +236,7 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative animate-slide-up overflow-hidden">
+      <section className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 px-3 sm:px-4 md:px-6 relative animate-slide-up overflow-hidden">
         {/* Image Background */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img
@@ -247,21 +247,21 @@ const Landing = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/50 to-background"></div>
         </div>
         
-        <div className="container mx-auto text-center max-w-4xl relative z-10">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
+        <div className="container mx-auto text-center max-w-4xl relative z-10 px-3 sm:px-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 sm:mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
             {t('landing.title')}
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
             {t('landing.subtitle')}
           </p>
-          <div className="flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Button 
               size="lg" 
-              className="text-lg px-10 py-7 hover-lift shadow-xl group relative overflow-hidden"
+              className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 hover-lift shadow-xl group relative overflow-hidden w-full sm:w-auto"
               onClick={() => navigate("/new-print")}
             >
-              <span className="relative z-10 flex items-center">
-                <Upload className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10 flex items-center justify-center">
+                <Upload className="mr-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:scale-110 transition-transform" />
                 Upload Your 3D File
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -269,10 +269,10 @@ const Landing = () => {
             <Button 
               size="lg" 
               variant="outline"
-              className="text-lg px-10 py-7 hover-lift"
+              className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 hover-lift w-full sm:w-auto"
               onClick={() => navigate("/design-assistance")}
             >
-              <Download className="mr-2 h-5 w-5" />
+              <Download className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Get Your 3D File
             </Button>
           </div>
@@ -280,9 +280,9 @@ const Landing = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 px-6 relative bg-gradient-to-b from-background to-muted/30">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 relative bg-gradient-to-b from-background to-muted/30">
         <div className="container mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
             {stats.map((stat, index) => (
               <StatCard key={index} stat={stat} index={index} />
             ))}
@@ -291,17 +291,17 @@ const Landing = () => {
       </section>
 
       {/* Our Services */}
-      <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">Our Services</h2>
-            <p className="text-muted-foreground text-lg">Choose the service that fits your needs</p>
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 gradient-text">Our Services</h2>
+            <p className="text-muted-foreground text-base sm:text-lg">Choose the service that fits your needs</p>
           </div>
 
           <Tabs defaultValue="printing" className="w-full">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-12">
-              <TabsTrigger value="printing" className="text-lg">3D Printing</TabsTrigger>
-              <TabsTrigger value="assistance" className="text-lg">3D Design Assistance</TabsTrigger>
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8 sm:mb-12">
+              <TabsTrigger value="printing" className="text-sm sm:text-base md:text-lg">3D Printing</TabsTrigger>
+              <TabsTrigger value="assistance" className="text-sm sm:text-base md:text-lg">3D Design Assistance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="printing" className="space-y-8">

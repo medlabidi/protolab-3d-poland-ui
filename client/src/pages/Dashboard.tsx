@@ -397,13 +397,13 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
       
-      <main className="flex-1 p-4 md:p-8 w-full lg:w-auto">
-        <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header with Title and Notifications */}
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 animate-slide-up">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">{t('dashboard.overview')}</h1>
-              <p className="text-muted-foreground text-base md:text-lg">{t('dashboard.welcome')}</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 animate-slide-up">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 gradient-text">{t('dashboard.overview')}</h1>
+              <p className="text-muted-foreground text-sm sm:text-base md:text-lg">{t('dashboard.welcome')}</p>
             </div>
             <div className="flex items-center gap-2">
               <NotificationDropdown />
@@ -411,7 +411,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
@@ -419,17 +419,17 @@ const Dashboard = () => {
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={(stat as any).isCredit ? () => navigate('/credits') : undefined}
               >
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4 md:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className={`p-1.5 md:p-2 rounded-lg transition-colors ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                    <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
+                  <div className={`p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0 ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className={`text-xl md:text-3xl font-bold mb-1 md:mb-2 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
-                  <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
+                <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+                  <div className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                     {stat.description}
                     {(stat as any).isCredit && (
                       <span className="ml-2 text-primary hover:underline">{t('dashboard.projects.getMore')}</span>
@@ -441,7 +441,7 @@ const Dashboard = () => {
           </div>
 
           {/* Order Type Sections - Print Jobs & Design Assistance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Print Jobs Card */}
             <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5">
               <CardHeader className="border-b">

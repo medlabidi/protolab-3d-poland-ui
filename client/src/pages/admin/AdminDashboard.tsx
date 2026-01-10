@@ -372,28 +372,28 @@ const AdminDashboard = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-            <p className="text-gray-400">Welcome back! Here's what's happening with your business.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Dashboard</h1>
+            <p className="text-sm sm:text-base text-gray-400">Welcome back! Here's what's happening with your business.</p>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {statCards.map((stat, index) => (
               <Card key={index} className="bg-gray-900 border-gray-800 relative overflow-hidden">
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.color}`} />
-                <CardHeader className="border-b border-gray-800">
-                  <CardTitle className="text-sm font-medium text-gray-400 flex items-center justify-between">
+                <CardHeader className="border-b border-gray-800 p-3 sm:p-4 md:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center justify-between">
                     {stat.title}
-                    <stat.icon className="w-4 h-4 text-gray-500" />
+                    <stat.icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-white mb-2">{stat.value}</div>
-                  <div className={`text-sm ${stat.changeType === 'positive' ? 'text-green-400' : stat.changeType === 'warning' ? 'text-amber-400' : 'text-red-400'}`}>
+                <CardContent className="pt-4 sm:pt-6 p-3 sm:p-4 md:p-6">
+                  <div className="text-xl sm:text-2xl font-bold text-white mb-2">{stat.value}</div>
+                  <div className={`text-xs sm:text-sm ${stat.changeType === 'positive' ? 'text-green-400' : stat.changeType === 'warning' ? 'text-amber-400' : 'text-red-400'}`}>
                     {stat.change}
                   </div>
                 </CardContent>
@@ -569,7 +569,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card className="bg-gradient-to-br from-blue-600 to-blue-700 border-0 cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all"
               onClick={() => navigate('/admin/orders')}
             >
