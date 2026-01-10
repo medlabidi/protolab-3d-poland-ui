@@ -704,7 +704,7 @@ export function Checkout() {
                   </Card>
                 ))}
               </>
-            ) : (
+            ) : order ? (
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -767,7 +767,7 @@ export function Checkout() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
             {/* Delivery Information */}
             {renderDeliveryInfo()}
@@ -922,7 +922,7 @@ export function Checkout() {
                         </span>
                       </div>
                     </>
-                  ) : (
+                  ) : order ? (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-300">Print Cost:</span>
@@ -934,7 +934,7 @@ export function Checkout() {
                         <span className="text-blue-600 dark:text-blue-400">{order.price.toFixed(2)} PLN</span>
                       </div>
                     </>
-                  )}
+                  ) : null}
                 </div>
 
                 <Button

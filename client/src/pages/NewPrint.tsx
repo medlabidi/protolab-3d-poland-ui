@@ -1003,8 +1003,7 @@ const NewPrint = () => {
           infillPattern: pf.infillPattern,
           estimatedWeight: pf.estimatedWeight,
           estimatedPrintTime: pf.estimatedPrintTime,
-          estimatedPrice: pf.estimatedPrice,
-          volume: pf.volume
+          estimatedPrice: pf.estimatedPrice
         })),
         projectName: projectName || 'Untitled Project',
         deliveryOption: selectedDeliveryOption,
