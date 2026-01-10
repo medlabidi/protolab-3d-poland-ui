@@ -935,10 +935,16 @@ const NewPrint = () => {
         return;
       }
 
-      // Check if all files have material and quality set
-      const filesWithoutConfig = projectFiles.filter(pf => !pf.material || !pf.quality);
+      // Check if all files have material and required settings (quality in normal mode, custom values in advanced mode)
+      const filesWithoutConfig = projectFiles.filter(pf => {
+        if (!pf.material) return true;
+        if (pf.advancedMode) {
+          return !pf.customLayerHeight || !pf.customInfill;
+        }
+        return !pf.quality;
+      });
       if (filesWithoutConfig.length > 0) {
-        toast.error(`${filesWithoutConfig.length} file(s) need material and quality selected`);
+        toast.error(`${filesWithoutConfig.length} file(s) need material and settings configured`);
         return;
       }
 
