@@ -329,8 +329,9 @@ const NewPrint = () => {
   }, []);
 
   useEffect(() => {
-    // Check if user is logged in
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    // Check if user is logged in by verifying both flag and token existence
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true" && 
+                     localStorage.getItem("accessToken") !== null;
     setIsLoggedIn(loggedIn);
 
     // Restore form state if coming back from checkout
