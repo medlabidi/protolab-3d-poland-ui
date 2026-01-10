@@ -994,19 +994,28 @@ const NewPrint = () => {
         const orderIds: string[] = [];
 
         // Create orders for each file
-        for (const pf of projectFiles) {
+        for (let i = 0; i < projectFiles.length; i++) {
+          const pf = projectFiles[i];
+          console.log(`Creating order ${i + 1}/${projectFiles.length} for file: ${pf.file.name}`);
+          
           const formData = new FormData();
           formData.append('file', pf.file);
           formData.append('material', pf.material.split('-')[0]);
           formData.append('color', pf.material.split('-')[1] || 'white');
           
           // Use custom values if advanced mode, otherwise quality preset
-          const layerHeight = pf.advancedMode && pf.customLayerHeight ? pf.customLayerHeight :
-                             (pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1');
-          formData.append('layerHeight', layerHeight);
+          let layerHeight: string;
+          let infill: string;
           
-          const infill = pf.advancedMode && pf.customInfill ? pf.customInfill :
-                        (pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40');
+          if (pf.advancedMode) {
+            layerHeight = pf.customLayerHeight || '0.2';
+            infill = pf.customInfill || '20';
+          } else {
+            layerHeight = pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1';
+            infill = pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40';
+          }
+          
+          formData.append('layerHeight', layerHeight);
           formData.append('infill', infill);
           
           formData.append('quantity', pf.quantity.toString());
@@ -1066,12 +1075,18 @@ const NewPrint = () => {
                 errorMessage = `Server error: ${response.status}`;
               }
             }
-            console.error('Order creation failed:', { status: response.status, errorMessage });
-            throw new Error(errorMessage);
+            console.error(`Order creation failed for file ${i + 1}/${projectFiles.length} (${pf.file.name}):`, { 
+              status: response.status, 
+              errorMessage,
+              fileIndex: i,
+              successfulOrders: orderIds.length 
+            });
+            throw new Error(`Failed to create order for "${pf.file.name}": ${errorMessage}`);
           }
 
           const result = await response.json();
           orderIds.push(result.id);
+          console.log(`✓ Order ${i + 1}/${projectFiles.length} created successfully (ID: ${result.id})`);
         }
 
         // Navigate to checkout page to review all orders
