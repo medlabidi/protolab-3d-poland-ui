@@ -674,17 +674,36 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       messageContent = body.message || '';
     }
     
-    const { data: message, error } = await supabase
+    const messageData: any = {
+      conversation_id: conversationId,
+      sender_id: user.userId,
+      message: messageContent || '',
+      sender_type: 'engineer'
+    };
+    
+    // Only include attachments if column exists (backward compatibility)
+    if (attachments.length > 0) {
+      messageData.attachments = attachments;
+    }
+    
+    let { data: message, error } = await supabase
       .from('conversation_messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: user.userId,
-        message: messageContent || '',
-        sender_type: 'engineer',
-        attachments: attachments.length > 0 ? attachments : null
-      })
+      .insert(messageData)
       .select()
       .single();
+    
+    // If error and we have attachments, try without attachments (column might not exist yet)
+    if (error && attachments.length > 0 && error.message?.includes('attachments')) {
+      console.log('[ADMIN_SEND_MESSAGE] Retrying without attachments (column may not exist yet)');
+      delete messageData.attachments;
+      const retry = await supabase
+        .from('conversation_messages')
+        .insert(messageData)
+        .select()
+        .single();
+      message = retry.data;
+      error = retry.error;
+    }
     
     if (error) {
       return res.status(500).json({ error: 'Failed to send message' });
@@ -2858,21 +2877,38 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       return res.status(400).json({ error: 'Message content or attachments required' });
     }
     
-    const messageData = {
+    const messageData: any = {
       conversation_id: conversationId,
       sender_id: user.userId,
       message: messageContent || '',
-      sender_type: 'user',
-      attachments: attachments.length > 0 ? attachments : null
+      sender_type: 'user'
     };
+    
+    // Only include attachments if column exists (backward compatibility)
+    if (attachments.length > 0) {
+      messageData.attachments = attachments;
+    }
     
     console.log('[SEND_MESSAGE] Inserting message:', messageData);
     
-    const { data: message, error } = await supabase
+    let { data: message, error } = await supabase
       .from('conversation_messages')
       .insert([messageData])
       .select()
       .single();
+    
+    // If error and we have attachments, try without attachments (column might not exist yet)
+    if (error && attachments.length > 0 && error.message?.includes('attachments')) {
+      console.log('[SEND_MESSAGE] Retrying without attachments (column may not exist yet)');
+      delete messageData.attachments;
+      const retry = await supabase
+        .from('conversation_messages')
+        .insert([messageData])
+        .select()
+        .single();
+      message = retry.data;
+      error = retry.error;
+    }
     
     if (error) {
       console.error('[SEND_MESSAGE] Insert error:', error);
