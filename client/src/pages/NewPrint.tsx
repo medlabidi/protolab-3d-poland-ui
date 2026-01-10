@@ -989,130 +989,54 @@ const NewPrint = () => {
       const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
       const totalAmount = projectTotal + deliveryPrice;
 
-      try {
-        setIsProcessing(true);
-        const orderIds: string[] = [];
+      // Store project data in session storage and navigate to checkout
+      const projectData = {
+        files: projectFiles.map(pf => ({
+          fileName: pf.file.name,
+          fileSize: pf.file.size,
+          material: pf.material,
+          quality: pf.quality,
+          quantity: pf.quantity,
+          advancedMode: pf.advancedMode,
+          customLayerHeight: pf.customLayerHeight,
+          customInfill: pf.customInfill,
+          infillPattern: pf.infillPattern,
+          estimatedWeight: pf.estimatedWeight,
+          estimatedPrintTime: pf.estimatedPrintTime,
+          estimatedPrice: pf.estimatedPrice,
+          volume: pf.volume
+        })),
+        projectName: projectName || 'Untitled Project',
+        deliveryOption: selectedDeliveryOption,
+        deliveryPrice,
+        totalAmount,
+        shippingAddress: selectedDeliveryOption === 'inpost' && selectedLocker 
+          ? { lockerCode: selectedLocker.name, lockerAddress: selectedLocker.address }
+          : selectedDeliveryOption === 'dpd' && shippingAddress 
+          ? shippingAddress
+          : selectedDeliveryOption === 'pickup'
+          ? { type: 'pickup', address: 'Zielonogórska 13, 30-406 Kraków' }
+          : null
+      };
 
-        // Create orders for each file
-        for (let i = 0; i < projectFiles.length; i++) {
-          const pf = projectFiles[i];
-          console.log(`Creating order ${i + 1}/${projectFiles.length} for file: ${pf.file.name}`);
-          
-          const formData = new FormData();
-          formData.append('file', pf.file);
-          formData.append('material', pf.material.split('-')[0]);
-          formData.append('color', pf.material.split('-')[1] || 'white');
-          
-          // Use custom values if advanced mode, otherwise quality preset
-          let layerHeight: string;
-          let infill: string;
-          
-          if (pf.advancedMode) {
-            layerHeight = pf.customLayerHeight || '0.2';
-            infill = pf.customInfill || '20';
-          } else {
-            layerHeight = pf.quality === 'draft' ? '0.3' : pf.quality === 'standard' ? '0.2' : pf.quality === 'high' ? '0.15' : '0.1';
-            infill = pf.quality === 'draft' ? '10' : pf.quality === 'standard' ? '20' : pf.quality === 'high' ? '30' : '40';
-          }
-          
-          formData.append('layerHeight', layerHeight);
-          formData.append('infill', infill);
-          
-          formData.append('quantity', pf.quantity.toString());
-          formData.append('shippingMethod', selectedDeliveryOption);
-          formData.append('paymentMethod', 'pending');
-          formData.append('price', (calculateProjectFilePrice(pf)?.breakdown.totalPrice || 0).toString());
-          formData.append('projectName', projectName || 'Untitled Project');
-          
-          // Add advanced mode flag
-          formData.append('advancedMode', (pf.advancedMode || false).toString());
-          
-          // Add quality preset if not in advanced mode
-          if (!pf.advancedMode) {
-            formData.append('quality', pf.quality);
-          }
-          
-          // Add advanced settings only if advanced mode is enabled
-          if (pf.advancedMode) {
-            formData.append('infillPattern', pf.infillPattern || 'grid');
-            if (pf.customLayerHeight) {
-              formData.append('customLayerHeight', pf.customLayerHeight);
-            }
-            if (pf.customInfill) {
-              formData.append('customInfill', pf.customInfill);
-            }
-          }
+      sessionStorage.setItem('projectCheckoutData', JSON.stringify(projectData));
+      
+      // Store actual file objects separately (they can't be stringified)
+      const fileStore = projectFiles.map(pf => pf.file);
+      sessionStorage.setItem('projectFiles', JSON.stringify(fileStore.map((f, i) => i))); // Store indices
+      
+      // Use a global variable to temporarily store files (session storage can't store File objects)
+      (window as any).__projectFiles = fileStore;
 
-          // Add delivery details
-          if (selectedDeliveryOption === 'inpost' && selectedLocker) {
-            formData.append('shippingAddress', JSON.stringify({
-              lockerCode: selectedLocker.name,
-              lockerAddress: selectedLocker.address
-            }));
-          } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
-            formData.append('shippingAddress', JSON.stringify(shippingAddress));
-          } else if (selectedDeliveryOption === 'pickup') {
-            formData.append('shippingAddress', JSON.stringify({
-              type: 'pickup',
-              address: 'Zielonogórska 13, 30-406 Kraków'
-            }));
-          }
-
-          const response = await apiFormData('/orders', formData);
-
-          if (!response.ok) {
-            let errorMessage = 'Failed to create order';
-            try {
-              const error = await response.json();
-              errorMessage = error.message || error.error || errorMessage;
-            } catch {
-              // If response is not JSON, use status text
-              if (response.status === 403) {
-                errorMessage = 'Access denied. Your account may not be approved or your session may have expired. Please log out and log back in.';
-              } else if (response.status === 401) {
-                errorMessage = 'Authentication required. Please log in again.';
-              } else {
-                errorMessage = `Server error: ${response.status}`;
-              }
-            }
-            console.error(`Order creation failed for file ${i + 1}/${projectFiles.length} (${pf.file.name}):`, { 
-              status: response.status, 
-              errorMessage,
-              fileIndex: i,
-              successfulOrders: orderIds.length 
-            });
-            
-            // If at least one order succeeded, show partial success message
-            if (orderIds.length > 0) {
-              toast.warning(`Created ${orderIds.length} of ${projectFiles.length} orders. Failed on file: ${pf.file.name}`);
-              console.log('Partial success - created orders:', orderIds);
-              // Continue with successful orders
-              break;
-            }
-            
-            throw new Error(`Failed to create order for "${pf.file.name}": ${errorMessage}`);
-          }
-
-          const result = await response.json();
-          orderIds.push(result.id);
-          console.log(`✓ Order ${i + 1}/${projectFiles.length} created successfully (ID: ${result.id})`);
-          
-          // Add small delay between requests to avoid rate limiting
-          if (i < projectFiles.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-
-        // Navigate to checkout page to review all orders
-        if (orderIds.length > 0) {
-          // Save order IDs to session storage for checkout page
-          sessionStorage.setItem('projectOrderIds', JSON.stringify(orderIds));
-          toast.success(`${orderIds.length} orders created. Please review before payment.`);
-          navigate(`/checkout?orderId=${orderIds[0]}&projectOrders=true`);
-        }
-      } catch (error) {
-        console.error('Order creation error:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to create orders');
+      setIsProcessing(false);
+      
+      // Navigate to checkout page with project mode flag
+      toast.success(`Project ready for checkout!`);
+      navigate('/checkout?projectMode=true');
+      
+    } catch (error) {
+      console.error('Navigation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to navigate to checkout');
       } finally {
         setIsProcessing(false);
       }

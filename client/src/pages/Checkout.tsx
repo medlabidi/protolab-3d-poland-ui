@@ -70,9 +70,11 @@ export function Checkout() {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const isProjectOrders = searchParams.get('projectOrders') === 'true';
+  const isProjectMode = searchParams.get('projectMode') === 'true';
 
   const [order, setOrder] = useState<Order | null>(null);
   const [projectOrders, setProjectOrders] = useState<Order[]>([]);
+  const [projectData, setProjectData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +89,10 @@ export function Checkout() {
   const [hasBusinessInfo, setHasBusinessInfo] = useState(false);
 
   useEffect(() => {
-    if (orderId) {
+    if (isProjectMode) {
+      loadProjectData();
+      fetchBusinessInfo();
+    } else if (orderId) {
       if (isProjectOrders) {
         fetchProjectOrders();
       } else {
@@ -95,10 +100,27 @@ export function Checkout() {
       }
       fetchBusinessInfo();
     } else {
-      setError('No order ID provided');
+      setError('No order data provided');
       setLoading(false);
     }
-  }, [orderId, isProjectOrders]);
+  }, [orderId, isProjectOrders, isProjectMode]);
+
+  const loadProjectData = () => {
+    try {
+      const dataStr = sessionStorage.getItem('projectCheckoutData');
+      if (!dataStr) {
+        throw new Error('No project data found');
+      }
+      
+      const data = JSON.parse(dataStr);
+      setProjectData(data);
+      setShippingAddress(data.shippingAddress || {});
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load project data');
+      setLoading(false);
+    }
+  };
 
   const fetchProjectOrders = async () => {
     try {
@@ -235,14 +257,111 @@ export function Checkout() {
   };
 
   const handleProceedToPayment = async () => {
-    if (!order) return;
-
     setProcessing(true);
     try {
       const token = localStorage.getItem('accessToken');
       if (!token) {
         navigate('/login');
         return;
+      }
+
+      let orderToProcess: Order | null = order;
+      let totalAmount = order?.price || 0;
+
+      // If in project mode, create all orders first
+      if (isProjectMode && projectData) {
+        const createdOrders: string[] = [];
+        const projectFiles = (window as any).__projectFiles || [];
+        
+        toast.info(`Creating ${projectData.files.length} orders...`);
+
+        for (let i = 0; i < projectData.files.length; i++) {
+          const fileData = projectData.files[i];
+          const file = projectFiles[i];
+          
+          if (!file) {
+            throw new Error(`File ${fileData.fileName} not found`);
+          }
+
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('material', fileData.material.split('-')[0]);
+          formData.append('color', fileData.material.split('-')[1] || 'white');
+          
+          // Use custom values if advanced mode, otherwise quality preset
+          let layerHeight: string;
+          let infill: string;
+          
+          if (fileData.advancedMode) {
+            layerHeight = fileData.customLayerHeight || '0.2';
+            infill = fileData.customInfill || '20';
+          } else {
+            layerHeight = fileData.quality === 'draft' ? '0.3' : fileData.quality === 'standard' ? '0.2' : fileData.quality === 'high' ? '0.15' : '0.1';
+            infill = fileData.quality === 'draft' ? '10' : fileData.quality === 'standard' ? '20' : fileData.quality === 'high' ? '30' : '40';
+          }
+          
+          formData.append('layerHeight', layerHeight);
+          formData.append('infill', infill);
+          formData.append('quantity', fileData.quantity.toString());
+          formData.append('shippingMethod', projectData.deliveryOption);
+          formData.append('paymentMethod', 'pending');
+          formData.append('price', fileData.estimatedPrice.toString());
+          formData.append('projectName', projectData.projectName);
+          formData.append('advancedMode', (fileData.advancedMode || false).toString());
+          
+          if (!fileData.advancedMode) {
+            formData.append('quality', fileData.quality);
+          }
+          
+          if (fileData.advancedMode) {
+            formData.append('infillPattern', fileData.infillPattern || 'grid');
+            if (fileData.customLayerHeight) {
+              formData.append('customLayerHeight', fileData.customLayerHeight);
+            }
+            if (fileData.customInfill) {
+              formData.append('customInfill', fileData.customInfill);
+            }
+          }
+
+          if (projectData.shippingAddress) {
+            formData.append('shippingAddress', JSON.stringify(projectData.shippingAddress));
+          }
+
+          const response = await fetch(`${API_URL}/orders`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to create order for ${fileData.fileName}`);
+          }
+
+          const result = await response.json();
+          createdOrders.push(result.id);
+        }
+
+        // Use first order for payment
+        const firstOrderResponse = await fetch(`${API_URL}/orders/${createdOrders[0]}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!firstOrderResponse.ok) {
+          throw new Error('Failed to fetch created order');
+        }
+
+        const firstOrderData = await firstOrderResponse.json();
+        orderToProcess = firstOrderData.order || firstOrderData;
+        totalAmount = projectData.totalAmount;
+      }
+
+      if (!orderToProcess) {
+        throw new Error('No order to process');
       }
 
       // Create PayU payment with full user data
@@ -253,10 +372,12 @@ export function Checkout() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          orderId: order.id,
-          amount: order.price,
-          description: `Order #${order.id.slice(0, 8)} - ${order.file_name}`,
-          userId: order.user_id,
+          orderId: orderToProcess.id,
+          amount: totalAmount,
+          description: isProjectMode 
+            ? `Project: ${projectData.projectName} (${projectData.files.length} files)`
+            : `Order #${orderToProcess.id.slice(0, 8)} - ${orderToProcess.file_name}`,
+          userId: orderToProcess.user_id,
           requestInvoice,
           businessInfo: requestInvoice ? businessInfo : null,
           shippingAddress,
@@ -284,9 +405,9 @@ export function Checkout() {
   };
 
   const renderDeliveryInfo = () => {
-    if (!order) return null;
+    const method = isProjectMode ? projectData?.deliveryOption : order?.shipping_method;
+    if (!method) return null;
 
-    const method = order.shipping_method;
     let deliveryIcon = <MapPin className="h-5 w-5" />;
     let deliveryTitle = 'Delivery Method';
     let deliveryDetails = '';
@@ -412,7 +533,7 @@ export function Checkout() {
     );
   }
 
-  if (error || !order) {
+  if (error || (!order && !isProjectMode)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
         <Card className="max-w-md w-full dark:bg-gray-800">
@@ -455,8 +576,68 @@ export function Checkout() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Left Column - Order Details */}
           <div className="md:col-span-2 space-y-6">
-            {/* Order Summary - Show all orders if project mode */}
-            {isProjectOrders && projectOrders.length > 0 ? (
+            {/* Order Summary - Show project data if project mode */}
+            {isProjectMode && projectData ? (
+              <>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {projectData.projectName} ({projectData.files.length} files)
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                
+                {projectData.files.map((fileData: any, index: number) => (
+                  <Card key={index} className="dark:bg-gray-800 dark:border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        File #{index + 1}: {fileData.fileName}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Material:</span>
+                        <span className="font-medium dark:text-gray-100">{fileData.material}</span>
+                      </div>
+                      {fileData.advancedMode ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Mode:</span>
+                            <span className="font-medium text-primary dark:text-blue-400">Advanced Settings</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Layer Height:</span>
+                            <span className="font-medium dark:text-gray-100">{fileData.customLayerHeight}mm</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Infill:</span>
+                            <span className="font-medium dark:text-gray-100">{fileData.customInfill}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Infill Pattern:</span>
+                            <span className="font-medium dark:text-gray-100 capitalize">{fileData.infillPattern || 'grid'}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-300">Quality:</span>
+                          <span className="font-medium dark:text-gray-100 capitalize">{fileData.quality}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-300">Quantity:</span>
+                        <span className="font-medium dark:text-gray-100">{fileData.quantity}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-600 dark:text-gray-300 font-semibold">Price:</span>
+                        <span className="font-bold text-primary">{fileData.estimatedPrice.toFixed(2)} PLN</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            ) : isProjectOrders && projectOrders.length > 0 ? (
               <>
                 <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
@@ -698,7 +879,34 @@ export function Checkout() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  {isProjectOrders && projectOrders.length > 0 ? (
+                  {isProjectMode && projectData ? (
+                    <>
+                      {projectData.files.map((fileData: any, index: number) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300">File #{index + 1}:</span>
+                          <span className="dark:text-gray-100">{fileData.estimatedPrice.toFixed(2)} PLN</span>
+                        </div>
+                      ))}
+                      <Separator className="dark:bg-gray-600" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-300">Subtotal:</span>
+                        <span className="dark:text-gray-100">
+                          {projectData.files.reduce((sum: number, f: any) => sum + f.estimatedPrice, 0).toFixed(2)} PLN
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-300">Delivery:</span>
+                        <span className="dark:text-gray-100">{projectData.deliveryPrice.toFixed(2)} PLN</span>
+                      </div>
+                      <Separator className="dark:bg-gray-600" />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span className="dark:text-gray-100">Total:</span>
+                        <span className="text-blue-600 dark:text-blue-400">
+                          {projectData.totalAmount.toFixed(2)} PLN
+                        </span>
+                      </div>
+                    </>
+                  ) : isProjectOrders && projectOrders.length > 0 ? (
                     <>
                       {projectOrders.map((projectOrder, index) => (
                         <div key={projectOrder.id} className="flex justify-between text-sm">
