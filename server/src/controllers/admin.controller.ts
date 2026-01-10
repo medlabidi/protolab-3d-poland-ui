@@ -61,6 +61,68 @@ export class AdminController {
     }
   }
   
+  async getOrderById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.getOrderById(id);
+      
+      if (!order) {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+      
+      res.json({ order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getOrdersByType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { type } = req.params;
+      
+      if (type !== 'print' && type !== 'design') {
+        res.status(400).json({ error: 'Invalid order type. Must be "print" or "design"' });
+        return;
+      }
+      
+      const orders = await orderService.getOrdersByType(type);
+      
+      res.json({ orders, count: orders.length, type });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createPrintFromDesign(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { designOrderId } = req.params;
+      const { material, color, layerHeight, infill, quantity, price } = req.body;
+      
+      if (!material || !color || !layerHeight || !infill || !quantity || !price) {
+        res.status(400).json({ error: 'Missing required fields' });
+        return;
+      }
+      
+      const printOrder = await orderService.createPrintFromDesign(designOrderId, {
+        material,
+        color,
+        layerHeight,
+        infill,
+        quantity,
+        price
+      });
+      
+      res.status(201).json({ order: printOrder });
+    } catch (error: any) {
+      if (error.message === 'Design order not found' || error.message === 'Parent order must be a design order') {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+  
   async updateOrderStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;

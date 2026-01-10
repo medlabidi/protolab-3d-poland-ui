@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { useNotifications } from "@/contexts/NotificationContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,43 +31,29 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, MessageSquare } from "lucide-react";
+import { Package, DollarSign, Clock, Eye, Loader2, MoreHorizontal, Pencil, Trash2, Download, Copy, FolderOpen, ChevronDown, ChevronRight, FileText, Plus, Files, Wallet, Boxes, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useMemo } from "react";
 import { API_URL } from "@/config/api";
-import { useNetworkReconnect } from "@/hooks/useNetworkReconnect";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { unreadCount } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [printJobs, setPrintJobs] = useState<any[]>([]);
+  const [designJobs, setDesignJobs] = useState<any[]>([]);
   const [creditBalance, setCreditBalance] = useState<number>(0);
   const [stats, setStats] = useState({
     activeOrders: 0,
     completedPrints: 0,
     totalSpent: `0 ${t('common.pln')}`,
+    printJobsCount: 0,
+    designJobsCount: 0,
   });
-
-  // Handle network reconnection
-  useNetworkReconnect(() => {
-    console.log('Reconnected, refreshing user dashboard data');
-    fetchDashboardData(true);
-    fetchCreditBalance(true);
-  });
-
-  // Poll for order updates every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchDashboardData(false);
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -127,15 +112,42 @@ const Dashboard = () => {
       }
 
       if (!response.ok) {
-        console.error('Failed to fetch orders:', response.status, response.statusText);
+        console.error('❌ Failed to fetch orders:', response.status, response.statusText);
+        toast.error(`Failed to load orders: ${response.statusText}`);
         setLoading(false);
         return;
       }
 
       const data = await response.json();
+      console.log('📦 Raw API Response:', data);
+      
       const userOrders = data.orders || [];
+      console.log('📊 User Orders Count:', userOrders.length);
+      
       setAllOrders(userOrders); // Store all orders for operations
       setOrders(userOrders.slice(0, 5)); // Display only recent 5 orders
+
+      // Séparer les orders par type (compatible avec le dashboard admin)
+      const printOrders = userOrders.filter((o: any) => {
+        if (o.order_type) {
+          return o.order_type === 'print';
+        }
+        // Fallback: les orders sans order_type sont considérés comme print jobs
+        const fileName = (o.file_name || '').toLowerCase();
+        return !fileName.includes('design') && !fileName.includes('assistance');
+      });
+      
+      const designOrders = userOrders.filter((o: any) => {
+        if (o.order_type) {
+          return o.order_type === 'design';
+        }
+        // Fallback: détecter par file_name
+        const fileName = (o.file_name || '').toLowerCase();
+        return fileName.includes('design') || fileName.includes('assistance');
+      });
+
+      setPrintJobs(printOrders.slice(0, 5));
+      setDesignJobs(designOrders.slice(0, 5));
 
       // Calculate stats from real data
       const active = userOrders.filter((o: any) => 
@@ -159,33 +171,35 @@ const Dashboard = () => {
         activeOrders: active,
         completedPrints: completed,
         totalSpent: `${total.toFixed(2)} ${t('common.pln')}`,
+        printJobsCount: printOrders.length,
+        designJobsCount: designOrders.length,
+      });
+
+      console.log('📊 Dashboard Data:', {
+        total: userOrders.length,
+        printJobs: printOrders.length,
+        designJobs: designOrders.length,
+        active,
+        completed
       });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('❌ Failed to fetch dashboard data:', error);
+      toast.error('Unable to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCreditBalance = async (retry = true) => {
+  const fetchCreditBalance = async () => {
     try {
-      let token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('accessToken');
       if (!token) return;
 
-      let response = await fetch(`${API_URL}/credits/balance`, {
+      const response = await fetch(`${API_URL}/credits/balance`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-
-      // If unauthorized, try to refresh token
-      if (response.status === 401 && retry) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          return fetchCreditBalance(false);
-        }
-        return;
-      }
 
       if (response.ok) {
         const data = await response.json();
@@ -250,11 +264,8 @@ const Dashboard = () => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<any>(null);
   const [newProjectName, setNewProjectName] = useState('');
-  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   const toggleProject = (projectName: string) => {
     setExpandedProjects(prev => {
@@ -266,50 +277,6 @@ const Dashboard = () => {
       }
       return newSet;
     });
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userRole');
-    toast.success(t('auth.logoutSuccess'));
-    navigate('/login');
-  };
-
-  const handleCancelOrder = (order: any) => {
-    setSelectedOrderToCancel(order);
-    setCancelOrderDialogOpen(true);
-  };
-
-  const confirmCancelOrder = async () => {
-    if (!selectedOrderToCancel) return;
-
-    setCancellingOrder(true);
-    try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/orders/${selectedOrderToCancel.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        toast.success(t('dashboard.toasts.orderCancelled'));
-        fetchDashboardData();
-        setCancelOrderDialogOpen(false);
-        setSelectedOrderToCancel(null);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || t('dashboard.toasts.orderCancelFailed'));
-      }
-    } catch (error) {
-      console.error('Failed to cancel order:', error);
-      toast.error(t('dashboard.toasts.orderCancelFailed'));
-    } finally {
-      setCancellingOrder(false);
-    }
   };
 
   const handleRenameProject = async () => {
@@ -430,13 +397,13 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
       
-      <main className="flex-1 p-4 md:p-8 w-full lg:w-auto">
-        <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header with Title and Notifications */}
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 animate-slide-up">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">{t('dashboard.overview')}</h1>
-              <p className="text-muted-foreground text-base md:text-lg">{t('dashboard.welcome')}</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 animate-slide-up">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 gradient-text">{t('dashboard.overview')}</h1>
+              <p className="text-muted-foreground text-sm sm:text-base md:text-lg">{t('dashboard.welcome')}</p>
             </div>
             <div className="flex items-center gap-2">
               <NotificationDropdown />
@@ -444,7 +411,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
@@ -452,17 +419,17 @@ const Dashboard = () => {
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={(stat as any).isCredit ? () => navigate('/credits') : undefined}
               >
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4 md:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <div className={`p-1.5 md:p-2 rounded-lg transition-colors ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                    <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
+                  <div className={`p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0 ${(stat as any).isCredit ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${(stat as any).isCredit ? 'text-green-500' : 'text-primary'}`} />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className={`text-xl md:text-3xl font-bold mb-1 md:mb-2 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
-                  <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
+                <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+                  <div className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 ${(stat as any).isCredit ? 'text-green-600' : 'gradient-text'}`}>{stat.value}</div>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                     {stat.description}
                     {(stat as any).isCredit && (
                       <span className="ml-2 text-primary hover:underline">{t('dashboard.projects.getMore')}</span>
@@ -471,6 +438,123 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Order Type Sections - Print Jobs & Design Assistance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Print Jobs Card */}
+            <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Boxes className="w-5 h-5 text-blue-500" />
+                    Print Jobs
+                    <span className="text-sm font-normal text-muted-foreground">({stats.printJobsCount})</span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/orders')}
+                    className="hover:bg-blue-500/10 hover:border-blue-500"
+                  >
+                    View All
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {printJobs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Boxes className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">No print jobs yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {printJobs.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-blue-500/5 transition-colors cursor-pointer border border-transparent hover:border-blue-500/20"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.material} • {new Date(order.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <StatusBadge status={order.status as OrderStatus} />
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Design Assistance Card */}
+            <Card className="shadow-xl border-2 border-transparent hover:border-purple-500/20 transition-all bg-gradient-to-br from-card to-purple-500/5">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-purple-500" />
+                    Design Assistance
+                    <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/services/design')}
+                    className="hover:bg-purple-500/10 hover:border-purple-500"
+                  >
+                    New Request
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {designJobs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">No design requests yet</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/services/design')}
+                      className="mt-2 text-xs"
+                    >
+                      Request Design Help
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {designJobs.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-500/5 transition-colors cursor-pointer border border-transparent hover:border-purple-500/20"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Palette className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {order.design_description ? order.design_description.substring(0, 40) + '...' : new Date(order.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <StatusBadge status={order.status as OrderStatus} />
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Recent Orders & Projects */}
@@ -621,36 +705,16 @@ const Dashboard = () => {
                         {groupedOrders.standaloneOrders.map((order, index) => (
                           <div 
                             key={order.id} 
-                            className={`flex items-center justify-between py-4 px-4 rounded-lg transition-all hover-lift ${
-                              order.has_unread_messages 
-                                ? 'bg-orange-50 border-2 border-orange-400 hover:bg-orange-100' 
-                                : 'hover:bg-primary/5 border border-transparent hover:border-primary/20'
-                            }`}
+                            className="flex items-center justify-between py-3 md:py-4 px-3 md:px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
                             style={{ animationDelay: `${index * 0.1}s` }}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                order.has_unread_messages ? 'bg-orange-100' : 'bg-muted/50'
-                              }`}>
-                                <FileText className={`w-5 h-5 ${
-                                  order.has_unread_messages ? 'text-orange-600' : 'text-muted-foreground'
-                                }`} />
+                            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                              <div className="w-8 h-8 md:w-10 md:h-10 bg-muted/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                               </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className={`font-bold truncate max-w-[200px] ${
-                                    order.has_unread_messages ? 'text-orange-700' : 'text-primary'
-                                  }`}>
-                                    {order.file_name || 'Unnamed'}
-                                  </p>
-                                  {order.has_unread_messages && (
-                                    <div className="flex items-center gap-1">
-                                      <MessageSquare className="w-4 h-4 text-orange-500 animate-pulse" />
-                                      <span className="text-xs font-semibold text-orange-600">New message</span>
-                                    </div>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
+                              <div className="min-w-0">
+                                <p className="font-bold text-primary truncate text-sm md:text-base">{order.file_name || 'Unnamed'}</p>
+                                <p className="text-xs text-muted-foreground truncate">
                                   {order.material || 'N/A'} • {new Date(order.created_at).toLocaleDateString()}
                                 </p>
                               </div>
@@ -690,11 +754,10 @@ const Dashboard = () => {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
                                     className="text-destructive focus:text-destructive"
-                                    onClick={() => handleCancelOrder(order)}
-                                    disabled={order.status === 'delivered' || order.status === 'cancelled'}
+                                    onClick={() => toast.error(t('dashboard.toasts.deleteOrderComingSoon'))}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    {t('common.cancelPayment')}
+                                    {t('common.deleteOrder')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -754,35 +817,6 @@ const Dashboard = () => {
               <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 {t('common.delete')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Cancel Order Confirmation Dialog */}
-        <AlertDialog open={cancelOrderDialogOpen} onOpenChange={setCancelOrderDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Cancel Print Job?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to cancel the print job for "{selectedOrderToCancel?.file_name}"? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={cancellingOrder}>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={confirmCancelOrder} 
-                disabled={cancellingOrder}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {cancellingOrder ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cancelling...
-                  </>
-                ) : (
-                  'Yes, Cancel Print Job'
-                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

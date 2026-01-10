@@ -17,9 +17,12 @@ export type PaymentStatus =
 
 export type ShippingMethod = 'pickup' | 'inpost' | 'dpd' | 'courier';
 
+export type OrderType = 'print' | 'design';
+
 export interface IOrder {
   id: string;
   user_id: string;
+  order_type: OrderType;
   file_url: string;
   file_path?: string;
   file_name: string;
@@ -40,6 +43,10 @@ export interface IOrder {
   review?: string;
   tracking_code?: string;
   project_name?: string;
+  design_description?: string;
+  design_requirements?: string;
+  reference_images?: string[];
+  parent_order_id?: string;
   is_archived?: boolean;
   deleted_at?: string | null;
   refund_method?: 'credit' | 'bank' | 'original';
@@ -142,6 +149,18 @@ export class Order {
     const { data, error } = await query;
     
     if (error) throw new Error(`Failed to find orders: ${error.message}`);
+    return data || [];
+  }
+
+  static async findByType(orderType: OrderType): Promise<IOrder[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('order_type', orderType)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw new Error(`Failed to find orders by type: ${error.message}`);
     return data || [];
   }
 

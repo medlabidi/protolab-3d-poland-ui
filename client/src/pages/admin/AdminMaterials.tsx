@@ -1,27 +1,9 @@
 import { useState, useEffect } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -29,583 +11,710 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Palette, Package, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Palette,
+  Plus,
+  Edit2,
+  Trash2,
+  DollarSign,
+  Weight,
+  Droplet,
+  Loader2,
+  Eye,
+  EyeOff,
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 
-interface Material {
-  id: string;
-  material_type: string;
-  color: string;
-  price_per_kg: number;
-  stock_status: 'available' | 'low_stock' | 'out_of_stock';
-  lead_time_days: number;
-  hex_color?: string;
-  description?: string;
-  is_active: boolean;
-}
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-export default function AdminMaterials() {
-  const [materials, setMaterials] = useState<Material[]>([]);
+const AdminMaterials = () => {
+  // Liste des fournisseurs disponibles
+  const availableSuppliers = [
+    "Prusament",
+    "NinjaTek",
+    "MatterHackers",
+    "FormFutura",
+    "ColorFabb",
+    "eSun",
+    "Polymaker",
+    "3DJake",
+  ];
+
+  const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [materialTypeFilter, setMaterialTypeFilter] = useState<string>("all");
-  const [stockStatusFilter, setStockStatusFilter] = useState<string>("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
-  const { toast } = useToast();
-
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [formData, setFormData] = useState({
-    material_type: "",
-    color: "",
-    price_per_kg: "",
-    stock_status: "available" as 'available' | 'low_stock' | 'out_of_stock',
-    lead_time_days: "0",
-    hex_color: "#FFFFFF",
+    name: "",
+    type: "PLA",
+    color: "#FFFFFF",
+    price_per_kg: 0,
+    density: 1.24,
+    stock_quantity: 0,
+    print_temp: 200,
+    bed_temp: 60,
+    supplier: "",
     description: "",
+    is_active: true,
   });
 
+  // Fetch materials on mount
   useEffect(() => {
     fetchMaterials();
   }, []);
 
   const fetchMaterials = async () => {
     try {
-      const response = await fetch("/api/admin/materials", {
+      setLoading(true);
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        toast.error('Authentication token missing. Please login again.');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/materials`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        setMaterials(Array.isArray(data.materials) ? data.materials : []);
+        setMaterials(data.materials || []);
+      } else {
+        const error = await response.json().catch(() => ({}));
+        toast.error(`Error: ${error.error || response.statusText}`);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch materials",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error('Error fetching materials:', error);
+      toast.error(`Connection error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const url = editingMaterial
-      ? `/api/admin/materials/${editingMaterial.id}`
-      : "/api/admin/materials";
-    
-    const method = editingMaterial ? "PATCH" : "POST";
+  const handleAddMaterial = async () => {
+    if (!formData.name.trim() || !formData.supplier.trim()) {
+      toast.error("Name and supplier are required");
+      return;
+    }
 
     try {
-      const response = await fetch(url, {
-        method,
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/materials`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success("Material added successfully!");
+        fetchMaterials(); // Refresh list
+        setShowAddDialog(false);
+        resetForm();
+      } else {
+        const error = await response.json().catch(() => ({}));
+        toast.error(`Error: ${error.error || 'Failed to add material'}`);
+      }
+    } catch (error: any) {
+      console.error('Error adding material:', error);
+      toast.error(`Connection error: ${error.message}`);
+    }
+  };
+
+  const handleEditMaterial = async () => {
+    if (!formData.name.trim() || !formData.supplier.trim()) {
+      toast.error("Name and supplier are required");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/materials`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          id: selectedMaterial.id,
           ...formData,
-          price_per_kg: parseFloat(formData.price_per_kg),
-          lead_time_days: parseInt(formData.lead_time_days),
         }),
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Material ${editingMaterial ? "updated" : "created"} successfully`,
-        });
-        setIsDialogOpen(false);
+        toast.success("Material updated successfully!");
+        fetchMaterials(); // Refresh list
+        setShowEditDialog(false);
+        setSelectedMaterial(null);
         resetForm();
-        fetchMaterials();
       } else {
-        throw new Error("Failed to save material");
+        const error = await response.json().catch(() => ({}));
+        toast.error(`Error: ${error.error || 'Failed to update material'}`);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save material",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error('Error updating material:', error);
+      toast.error(`Connection error: ${error.message}`);
     }
   };
 
-  const handleEdit = (material: Material) => {
-    setEditingMaterial(material);
+  const handleDeleteMaterial = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/materials?id=${selectedMaterial.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Material deleted successfully!");
+        fetchMaterials(); // Refresh list
+        setShowDeleteDialog(false);
+        setSelectedMaterial(null);
+      } else {
+        const error = await response.json().catch(() => ({}));
+        toast.error(`Error: ${error.error || 'Failed to delete material'}`);
+      }
+    } catch (error: any) {
+      console.error('Error deleting material:', error);
+      toast.error(`Connection error: ${error.message}`);
+    }
+  };
+
+  const handleToggleActive = async (material: any) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/materials`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: material.id,
+          is_active: !material.is_active,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(`Material ${material.is_active ? 'hidden' : 'activated'}!`);
+        fetchMaterials(); // Refresh list
+      } else {
+        const error = await response.json().catch(() => ({}));
+        toast.error(`Error: ${error.error || 'Failed to toggle material'}`);
+      }
+    } catch (error: any) {
+      console.error('Error toggling material:', error);
+      toast.error(`Connection error: ${error.message}`);
+    }
+  };
+
+  const openEditDialog = (material: any) => {
+    setSelectedMaterial(material);
     setFormData({
-      material_type: material.material_type,
+      name: material.name,
+      type: material.type,
       color: material.color,
-      price_per_kg: material.price_per_kg.toString(),
-      stock_status: material.stock_status,
-      lead_time_days: material.lead_time_days.toString(),
-      hex_color: material.hex_color || "#FFFFFF",
+      price_per_kg: material.price_per_kg,
+      density: material.density,
+      stock_quantity: material.stock_quantity,
+      print_temp: material.print_temp,
+      bed_temp: material.bed_temp,
+      supplier: material.supplier,
       description: material.description || "",
+      is_active: material.is_active,
     });
-    setIsDialogOpen(true);
+    setShowEditDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this material?")) return;
-
-    try {
-      const response = await fetch(`/api/admin/materials/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Material deleted successfully",
-        });
-        // Update local state immediately
-        setMaterials(prev => prev.filter(m => m.id !== id));
-      } else {
-        throw new Error("Failed to delete material");
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete material",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/admin/materials/${id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ is_active: !currentStatus }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Material ${!currentStatus ? "shown" : "hidden"} successfully`,
-        });
-        // Update local state immediately
-        setMaterials(prev => prev.map(m => 
-          m.id === id ? { ...m, is_active: !currentStatus } : m
-        ));
-      } else {
-        throw new Error("Failed to update material");
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update material visibility",
-        variant: "destructive",
-      });
-    }
+  const openDeleteDialog = (material: any) => {
+    setSelectedMaterial(material);
+    setShowDeleteDialog(true);
   };
 
   const resetForm = () => {
-    setEditingMaterial(null);
     setFormData({
-      material_type: "",
-      color: "",
-      price_per_kg: "",
-      stock_status: "available",
-      lead_time_days: "0",
-      hex_color: "#FFFFFF",
+      name: "",
+      type: "PLA",
+      color: "#FFFFFF",
+      price_per_kg: 0,
+      density: 1.24,
+      stock_quantity: 0,
+      print_temp: 200,
+      bed_temp: 60,
+      supplier: "",
       description: "",
+      is_active: true,
     });
   };
 
-  const filteredMaterials = materials.filter((m) => {
-    const matchesSearch =
-      m.material_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.color.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesMaterialType =
-      materialTypeFilter === "all" || m.material_type === materialTypeFilter;
-    
-    const matchesStockStatus =
-      stockStatusFilter === "all" || m.stock_status === stockStatusFilter;
-    
-    return matchesSearch && matchesMaterialType && matchesStockStatus;
-  });
-
-  // Get unique material types
-  const materialTypes = Array.from(new Set(materials.map(m => m.material_type)));
-
-  const getStockBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      available: { variant: "default", label: "Available" },
-      low_stock: { variant: "secondary", label: "Low Stock" },
-      out_of_stock: { variant: "destructive", label: "Out of Stock" },
-    };
-
-    const config = variants[status] || variants.available;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+  const getStockStatus = (stock: number) => {
+    if (stock > 3) return { color: 'text-green-400', label: 'In Stock' };
+    if (stock > 1) return { color: 'text-yellow-400', label: 'Low Stock' };
+    return { color: 'text-red-400', label: 'Critical' };
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <div className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Materials Management</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage 3D printing materials, colors, and pricing
-              </p>
+              <h1 className="text-3xl font-bold text-white mb-2">Materials Management</h1>
+              <p className="text-gray-400">Manage your 3D printing materials and inventory</p>
             </div>
-            
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Material
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingMaterial ? "Edit Material" : "Add New Material"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingMaterial
-                      ? "Update material information and pricing"
-                      : "Add a new material with color and pricing details"}
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="material_type">Material Type</Label>
-                      <Select
-                        value={formData.material_type}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, material_type: value })
-                        }
-                        disabled={!!editingMaterial}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PLA">PLA</SelectItem>
-                          <SelectItem value="ABS">ABS</SelectItem>
-                          <SelectItem value="PETG">PETG</SelectItem>
-                          <SelectItem value="TPU">TPU</SelectItem>
-                          <SelectItem value="Nylon">Nylon</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="color">Color</Label>
-                      <Input
-                        id="color"
-                        value={formData.color}
-                        onChange={(e) =>
-                          setFormData({ ...formData, color: e.target.value })
-                        }
-                        placeholder="e.g., Red, Blue, Black"
-                        required
-                        disabled={!!editingMaterial}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price_per_kg">Price per kg (PLN)</Label>
-                      <Input
-                        id="price_per_kg"
-                        type="number"
-                        step="0.01"
-                        value={formData.price_per_kg}
-                        onChange={(e) =>
-                          setFormData({ ...formData, price_per_kg: e.target.value })
-                        }
-                        placeholder="39.00"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="hex_color">Hex Color</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="hex_color"
-                          type="color"
-                          value={formData.hex_color}
-                          onChange={(e) =>
-                            setFormData({ ...formData, hex_color: e.target.value })
-                          }
-                          className="w-16 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          value={formData.hex_color}
-                          onChange={(e) =>
-                            setFormData({ ...formData, hex_color: e.target.value })
-                          }
-                          placeholder="#FFFFFF"
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="stock_status">Stock Status</Label>
-                      <Select
-                        value={formData.stock_status}
-                        onValueChange={(value: any) =>
-                          setFormData({ ...formData, stock_status: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="available">Available</SelectItem>
-                          <SelectItem value="low_stock">Low Stock</SelectItem>
-                          <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="lead_time_days">Lead Time (days)</Label>
-                      <Input
-                        id="lead_time_days"
-                        type="number"
-                        value={formData.lead_time_days}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lead_time_days: e.target.value })
-                        }
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Input
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      placeholder="Additional information"
-                    />
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsDialogOpen(false);
-                        resetForm();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {editingMaterial ? "Update" : "Create"} Material
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                onClick={fetchMaterials}
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowAddDialog(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Material
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Materials</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{materials.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {materials.filter((m) => m.is_active).length} active
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Total Materials</p>
+                <p className="text-2xl font-bold text-white">{materials.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Total Stock</p>
+                <p className="text-2xl font-bold text-blue-400">{materials.reduce((sum, m) => sum + (m.stock_quantity || 0), 0).toFixed(1)} kg</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Inventory Value</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  ${(materials.reduce((sum, m) => sum + ((m.stock_quantity || 0) * (m.price_per_kg || 0)), 0)).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available</CardTitle>
-                <Palette className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {materials.filter((m) => m.stock_status === "available").length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">In stock now</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-                <Palette className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {materials.filter((m) => m.stock_status === "out_of_stock").length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Need restock</p>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Low Stock Items</p>
+                <p className="text-2xl font-bold text-yellow-400">{materials.filter(m => (m.stock_quantity || 0) < 2).length}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Search and Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Materials List</CardTitle>
-                  <CardDescription>
-                    View and manage all materials with pricing
-                  </CardDescription>
+          {/* Materials Table */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                 </div>
-                <Input
-                  placeholder="Search materials..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Color</TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <span>Material</span>
-                        <Select value={materialTypeFilter} onValueChange={setMaterialTypeFilter}>
-                          <SelectTrigger className="h-8 w-[120px]">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            {materialTypes.map(type => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </TableHead>
-                    <TableHead>Price/kg</TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <span>Status</span>
-                        <Select value={stockStatusFilter} onValueChange={setStockStatusFilter}>
-                          <SelectTrigger className="h-8 w-[140px]">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="available">Available</SelectItem>
-                            <SelectItem value="low_stock">Low Stock</SelectItem>
-                            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </TableHead>
-                    <TableHead>Lead Time</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredMaterials.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        No materials found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredMaterials.map((material) => (
-                      <TableRow key={material.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-6 h-6 rounded border"
-                              style={{ backgroundColor: material.hex_color || "#FFFFFF" }}
-                            />
-                            <span className="font-medium">{material.color}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{material.material_type}</TableCell>
-                        <TableCell>{material.price_per_kg.toFixed(2)} PLN</TableCell>
-                        <TableCell>{getStockBadge(material.stock_status)}</TableCell>
-                        <TableCell>
-                          {material.lead_time_days > 0
-                            ? `${material.lead_time_days} days`
-                            : "Same day"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(material)}
-                              title="Edit material"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleToggleActive(material.id, material.is_active)}
-                              title={material.is_active ? "Hide from users" : "Show to users"}
-                            >
-                              {material.is_active ? (
-                                <Eye className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <EyeOff className="h-4 w-4 text-gray-400" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(material.id)}
-                              title="Delete material"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              ) : materials.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Palette className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No materials found</p>
+                  <p className="text-sm mt-1">Add your first material to get started</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-800">
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price/kg</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Temps</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {materials.map(material => {
+                        const stockStatus = getStockStatus(material.stock_quantity || 0);
+                        return (
+                          <tr key={material.id} className={`hover:bg-gray-800/50 transition-colors ${!material.is_active ? 'opacity-50' : ''}`}>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-8 h-8 rounded-lg border border-gray-700"
+                                  style={{ backgroundColor: material.color }}
+                                ></div>
+                                <p className="font-medium text-white">{material.name}</p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
+                                {material.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className={`font-semibold ${stockStatus.color}`}>{material.stock_quantity || 0} kg</p>
+                                <p className={`text-xs ${stockStatus.color}`}>{stockStatus.label}</p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-white">${material.price_per_kg}</td>
+                            <td className="px-6 py-4 text-sm text-gray-400">
+                              <div>{material.print_temp}°C / {material.bed_temp}°C</div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
+                            <td className="px-6 py-4">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleActive(material)}
+                                className={material.is_active ? 'text-green-400 hover:text-green-300' : 'text-gray-500 hover:text-gray-400'}
+                              >
+                                {material.is_active ? (
+                                  <>
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    Visible
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="w-4 h-4 mr-1" />
+                                    Hidden
+                                  </>
+                                )}
+                              </Button>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-gray-500 hover:text-white"
+                                  onClick={() => openEditDialog(material)}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-gray-500 hover:text-red-400"
+                                  onClick={() => openDeleteDialog(material)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Add Material Dialog */}
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Ajouter un nouveau matériau</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Remplissez les informations du nouveau matériau
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Nom *</Label>
+                  <Input
+                    placeholder="Ex: PLA - White"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Type</Label>
+                  <Input
+                    placeholder="PLA, PETG, TPU..."
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Couleur</Label>
+                  <Input
+                    type="color"
+                    className="bg-gray-800 border-gray-700 h-10"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Prix/kg ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.price_per_kg}
+                    onChange={(e) => setFormData({ ...formData, price_per_kg: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Densité</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.density}
+                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.stock_quantity}
+                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Temp. impression (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.print_temp}
+                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Temp. plateau (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.bed_temp}
+                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-gray-300">Fournisseur *</Label>
+                  <Select
+                    value={formData.supplier}
+                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Sélectionnez un fournisseur" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {availableSuppliers.map((supplier) => (
+                        <SelectItem key={supplier} value={supplier} className="text-white">
+                          {supplier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAddDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleAddMaterial}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Ajouter
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Material Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-white">Modifier le matériau</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Modifiez les informations du matériau
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Nom *</Label>
+                  <Input
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Type</Label>
+                  <Input
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Couleur</Label>
+                  <Input
+                    type="color"
+                    className="bg-gray-800 border-gray-700 h-10"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Prix/kg ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.price_per_kg}
+                    onChange={(e) => setFormData({ ...formData, price_per_kg: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Densité</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.density}
+                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.stock_quantity}
+                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Temp. impression (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.print_temp}
+                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Temp. plateau (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.bed_temp}
+                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-gray-300">Fournisseur *</Label>
+                  <Select
+                    value={formData.supplier}
+                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Sélectionnez un fournisseur" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {availableSuppliers.map((supplier) => (
+                        <SelectItem key={supplier} value={supplier} className="text-white">
+                          {supplier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowEditDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleEditMaterial}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Sauvegarder
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Êtes-vous sûr de vouloir supprimer le matériau "{selectedMaterial?.name}" ?
+                  Cette action est irréversible.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleDeleteMaterial}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Supprimer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+export default AdminMaterials;

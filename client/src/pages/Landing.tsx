@@ -1,12 +1,27 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Upload, Settings, Truck, Package, Palette, Zap, Mail, Phone, MapPin, Clock, Send, LayoutDashboard, FileText, Calendar, Users, Award, Globe, Download, CheckCircle } from "lucide-react";
+import { Upload, Settings, Truck, Package, Palette, Zap, Mail, Phone, MapPin, Clock, Send, LayoutDashboard, FileText, Calendar, Users, Award, Globe, Download, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Logo } from "@/components/Logo";
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface Material {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  price_per_kg: number;
+  density?: number;
+  stock_quantity?: number;
+  print_temp?: number;
+  bed_temp?: number;
+  supplier?: string;
+  is_active: boolean;
+  description?: string;
+}
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -14,6 +29,42 @@ const Landing = () => {
   
   // Check if user is logged in
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('accessToken');
+
+  // Materials state
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+  // Fetch materials from API
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    setLoadingMaterials(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/materials`, {
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {}
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only active materials
+        const activeMaterials = data.materials.filter((m: Material) => m.is_active);
+        setMaterials(activeMaterials);
+      } else {
+        // Fallback to empty array if fetch fails
+        console.error('Failed to fetch materials');
+      }
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
 
   const stats = [
     {
@@ -112,15 +163,6 @@ const Landing = () => {
     },
   ];
 
-  const materials = [
-    { name: "PLA", description: t('landing.material1') },
-    { name: "ABS", description: t('landing.material2') },
-    { name: "PETG", description: t('landing.material3') },
-    { name: "TPU", description: t('landing.material4') },
-    { name: "Nylon", description: t('landing.material5') },
-    { name: "Resin", description: t('landing.material6') },
-  ];
-
   const features = [
     {
       icon: Zap,
@@ -150,11 +192,11 @@ const Landing = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 animate-slide-up">
         <div className="backdrop-blur-md bg-background/30 border-b border-white/10">
-          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer">
-              <Logo size="sm" textClassName="text-xl" />
+          <div className="container mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-primary group cursor-pointer">
+              <Logo size="sm" textClassName="text-lg sm:text-xl" />
             </div>
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-4 lg:gap-6">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate("/about")} 
@@ -170,20 +212,20 @@ const Landing = () => {
                 {t('nav.services')}
               </Button>
             </nav>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitcher />
               {isLoggedIn ? (
                 <Button 
                   onClick={() => navigate("/dashboard")} 
-                  className="bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  className="bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
                 >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  {t('dashboard.overview')}
+                  <LayoutDashboard className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('dashboard.overview')}</span>
                 </Button>
               ) : (
                 <Button 
                   onClick={() => navigate("/login")} 
-                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm hover:scale-105 transition-all"
+                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm hover:scale-105 transition-all text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
                 >
                   {t('landing.login')}
                 </Button>
@@ -194,7 +236,7 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative animate-slide-up overflow-hidden">
+      <section className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 px-3 sm:px-4 md:px-6 relative animate-slide-up overflow-hidden">
         {/* Image Background */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <img
@@ -205,21 +247,21 @@ const Landing = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/50 to-background"></div>
         </div>
         
-        <div className="container mx-auto text-center max-w-4xl relative z-10">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
+        <div className="container mx-auto text-center max-w-4xl relative z-10 px-3 sm:px-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 sm:mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
             {t('landing.title')}
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
             {t('landing.subtitle')}
           </p>
-          <div className="flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Button 
               size="lg" 
-              className="text-lg px-10 py-7 hover-lift shadow-xl group relative overflow-hidden"
+              className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 hover-lift shadow-xl group relative overflow-hidden w-full sm:w-auto"
               onClick={() => navigate("/new-print")}
             >
-              <span className="relative z-10 flex items-center">
-                <Upload className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10 flex items-center justify-center">
+                <Upload className="mr-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:scale-110 transition-transform" />
                 Upload Your 3D File
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -227,10 +269,10 @@ const Landing = () => {
             <Button 
               size="lg" 
               variant="outline"
-              className="text-lg px-10 py-7 hover-lift"
+              className="text-sm sm:text-base md:text-lg px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 hover-lift w-full sm:w-auto"
               onClick={() => navigate("/design-assistance")}
             >
-              <Download className="mr-2 h-5 w-5" />
+              <Download className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Get Your 3D File
             </Button>
           </div>
@@ -238,9 +280,9 @@ const Landing = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 px-6 relative bg-gradient-to-b from-background to-muted/30">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 relative bg-gradient-to-b from-background to-muted/30">
         <div className="container mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
             {stats.map((stat, index) => (
               <StatCard key={index} stat={stat} index={index} />
             ))}
@@ -249,17 +291,17 @@ const Landing = () => {
       </section>
 
       {/* Our Services */}
-      <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">Our Services</h2>
-            <p className="text-muted-foreground text-lg">Choose the service that fits your needs</p>
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 gradient-text">Our Services</h2>
+            <p className="text-muted-foreground text-base sm:text-lg">Choose the service that fits your needs</p>
           </div>
 
           <Tabs defaultValue="printing" className="w-full">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-12">
-              <TabsTrigger value="printing" className="text-lg">3D Printing</TabsTrigger>
-              <TabsTrigger value="assistance" className="text-lg">3D Design Assistance</TabsTrigger>
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8 sm:mb-12">
+              <TabsTrigger value="printing" className="text-sm sm:text-base md:text-lg">3D Printing</TabsTrigger>
+              <TabsTrigger value="assistance" className="text-sm sm:text-base md:text-lg">3D Design Assistance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="printing" className="space-y-8">
@@ -374,54 +416,157 @@ const Landing = () => {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/70 to-background/80"></div>
+        
         <div className="container mx-auto max-w-7xl relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.supportedMaterials')}</h2>
             <p className="text-muted-foreground text-lg">{t('landing.materialsSubtitle')}</p>
           </div>
-          <div className="relative flex items-center justify-center min-h-[600px]">
-            {/* Central Palette Icon */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary via-purple-500 to-accent rounded-full blur-3xl opacity-30 animate-pulse"></div>
-                <Palette className="w-20 h-20 text-primary relative z-10" />
-              </div>
-            </div>
 
-            {/* Rotating Materials Circle */}
-            <div className="relative w-[500px] h-[500px] animate-spin-slow">
-              {materials.map((material, index) => {
-                const angle = (index * 360) / materials.length;
-                const radius = 200;
-                const x = Math.cos((angle * Math.PI) / 180) * radius;
-                const y = Math.sin((angle * Math.PI) / 180) * radius;
-                
-                return (
-                  <div
-                    key={index}
-                    className="absolute top-1/2 left-1/2 group"
-                    style={{
-                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
-                    }}
-                  >
-                    {/* Material Circle */}
-                    <div className="relative animate-spin-reverse">
-                      <div className="w-28 h-28 rounded-full bg-gradient-to-br from-primary/30 via-purple-500/30 to-accent/30 border-3 border-primary/40 flex items-center justify-center shadow-2xl backdrop-blur-sm group-hover:scale-125 group-hover:border-primary transition-all duration-500">
-                        {/* Material Content */}
-                        <div className="text-center p-3">
-                          <h3 className="font-bold text-sm mb-1 text-primary group-hover:text-purple-500 transition-colors">{material.name}</h3>
-                          <p className="text-xs text-muted-foreground leading-tight">{material.description}</p>
+          {loadingMaterials ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            </div>
+          ) : materials.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              <Palette className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">Aucun matériau disponible pour le moment</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {materials.map((material, index) => (
+                <Card 
+                  key={material.id} 
+                  className="bg-gradient-to-br from-background/95 via-background/90 to-primary/5 border-primary/20 backdrop-blur-sm hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 group overflow-hidden"
+                  style={{
+                    animationDelay: `${index * 0.1}s`
+                  }}
+                >
+                  <CardContent className="p-6 relative">
+                    {/* Color Indicator */}
+                    <div className="absolute top-0 left-0 right-0 h-2 opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: material.color }}></div>
+                    
+                    {/* Material Info */}
+                    <div className="space-y-4 mt-2">
+                      {/* Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div 
+                              className="w-4 h-4 rounded-full border-2 border-white/50 shadow-lg group-hover:scale-125 transition-transform"
+                              style={{ backgroundColor: material.color }}
+                            ></div>
+                            <h3 className="font-bold text-xl text-white group-hover:text-primary transition-colors">
+                              {material.name}
+                            </h3>
+                          </div>
+                          <span className="text-sm text-primary/80 font-medium px-2 py-1 bg-primary/10 rounded-md inline-block">
+                            {material.type}
+                          </span>
                         </div>
                       </div>
-                      
-                      {/* Glow Effect */}
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-purple-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity"></div>
+
+                      {/* Description */}
+                      {material.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {material.description}
+                        </p>
+                      )}
+
+                      {/* Properties Grid */}
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                        {/* Price */}
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Prix/kg</p>
+                          <p className="text-lg font-bold text-primary">${material.price_per_kg}</p>
+                        </div>
+
+                        {/* Stock */}
+                        {material.stock_quantity !== undefined && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Stock</p>
+                            <p className={`text-lg font-bold ${
+                              material.stock_quantity > 3 ? 'text-green-400' :
+                              material.stock_quantity > 1 ? 'text-yellow-400' :
+                              'text-red-400'
+                            }`}>
+                              {material.stock_quantity.toFixed(1)} kg
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Print Temperature */}
+                        {material.print_temp && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Temp. impression</p>
+                            <p className="text-sm font-semibold text-white">{material.print_temp}°C</p>
+                          </div>
+                        )}
+
+                        {/* Bed Temperature */}
+                        {material.bed_temp && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Temp. plateau</p>
+                            <p className="text-sm font-semibold text-white">{material.bed_temp}°C</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Supplier */}
+                      {material.supplier && (
+                        <div className="pt-2 border-t border-white/10">
+                          <p className="text-xs text-muted-foreground mb-1">Fournisseur</p>
+                          <p className="text-sm text-white font-medium">{material.supplier}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
+
+                    {/* Hover Glow Effect */}
+                    <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary/20 to-purple-500/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity pointer-events-none"></div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
+          )}
+
+          {/* Statistics Summary */}
+          {!loadingMaterials && materials.length > 0 && (
+            <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 backdrop-blur-sm">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Matériaux disponibles</p>
+                  <p className="text-3xl font-bold text-primary">{materials.length}</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 backdrop-blur-sm">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Stock total</p>
+                  <p className="text-3xl font-bold text-green-400">
+                    {materials.reduce((sum, m) => sum + (m.stock_quantity || 0), 0).toFixed(1)} kg
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 backdrop-blur-sm">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Types de matériaux</p>
+                  <p className="text-3xl font-bold text-purple-400">
+                    {new Set(materials.map(m => m.type)).size}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 backdrop-blur-sm">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Prix moyen/kg</p>
+                  <p className="text-3xl font-bold text-blue-400">
+                    ${(materials.reduce((sum, m) => sum + m.price_per_kg, 0) / materials.length).toFixed(2)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </section>
 
@@ -694,8 +839,8 @@ const Landing = () => {
               <h4 className="font-bold text-lg mb-4">{t('landing.footerServices')}</h4>
               <ul className="space-y-3">
                 <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/new-print")}>{t('landing.footerPrinting')}</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/services/design")}>{t('landing.footerDesign')}</li>
-                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/services/consulting")}>{t('landing.footerPrototyping')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/design-assistance")}>{t('landing.footerDesign')}</li>
+                <li className="text-muted-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => navigate("/design-assistance")}>{t('landing.footerPrototyping')}</li>
               </ul>
             </div>
             <div>

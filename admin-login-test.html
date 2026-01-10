@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login Test - ProtoLab</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .container {
+            background: rgba(30, 30, 46, 0.9);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+            color: #8b5cf6;
+        }
+        .subtitle {
+            text-align: center;
+            color: #a0aec0;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 6px;
+            background: rgba(45, 45, 68, 0.5);
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            background: rgba(45, 45, 68, 0.8);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .response {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 6px;
+            display: none;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .response.show {
+            display: block;
+        }
+        .response.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+        .response.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            border-top: 2px solid #8b5cf6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Admin Login</h1>
+        <p class="subtitle">ProtoLab 3D Dashboard</p>
+
+        <div class="info-box">
+            <strong>Test Credentials:</strong><br>
+            Email: mahmoud@protolab.info<br>
+            Password: 000000
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    value="mahmoud@protolab.info"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    value="000000"
+                    required
+                >
+            </div>
+
+            <button type="submit" id="submitBtn">Login</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Authenticating...</p>
+        </div>
+
+        <div class="response" id="response"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const responseDiv = document.getElementById('response');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.accessToken) {
+                    showSuccess(`✅ LOGIN SUCCESSFUL
+
+User Information:
+  ID: ${data.user?.id}
+  Email: ${data.user?.email}
+  Role: ${data.user?.role}
+
+Tokens:
+  Access Token: ${data.accessToken.substring(0, 50)}...
+  Refresh Token: ${data.refreshToken ? 'Received' : 'Missing'}
+
+📝 Token Details:
+  Access Token Length: ${data.accessToken.length} chars
+  Expires In: 15 minutes
+  
+👉 Next Steps:
+  1. Open: http://localhost:8080/admin/login
+  2. Use these credentials to login
+  3. Access the admin dashboard
+  4. Available pages:
+     - Dashboard (/admin)
+     - Orders (/admin/orders)
+     - Users (/admin/users)
+     - Printers (/admin/printers)
+     - Materials (/admin/materials)
+     - Analytics (/admin/analytics)
+     - Reports (/admin/reports)
+     - Notifications (/admin/notifications)
+     - Settings (/admin/settings)`);
+
+                    // Store token for demo
+                    localStorage.setItem('adminToken', data.accessToken);
+                    localStorage.setItem('refreshToken', data.refreshToken);
+                } else {
+                    showError(`❌ LOGIN FAILED
+
+Status: ${response.status}
+Message: ${data.message || data.error || 'Unknown error'}
+
+Troubleshooting:
+  • Check email is correct: mahmoud@protolab.info
+  • Check password is correct: 000000
+  • Verify user exists in database
+  • Check server is running on port 5000`);
+                }
+            } catch (error) {
+                showError(`❌ CONNECTION ERROR
+
+Details: ${error.message}
+
+Troubleshooting:
+  • Server may not be running
+  • Check if port 5000 is listening
+  • Start server with: npm run dev:server
+  • CORS might be blocking the request`);
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+            }
+        });
+
+        function showSuccess(message) {
+            responseDiv.textContent = message;
+            responseDiv.className = 'response show success';
+        }
+
+        function showError(message) {
+            responseDiv.textContent = message;
+            responseDiv.className = 'response show error';
+        }
+    </script>
+</body>
+</html>
