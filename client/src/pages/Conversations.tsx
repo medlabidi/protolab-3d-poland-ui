@@ -21,7 +21,11 @@ import {
   Loader2,
   MessageCircle,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Paperclip,
+  X,
+  FileIcon,
+  Download
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
@@ -74,6 +78,8 @@ const Conversations = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -257,8 +263,20 @@ const Conversations = () => {
     }, 3000);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(prev => [...prev, ...files]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedConversation) return;
 
     // Clear typing status
     if (typingTimeoutRef.current) {
@@ -269,13 +287,19 @@ const Conversations = () => {
     setSendingMessage(true);
     try {
       const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      formData.append('message', newMessage.trim());
+      
+      selectedFiles.forEach((file) => {
+        formData.append('attachments', file);
+      });
+
       const response = await fetch(`${API_URL}/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: newMessage.trim() })
+        body: formData
       });
 
       if (!response.ok) throw new Error('Failed to send message');
@@ -283,6 +307,7 @@ const Conversations = () => {
       const data = await response.json();
       setMessages(prev => [...prev, data.message]);
       setNewMessage("");
+      setSelectedFiles([]);
       
       // Update conversation's last message, updated_at, and mark as user_read=true (we just sent it)
       setConversations(prev => prev.map(c => 
@@ -590,7 +615,27 @@ const Conversations = () => {
                                       </p>
                                     </div>
                                   )}
-                                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.message}</p>
+                                  {message.message && <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.message}</p>}
+                                  {message.attachments && message.attachments.length > 0 && (
+                                    <div className="mt-2 space-y-2">
+                                      {message.attachments.map((attachment: any, idx: number) => (
+                                        <a
+                                          key={idx}
+                                          href={`${API_URL}/uploads/${attachment.file_path}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={cn(
+                                            "flex items-center gap-2 p-2 rounded-lg border transition-colors",
+                                            message.sender_type === 'user' ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
+                                          )}
+                                        >
+                                          <FileIcon className="w-4 h-4" />
+                                          <span className="text-xs flex-1 truncate">{attachment.original_name}</span>
+                                          <Download className="w-3 h-3" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 <p className={cn(
                                   "text-xs text-muted-foreground mt-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -625,7 +670,42 @@ const Conversations = () => {
 
                   {/* Message Input */}
                   <div className="p-4 bg-card border-t-2">
+                    {/* Selected Files Preview */}
+                    {selectedFiles.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2 text-sm">
+                            <FileIcon className="w-4 h-4" />
+                            <span className="max-w-[150px] truncate">{file.name}</span>
+                            <button
+                              onClick={() => removeFile(index)}
+                              className="ml-1 hover:text-destructive transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex gap-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        disabled={sendingMessage || selectedConversation.status === 'closed'}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={sendingMessage || selectedConversation.status === 'closed'}
+                        className="h-11 px-4 rounded-xl border-2"
+                      >
+                        <Paperclip className="w-5 h-5" />
+                      </Button>
                       <Input
                         placeholder={t('conversations.typeMessage')}
                         value={newMessage}
@@ -639,7 +719,7 @@ const Conversations = () => {
                       />
                       <Button
                         onClick={sendMessage}
-                        disabled={!newMessage.trim() || sendingMessage || selectedConversation.status === 'closed'}
+                        disabled={(!newMessage.trim() && selectedFiles.length === 0) || sendingMessage || selectedConversation.status === 'closed'}
                         className="h-11 px-6 rounded-xl shadow-md hover:shadow-lg transition-shadow"
                         size="lg"
                       >

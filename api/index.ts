@@ -616,13 +616,72 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       .eq('id', conversationId)
       .single();
     
+    const contentType = req.headers['content-type'] || '';
+    let messageContent: string;
+    let attachments: any[] = [];
+
+    // Check if multipart (has files)
+    if (contentType.includes('multipart/form-data')) {
+      const { fields, files } = await parseFormData(req);
+      
+      const getField = (name: string): string | undefined => {
+        const value = fields[name];
+        return Array.isArray(value) ? value[0] : value;
+      };
+      
+      messageContent = getField('message') || '';
+      
+      // Handle file attachments
+      const uploadedFiles = files.attachments;
+      if (uploadedFiles) {
+        const fileArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
+        
+        for (const file of fileArray) {
+          if (!file || !file.filepath) continue;
+          
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          
+          // Read file and upload to Supabase Storage
+          const fileBuffer = await fs.readFile(file.filepath);
+          const fileExt = path.extname(file.originalFilename || '');
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
+          const filePath = `conversations/${conversationId}/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('conversation-attachments')
+            .upload(filePath, fileBuffer, {
+              contentType: file.mimetype || 'application/octet-stream',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error('[ADMIN_SEND_MESSAGE] File upload error:', uploadError);
+            continue;
+          }
+          
+          attachments.push({
+            file_path: filePath,
+            original_name: file.originalFilename || fileName,
+            file_size: file.size,
+            mime_type: file.mimetype
+          });
+        }
+      }
+    } else {
+      // Parse JSON body
+      const body = await parseJsonBody(req);
+      messageContent = body.message || '';
+    }
+    
     const { data: message, error } = await supabase
       .from('conversation_messages')
       .insert({
         conversation_id: conversationId,
         sender_id: user.userId,
-        message: req.body.message,
-        sender_type: 'engineer'
+        message: messageContent || '',
+        sender_type: 'engineer',
+        attachments: attachments.length > 0 ? attachments : null
       })
       .select()
       .single();
@@ -2716,19 +2775,10 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     return res.status(400).json({ error: 'Conversation ID required' });
   }
   
-  const { content, message: messageText } = req.body;
-  const messageContent = content || messageText;
-  
-  console.log('[SEND_MESSAGE] Request body:', req.body);
-  
-  if (!messageContent) {
-    return res.status(400).json({ error: 'Message content required' });
-  }
-  
   const supabase = getSupabase();
   
   try {
-    // Verify ownership - use maybeSingle() to avoid throwing on no rows
+    // Verify ownership
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .select('id')
@@ -2745,12 +2795,75 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       console.error('[SEND_MESSAGE] Conversation not found');
       return res.status(404).json({ error: 'Conversation not found' });
     }
+
+    const contentType = req.headers['content-type'] || '';
+    let messageContent: string;
+    let attachments: any[] = [];
+
+    // Check if multipart (has files)
+    if (contentType.includes('multipart/form-data')) {
+      const { fields, files } = await parseFormData(req);
+      
+      const getField = (name: string): string | undefined => {
+        const value = fields[name];
+        return Array.isArray(value) ? value[0] : value;
+      };
+      
+      messageContent = getField('message') || '';
+      
+      // Handle file attachments
+      const uploadedFiles = files.attachments;
+      if (uploadedFiles) {
+        const fileArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
+        
+        for (const file of fileArray) {
+          if (!file || !file.filepath) continue;
+          
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          
+          // Read file and upload to Supabase Storage
+          const fileBuffer = await fs.readFile(file.filepath);
+          const fileExt = path.extname(file.originalFilename || '');
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
+          const filePath = `conversations/${conversationId}/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('conversation-attachments')
+            .upload(filePath, fileBuffer, {
+              contentType: file.mimetype || 'application/octet-stream',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error('[SEND_MESSAGE] File upload error:', uploadError);
+            continue;
+          }
+          
+          attachments.push({
+            file_path: filePath,
+            original_name: file.originalFilename || fileName,
+            file_size: file.size,
+            mime_type: file.mimetype
+          });
+        }
+      }
+    } else {
+      // Parse JSON body
+      const body = await parseJsonBody(req);
+      messageContent = body.content || body.message || '';
+    }
+    
+    if (!messageContent && attachments.length === 0) {
+      return res.status(400).json({ error: 'Message content or attachments required' });
+    }
     
     const messageData = {
       conversation_id: conversationId,
       sender_id: user.userId,
-      message: messageContent,
+      message: messageContent || '',
       sender_type: 'user',
+      attachments: attachments.length > 0 ? attachments : null
     };
     
     console.log('[SEND_MESSAGE] Inserting message:', messageData);
