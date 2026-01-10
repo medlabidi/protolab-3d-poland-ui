@@ -1154,10 +1154,18 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 // ==================== AUTH HANDLERS ====================
 
 async function handleRegister(req: VercelRequest, res: VercelResponse) {
-  const { name, email, password, phone, address, city, zipCode, country } = req.body;
+  const { firstName, lastName, name, email, password, phone, address, city, zipCode, country, latitude, longitude } = req.body;
   
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Name, email, and password are required' });
+  // Accept either firstName/lastName OR name (for backward compatibility)
+  const first_name = firstName || (name ? name.split(' ')[0] : null);
+  const last_name = lastName || (name && name.includes(' ') ? name.substring(name.indexOf(' ') + 1) : firstName || name);
+  
+  if ((!first_name || !last_name) && !name) {
+    return res.status(400).json({ error: 'First name and last name are required' });
+  }
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
   }
   
   const supabase = getSupabase();
@@ -1182,14 +1190,18 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
   const { data: user, error } = await supabase
     .from('users')
     .insert([{
-      name,
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      name: `${first_name} ${last_name}`.trim(), // Keep for backward compatibility
       email: normalizedEmail,
       password_hash,
-      phone,
-      address,
-      city,
-      zip_code: zipCode,
-      country,
+      phone: phone?.trim() || null,
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      zip_code: zipCode?.trim() || null,
+      country: country?.trim() || null,
+      latitude: latitude || null,
+      longitude: longitude || null,
       role: 'user',
       email_verified: false,
       status: 'approved',
@@ -1201,14 +1213,15 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
   
   if (error) {
     console.error(`📝 [REGISTER] Failed to create user:`, JSON.stringify(error));
-    return res.status(500).json({ error: 'Failed to create user' });
+    return res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
   
   console.log(`📝 [REGISTER] User created with ID: ${user.id}`);
   
   // Send verification email
   try {
-    const emailResult = await sendVerificationEmail(normalizedEmail, name, verificationToken);
+    const fullName = `${first_name} ${last_name}`;
+    const emailResult = await sendVerificationEmail(normalizedEmail, fullName, verificationToken);
     console.log(`📝 [REGISTER] Email result:`, JSON.stringify(emailResult));
   } catch (emailError) {
     console.error('Failed to send verification email:', emailError);
@@ -1217,7 +1230,14 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
   
   return res.status(201).json({
     message: 'Registration successful! Please check your email to verify your account.',
-    user: { id: user.id, name: user.name, email: user.email, role: user.role }
+    user: { 
+      id: user.id, 
+      firstName: user.first_name,
+      lastName: user.last_name,
+      name: user.name, 
+      email: user.email, 
+      role: user.role 
+    }
   });
 }
 
@@ -1308,9 +1328,8 @@ async function handleGoogleAuth(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       user: {
         id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+      firstName: user.first_name,
+      lastName: user.last_name,
         phone: user.phone,
         address: user.address,
         city: user.city,
@@ -1372,6 +1391,8 @@ async function handleLogin(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({
     user: {
       id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -1470,24 +1491,42 @@ async function handleUpdateProfile(req: AuthenticatedRequest, res: VercelRespons
   const user = requireAuth(req, res);
   if (!user) return;
   
-  const { name, phone, address, city, zipCode, country } = req.body;
+  const { firstName, lastName, name, phone, address, city, zipCode, country } = req.body;
   const supabase = getSupabase();
+  
+  // Build update object
+  const updates: any = {};
+  
+  // Handle first/last name or combined name
+  if (firstName !== undefined) updates.first_name = firstName.trim();
+  if (lastName !== undefined) updates.last_name = lastName.trim();
+  if (firstName && lastName) {
+    updates.name = `${firstName} ${lastName}`.trim();
+  } else if (name !== undefined) {
+    updates.name = name.trim();
+    // Split name if no firstName/lastName provided
+    if (!firstName && !lastName) {
+      const nameParts = name.trim().split(' ');
+      updates.first_name = nameParts[0];
+      updates.last_name = nameParts.slice(1).join(' ') || nameParts[0];
+    }
+  }
+  
+  if (phone !== undefined) updates.phone = phone.trim() || null;
+  if (address !== undefined) updates.address = address.trim() || null;
+  if (city !== undefined) updates.city = city.trim() || null;
+  if (zipCode !== undefined) updates.zip_code = zipCode.trim() || null;
+  if (country !== undefined) updates.country = country.trim() || null;
   
   const { data: userData, error } = await supabase
     .from('users')
-    .update({
-      name,
-      phone,
-      address,
-      city,
-      zip_code: zipCode,
-      country,
-    })
+    .update(updates)
     .eq('id', user.userId)
     .select()
     .single();
   
   if (error) {
+    console.error('Profile update error:', error);
     return res.status(500).json({ error: 'Failed to update profile' });
   }
   
@@ -1495,6 +1534,8 @@ async function handleUpdateProfile(req: AuthenticatedRequest, res: VercelRespons
     message: 'Profile updated successfully',
     user: {
       id: userData.id,
+      firstName: userData.first_name,
+      lastName: userData.last_name,
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
