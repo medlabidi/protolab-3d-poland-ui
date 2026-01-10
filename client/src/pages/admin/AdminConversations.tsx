@@ -1,58 +1,41 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   MessageSquare,
   Send,
   Search,
-  ExternalLink,
-  Loader2,
-  CheckCheck,
+  Filter,
+  Clock,
   User,
-  Bot,
-  MessageCircle,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-interface Conversation {
+interface ConversationUser {
   id: string;
-  order_id: string;
-  user_id: string;
-  subject?: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+interface ConversationOrder {
+  id: string;
+  file_name: string;
+  status: string;
+  price: number;
   created_at: string;
-  updated_at: string;
-  admin_read?: boolean;
-  user_typing?: boolean;
-  user_typing_at?: string;
-  unread_count: number;
-  orders: {
-    id: string;
-    file_name: string;
-    project_name?: string;
-    status: string;
-  };
-  users: {
-    id: string;
-    name: string;
-    email: string;
-  };
 }
 
 interface Message {
@@ -64,84 +47,89 @@ interface Message {
   attachments: any[];
   is_read: boolean;
   created_at: string;
+  sender?: ConversationUser;
 }
 
-export default function AdminConversations() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+interface Conversation {
+  id: string;
+  order_id: string;
+  user_id: string;
+  subject?: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  created_at: string;
+  updated_at: string;
+  unread_count?: number;
+  last_message?: Message;
+  user?: ConversationUser;
+  order?: ConversationOrder;
+}
+
+const AdminConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const selectedConversationIdRef = useRef<string | null>(null);
-  const hasScrolledRef = useRef<string | null>(null);
-
-  // Update ref when selectedConversation changes
-  useEffect(() => {
-    selectedConversationIdRef.current = selectedConversation?.id || null;
-  }, [selectedConversation]);
 
   useEffect(() => {
     fetchConversations();
-    
-    // Poll more frequently for real-time feel (every 2 seconds)
-    const interval = setInterval(() => {
-      fetchConversations();
-      // Fetch messages for currently selected conversation
-      if (selectedConversationIdRef.current) {
-        fetchMessages(selectedConversationIdRef.current);
-      }
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array so polling never restarts
+  }, []);
 
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      markAsRead(selectedConversation.id);
     }
   }, [selectedConversation]);
 
-  // Scroll to bottom only when conversation opens - one time
   useEffect(() => {
-    if (selectedConversation && messages.length > 0 && hasScrolledRef.current !== selectedConversation.id) {
-      hasScrolledRef.current = selectedConversation.id;
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-      }, 150);
-    }
-  }, [selectedConversation?.id, messages.length]);
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const fetchConversations = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/conversations`, {
+      
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '50',
+      });
+
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+
+      const response = await fetch(`${API_URL}/admin/conversations?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const updatedConversations = data.conversations || [];
-        setConversations(updatedConversations);
-        
-        // Update selectedConversation if it exists to reflect new state (typing, unread, etc.)
-        if (selectedConversation) {
-          const updatedSelected = updatedConversations.find((c: Conversation) => c.id === selectedConversation.id);
-          if (updatedSelected) {
-            setSelectedConversation(updatedSelected);
-          }
+      if (!response.ok) throw new Error('Failed to fetch conversations');
+
+      const data = await response.json();
+      setConversations(data.conversations || []);
+
+      // Auto-mark as read
+      if (selectedConversation && data.conversations) {
+        const updated = data.conversations.find((c: Conversation) => c.id === selectedConversation.id);
+        if (updated) {
+          setSelectedConversation(updated);
         }
-      } else {
-        toast.error('Failed to fetch conversations');
       }
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error('Error fetching conversations:', error);
       toast.error('Failed to fetch conversations');
     } finally {
       setLoading(false);
@@ -150,17 +138,28 @@ export default function AdminConversations() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      setLoadingMessages(true);
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/conversations/${conversationId}/messages`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(Array.isArray(data.messages) ? data.messages : []);
-      }
+      const response = await fetch(
+        `${API_URL}/admin/conversations/${conversationId}/messages`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch messages');
+
+      const data = await response.json();
+      setMessages(data.messages || []);
+
+      // Mark as read
+      await markAsRead(conversationId);
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
+      console.error('Error fetching messages:', error);
+      toast.error('Failed to fetch messages');
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -168,80 +167,22 @@ export default function AdminConversations() {
     try {
       const token = localStorage.getItem('accessToken');
       await fetch(`${API_URL}/admin/conversations/${conversationId}/read`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      
-      // Update local unread count and admin_read status
-      setConversations(prev =>
-        prev.map(conv =>
-          conv.id === conversationId ? { ...conv, unread_count: 0, admin_read: true } : conv
-        )
-      );
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      console.error('Error marking as read:', error);
     }
-  };
-
-  const updateTypingStatus = async (isTyping: boolean) => {
-    if (!selectedConversation) return;
-    
-    console.log('🔵 ADMIN TYPING - Sending to API:', { 
-      conversationId: selectedConversation.id, 
-      isTyping,
-      url: `${API_URL}/admin/conversations/${selectedConversation.id}/typing`
-    });
-    
-    try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/conversations/${selectedConversation.id}/typing`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ isTyping })
-      });
-      
-      const result = await response.json();
-      console.log('🔵 ADMIN TYPING - API Response:', result);
-      
-      if (!response.ok) {
-        console.error('🔴 ADMIN TYPING - API Error:', result);
-      }
-    } catch (error) {
-      console.error('🔴 ADMIN TYPING - Request failed:', error);
-    }
-  };
-
-  const handleTyping = () => {
-    // Send typing indicator
-    updateTypingStatus(true);
-    
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    // Set timeout to clear typing status after 3 seconds of inactivity
-    typingTimeoutRef.current = setTimeout(() => {
-      updateTypingStatus(false);
-    }, 3000);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!selectedConversation || !newMessage.trim()) return;
 
-    // Clear typing status
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    updateTypingStatus(false);
-
-    setSendingMessage(true);
     try {
+      setSendingMessage(true);
       const token = localStorage.getItem('accessToken');
+
       const response = await fetch(
         `${API_URL}/admin/conversations/${selectedConversation.id}/messages`,
         {
@@ -254,34 +195,28 @@ export default function AdminConversations() {
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [...prev, data.message]);
-        setNewMessage("");
-        toast.success('Message sent');        
-        // Update conversation's updated_at and keep admin_read true
-        if (selectedConversation) {
-          setConversations(prev => prev.map(c => 
-            c.id === selectedConversation.id 
-              ? { ...c, updated_at: new Date().toISOString(), admin_read: true }
-              : c
-          ));
-        }      } else {
-        toast.error('Failed to send message');
-      }
+      if (!response.ok) throw new Error('Failed to send message');
+
+      const data = await response.json();
+      setMessages([...messages, data.message]);
+      setNewMessage("");
+      toast.success('Message sent');
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Error sending message:', error);
       toast.error('Failed to send message');
     } finally {
       setSendingMessage(false);
     }
   };
 
-  const handleUpdateStatus = async (conversationId: string, newStatus: string) => {
+  const updateStatus = async (newStatus: 'open' | 'in_progress' | 'resolved' | 'closed') => {
+    if (!selectedConversation) return;
+
     try {
       const token = localStorage.getItem('accessToken');
+
       const response = await fetch(
-        `${API_URL}/admin/conversations/${conversationId}/status`,
+        `${API_URL}/admin/conversations/${selectedConversation.id}/status`,
         {
           method: 'PATCH',
           headers: {
@@ -292,356 +227,329 @@ export default function AdminConversations() {
         }
       );
 
-      if (response.ok) {
-        toast.success('Status updated');
-        fetchConversations();
-        if (selectedConversation?.id === conversationId) {
-          setSelectedConversation(prev => prev ? { ...prev, status: newStatus as any } : null);
-        }
-      } else {
-        toast.error('Failed to update status');
-      }
+      if (!response.ok) throw new Error('Failed to update status');
+
+      const data = await response.json();
+      setSelectedConversation(data.conversation);
+      toast.success('Status updated');
     } catch (error) {
-      console.error('Failed to update status:', error);
+      console.error('Error updating status:', error);
       toast.error('Failed to update status');
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-red-500/20 text-red-700 border-red-500/50';
+      case 'in_progress': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/50';
+      case 'resolved': return 'bg-green-500/20 text-green-700 border-green-500/50';
+      case 'closed': return 'bg-gray-500/20 text-gray-700 border-gray-500/50';
+      default: return 'bg-gray-500/20 text-gray-700';
+    }
+  };
+
+  const getOrderStatusIcon = (status: string) => {
+    switch (status) {
+      case 'finished':
+      case 'delivered':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'on_hold':
+      case 'suspended':
+        return <AlertCircle className="w-4 h-4 text-amber-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-blue-500" />;
+    }
+  };
+
+  const formatDate = (date: string) => new Date(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   const filteredConversations = conversations.filter(conv => {
-    if (!conv) return false;
+    const matchesSearch = !searchTerm || 
+      conv.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.subject?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSearch = 
-      (conv.users?.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (conv.users?.email?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (conv.orders?.file_name?.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesStatus = statusFilter === "all" || conv.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || conv.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open': return 'bg-blue-500';
-      case 'in_progress': return 'bg-yellow-500';
-      case 'resolved': return 'bg-green-500';
-      case 'closed': return 'bg-gray-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const formatTime = (date: string) => {
-    const now = new Date();
-    const messageDate = new Date(date);
-    const diffMs = now.getTime() - messageDate.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return messageDate.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
-      
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Support Messages</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage customer conversations and support requests
-              </p>
-            </div>
-            <Button onClick={() => navigate('/admin')} variant="outline">
-              Back to Dashboard
-            </Button>
+
+      <main className="flex-1 p-8 overflow-hidden flex flex-col">
+        <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-white mb-2">Conversations</h1>
+            <p className="text-gray-400">Manage customer conversations and support messages</p>
           </div>
-        </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Conversations List */}
-          <div className="w-96 border-r bg-white flex flex-col">
-            <div className="p-4 border-b space-y-3">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <ScrollArea className="flex-1">
-              <div className="p-2 space-y-2">
-                {filteredConversations.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No conversations found
+          {/* Main Content */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+            {/* Conversations List */}
+            <Card className="lg:col-span-1 bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
+              <CardHeader className="border-b border-gray-800">
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-500" />
+                  Messages
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1 flex flex-col">
+                {/* Search and Filter */}
+                <div className="p-4 space-y-3 border-b border-gray-800">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      placeholder="Search conversations..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                    />
                   </div>
-                ) : (
-                  filteredConversations.map((conv) => (
-                    <div
-                      key={conv.id}
-                      onClick={() => setSelectedConversation(conv)}
-                      className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                        selectedConversation?.id === conv.id
-                          ? 'bg-primary/10 border-2 border-primary'
-                          : conv.admin_read === false
-                          ? 'bg-orange-50 hover:bg-orange-100 border-2 border-orange-400 shadow-md'
-                          : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {conv.admin_read === false && (
-                              <MessageCircle className="w-4 h-4 text-orange-500 animate-pulse" />
-                            )}
-                            <h3 className={`font-bold text-base ${
-                              conv.admin_read === false ? 'text-orange-700' : 'text-gray-900'
-                            }`}>
-                              {conv.orders?.project_name || conv.orders?.file_name || 'Untitled Print Job'}
-                            </h3>
-                            {conv.admin_read === false && (
-                              <Badge variant="default" className="bg-orange-500 text-xs">
-                                New
-                              </Badge>
-                            )}
-                          </div>
-                          <p className={`text-sm ${
-                            conv.admin_read === false ? 'text-orange-600 font-semibold' : 'text-muted-foreground'
-                          }`}>
-                            👤 {conv.users?.name || 'Unknown User'}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            ✉️ {conv.users?.email || 'No email'}
-                          </p>
-                        </div>
-                        {conv.unread_count > 0 && (
-                          <Badge variant="destructive" className="ml-2 h-6 min-w-[24px] flex items-center justify-center">
-                            {conv.unread_count}
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge className={`${getStatusColor(conv.status)} text-white text-xs`}>
-                          {conv.status.replace('_', ' ')}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(conv.updated_at)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </div>
 
-          {/* Messages Panel */}
-          <div className={cn(
-            "flex-1 flex flex-col bg-white rounded-lg transition-all duration-300",
-            selectedConversation?.admin_read === false && "ring-2 ring-orange-400 shadow-lg shadow-orange-100"
-          )}>
-            {selectedConversation ? (
-              <>
-                {/* Conversation Header */}
-                <div className={cn(
-                  "p-4 border-b flex items-center justify-between transition-colors",
-                  selectedConversation.admin_read === false && "bg-orange-50 border-orange-200"
-                )}>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                      {selectedConversation.admin_read === false && (
-                        <MessageCircle className="w-5 h-5 text-orange-500 animate-pulse" />
-                      )}
-                      {selectedConversation.users?.name || 'Unknown User'}
-                    </h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-sm text-muted-foreground">
-                        {selectedConversation.subject || 'Support Conversation'}
-                      </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['all', 'open', 'in_progress', 'resolved', 'closed'] as const).map((s) => (
                       <Button
-                        variant="ghost"
+                        key={s}
                         size="sm"
-                        onClick={() => navigate(`/admin/orders/${selectedConversation.order_id}`)}
-                        className="h-6 px-2"
+                        variant={statusFilter === s ? 'default' : 'outline'}
+                        onClick={() => setStatusFilter(s)}
+                        className={cn(
+                          "capitalize",
+                          statusFilter === s
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "border-gray-700 text-gray-400 hover:bg-gray-800"
+                        )}
                       >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        View Order
+                        {s === 'all' ? 'All' : s.replace('_', ' ')}
                       </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {selectedConversation.admin_read === false && (
-                      <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">
-                        New Message
-                      </Badge>
-                    )}
-                    <Select
-                      value={selectedConversation.status}
-                      onValueChange={(value) => handleUpdateStatus(selectedConversation.id, value)}
-                    >
-                      <SelectTrigger className="w-[160px]">
-                        <Badge className={`${getStatusColor(selectedConversation.status)} text-white border-0`}>
-                          {selectedConversation.status.replace('_', ' ')}
-                        </Badge>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">Open</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="resolved">Resolved</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    ))}
                   </div>
                 </div>
 
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
-                  <div className="space-y-4">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${
-                          msg.sender_type === 'engineer' ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
+                {/* Conversations Scroll */}
+                <ScrollArea className="flex-1">
+                  {loading ? (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                    </div>
+                  ) : filteredConversations.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No conversations found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 p-4">
+                      {filteredConversations.map((conversation) => (
                         <div
-                          className={`max-w-[70%] ${
-                            msg.sender_type === 'engineer'
-                              ? 'bg-primary text-primary-foreground'
-                              : msg.sender_type === 'system'
-                              ? 'bg-gray-100 text-gray-700'
-                              : 'bg-gray-100 text-gray-900'
-                          } rounded-lg p-3`}
+                          key={conversation.id}
+                          onClick={() => setSelectedConversation(conversation)}
+                          className={cn(
+                            "p-3 rounded-lg cursor-pointer transition-all",
+                            selectedConversation?.id === conversation.id
+                              ? "bg-blue-600/20 border border-blue-500"
+                              : "hover:bg-gray-800 border border-transparent"
+                          )}
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            {msg.sender_type === 'user' && <User className="w-3 h-3" />}
-                            {msg.sender_type === 'engineer' && <Badge variant="secondary" className="text-xs">Admin</Badge>}
-                            {msg.sender_type === 'system' && <Bot className="w-3 h-3" />}
-                            <span className="text-xs opacity-70">
-                              {formatTime(msg.created_at)}
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="font-medium text-white text-sm truncate">
+                              {conversation.user?.name || 'Unknown'}
+                            </p>
+                            {conversation.unread_count ? (
+                              <Badge variant="default" className="bg-red-500">
+                                {conversation.unread_count}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-gray-400 truncate mb-2">
+                            {conversation.user?.email}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate mb-2">
+                            {conversation.last_message?.message || 'No messages yet'}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <Badge className={cn("text-xs capitalize", getStatusColor(conversation.status))}>
+                              {conversation.status.replace('_', ' ')}
+                            </Badge>
+                            <span className="text-xs text-gray-600">
+                              {formatDate(conversation.updated_at)}
                             </span>
                           </div>
-                          <p className="whitespace-pre-wrap">{msg.message}</p>
-                          {msg.is_read && msg.sender_type === 'engineer' && (
-                            <div className="flex justify-end mt-1">
-                              <CheckCheck className="w-3 h-3 opacity-70" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Message Thread */}
+            <Card className="lg:col-span-2 bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
+              {selectedConversation ? (
+                <>
+                  {/* Conversation Header */}
+                  <CardHeader className="border-b border-gray-800 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-xl text-white mb-2">
+                          {selectedConversation.user?.name}
+                        </CardTitle>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm text-gray-400">
+                            {selectedConversation.user?.email}
+                          </span>
+                          {selectedConversation.order && (
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                              <Package className="w-4 h-4" />
+                              {selectedConversation.order.file_name}
                             </div>
                           )}
                         </div>
                       </div>
-                    ))}
-                    
-                    {/* Typing Indicator */}
-                    {selectedConversation.user_typing && (
-                      <div className="flex gap-3 animate-fade-in">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0">
-                          <User className="w-4 h-4" />
-                        </div>
-                        <div className="bg-gray-100 rounded-lg rounded-tl-sm px-4 py-2">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+
+                      {/* Status selector */}
+                      <div className="flex gap-2">
+                        {(['open', 'in_progress', 'resolved', 'closed'] as const).map((s) => (
+                          <Button
+                            key={s}
+                            size="sm"
+                            variant={selectedConversation.status === s ? 'default' : 'outline'}
+                            onClick={() => updateStatus(s)}
+                            className={cn(
+                              "capitalize text-xs",
+                              selectedConversation.status === s
+                                ? "bg-blue-600 hover:bg-blue-700"
+                                : "border-gray-700 text-gray-400 hover:bg-gray-800"
+                            )}
+                          >
+                            {s.replace('_', ' ')}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  {/* Messages */}
+                  <ScrollArea className="flex-1 p-4">
+                    {loadingMessages ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                        <span className="ml-2 text-sm text-gray-400">Chargement des messages...</span>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="text-center text-gray-500 py-8">
+                        <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                        <p className="font-medium text-gray-400">Aucun message</p>
+                        <p className="text-sm text-gray-500 mt-2">Le client n'a pas encore envoyé de message</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={cn(
+                              "flex gap-3 items-end",
+                              message.sender_type === 'engineer' && 'flex-row-reverse'
+                            )}
+                          >
+                            {/* Avatar */}
+                            <div className={cn(
+                              "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-md",
+                              message.sender_type === 'user' && "bg-gradient-to-br from-blue-500 to-blue-600",
+                              message.sender_type === 'engineer' && "bg-gradient-to-br from-green-500 to-green-600"
+                            )}>
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+
+                            {/* Message Bubble */}
+                            <div className="flex flex-col max-w-[70%] gap-1">
+                              {/* Sender Label */}
+                              <span className={cn(
+                                "text-xs font-semibold px-2",
+                                message.sender_type === 'user' && "text-blue-400",
+                                message.sender_type === 'engineer' && "text-green-400 text-right"
+                              )}>
+                                {message.sender_type === 'user' ? 'Client' : 'Vous (Équipe Support)'}
+                              </span>
+                              
+                              {/* Message Content */}
+                              <div
+                                className={cn(
+                                  "rounded-2xl px-4 py-3 shadow-sm",
+                                  message.sender_type === 'user'
+                                    ? 'bg-gray-800 text-gray-100 border border-gray-700 rounded-tl-md'
+                                    : 'bg-gradient-to-br from-green-600 to-green-700 text-white rounded-tr-md'
+                                )}
+                              >
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.message}</p>
+                              </div>
+                              
+                              {/* Timestamp */}
+                              <span className={cn(
+                                "text-xs text-gray-500 px-2",
+                                message.sender_type === 'engineer' && "text-right"
+                              )}>
+                                {formatDate(message.created_at)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        ))}
+                        <div ref={messagesEndRef} />
                       </div>
                     )}
-                    
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
+                  </ScrollArea>
 
-                {/* Message Input */}
-                <form onSubmit={handleSendMessage} className="p-4 border-t">
-                  <div className="flex gap-2">
-                    <Textarea
-                      placeholder="Type your message..."
-                      value={newMessage}
-                      onChange={(e) => {
-                        setNewMessage(e.target.value);
-                        handleTyping();
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage(e);
-                        }
-                      }}
-                      className="min-h-[60px] resize-none"
-                      disabled={sendingMessage}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={!newMessage.trim() || sendingMessage}
-                      className="self-end"
-                    >
-                      {sendingMessage ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
+                  {/* Message Input */}
+                  <div className="border-t border-gray-800 p-4 flex-shrink-0 bg-gray-900/50">
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                      <Input
+                        placeholder="💬 Répondre au client..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        disabled={sendingMessage}
+                        className="flex-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
+                      />
+                      <Button
+                        type="submit"
+                        disabled={!newMessage.trim() || sendingMessage}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6"
+                      >
+                        {sendingMessage ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Envoyer
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Répondre en tant qu'ingénieur support
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Press Enter to send, Shift+Enter for new line
-                  </p>
-                </form>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-lg">Select a conversation to view messages</p>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div>
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-700" />
+                    <p className="text-gray-500">Select a conversation to start messaging</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </Card>
           </div>
         </div>
       </main>
     </div>
   );
-}
+};
+
+export default AdminConversations;

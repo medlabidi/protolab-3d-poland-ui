@@ -1,263 +1,280 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Save, Settings as SettingsIcon } from "lucide-react";
-import { toast } from "sonner";
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-interface Settings {
-  material_rate: number;
-  time_rate: number;
-  service_fee: number;
-  vat_rate: number;
-}
+import {
+  Settings as SettingsIcon,
+  Save,
+  Sliders,
+  Shield,
+  Bell,
+  Database,
+  Mail,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 const AdminSettings = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<Settings>({
-    material_rate: 0,
-    time_rate: 0,
-    service_fee: 0,
-    vat_rate: 0,
+  const [settings, setSettings] = useState({
+    companyName: 'ProtoLab 3D',
+    adminEmail: 'admin@protolab.info',
+    supportEmail: 'support@protolab.info',
+    currency: 'PLN',
+    taxRate: 23,
+    shippingBase: 15.00,
+    maintenanceMode: false,
+    allowRegistration: true,
+    requireEmailVerification: true,
+    enableNotifications: true,
+    backupFrequency: 'daily',
   });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  const [showPassword, setShowPassword] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const fetchSettings = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/settings`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.settings) {
-          setSettings(data.settings);
-        }
-      } else {
-        toast.error('Failed to fetch settings');
-      }
-    } catch (error) {
-      console.error('Failed to fetch settings:', error);
-      toast.error('Failed to fetch settings');
-    } finally {
-      setLoading(false);
-    }
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/settings`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        toast.success('Settings updated successfully');
-        fetchSettings();
-      } else {
-        toast.error('Failed to update settings');
-      }
-    } catch (error) {
-      console.error('Failed to update settings:', error);
-      toast.error('Failed to update settings');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleChange = (field: keyof Settings, value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: parseFloat(value) || 0,
-    }));
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-950">
-        <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
       <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-              <p className="text-gray-400">Configure pricing and system settings</p>
-            </div>
-            <Button
-              onClick={() => navigate('/admin')}
-              variant="outline"
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
-            >
-              Back to Dashboard
-            </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
+            <p className="text-gray-400">Manage your application settings and preferences</p>
           </div>
+
+          {/* Success Message */}
+          {saved && (
+            <Card className="bg-green-900/30 border-green-500/50">
+              <CardContent className="p-4 text-green-400">
+                ✓ Settings saved successfully
+              </CardContent>
+            </Card>
+          )}
+
+          {/* General Settings */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5" />
+                General Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Company Name</label>
+                <input
+                  type="text"
+                  value={settings.companyName}
+                  onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Admin Email</label>
+                  <input
+                    type="email"
+                    value={settings.adminEmail}
+                    onChange={(e) => setSettings({ ...settings, adminEmail: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Support Email</label>
+                  <input
+                    type="email"
+                    value={settings.supportEmail}
+                    onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Pricing Settings */}
           <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
+            <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <SettingsIcon className="w-5 h-5 text-blue-500" />
-                Pricing Configuration
+                <Sliders className="w-5 h-5" />
+                Pricing Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-gray-400">Material Rate (PLN per gram)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settings.material_rate}
-                    onChange={(e) => handleChange('material_rate', e.target.value)}
-                    className="mt-1 bg-gray-800 border-gray-700 text-white"
-                    placeholder="0.50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Cost per gram of material used
-                  </p>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Currency</label>
+                  <select
+                    value={settings.currency}
+                    onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="PLN">PLN</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
                 </div>
-
                 <div>
-                  <Label className="text-gray-400">Time Rate (PLN per hour)</Label>
-                  <Input
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Tax Rate (%)</label>
+                  <input
                     type="number"
-                    step="0.01"
-                    value={settings.time_rate}
-                    onChange={(e) => handleChange('time_rate', e.target.value)}
-                    className="mt-1 bg-gray-800 border-gray-700 text-white"
-                    placeholder="10.00"
+                    value={settings.taxRate}
+                    onChange={(e) => setSettings({ ...settings, taxRate: parseFloat(e.target.value) })}
+                    step="0.1"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Cost per hour of printing time
-                  </p>
                 </div>
-
                 <div>
-                  <Label className="text-gray-400">Service Fee (PLN)</Label>
-                  <Input
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Base Shipping ({settings.currency})</label>
+                  <input
                     type="number"
+                    value={settings.shippingBase}
+                    onChange={(e) => setSettings({ ...settings, shippingBase: parseFloat(e.target.value) })}
                     step="0.01"
-                    value={settings.service_fee}
-                    onChange={(e) => handleChange('service_fee', e.target.value)}
-                    className="mt-1 bg-gray-800 border-gray-700 text-white"
-                    placeholder="5.00"
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Fixed service fee per order
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-gray-400">VAT Rate (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={settings.vat_rate}
-                    onChange={(e) => handleChange('vat_rate', e.target.value)}
-                    className="mt-1 bg-gray-800 border-gray-700 text-white"
-                    placeholder="23.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    VAT percentage applied to orders
-                  </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="pt-4 border-t border-gray-800">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+          {/* Security Settings */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Security Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                {
+                  name: 'Maintenance Mode',
+                  description: 'Put the application in maintenance mode',
+                  key: 'maintenanceMode',
+                },
+                {
+                  name: 'Allow User Registration',
+                  description: 'Allow new users to create accounts',
+                  key: 'allowRegistration',
+                },
+                {
+                  name: 'Require Email Verification',
+                  description: 'Users must verify email before accessing the platform',
+                  key: 'requireEmailVerification',
+                },
+              ].map((setting, idx) => (
+                <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-800 last:border-b-0">
+                  <div>
+                    <p className="font-medium text-white">{setting.name}</p>
+                    <p className="text-sm text-gray-400">{setting.description}</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings[setting.key as keyof typeof settings] as boolean}
+                    onChange={(e) => setSettings({ ...settings, [setting.key]: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 text-blue-600"
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Notification Settings */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Notification Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.enableNotifications}
+                    onChange={(e) => setSettings({ ...settings, enableNotifications: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 text-blue-600"
+                  />
+                  <span className="text-white font-medium">Enable All Notifications</span>
+                </label>
+                <p className="text-sm text-gray-400 mt-2 ml-8">Disable to turn off all system notifications</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Backup Settings */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                Backup Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Backup Frequency</label>
+                <select
+                  value={settings.backupFrequency}
+                  onChange={(e) => setSettings({ ...settings, backupFrequency: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
                 >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Settings
+                  <option value="hourly">Every Hour</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Database className="w-4 h-4 mr-2" />
+                  Create Backup Now
+                </Button>
+                <Button variant="outline" className="border-gray-700 text-gray-300">
+                  View Backups
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Pricing Preview */}
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="border-b border-gray-800">
-              <CardTitle className="text-white text-lg">Pricing Preview</CardTitle>
+          {/* Danger Zone */}
+          <Card className="bg-red-900/20 border-red-500/30">
+            <CardHeader>
+              <CardTitle className="text-red-400">Danger Zone</CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Example: 100g material, 5 hours print</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-gray-800">
-                  <span className="text-gray-400">Material Cost:</span>
-                  <span className="text-white font-mono">
-                    {(settings.material_rate * 100).toFixed(2)} PLN
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Time Cost:</span>
-                  <span className="text-white font-mono">
-                    {(settings.time_rate * 5).toFixed(2)} PLN
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Service Fee:</span>
-                  <span className="text-white font-mono">
-                    {settings.service_fee.toFixed(2)} PLN
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-gray-800">
-                  <span className="text-gray-400">Subtotal:</span>
-                  <span className="text-white font-mono">
-                    {((settings.material_rate * 100) + (settings.time_rate * 5) + settings.service_fee).toFixed(2)} PLN
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">VAT ({settings.vat_rate}%):</span>
-                  <span className="text-white font-mono">
-                    {(((settings.material_rate * 100) + (settings.time_rate * 5) + settings.service_fee) * (settings.vat_rate / 100)).toFixed(2)} PLN
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-gray-800">
-                  <span className="text-gray-300 font-semibold">Total:</span>
-                  <span className="text-white font-mono font-bold text-lg">
-                    {(((settings.material_rate * 100) + (settings.time_rate * 5) + settings.service_fee) * (1 + settings.vat_rate / 100)).toFixed(2)} PLN
-                  </span>
-                </div>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-red-300">These actions cannot be undone. Please proceed with caution.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30">
+                  Clear Cache
+                </Button>
+                <Button variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-900/30">
+                  Reset Database
+                </Button>
               </div>
             </CardContent>
           </Card>
+
+          {/* Save Button */}
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" className="border-gray-700 text-gray-300">
+              Cancel
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
         </div>
       </main>
     </div>

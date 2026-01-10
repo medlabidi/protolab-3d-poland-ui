@@ -1,18 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -29,659 +19,834 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Printer, Settings } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Printer,
+  Power,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Download,
+  Settings as SettingsIcon,
+  DollarSign,
+  Calendar,
+  Trash2,
+  Edit,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
-interface Printer {
-  id: string;
-  name: string;
-  model?: string;
-  power_watts: number;
-  cost_pln: number;
-  lifespan_hours: number;
-  maintenance_rate: number;
-  build_volume_x?: number;
-  build_volume_y?: number;
-  build_volume_z?: number;
-  max_print_speed?: number;
-  nozzle_diameter?: number;
-  layer_height_min?: number;
-  layer_height_max?: number;
-  supported_materials?: string[];
-  status: 'operational' | 'maintenance' | 'offline';
-  is_default: boolean;
-  is_active: boolean;
-}
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-export default function AdminPrinters() {
-  const [printers, setPrinters] = useState<Printer[]>([]);
+const AdminPrinters = () => {
+  const [printers, setPrinters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
-  const { toast } = useToast();
-
-  const [formData, setFormData] = useState({
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editingPrinter, setEditingPrinter] = useState<any>(null);
+  const [deletingPrinter, setDeletingPrinter] = useState<any>(null);
+  const [newPrinter, setNewPrinter] = useState({
     name: "",
-    model: "",
-    power_watts: "",
-    cost_pln: "",
-    lifespan_hours: "",
-    maintenance_rate: "0.03",
-    build_volume_x: "",
-    build_volume_y: "",
-    build_volume_z: "",
-    max_print_speed: "",
-    nozzle_diameter: "",
-    layer_height_min: "",
-    layer_height_max: "",
-    supported_materials: [] as string[],
-    status: "operational" as 'operational' | 'maintenance' | 'offline',
+    status: "offline",
+    temperature: 25,
+    bedTemp: 25,
+    maintenanceCostMonthly: 0,
+    maintenanceIntervalDays: 90,
   });
 
+  // Fetch printers on mount
   useEffect(() => {
     fetchPrinters();
   }, []);
 
+  // Map API data to component format (snake_case to camelCase)
+  const mapPrinterData = (printer: any) => ({
+    id: printer.id,
+    name: printer.name,
+    status: printer.status,
+    currentJob: printer.current_job || printer.currentJob || "None",
+    progress: printer.progress || 0,
+    temperature: printer.temperature || 25,
+    bedTemp: printer.bed_temp || printer.bedTemp || 25,
+    uptime: printer.uptime || "0%",
+    totalPrints: printer.total_prints || printer.totalPrints || 0,
+    lastMaintenance: printer.last_maintenance || printer.lastMaintenance,
+    maintenanceCostMonthly: printer.maintenance_cost_monthly || printer.maintenanceCostMonthly || 0,
+    maintenanceIntervalDays: printer.maintenance_interval_days || printer.maintenanceIntervalDays || 90,
+    nextMaintenance: printer.next_maintenance || printer.nextMaintenance,
+  });
+
   const fetchPrinters = async () => {
     try {
-      const response = await fetch("/api/admin/printers", {
+      setLoading(true);
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        toast.error('Token d\'authentification manquant. Veuillez vous reconnecter.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Fetching printers from:', `${API_URL}/printers`);
+      
+      const response = await fetch(`${API_URL}/printers`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        setPrinters(Array.isArray(data.printers) ? data.printers : []);
+        console.log('Printers data:', data);
+        const mappedPrinters = (data.printers || []).map(mapPrinterData);
+        setPrinters(mappedPrinters);
+        
+        if (mappedPrinters.length === 0) {
+          toast.info('Aucune imprimante trouvée. Ajoutez-en une pour commencer!');
+        }
+      } else if (response.status === 404) {
+        toast.error('Table printers introuvable. Veuillez exécuter SQL/create-printers-table.sql dans Supabase.');
+        console.error('Table printers does not exist. Run SQL migration first.');
+      } else if (response.status === 401) {
+        toast.error('Non autorisé. Votre session a peut-être expiré.');
+        console.error('Authentication failed. Token might be expired.');
+      } else if (response.status === 403) {
+        toast.error('Accès refusé. Vous devez être administrateur.');
+        console.error('Forbidden. User is not admin.');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(`Erreur: ${errorData.error || response.statusText}`);
+        console.error('API Error:', errorData);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch printers",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error('Error fetching printers:', error);
+      
+      if (error.message?.includes('Failed to fetch')) {
+        toast.error('Impossible de se connecter au serveur. Vérifiez que l\'API est démarrée.');
+      } else {
+        toast.error(`Erreur de connexion: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleStatusChange = async (printerId: string, newStatus: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/printers`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: printerId, status: newStatus }),
+      });
 
-    const url = editingPrinter
-      ? `/api/admin/printers/${editingPrinter.id}`
-      : "/api/admin/printers";
-    
-    const method = editingPrinter ? "PATCH" : "POST";
+      if (response.ok) {
+        setPrinters(printers.map(printer => 
+          printer.id === printerId 
+            ? { ...printer, status: newStatus }
+            : printer
+        ));
+        toast.success(`Statut de l'imprimante mis à jour: ${newStatus}`);
+      } else {
+        toast.error('Échec de la mise à jour du statut');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleEditPrinter = (printer: any) => {
+    setEditingPrinter({ 
+      ...printer,
+      maintenanceCostMonthly: printer.maintenanceCostMonthly || printer.maintenance_cost_monthly || 0,
+      maintenanceIntervalDays: printer.maintenanceIntervalDays || printer.maintenance_interval_days || 90,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdatePrinter = async () => {
+    if (!editingPrinter || !editingPrinter.name.trim()) {
+      toast.error("Le nom de l'imprimante est requis");
+      return;
+    }
 
     try {
-      const response = await fetch(url, {
-        method,
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/printers`, {
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: formData.name,
-          model: formData.model || undefined,
-          power_watts: parseFloat(formData.power_watts),
-          cost_pln: parseFloat(formData.cost_pln),
-          lifespan_hours: parseInt(formData.lifespan_hours),
-          maintenance_rate: parseFloat(formData.maintenance_rate),
-          build_volume_x: formData.build_volume_x ? parseInt(formData.build_volume_x) : undefined,
-          build_volume_y: formData.build_volume_y ? parseInt(formData.build_volume_y) : undefined,
-          build_volume_z: formData.build_volume_z ? parseInt(formData.build_volume_z) : undefined,
-          max_print_speed: formData.max_print_speed ? parseInt(formData.max_print_speed) : undefined,
-          nozzle_diameter: formData.nozzle_diameter ? parseFloat(formData.nozzle_diameter) : undefined,
-          layer_height_min: formData.layer_height_min ? parseFloat(formData.layer_height_min) : undefined,
-          layer_height_max: formData.layer_height_max ? parseFloat(formData.layer_height_max) : undefined,
-          supported_materials: formData.supported_materials.length > 0 ? formData.supported_materials : undefined,
-          status: formData.status,
+          id: editingPrinter.id,
+          name: editingPrinter.name,
+          status: editingPrinter.status,
+          temperature: editingPrinter.temperature,
+          bed_temp: editingPrinter.bedTemp,
+          current_job: editingPrinter.currentJob,
+          maintenance_cost_monthly: editingPrinter.maintenanceCostMonthly,
+          maintenance_interval_days: editingPrinter.maintenanceIntervalDays,
         }),
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Printer ${editingPrinter ? "updated" : "created"} successfully`,
-        });
-        setIsDialogOpen(false);
-        resetForm();
-        fetchPrinters();
+        await fetchPrinters(); // Reload printers from server
+        toast.success(`Imprimante "${editingPrinter.name}" mise à jour!`);
+        setShowEditDialog(false);
+        setEditingPrinter(null);
       } else {
-        throw new Error("Failed to save printer");
+        toast.error('Échec de la mise à jour');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save printer",
-        variant: "destructive",
-      });
+      console.error('Error updating printer:', error);
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 
-  const handleEdit = (printer: Printer) => {
-    setEditingPrinter(printer);
-    setFormData({
-      name: printer.name,
-      model: printer.model || "",
-      power_watts: printer.power_watts.toString(),
-      cost_pln: printer.cost_pln.toString(),
-      lifespan_hours: printer.lifespan_hours.toString(),
-      maintenance_rate: printer.maintenance_rate.toString(),
-      build_volume_x: printer.build_volume_x?.toString() || "",
-      build_volume_y: printer.build_volume_y?.toString() || "",
-      build_volume_z: printer.build_volume_z?.toString() || "",
-      max_print_speed: printer.max_print_speed?.toString() || "",
-      nozzle_diameter: printer.nozzle_diameter?.toString() || "",
-      layer_height_min: printer.layer_height_min?.toString() || "",
-      layer_height_max: printer.layer_height_max?.toString() || "",
-      supported_materials: printer.supported_materials || [],
-      status: printer.status,
-    });
-    setIsDialogOpen(true);
+  const handleDeletePrinter = (printer: any) => {
+    setDeletingPrinter(printer);
+    setShowDeleteDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this printer?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingPrinter) return;
 
     try {
-      const response = await fetch(`/api/admin/printers/${id}`, {
-        method: "DELETE",
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/printers?id=${deletingPrinter.id}`, {
+        method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Printer deleted successfully",
-        });
-        fetchPrinters();
+        await fetchPrinters(); // Reload printers from server
+        toast.success(`Imprimante "${deletingPrinter.name}" supprimée!`);
+        setShowDeleteDialog(false);
+        setDeletingPrinter(null);
+      } else {
+        toast.error('Échec de la suppression');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete printer",
-        variant: "destructive",
-      });
+      console.error('Error deleting printer:', error);
+      toast.error('Erreur lors de la suppression');
     }
   };
 
-  const handleSetDefault = async (id: string) => {
+  const handleAddPrinter = async () => {
+    if (!newPrinter.name.trim()) {
+      toast.error("Le nom de l'imprimante est requis");
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/admin/printers/${id}/set-default`, {
-        method: "PATCH",
+      const nextMaintenanceDate = new Date();
+      nextMaintenanceDate.setDate(nextMaintenanceDate.getDate() + newPrinter.maintenanceIntervalDays);
+
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/printers`, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          name: newPrinter.name,
+          status: newPrinter.status,
+          current_job: "None",
+          progress: 0,
+          temperature: newPrinter.temperature,
+          bed_temp: newPrinter.bedTemp,
+          uptime: "0%",
+          total_prints: 0,
+          last_maintenance: new Date().toISOString().split('T')[0],
+          maintenance_cost_monthly: newPrinter.maintenanceCostMonthly,
+          maintenance_interval_days: newPrinter.maintenanceIntervalDays,
+          next_maintenance: nextMaintenanceDate.toISOString().split('T')[0],
+        }),
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Default printer set successfully",
+        await fetchPrinters(); // Reload printers from server
+        toast.success("Imprimante ajoutée avec succès!");
+        setShowAddDialog(false);
+        setNewPrinter({
+          name: "",
+          status: "offline",
+          temperature: 25,
+          bedTemp: 25,
+          maintenanceCostMonthly: 0,
+          maintenanceIntervalDays: 90,
         });
-        fetchPrinters();
+      } else {
+        toast.error('Échec de l\'ajout de l\'imprimante');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to set default printer",
-        variant: "destructive",
-      });
+      console.error('Error adding printer:', error);
+      toast.error('Erreur lors de l\'ajout');
     }
   };
 
-  const resetForm = () => {
-    setEditingPrinter(null);
-    setFormData({
-      name: "",
-      model: "",
-      power_watts: "",
-      cost_pln: "",
-      lifespan_hours: "",
-      maintenance_rate: "0.03",
-      build_volume_x: "",
-      build_volume_y: "",
-      build_volume_z: "",
-      max_print_speed: "",
-      nozzle_diameter: "",
-      layer_height_min: "",
-      layer_height_max: "",
-      supported_materials: [],
-      status: "operational",
-    });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'online': return 'bg-green-500/20 text-green-400';
+      case 'offline': return 'bg-red-500/20 text-red-400';
+      case 'maintenance': return 'bg-yellow-500/20 text-yellow-400';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
   };
 
-  const filteredPrinters = printers.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.model?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      operational: { variant: "default", label: "Operational" },
-      maintenance: { variant: "secondary", label: "Maintenance" },
-      offline: { variant: "destructive", label: "Offline" },
-    };
-
-    const config = variants[status] || variants.operational;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'online': return <CheckCircle2 className="w-4 h-4" />;
+      case 'offline': return <AlertCircle className="w-4 h-4" />;
+      case 'maintenance': return <Clock className="w-4 h-4" />;
+      default: return <Power className="w-4 h-4" />;
+    }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <div className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Printer Management</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage 3D printers and specifications for pricing calculations
-              </p>
+              <h1 className="text-3xl font-bold text-white mb-2">Printers Management</h1>
+              <p className="text-gray-400">Monitor and manage your 3D printer fleet</p>
             </div>
-            
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Printer
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingPrinter ? "Edit Printer" : "Add New Printer"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Configure printer specifications for automatic pricing calculations
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Printer Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        placeholder="e.g., Ender 3 Pro"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="model">Model</Label>
-                      <Input
-                        id="model"
-                        value={formData.model}
-                        onChange={(e) =>
-                          setFormData({ ...formData, model: e.target.value })
-                        }
-                        placeholder="e.g., CR-3045"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pricing Parameters */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-sm">Pricing Parameters</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="power_watts">Power (Watts) *</Label>
-                        <Input
-                          id="power_watts"
-                          type="number"
-                          step="0.01"
-                          value={formData.power_watts}
-                          onChange={(e) =>
-                            setFormData({ ...formData, power_watts: e.target.value })
-                          }
-                          placeholder="270"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="cost_pln">Purchase Cost (PLN) *</Label>
-                        <Input
-                          id="cost_pln"
-                          type="number"
-                          step="0.01"
-                          value={formData.cost_pln}
-                          onChange={(e) =>
-                            setFormData({ ...formData, cost_pln: e.target.value })
-                          }
-                          placeholder="3483.39"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="lifespan_hours">Lifespan (Hours) *</Label>
-                        <Input
-                          id="lifespan_hours"
-                          type="number"
-                          value={formData.lifespan_hours}
-                          onChange={(e) =>
-                            setFormData({ ...formData, lifespan_hours: e.target.value })
-                          }
-                          placeholder="5000"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="maintenance_rate">Maintenance Rate</Label>
-                        <Input
-                          id="maintenance_rate"
-                          type="number"
-                          step="0.0001"
-                          value={formData.maintenance_rate}
-                          onChange={(e) =>
-                            setFormData({ ...formData, maintenance_rate: e.target.value })
-                          }
-                          placeholder="0.03"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Build Volume */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-sm">Build Volume (mm)</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="build_volume_x">X</Label>
-                        <Input
-                          id="build_volume_x"
-                          type="number"
-                          value={formData.build_volume_x}
-                          onChange={(e) =>
-                            setFormData({ ...formData, build_volume_x: e.target.value })
-                          }
-                          placeholder="220"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="build_volume_y">Y</Label>
-                        <Input
-                          id="build_volume_y"
-                          type="number"
-                          value={formData.build_volume_y}
-                          onChange={(e) =>
-                            setFormData({ ...formData, build_volume_y: e.target.value })
-                          }
-                          placeholder="220"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="build_volume_z">Z</Label>
-                        <Input
-                          id="build_volume_z"
-                          type="number"
-                          value={formData.build_volume_z}
-                          onChange={(e) =>
-                            setFormData({ ...formData, build_volume_z: e.target.value })
-                          }
-                          placeholder="250"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Technical Specs */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-sm">Technical Specifications</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="max_print_speed">Max Speed (mm/s)</Label>
-                        <Input
-                          id="max_print_speed"
-                          type="number"
-                          value={formData.max_print_speed}
-                          onChange={(e) =>
-                            setFormData({ ...formData, max_print_speed: e.target.value })
-                          }
-                          placeholder="200"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="nozzle_diameter">Nozzle Ø (mm)</Label>
-                        <Input
-                          id="nozzle_diameter"
-                          type="number"
-                          step="0.01"
-                          value={formData.nozzle_diameter}
-                          onChange={(e) =>
-                            setFormData({ ...formData, nozzle_diameter: e.target.value })
-                          }
-                          placeholder="0.4"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="layer_height_min">Min Layer (mm)</Label>
-                        <Input
-                          id="layer_height_min"
-                          type="number"
-                          step="0.01"
-                          value={formData.layer_height_min}
-                          onChange={(e) =>
-                            setFormData({ ...formData, layer_height_min: e.target.value })
-                          }
-                          placeholder="0.1"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="layer_height_max">Max Layer (mm)</Label>
-                        <Input
-                          id="layer_height_max"
-                          type="number"
-                          step="0.01"
-                          value={formData.layer_height_max}
-                          onChange={(e) =>
-                            setFormData({ ...formData, layer_height_max: e.target.value })
-                          }
-                          placeholder="0.3"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: any) =>
-                        setFormData({ ...formData, status: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="operational">Operational</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="offline">Offline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsDialogOpen(false);
-                        resetForm();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {editingPrinter ? "Update" : "Create"} Printer
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowAddDialog(true)}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Add Printer
+            </Button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Printers</CardTitle>
-                <Printer className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{printers.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {printers.filter((p) => p.is_active).length} active
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Operational</CardTitle>
-                <Settings className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {printers.filter((p) => p.status === "operational").length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Ready to print</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
-                <Settings className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {printers.filter((p) => p.status === "maintenance" || p.status === "offline").length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Need attention</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Search and Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Printers List</CardTitle>
-                  <CardDescription>
-                    View and manage all 3D printers
-                  </CardDescription>
-                </div>
-                <Input
-                  placeholder="Search printers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-400">Chargement des imprimantes...</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Power</TableHead>
-                    <TableHead>Build Volume</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Default</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredPrinters.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        No printers found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredPrinters.map((printer) => (
-                      <TableRow key={printer.id}>
-                        <TableCell className="font-medium">{printer.name}</TableCell>
-                        <TableCell>{printer.model || "-"}</TableCell>
-                        <TableCell>{printer.power_watts}W</TableCell>
-                        <TableCell>
-                          {printer.build_volume_x && printer.build_volume_y && printer.build_volume_z
-                            ? `${printer.build_volume_x}×${printer.build_volume_y}×${printer.build_volume_z}mm`
-                            : "-"}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(printer.status)}</TableCell>
-                        <TableCell>
-                          {printer.is_default ? (
-                            <Badge variant="default" className="bg-green-600">Default</Badge>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSetDefault(printer.id)}
-                              disabled={!printer.is_active || printer.status !== 'operational'}
-                            >
-                              Set as Default
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(printer)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(printer.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
+            </div>
+          ) : printers.length === 0 ? (
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-12 text-center">
+                <Printer className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">Aucune imprimante</h3>
+                <p className="text-gray-400 mb-4">Commencez par ajouter votre première imprimante</p>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setShowAddDialog(true)}
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Ajouter une imprimante
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Total Printers</p>
+                <p className="text-2xl font-bold text-white">{printers.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Online</p>
+                <p className="text-2xl font-bold text-green-400">{printers.filter(p => p.status === 'online').length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Offline</p>
+                <p className="text-2xl font-bold text-red-400">{printers.filter(p => p.status === 'offline').length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Maintenance</p>
+                <p className="text-2xl font-bold text-yellow-400">{printers.filter(p => p.status === 'maintenance').length}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Printers Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {printers.map(printer => (
+              <Card key={printer.id} className="bg-gray-900 border-gray-800 overflow-hidden">
+                <CardHeader className="border-b border-gray-800">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-blue-500/20 rounded-lg">
+                        <Printer className="w-6 h-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{printer.name}</h3>
+                        <Select
+                          value={printer.status}
+                          onValueChange={(value) => handleStatusChange(printer.id, value)}
+                        >
+                          <SelectTrigger className={`w-fit border-0 h-auto p-0 mt-1 ${getStatusColor(printer.status)}`}>
+                            <div className="flex items-center gap-2 px-2 py-1 rounded-full text-sm">
+                              {getStatusIcon(printer.status)}
+                              <SelectValue />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="online" className="text-green-400">
+                              Online
+                            </SelectItem>
+                            <SelectItem value="offline" className="text-red-400">
+                              Offline
+                            </SelectItem>
+                            <SelectItem value="maintenance" className="text-yellow-400">
+                              Maintenance
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEditPrinter(printer)}
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeletePrinter(printer)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  {/* Current Job */}
+                  <div>
+                    <p className="text-gray-400 text-sm mb-2">Current Job</p>
+                    <p className="text-white font-medium">{printer.currentJob}</p>
+                    {printer.progress > 0 && (
+                      <div className="mt-2 w-full bg-gray-800 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full transition-all"
+                          style={{ width: `${printer.progress}%` }}
+                        ></div>
+                      </div>
+                    )}
+                    {printer.progress > 0 && <p className="text-xs text-gray-500 mt-1">{printer.progress}% complete</p>}
+                  </div>
+
+                  {/* Temperatures */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Nozzle Temp</p>
+                      <p className="text-white font-semibold">{printer.temperature}°C</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Bed Temp</p>
+                      <p className="text-white font-semibold">{printer.bedTemp}°C</p>
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-800">
+                    <div>
+                      <p className="text-gray-400 text-xs">Uptime</p>
+                      <p className="text-white text-sm font-medium">{printer.uptime}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs">Total Prints</p>
+                      <p className="text-white text-sm font-medium">{printer.totalPrints}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs">Last Service</p>
+                      <p className="text-white text-xs">{new Date(printer.lastMaintenance).toLocaleDateString()}</p>
+
+                  {/* Maintenance Info */}
+                  <div className="pt-3 border-t border-gray-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-blue-400" />
+                        <span className="text-gray-400 text-xs">Coût Maintenance</span>
+                      </div>
+                      <span className="text-white font-semibold text-sm">
+                        {printer.maintenanceCostMonthly?.toFixed(2) || '0.00'} PLN/mois
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-green-400" />
+                        <span className="text-gray-400 text-xs">Prochaine Maintenance</span>
+                      </div>
+                      <span className="text-gray-300 text-xs">
+                        {printer.nextMaintenance ? new Date(printer.nextMaintenance).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Add Printer Dialog */}
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Ajouter une nouvelle imprimante</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Remplissez les informations de la nouvelle imprimante 3D
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="printer-name" className="text-gray-300">Nom de l'imprimante *</Label>
+                  <Input
+                    id="printer-name"
+                    placeholder="Ex: Prusa i3 MK4"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={newPrinter.name}
+                    onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="printer-status" className="text-gray-300">Statut initial</Label>
+                  <Select
+                    value={newPrinter.status}
+                    onValueChange={(value) => setNewPrinter({ ...newPrinter, status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="offline">Offline</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nozzle-temp" className="text-gray-300">Temp. buse (°C)</Label>
+                    <Input
+                      id="nozzle-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.temperature}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, temperature: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bed-temp" className="text-gray-300">Temp. plateau (°C)</Label>
+                    <Input
+                      id="bed-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.bedTemp}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, bedTemp: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                </div>
+
+                {/* Maintenance Section */}
+                <div className="pt-4 border-t border-gray-700">
+                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-blue-400" />
+                    Paramètres de Maintenance
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="maintenance-cost" className="text-gray-300">
+                        Coût Mensuel (PLN)
+                      </Label>
+                      <Input
+                        id="maintenance-cost"
+                        type="number"
+                        step="0.01"
+                        placeholder="Ex: 75.00"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.maintenanceCostMonthly}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceCostMonthly: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maintenance-interval" className="text-gray-300">
+                        Intervalle (jours)
+                      </Label>
+                      <Input
+                        id="maintenance-interval"
+                        type="number"
+                        placeholder="Ex: 90"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.maintenanceIntervalDays}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceIntervalDays: parseInt(e.target.value) || 90 })}
+                      />
+                    </div>
+                    {/* Calcul automatique */}
+                    {newPrinter.maintenanceCostMonthly > 0 && (
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Coût Annuel:</span>
+                            <span className="text-white font-semibold">
+                              {(newPrinter.maintenanceCostMonthly * 12).toFixed(2)} PLN
+                            </span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Maintenances/An:</span>
+                            <span className="text-white font-semibold">
+                              ≈ {Math.floor(365 / newPrinter.maintenanceIntervalDays)} interventions
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAddDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleAddPrinter}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Ajouter l'imprimante
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Printer Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Modifier l'Imprimante</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Modifiez les informations de l'imprimante
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-printer-name" className="text-gray-300">Nom de l'imprimante *</Label>
+                  <Input
+                    id="edit-printer-name"
+                    placeholder="Ex: Prusa i3 MK4"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={editingPrinter?.name || ""}
+                    onChange={(e) => setEditingPrinter({ ...editingPrinter, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-printer-status" className="text-gray-300">Statut</Label>
+                  <Select
+                    value={editingPrinter?.status || "offline"}
+                    onValueChange={(value) => setEditingPrinter({ ...editingPrinter, status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="offline">Offline</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-nozzle-temp" className="text-gray-300">Temp. buse (°C)</Label>
+                    <Input
+                      id="edit-nozzle-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={editingPrinter?.temperature || 25}
+                      onChange={(e) => setEditingPrinter({ ...editingPrinter, temperature: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-bed-temp" className="text-gray-300">Temp. plateau (°C)</Label>
+                    <Input
+                      id="edit-bed-temp"
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={editingPrinter?.bedTemp || 25}
+                      onChange={(e) => setEditingPrinter({ ...editingPrinter, bedTemp: parseInt(e.target.value) || 25 })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-current-job" className="text-gray-300">Job actuel</Label>
+                  <Input
+                    id="edit-current-job"
+                    placeholder="Ex: Aucun"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={editingPrinter?.currentJob || "None"}
+                    onChange={(e) => setEditingPrinter({ ...editingPrinter, currentJob: e.target.value })}
+                  />
+                </div>
+
+                {/* Maintenance Section */}
+                <div className="pt-4 border-t border-gray-700">
+                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-blue-400" />
+                    Paramètres de Maintenance
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-maintenance-cost" className="text-gray-300">
+                        Coût Mensuel (PLN)
+                      </Label>
+                      <Input
+                        id="edit-maintenance-cost"
+                        type="number"
+                        step="0.01"
+                        placeholder="Ex: 75.00"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.maintenanceCostMonthly || 0}
+                        onChange={(e) => setEditingPrinter({ 
+                          ...editingPrinter, 
+                          maintenanceCostMonthly: parseFloat(e.target.value) || 0 
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-maintenance-interval" className="text-gray-300">
+                        Intervalle (jours)
+                      </Label>
+                      <Input
+                        id="edit-maintenance-interval"
+                        type="number"
+                        placeholder="Ex: 90"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.maintenanceIntervalDays || 90}
+                        onChange={(e) => setEditingPrinter({ 
+                          ...editingPrinter, 
+                          maintenanceIntervalDays: parseInt(e.target.value) || 90 
+                        })}
+                      />
+                    </div>
+                    {/* Calcul automatique */}
+                    {(editingPrinter?.maintenanceCostMonthly > 0) && (
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Coût Annuel:</span>
+                            <span className="text-white font-semibold">
+                              {((editingPrinter?.maintenanceCostMonthly || 0) * 12).toFixed(2)} PLN
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Maintenances/An:</span>
+                            <span className="text-white font-semibold">
+                              ≈ {Math.floor(365 / (editingPrinter?.maintenanceIntervalDays || 90))} interventions
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowEditDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleUpdatePrinter}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Mettre à jour
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Êtes-vous sûr de vouloir supprimer cette imprimante ?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold mb-1">{deletingPrinter?.name}</p>
+                      <p className="text-sm text-gray-400">
+                        Cette action est irréversible. Toutes les données associées à cette imprimante seront supprimées.
+                      </p>
+                      <div className="mt-3 space-y-1 text-xs text-gray-500">
+                        <p>• Statut: {deletingPrinter?.status}</p>
+                        <p>• Total impressions: {deletingPrinter?.totalPrints}</p>
+                        <p>• Uptime: {deletingPrinter?.uptime}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+            </>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+export default AdminPrinters;

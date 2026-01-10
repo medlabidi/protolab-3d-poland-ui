@@ -27,31 +27,30 @@ import OrderDetails from "./pages/OrderDetails";
 import EditOrder from "./pages/EditOrder";
 import EditProject from "./pages/EditProject";
 import Settings from "./pages/Settings";
-import Profile from "./pages/Profile";
-import PaymentPage from "./pages/PaymentPage";
+import Payment from "./pages/Payment";
 import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import Checkout from "./pages/Checkout";
 import Conversations from "./pages/Conversations";
 import Business from "./pages/Business";
-import PayUTest from "./pages/PayUTest"; // TEMPORARY - Delete after testing
-import PaymentTestSuccess from "./pages/PaymentTestSuccess"; // TEMPORARY - Delete after testing
 import NotFound from "./pages/NotFound";
 
 // Admin pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminOrders from "./pages/admin/AdminOrders";
-import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
+import AdminOrderDetails from "./pages/admin/AdminOrderDetails";
+import AdminPrintJobs from "./pages/admin/AdminPrintJobs";
+import AdminDesignAssistance from "./pages/admin/AdminDesignAssistance";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminUserProfile from "./pages/admin/AdminUserProfile";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminMaterials from "./pages/admin/AdminMaterials";
-import AdminPrinters from "./pages/admin/AdminPrinters";
 import AdminConversations from "./pages/admin/AdminConversations";
+import AdminPrinters from "./pages/admin/AdminPrinters";
+import AdminMaintenanceInsights from "./pages/admin/AdminMaintenanceInsights";
+import AdminMaterials from "./pages/admin/AdminMaterials";
+import AdminSuppliers from "./pages/admin/AdminSuppliers";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
-import AdminBusinessManagement from "./pages/admin/AdminBusinessManagement";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
@@ -91,33 +90,30 @@ const App = () => {
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />
                 <Route path="/projects/:projectName/edit" element={<ProtectedRoute><EditProject /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/payment/:orderId?" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
+                <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
-                <Route path="/payment-success" element={<PaymentSuccess />} />
-                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
                 <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
-                
-                {/* TEMPORARY - PayU Sandbox Test - DELETE AFTER TESTING */}
-                <Route path="/payu-test" element={<PayUTest />} />
-                <Route path="/payment-test-success" element={<PaymentTestSuccess />} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
                 <Route path="/admin/orders" element={<AdminProtectedRoute><AdminOrders /></AdminProtectedRoute>} />
-                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetail /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetails /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/print-jobs" element={<AdminProtectedRoute><AdminPrintJobs /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/design-assistance" element={<AdminProtectedRoute><AdminDesignAssistance /></AdminProtectedRoute>} />
                 <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
-                <Route path="/admin/users/:userId" element={<AdminProtectedRoute><AdminUserProfile /></AdminProtectedRoute>} />
                 <Route path="/admin/conversations" element={<AdminProtectedRoute><AdminConversations /></AdminProtectedRoute>} />
-                <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
-                <Route path="/admin/materials" element={<AdminProtectedRoute><AdminMaterials /></AdminProtectedRoute>} />
                 <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />
+                <Route path="/admin/printers/maintenance" element={<AdminProtectedRoute><AdminMaintenanceInsights /></AdminProtectedRoute>} />
+                <Route path="/admin/materials" element={<AdminProtectedRoute><AdminMaterials /></AdminProtectedRoute>} />
+                <Route path="/admin/suppliers" element={<AdminProtectedRoute><AdminSuppliers /></AdminProtectedRoute>} />
                 <Route path="/admin/analytics" element={<AdminProtectedRoute><AdminAnalytics /></AdminProtectedRoute>} />
-                <Route path="/admin/businesses" element={<AdminProtectedRoute><AdminBusinessManagement /></AdminProtectedRoute>} />
+                <Route path="/admin/reports" element={<AdminProtectedRoute><AdminReports /></AdminProtectedRoute>} />
+                <Route path="/admin/notifications" element={<AdminProtectedRoute><AdminNotifications /></AdminProtectedRoute>} />
+                <Route path="/admin/settings" element={<AdminProtectedRoute><AdminSettings /></AdminProtectedRoute>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

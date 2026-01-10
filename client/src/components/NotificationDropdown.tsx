@@ -20,7 +20,6 @@ const getNotificationIcon = (type: Notification["type"]) => {
     case "order_shipped":
       return <Package className="w-5 h-5 text-blue-500" />;
     case "order_update":
-    case "order_status_change":
       return <Clock className="w-5 h-5 text-yellow-500" />;
     case "payment":
       return <CheckCircle2 className="w-5 h-5 text-green-500" />;
