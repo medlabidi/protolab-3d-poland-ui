@@ -3201,8 +3201,135 @@ async function handlePayUCreateOrder(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handlePayUNotify(req: VercelRequest, res: VercelResponse) {
-  console.log('[PAYU-NOTIFY] Webhook received');
-  // For now, just acknowledge the webhook
-  return res.status(200).send('OK');
+  try {
+    console.log('[PAYU-NOTIFY] Webhook received');
+    
+    // Import PayU utilities
+    const { verifyPayUSignature } = await import('./_lib/payu');
+    
+    // Get signature from header
+    const signature = req.headers['openpayu-signature'] as string | undefined;
+    const body = JSON.stringify(req.body);
+
+    console.log('[PAYU-NOTIFY] Received notification:', {
+      hasSignature: !!signature,
+      orderId: req.body?.order?.orderId,
+      extOrderId: req.body?.order?.extOrderId,
+      status: req.body?.order?.status,
+    });
+
+    // Verify signature
+    if (!verifyPayUSignature(body, signature)) {
+      console.error('[PAYU-NOTIFY] Signature verification failed');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    const notification = req.body;
+    const order = notification.order;
+
+    console.log('[PAYU-NOTIFY] Order status:', order.status);
+
+    // Update order status based on PayU status
+    let orderStatus: string;
+    let paymentStatus: string;
+
+    switch (order.status) {
+      case 'COMPLETED':
+        orderStatus = 'in_queue';
+        paymentStatus = 'paid';
+        break;
+      case 'CANCELED':
+        orderStatus = 'suspended';
+        paymentStatus = 'failed';
+        break;
+      case 'WAITING_FOR_CONFIRMATION':
+      case 'PENDING':
+        orderStatus = 'submitted';
+        paymentStatus = 'pending';
+        break;
+      default:
+        console.warn(`[PAYU-NOTIFY] Unknown PayU status: ${order.status}`);
+        orderStatus = 'submitted';
+        paymentStatus = 'pending';
+    }
+
+    const supabase = getSupabase();
+
+    // Update order in database
+    if (order.extOrderId) {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          payment_status: paymentStatus,
+          status: orderStatus,
+          payu_order_id: order.orderId,
+        })
+        .eq('id', order.extOrderId);
+
+      if (updateError) {
+        console.error('[PAYU-NOTIFY] Failed to update order:', updateError);
+        return res.status(500).json({ error: 'Failed to update order' });
+      }
+
+      // If payment completed, check if this is a credits purchase
+      if (order.status === 'COMPLETED') {
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('order_type, credits_amount, user_id')
+          .eq('id', order.extOrderId)
+          .single();
+
+        if (orderData?.order_type === 'credits_purchase') {
+          const creditsAmount = orderData.credits_amount;
+          const userId = orderData.user_id;
+          
+          // Get current balance
+          const { data: creditData } = await supabase
+            .from('credits')
+            .select('balance')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          const currentBalance = creditData?.balance || 0;
+          const newBalance = currentBalance + creditsAmount;
+
+          // Update balance
+          await supabase
+            .from('credits')
+            .upsert({
+              user_id: userId,
+              balance: newBalance,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            });
+
+          // Create transaction record
+          await supabase
+            .from('credits_transactions')
+            .insert({
+              user_id: userId,
+              amount: creditsAmount,
+              type: 'purchase',
+              description: `Store credit purchase via PayU - Order ${order.extOrderId}`,
+              payu_order_id: order.orderId,
+              created_at: new Date().toISOString(),
+            });
+
+          console.log(`[PAYU-NOTIFY] Credits added for user ${userId}: ${creditsAmount} PLN`);
+        }
+      }
+
+      console.log(`[PAYU-NOTIFY] Order ${order.extOrderId} updated: status=${orderStatus}, payment=${paymentStatus}`);
+    }
+
+    // PayU requires empty 200 response
+    return res.status(200).send('');
+  } catch (error) {
+    console.error('[PAYU-NOTIFY] Error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to process notification',
+    });
+  }
 }
 
