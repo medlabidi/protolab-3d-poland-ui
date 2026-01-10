@@ -1033,13 +1033,6 @@ const NewPrint = () => {
       // Navigate to checkout page with project mode flag
       toast.success(`Project ready for checkout!`);
       navigate('/checkout?projectMode=true');
-      
-    } catch (error) {
-      console.error('Navigation error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to navigate to checkout');
-      } finally {
-        setIsProcessing(false);
-      }
       return;
     }
 
