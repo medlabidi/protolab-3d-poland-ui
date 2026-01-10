@@ -240,24 +240,25 @@ const AdminPrintJobs = () => {
                                 {formatPrice(order.price)}
                               </p>
                             </div>
-                            <Select
-                              value={order.status}
-                              onValueChange={(value) => {
-                                updateOrderStatus(order.id, value);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectTrigger className="w-[130px] h-8 bg-gray-900 border-gray-600 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="in_queue">In Queue</SelectItem>
-                                <SelectItem value="printing">Printing</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
-                                <SelectItem value="delivered">Delivered</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={order.status}
+                                onValueChange={(value) => {
+                                  updateOrderStatus(order.id, value);
+                                }}
+                              >
+                                <SelectTrigger className="w-[130px] h-8 bg-gray-900 border-gray-600 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="submitted">Submitted</SelectItem>
+                                  <SelectItem value="in_queue">In Queue</SelectItem>
+                                  <SelectItem value="printing">Printing</SelectItem>
+                                  <SelectItem value="finished">Finished</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -325,7 +326,7 @@ const AdminPrintJobs = () => {
                   <div>
                     <h3 className="text-lg font-semibold mb-3 text-gray-200">3D Model Preview</h3>
                     <div className="bg-gray-800 rounded-lg p-4">
-                      <ModelViewerUrl fileUrl={selectedOrder.file_url} />
+                      <ModelViewerUrl url={selectedOrder.file_url} fileName={selectedOrder.file_name} />
                     </div>
                   </div>
                 )}
