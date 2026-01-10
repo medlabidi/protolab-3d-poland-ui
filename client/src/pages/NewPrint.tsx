@@ -735,7 +735,13 @@ const NewPrint = () => {
       return;
     }
     
-    if (!quality) {
+    // In advanced mode, check custom values. In normal mode, check quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) {
+      toast.error("Please fill in all advanced settings");
+      return;
+    }
+    
+    if (!advancedMode && !quality) {
       toast.error("Please select print quality");
       return;
     }
@@ -760,13 +766,6 @@ const NewPrint = () => {
       const volumeCm3 = modelAnalysis.volumeCm3;
       const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
       materialWeightGrams = effectiveVolume * density;
-      
-      // Support structures add extra material
-      if (supportType === 'normal') {
-        materialWeightGrams *= 1.15; // +15% for normal supports
-      } else if (supportType === 'tree') {
-        materialWeightGrams *= 1.10; // +10% for tree supports (less material)
-      }
     } else {
       // Fallback: 1MB ≈ 10g
       materialWeightGrams = (file.size / 1024 / 1024) * 10;
@@ -823,9 +822,10 @@ const NewPrint = () => {
       priceWithoutDelivery: priceWithoutDelivery.toFixed(2),
       quantity,
       totalPrice: totalPrice.toFixed(2),
-      supportType,
+      advancedMode,
       infillPattern,
-      customInfill
+      customInfill,
+      customLayerHeight
     });
     
     // Store detailed breakdown
@@ -847,10 +847,14 @@ const NewPrint = () => {
 
   // Auto-calculate price when required fields change
   useEffect(() => {
-    if (file && !modelError && material && quality && modelAnalysis) {
-      calculatePrice();
-    }
-  }, [file, modelError, material, quality, quantity, advancedMode, customLayerHeight, customInfill, supportType, infillPattern, modelAnalysis]);
+    if (!file || modelError || !material || !modelAnalysis) return;
+    
+    // In advanced mode, need custom values. In normal mode, need quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) return;
+    if (!advancedMode && !quality) return;
+    
+    calculatePrice();
+  }, [file, modelError, material, quality, quantity, advancedMode, customLayerHeight, customInfill, infillPattern, modelAnalysis]);
 
   // Auto-calculate prices for project files
   useEffect(() => {
