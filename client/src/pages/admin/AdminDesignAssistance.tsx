@@ -238,24 +238,25 @@ const AdminDesignAssistance = () => {
                                 {formatPrice(order.price)}
                               </p>
                             </div>
-                            <Select
-                              value={order.status}
-                              onValueChange={(value) => {
-                                updateOrderStatus(order.id, value);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectTrigger className="w-[130px] h-8 bg-gray-900 border-gray-600 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="in_review">In Review</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={order.status}
+                                onValueChange={(value) => {
+                                  updateOrderStatus(order.id, value);
+                                }}
+                              >
+                                <SelectTrigger className="w-[130px] h-8 bg-gray-900 border-gray-600 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="submitted">Submitted</SelectItem>
+                                  <SelectItem value="in_review">In Review</SelectItem>
+                                  <SelectItem value="in_progress">In Progress</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
