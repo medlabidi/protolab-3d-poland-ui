@@ -1081,12 +1081,26 @@ const NewPrint = () => {
               fileIndex: i,
               successfulOrders: orderIds.length 
             });
+            
+            // If at least one order succeeded, show partial success message
+            if (orderIds.length > 0) {
+              toast.warning(`Created ${orderIds.length} of ${projectFiles.length} orders. Failed on file: ${pf.file.name}`);
+              console.log('Partial success - created orders:', orderIds);
+              // Continue with successful orders
+              break;
+            }
+            
             throw new Error(`Failed to create order for "${pf.file.name}": ${errorMessage}`);
           }
 
           const result = await response.json();
           orderIds.push(result.id);
           console.log(`✓ Order ${i + 1}/${projectFiles.length} created successfully (ID: ${result.id})`);
+          
+          // Add small delay between requests to avoid rate limiting
+          if (i < projectFiles.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
 
         // Navigate to checkout page to review all orders
