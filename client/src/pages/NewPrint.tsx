@@ -1055,11 +1055,18 @@ const NewPrint = () => {
             let errorMessage = 'Failed to create order';
             try {
               const error = await response.json();
-              errorMessage = error.message || errorMessage;
+              errorMessage = error.message || error.error || errorMessage;
             } catch {
               // If response is not JSON, use status text
-              errorMessage = response.status === 403 ? 'Authentication required. Please log in.' : `Server error: ${response.status}`;
+              if (response.status === 403) {
+                errorMessage = 'Access denied. Your account may not be approved or your session may have expired. Please log out and log back in.';
+              } else if (response.status === 401) {
+                errorMessage = 'Authentication required. Please log in again.';
+              } else {
+                errorMessage = `Server error: ${response.status}`;
+              }
             }
+            console.error('Order creation failed:', { status: response.status, errorMessage });
             throw new Error(errorMessage);
           }
 
@@ -1235,11 +1242,18 @@ const NewPrint = () => {
         let errorMessage = 'Failed to create order';
         try {
           const error = await response.json();
-          errorMessage = error.message || errorMessage;
+          errorMessage = error.message || error.error || errorMessage;
         } catch {
           // If response is not JSON, use status text
-          errorMessage = response.status === 403 ? 'Authentication required. Please log in.' : `Server error: ${response.status}`;
+          if (response.status === 403) {
+            errorMessage = 'Access denied. Your account may not be approved or your session may have expired. Please log out and log back in.';
+          } else if (response.status === 401) {
+            errorMessage = 'Authentication required. Please log in again.';
+          } else {
+            errorMessage = `Server error: ${response.status}`;
+          }
         }
+        console.error('Order creation failed:', { status: response.status, errorMessage });
         throw new Error(errorMessage);
       }
 
