@@ -216,7 +216,7 @@ const Settings = () => {
           phone: userData.phone || "",
           address: userData.address || "",
           city: userData.city || "",
-          zipCode: userData.zip_code || "",
+          zipCode: userData.zipCode || userData.zip_code || "",
           country: userData.country || "",
         });
       } catch (error) {
