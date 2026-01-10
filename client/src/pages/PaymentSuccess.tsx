@@ -12,11 +12,15 @@ const PaymentSuccess = () => {
   const [status, setStatus] = useState<'checking' | 'success' | 'failed'>('checking');
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [hasChecked, setHasChecked] = useState(false);
   const MAX_RETRIES = 10; // Max 30 seconds (10 retries x 3 seconds)
 
   useEffect(() => {
-    checkPaymentStatus();
-  }, []);
+    if (!hasChecked) {
+      setHasChecked(true);
+      checkPaymentStatus();
+    }
+  }, [hasChecked]);
 
   const checkPaymentStatus = async () => {
     try {
