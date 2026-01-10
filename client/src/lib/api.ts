@@ -160,6 +160,12 @@ export const apiFormData = async (
 ): Promise<Response> => {
   const token = await getValidToken();
 
+  if (!token) {
+    console.warn('No valid token available for FormData request');
+  } else {
+    console.log('Token available for FormData request, length:', token.length);
+  }
+
   const headers: HeadersInit = {};
   
   if (token) {
@@ -174,9 +180,9 @@ export const apiFormData = async (
     body: formData,
   });
 
-  // If we get a 401, try to refresh the token and retry once
-  if (response.status === 401) {
-    console.log('Got 401 on FormData request, attempting token refresh...');
+  // If we get a 401 or 403, try to refresh the token and retry once
+  if (response.status === 401 || response.status === 403) {
+    console.log(`Got ${response.status} on FormData request, attempting token refresh...`);
     
     const newToken = await refreshAccessToken();
     
