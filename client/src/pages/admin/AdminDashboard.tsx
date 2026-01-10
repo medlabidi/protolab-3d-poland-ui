@@ -333,41 +333,6 @@ const AdminDashboard = () => {
     );
   }
 
-  const statCards = [
-    {
-      title: "Total Orders",
-      value: stats.totalOrders,
-      icon: Package,
-      change: `+${stats.ordersToday} today`,
-      changeType: "positive" as const,
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Pending Orders",
-      value: stats.pendingOrders,
-      icon: Clock,
-      change: "Needs attention",
-      changeType: "warning" as const,
-      color: "from-amber-500 to-orange-500",
-    },
-    {
-      title: "Completed",
-      value: stats.completedOrders,
-      icon: CheckCircle2,
-      change: "All time",
-      changeType: "positive" as const,
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      title: "Total Revenue",
-      value: formatPrice(stats.totalRevenue),
-      icon: DollarSign,
-      change: `+${formatPrice(stats.revenueToday)} today`,
-      changeType: "positive" as const,
-      color: "from-purple-500 to-pink-500",
-    },
-  ] as const;
-
   return (
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
@@ -380,192 +345,57 @@ const AdminDashboard = () => {
             <p className="text-sm sm:text-base text-gray-400">Welcome back! Here's what's happening with your business.</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {statCards.map((stat, index) => (
-              <Card key={index} className="bg-gray-900 border-gray-800 relative overflow-hidden">
-                <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.color}`} />
-                <CardHeader className="border-b border-gray-800 p-3 sm:p-4 md:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center justify-between">
-                    {stat.title}
-                    <stat.icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 sm:pt-6 p-3 sm:p-4 md:p-6">
-                  <div className="text-xl sm:text-2xl font-bold text-white mb-2">{stat.value}</div>
-                  <div className={`text-xs sm:text-sm ${stat.changeType === 'positive' ? 'text-green-400' : stat.changeType === 'warning' ? 'text-amber-400' : 'text-red-400'}`}>
-                    {stat.change}
+          {/* Job Notifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Print Jobs Notification */}
+            {stats.printJobs > 0 && (
+              <Card 
+                className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 border-blue-700/50 cursor-pointer hover:from-blue-900/60 hover:to-blue-800/40 transition-all group"
+                onClick={() => navigate('/admin/orders/print-jobs')}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-blue-600 rounded-lg group-hover:scale-110 transition-transform">
+                        <Boxes className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          {stats.printJobs} Print {stats.printJobs === 1 ? 'Job' : 'Jobs'}
+                        </h3>
+                        <p className="text-blue-200 text-sm">Click to view and manage</p>
+                      </div>
+                    </div>
+                    <ArrowUpRight className="w-6 h-6 text-blue-300 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            )}
 
-          {/* Order Type Blocks */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Print Jobs Block */}
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="border-b border-gray-800">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl text-white flex items-center gap-2">
-                    <Boxes className="w-5 h-5 text-blue-500" />
-                    Print Jobs
-                    <span className="text-sm font-normal text-gray-400">({stats.printJobs})</span>
-                  </CardTitle>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/admin/orders/print-jobs')}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                  >
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-800">
-                  {printJobs.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <Boxes className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No print jobs yet</p>
-                    </div>
-                  ) : (
-                    printJobs.map((order) => (
-                      <div 
-                        key={order.id}
-                        className="p-4 hover:bg-gray-800/50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div 
-                            className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer" 
-                            onClick={() => fetchOrderDetails(order.id)}
-                          >
-                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getStatusColor(order.status)}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white truncate hover:text-blue-400 transition-colors">{order.file_name}</p>
-                              <p className="text-sm text-gray-500 truncate">
-                                {order.users?.name || 'Unknown'} • {formatDate(order.created_at)}
-                              </p>
-                              <p className="text-sm font-medium text-blue-400 mt-1">{formatPrice(order.price)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Select 
-                              value={order.status} 
-                              onValueChange={(value) => updateOrderStatus(order.id, value)}
-                            >
-                              <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="in_queue">In Queue</SelectItem>
-                                <SelectItem value="printing">Printing</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
-                                <SelectItem value="delivered">Delivered</SelectItem>
-                                <SelectItem value="on_hold">On Hold</SelectItem>
-                                <SelectItem value="suspended">Suspended</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="h-8 text-xs border-gray-700 text-gray-300 hover:bg-blue-600 hover:text-white hover:border-blue-600"
-                              onClick={() => fetchOrderDetails(order.id)}
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Details
-                            </Button>
-                          </div>
-                        </div>
+            {/* Design Assistance Notification */}
+            {stats.designJobs > 0 && (
+              <Card 
+                className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-purple-700/50 cursor-pointer hover:from-purple-900/60 hover:to-purple-800/40 transition-all group"
+                onClick={() => navigate('/admin/orders/design-assistance')}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-purple-600 rounded-lg group-hover:scale-110 transition-transform">
+                        <Palette className="w-6 h-6 text-white" />
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Design Assistance Jobs Block */}
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="border-b border-gray-800">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl text-white flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-purple-500" />
-                    Design Assistance
-                    <span className="text-sm font-normal text-gray-400">({stats.designJobs})</span>
-                  </CardTitle>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/admin/orders/design-assistance')}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                  >
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-800">
-                  {designJobs.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <Palette className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No design requests yet</p>
-                    </div>
-                  ) : (
-                    designJobs.map((order) => (
-                      <div 
-                        key={order.id}
-                        className="p-4 hover:bg-gray-800/50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div 
-                            className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer" 
-                            onClick={() => fetchOrderDetails(order.id)}
-                          >
-                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getStatusColor(order.status)}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white truncate hover:text-purple-400 transition-colors">{order.file_name}</p>
-                              <p className="text-sm text-gray-500 truncate">
-                                {order.users?.name || 'Unknown'} • {formatDate(order.created_at)}
-                              </p>
-                              <p className="text-sm font-medium text-purple-400 mt-1">{formatPrice(order.price)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Select 
-                              value={order.status} 
-                              onValueChange={(value) => updateOrderStatus(order.id, value)}
-                            >
-                              <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="in_queue">In Review</SelectItem>
-                                <SelectItem value="printing">In Progress</SelectItem>
-                                <SelectItem value="finished">Completed</SelectItem>
-                                <SelectItem value="delivered">Delivered</SelectItem>
-                                <SelectItem value="on_hold">On Hold</SelectItem>
-                                <SelectItem value="suspended">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="h-8 text-xs border-gray-700 text-gray-300 hover:bg-purple-600 hover:text-white hover:border-purple-600"
-                              onClick={() => fetchOrderDetails(order.id)}
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Details
-                            </Button>
-                          </div>
-                        </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          {stats.designJobs} Design {stats.designJobs === 1 ? 'Request' : 'Requests'}
+                        </h3>
+                        <p className="text-purple-200 text-sm">Click to view and respond</p>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                    <ArrowUpRight className="w-6 h-6 text-purple-300 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Quick Actions */}
