@@ -1337,6 +1337,8 @@
     "general": {
       "title": "General Settings",
       "description": "Update your personal details and contact information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
       "fullName": "Full Name",
       "emailAddress": "Email Address",
       "emailCannotChange": "Email cannot be changed",
@@ -1546,6 +1548,8 @@
     "title": "Create Account",
     "subtitle": "Sign up to start using our 3D printing services",
     "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
       "fullName": "Full Name",
       "email": "Email",
       "password": "Password",
@@ -1558,6 +1562,8 @@
       "country": "Country"
     },
     "placeholders": {
+      "firstName": "John",
+      "lastName": "Doe",
       "fullName": "John Doe",
       "email": "your@email.com",
       "password": "At least 6 characters",

@@ -1343,6 +1343,8 @@
     "general": {
       "title": "Ustawienia ogólne",
       "description": "Zaktualizuj swoje dane osobowe i kontaktowe",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
       "fullName": "Imię i nazwisko",
       "emailAddress": "Adres email",
       "emailCannotChange": "Email nie może być zmieniony",
@@ -1552,6 +1554,8 @@
     "title": "Utwórz konto",
     "subtitle": "Zarejestruj się, aby korzystać z naszych usług druku 3D",
     "fields": {
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
       "fullName": "Imię i nazwisko",
       "email": "Email",
       "password": "Hasło",
@@ -1564,6 +1568,8 @@
       "country": "Kraj"
     },
     "placeholders": {
+      "firstName": "Jan",
+      "lastName": "Kowalski",
       "fullName": "Jan Kowalski",
       "email": "twoj@email.com",
       "password": "Co najmniej 6 znaków",
