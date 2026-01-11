@@ -58,6 +58,10 @@ const AdminPrinters = () => {
     available_nozzle_diameters: [0.4],
     actual_nozzle_diameter: 0.4,
     lifespan_years: 5,
+    power_watts: 0,
+    supported_materials: [] as string[],
+    layer_height_min: 0.1,
+    layer_height_max: 0.3,
   });
 
   // Fetch printers on mount
@@ -281,6 +285,10 @@ const AdminPrinters = () => {
           available_nozzle_diameters: newPrinter.available_nozzle_diameters.join(', '),
           actual_nozzle_diameter: newPrinter.actual_nozzle_diameter,
           lifespan_years: newPrinter.lifespan_years,
+          power_watts: newPrinter.power_watts,
+          supported_materials: newPrinter.supported_materials.filter(m => m.trim()),
+          layer_height_min: newPrinter.layer_height_min,
+          layer_height_max: newPrinter.layer_height_max,
         }),
       });
 
@@ -299,6 +307,10 @@ const AdminPrinters = () => {
           available_nozzle_diameters: [0.4],
           actual_nozzle_diameter: 0.4,
           lifespan_years: 5,
+          power_watts: 0,
+          supported_materials: [],
+          layer_height_min: 0.1,
+          layer_height_max: 0.3,
         });
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -717,6 +729,90 @@ const AdminPrinters = () => {
                 {/* Lifecycle */}
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Lifecycle Information</h4>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="power" className="text-gray-300">Power Consumption (watts)</Label>
+                    <Input
+                      id="power"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 350"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.power_watts}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, power_watts: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="supported-materials" className="text-gray-300">Supported Materials</Label>
+                    <div className="space-y-2">
+                      {newPrinter.supported_materials.map((material, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            type="text"
+                            placeholder="e.g. PLA, ABS, PETG"
+                            className="bg-gray-800 border-gray-700 text-white flex-1"
+                            value={material}
+                            onChange={(e) => {
+                              const updated = [...newPrinter.supported_materials];
+                              updated[index] = e.target.value;
+                              setNewPrinter({ ...newPrinter, supported_materials: updated });
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const updated = newPrinter.supported_materials.filter((_, i) => i !== index);
+                              setNewPrinter({ ...newPrinter, supported_materials: updated });
+                            }}
+                            className="bg-red-900/20 border-red-800 text-red-400 hover:bg-red-900/40"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setNewPrinter({ ...newPrinter, supported_materials: [...newPrinter.supported_materials, ''] })}
+                        className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 w-full"
+                      >
+                        + Add Material
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="layer-min" className="text-gray-300">Min Layer Height (mm)</Label>
+                      <Input
+                        id="layer-min"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 0.1"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.layer_height_min}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, layer_height_min: parseFloat(e.target.value) || 0.1 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="layer-max" className="text-gray-300">Max Layer Height (mm)</Label>
+                      <Input
+                        id="layer-max"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 0.3"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.layer_height_max}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, layer_height_max: parseFloat(e.target.value) || 0.3 })}
+                      />
+                    </div>
+                  </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="lifespan" className="text-gray-300">Expected Lifespan (years)</Label>
