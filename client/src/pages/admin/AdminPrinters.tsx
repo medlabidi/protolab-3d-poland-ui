@@ -50,7 +50,9 @@ const AdminPrinters = () => {
   const [newPrinter, setNewPrinter] = useState({
     brand: "",
     printer_model: "",
-    max_build_volume: "",
+    build_volume_x: 0,
+    build_volume_y: 0,
+    build_volume_z: 0,
     multi_color_printing: false,
     max_colors: 1,
     available_nozzle_diameters: [0.4],
@@ -278,7 +280,9 @@ const AdminPrinters = () => {
           bed_temp: 25,
           uptime: "0%",
           total_prints: 0,
-          max_build_volume: newPrinter.max_build_volume,
+          build_volume_x: newPrinter.build_volume_x,
+          build_volume_y: newPrinter.build_volume_y,
+          build_volume_z: newPrinter.build_volume_z,
           multi_color_printing: newPrinter.multi_color_printing,
           max_colors: newPrinter.multi_color_printing ? newPrinter.max_colors : 1,
           available_nozzle_diameters: newPrinter.available_nozzle_diameters.join(', '),
@@ -295,7 +299,9 @@ const AdminPrinters = () => {
         setNewPrinter({
           brand: "",
           printer_model: "",
-          max_build_volume: "",
+          build_volume_x: 0,
+          build_volume_y: 0,
+          build_volume_z: 0,
           multi_color_printing: false,
           max_colors: 1,
           available_nozzle_diameters: [0.4],
@@ -573,15 +579,42 @@ const AdminPrinters = () => {
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Build Specifications</h4>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="build-volume" className="text-gray-300">Max Build Volume</Label>
-                    <Input
-                      id="build-volume"
-                      placeholder="e.g. 220x220x250mm"
-                      className="bg-gray-800 border-gray-700 text-white"
-                      value={newPrinter.max_build_volume}
-                      onChange={(e) => setNewPrinter({ ...newPrinter, max_build_volume: e.target.value })}
-                    />
-                    <p className="text-xs text-gray-500">Format: Width x Depth x Height (e.g. 220x220x250mm)</p>
+                    <Label className="text-gray-300">Max Build Volume (mm)</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="build-x" className="text-xs text-gray-400">Width (X)</Label>
+                        <Input
+                          id="build-x"
+                          type="number"
+                          placeholder="220"
+                          className="bg-gray-800 border-gray-700 text-white"
+                          value={newPrinter.build_volume_x || ''}
+                          onChange={(e) => setNewPrinter({ ...newPrinter, build_volume_x: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="build-y" className="text-xs text-gray-400">Depth (Y)</Label>
+                        <Input
+                          id="build-y"
+                          type="number"
+                          placeholder="220"
+                          className="bg-gray-800 border-gray-700 text-white"
+                          value={newPrinter.build_volume_y || ''}
+                          onChange={(e) => setNewPrinter({ ...newPrinter, build_volume_y: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="build-z" className="text-xs text-gray-400">Height (Z)</Label>
+                        <Input
+                          id="build-z"
+                          type="number"
+                          placeholder="250"
+                          className="bg-gray-800 border-gray-700 text-white"
+                          value={newPrinter.build_volume_z || ''}
+                          onChange={(e) => setNewPrinter({ ...newPrinter, build_volume_z: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
