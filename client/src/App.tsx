@@ -101,13 +101,13 @@ const App = () => {
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
                 <Route path="/admin/orders" element={<AdminProtectedRoute><AdminOrders /></AdminProtectedRoute>} />
-                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetails /></AdminProtectedRoute>} />
                 <Route path="/admin/orders/print-jobs" element={<AdminProtectedRoute><AdminPrintJobs /></AdminProtectedRoute>} />
                 <Route path="/admin/orders/design-assistance" element={<AdminProtectedRoute><AdminDesignAssistance /></AdminProtectedRoute>} />
+                <Route path="/admin/orders/:orderId" element={<AdminProtectedRoute><AdminOrderDetails /></AdminProtectedRoute>} />
                 <Route path="/admin/users" element={<AdminProtectedRoute><AdminUsers /></AdminProtectedRoute>} />
                 <Route path="/admin/conversations" element={<AdminProtectedRoute><AdminConversations /></AdminProtectedRoute>} />
-                <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />
                 <Route path="/admin/printers/maintenance" element={<AdminProtectedRoute><AdminMaintenanceInsights /></AdminProtectedRoute>} />
+                <Route path="/admin/printers" element={<AdminProtectedRoute><AdminPrinters /></AdminProtectedRoute>} />
                 <Route path="/admin/materials" element={<AdminProtectedRoute><AdminMaterials /></AdminProtectedRoute>} />
                 <Route path="/admin/suppliers" element={<AdminProtectedRoute><AdminSuppliers /></AdminProtectedRoute>} />
                 <Route path="/admin/analytics" element={<AdminProtectedRoute><AdminAnalytics /></AdminProtectedRoute>} />
