@@ -113,31 +113,15 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     return res.status(403).json({ error: 'Admin access required' });
   }
   
-  // Get all orders for admin with user info
+  // Get all orders for admin
   const { data: orders, error } = await supabase
     .from('orders')
-    .select(`
-      *,
-      users (
-        id,
-        name,
-        email
-      )
-    `)
+    .select('*')
     .order('created_at', { ascending: false });
   
   if (error) {
-    console.error('Error fetching admin orders:', error);
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
-  
-  // Log order types for debugging
-  const orderTypes = orders?.reduce((acc: any, order: any) => {
-    const type = order.order_type || 'unknown';
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {});
-  console.log('Admin orders by type:', orderTypes);
   
   return res.status(200).json({ orders: orders || [] });
 }
