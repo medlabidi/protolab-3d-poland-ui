@@ -13,6 +13,7 @@ import orderRoutes from './routes/order.routes';
 import adminRoutes from './routes/admin.routes';
 import creditsRoutes from './routes/credits.routes';
 import conversationsRoutes from './routes/conversations.routes';
+import designRequestRoutes from './routes/designRequest.routes';
 
 const createApp = (): Application => {
   const app = express();
@@ -72,6 +73,7 @@ const createApp = (): Application => {
   app.use('/api/admin', adminRoutes);
   app.use('/api/credits', creditsRoutes);
   app.use('/api/conversations', conversationsRoutes);
+  app.use('/api/design-requests', designRequestRoutes);
   
   // Error handling
   app.use(notFoundHandler);

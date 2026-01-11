@@ -72,87 +72,75 @@ const DesignAssistance = () => {
     }
 
     try {
-      // Simulate request submission and immediate completion
-      const mockRequest: DesignRequest = {
-        id: `REQ-${Date.now()}`,
-        ideaDescription: formData.ideaDescription,
-        usage: formData.usage,
-        usageDetails: formData.usageDetails,
-        status: 'completed',
-        adminFile: {
-          url: '/mock-3d-model.stl',
-          name: 'custom-design.stl',
-        },
-      };
-
-      setCurrentRequest(mockRequest);
-
-      // If chat is requested, create a conversation
-      if (formData.requestChat) {
-        const token = localStorage.getItem('accessToken');
-        
-        try {
-          // Create conversation for this order
-          const conversationResponse = await fetch(`${API_URL}/conversations/order/${mockRequest.id}`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (conversationResponse.ok) {
-            const conversationData = await conversationResponse.json();
-            const conversationId = conversationData.conversation.id;
-
-            // Send automatic message to admin
-            const messageText = `🎨 Design Assistance Request - ${mockRequest.id}\n\n` +
-              `📋 Type: ${formData.usage}\n` +
-              `📝 Description: ${formData.ideaDescription}\n\n` +
-              `✨ Additional Details: ${formData.usageDetails}\n` +
-              `📏 Dimensions: ${formData.approximateDimensions || 'Not specified'}\n` +
-              `🧱 Material: ${formData.desiredMaterial || 'Not specified'}\n\n` +
-              `💬 User requested to discuss this design. Please review and respond.`;
-
-            await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                message: messageText,
-              }),
-            });
-
-            toast({
-              title: "Chat Request Sent",
-              description: "A conversation has been created. The admin will be notified.",
-            });
-          }
-        } catch (error) {
-          console.error('Failed to create conversation:', error);
-          toast({
-            title: "Chat Request Failed",
-            description: "Could not create conversation, but your design request was submitted.",
-            variant: "destructive",
-          });
-        }
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to submit a design request",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
       }
 
-      setShowCompletionDialog(true);
+      // Prepare FormData for submission
+      const submitData = new FormData();
+      submitData.append('ideaDescription', formData.ideaDescription);
+      submitData.append('usage', formData.usage);
+      submitData.append('usageDetails', formData.usageDetails);
+      submitData.append('approximateDimensions', formData.approximateDimensions);
+      submitData.append('desiredMaterial', formData.desiredMaterial);
+      submitData.append('requestChat', formData.requestChat.toString());
+      submitData.append('projectName', `Design Request - ${formData.usage}`);
 
+      // Attach files
+      attachedFiles.forEach(file => {
+        submitData.append('referenceFiles', file);
+      });
+
+      // Submit design request
+      const response = await fetch(`${API_URL}/design-requests`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: submitData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit design request');
+      }
+
+      const result = await response.json();
+      
       toast({
         title: "Request Submitted",
-        description: formData.requestChat 
-          ? "Your design request and chat have been sent to the admin!"
-          : "Your 3D design is being created...",
+        description: "Your design request has been sent to our team!",
       });
-    } catch (error) {
+
+      // Reset form
+      setFormData({
+        ideaDescription: "",
+        usage: "mechanical",
+        usageDetails: "",
+        approximateDimensions: "",
+        desiredMaterial: "",
+        requestChat: false,
+      });
+      setAttachedFiles([]);
+
+      // Navigate to orders page
+      setTimeout(() => {
+        navigate("/orders");
+      }, 1500);
+
+    } catch (error: any) {
       console.error('Submission error:', error);
       toast({
         title: "Submission Failed",
-        description: "Could not submit your design request. Please try again.",
+        description: error.message || "Could not submit your design request. Please try again.",
         variant: "destructive",
       });
     }

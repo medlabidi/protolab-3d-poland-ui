@@ -26,6 +26,13 @@ router.patch('/orders/:id/status', validate(updateOrderStatusSchema), adminContr
 router.patch('/orders/:id/pricing', validate(updateOrderPricingSchema), adminController.updateOrderPricing);
 router.patch('/orders/:id/tracking', validate(updateOrderTrackingSchema), adminController.updateOrderTracking);
 
+// Design request management
+router.get('/design-requests', adminController.getAllDesignRequests);
+router.get('/design-requests/:id', adminController.getDesignRequestById);
+router.patch('/design-requests/:id/status', adminController.updateDesignRequestStatus);
+router.patch('/design-requests/:id/price', adminController.updateDesignRequestPrice);
+router.post('/design-requests/:id/attach-file', adminController.attachDesignFile);
+
 // User management
 router.get('/users', adminController.getAllUsers);
 router.get('/users/all', (req, res) => userController.getAllUsers(req, res));

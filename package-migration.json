@@ -1,0 +1,10 @@
+{
+  "name": "database-migration-scripts",
+  "version": "1.0.0",
+  "description": "Scripts to verify and test database migration",
+  "scripts": {
+    "verify": "node verify-migration.js",
+    "test-tables": "node test-new-tables.js",
+    "check-all": "node verify-migration.js && node test-new-tables.js"
+  }
+}

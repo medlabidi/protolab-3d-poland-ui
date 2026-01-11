@@ -251,8 +251,306 @@ const AdminPrintJobs = () => {
             </Card>
           </div>
 
-          {/* Orders Table */}
-          <Card className="bg-gray-900 border-gray-800">
+          {/* Kanban Board - Orders by Status */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Submitted Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-gray-400 text-sm font-semibold flex items-center justify-between">
+                  <span>Submitted</span>
+                  <span className="bg-gray-500/20 text-gray-400 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'submitted').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'submitted').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No submitted orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'submitted').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Queue Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-blue-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Queue</span>
+                  <span className="bg-blue-500/20 text-blue-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'in_queue').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'in_queue').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No orders in queue</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'in_queue').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Printing Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-orange-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Printing</span>
+                  <span className="bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'printing').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'printing').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No orders printing</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'printing').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Finished Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-green-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Finished</span>
+                  <span className="bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'finished').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'finished').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No finished orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'finished').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Delivered / On Hold Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-purple-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Delivered</span>
+                  <span className="bg-purple-500/20 text-purple-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No delivered orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orders Table - Hidden by default */}
+          <Card className="bg-gray-900 border-gray-800 hidden">
             <CardHeader>
               <CardTitle className="text-white">All Print Jobs</CardTitle>
             </CardHeader>

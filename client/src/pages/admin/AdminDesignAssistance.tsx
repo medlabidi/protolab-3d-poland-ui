@@ -29,30 +29,27 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface Order {
   id: string;
-  status: OrderStatus;
-  file_name: string;
-  file_url?: string;
-  price: number;
-  payment_status?: PaymentStatus;
+  user_id: string;
+  project_name: string;
+  idea_description: string;
+  usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
+  usage_details?: string;
+  approximate_dimensions?: string;
+  desired_material?: string;
+  attached_files?: any[];
+  reference_images?: any[];
+  request_chat?: boolean;
+  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
+  admin_design_file?: string;
+  admin_notes?: string;
+  estimated_price?: number;
+  final_price?: number;
   paid_amount?: number;
+  payment_status?: 'pending' | 'paid' | 'on_hold' | 'refunded';
   created_at: string;
+  updated_at?: string;
+  completed_at?: string;
   user_email?: string;
-  material?: string;
-  color?: string;
-  layer_height?: string;
-  infill?: string;
-  quantity?: number;
-  shipping_method?: string;
-  shipping_address?: string;
-  material_weight?: string;
-  print_time?: string;
-  tracking_code?: string;
-  notes?: string;
-  order_type?: 'print' | 'design';
-  design_description?: string;
-  design_requirements?: string;
-  reference_images?: string[];
-  parent_order_id?: string;
   users?: { name: string; email: string };
 }
 
@@ -72,7 +69,7 @@ const AdminDesignAssistance = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders`, {
+      const response = await fetch(`${API_URL}/admin/design-requests`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -80,9 +77,8 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
-        // Filter only design assistance orders
-        const designOrders = (data.orders || []).filter((order: Order) => order.order_type === 'design');
-        setOrders(designOrders);
+        // The new endpoint returns design requests directly
+        setOrders(data.requests || []);
       } else {
         toast.error('Failed to fetch design assistance orders');
       }
@@ -97,7 +93,7 @@ const AdminDesignAssistance = () => {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders/${orderId}/status`, {
+      const response = await fetch(`${API_URL}/admin/design-requests/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -109,6 +105,9 @@ const AdminDesignAssistance = () => {
       if (response.ok) {
         toast.success('Status updated successfully');
         fetchOrders();
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, design_status: newStatus as any });
+        }
       } else {
         throw new Error('Failed to update status');
       }
@@ -122,36 +121,36 @@ const AdminDesignAssistance = () => {
     setLoadingOrderDetails(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders/${orderId}`, {
+      const response = await fetch(`${API_URL}/admin/design-requests/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch order details');
+        throw new Error('Failed to fetch design request details');
       }
 
       const data = await response.json();
-      setSelectedOrder(data.order);
+      setSelectedOrder(data.request);
       setShowOrderDetails(true);
     } catch (err) {
-      console.error('Error fetching order details:', err);
-      toast.error('Failed to load order details');
+      console.error('Error fetching design request details:', err);
+      toast.error('Failed to load design request details');
     } finally {
       setLoadingOrderDetails(false);
     }
   };
 
   const handleDownload3DFile = (order: Order) => {
-    if (!order.file_url) {
-      toast.error('No file available for download');
+    if (!order.admin_design_file) {
+      toast.error('No design file available for download');
       return;
     }
 
     const link = document.createElement('a');
-    link.href = order.file_url;
-    link.download = order.file_name || 'design-file';
+    link.href = order.admin_design_file;
+    link.download = order.project_name || 'design-file';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -160,9 +159,9 @@ const AdminDesignAssistance = () => {
 
   const filteredOrders = orders.filter((order) =>
     order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.file_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     order.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.design_description?.toLowerCase().includes(searchQuery.toLowerCase())
+    order.idea_description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const formatPrice = (price: number | undefined) => {
@@ -234,7 +233,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-yellow-500">
-                    {orders.filter(o => o.status === 'submitted' || o.status === 'in_queue').length}
+                    {orders.filter(o => o.design_status === 'pending' || o.design_status === 'in_review').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Pending</p>
                 </div>
@@ -244,7 +243,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-500">
-                    {orders.filter(o => o.status === 'printing').length}
+                    {orders.filter(o => o.design_status === 'in_progress').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">In Progress</p>
                 </div>
@@ -254,7 +253,7 @@ const AdminDesignAssistance = () => {
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-500">
-                    {orders.filter(o => o.status === 'finished' || o.status === 'delivered').length}
+                    {orders.filter(o => o.design_status === 'completed').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Completed</p>
                 </div>
@@ -262,8 +261,286 @@ const AdminDesignAssistance = () => {
             </Card>
           </div>
 
-          {/* Orders Table */}
-          <Card className="bg-gray-900 border-gray-800">
+          {/* Kanban Board - Orders by Status */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Pending Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-yellow-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Pending</span>
+                  <span className="bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'pending').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'pending').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No pending requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'pending').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-yellow-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Review Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-orange-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Review</span>
+                  <span className="bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'in_review').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'in_review').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No requests in review</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'in_review').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Progress Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-blue-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Progress</span>
+                  <span className="bg-blue-500/20 text-blue-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'in_progress').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'in_progress').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No requests in progress</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'in_progress').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Completed Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-green-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Completed</span>
+                  <span className="bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'completed').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'completed').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No completed requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'completed').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.final_price || order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Cancelled Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-red-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Cancelled</span>
+                  <span className="bg-red-500/20 text-red-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'cancelled').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'cancelled').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No cancelled requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'cancelled').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-red-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orders Table - Hidden by default, can be toggled */}
+          <Card className="bg-gray-900 border-gray-800 hidden">
             <CardHeader>
               <CardTitle className="text-white">All Design Assistance Orders</CardTitle>
             </CardHeader>
@@ -294,41 +571,25 @@ const AdminDesignAssistance = () => {
                       <div className="font-mono text-sm text-gray-300">
                         #{order.id.slice(0, 8)}
                       </div>
-                      <div className="text-sm text-white truncate" title={order.file_name}>
-                        {order.file_name}
+                      <div className="text-sm text-white truncate" title={order.project_name}>
+                        {order.project_name}
                       </div>
                       <div className="text-sm text-gray-400 truncate">
-                        {order.user_email || 'N/A'}
+                        {order.users?.email || order.user_email || 'N/A'}
                       </div>
-                      <div className="text-sm text-gray-400 truncate" title={order.design_description}>
-                        {order.design_description || 'No description'}
-                      </div>
-                      <div>
-                        <Select
-                          value={order.status}
-                          onValueChange={(value) => updateOrderStatus(order.id, value)}
-                        >
-                          <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="submitted">Submitted</SelectItem>
-                            <SelectItem value="in_queue">In Queue</SelectItem>
-                            <SelectItem value="printing">In Progress</SelectItem>
-                            <SelectItem value="finished">Finished</SelectItem>
-                            <SelectItem value="delivered">Delivered</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="text-sm text-gray-400 truncate" title={order.idea_description}>
+                        {order.idea_description?.slice(0, 50)}...
                       </div>
                       <div>
-                        {order.payment_status && (
-                          <PaymentStatusBadge status={order.payment_status} />
-                        )}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-gray-700 text-white">
+                          {order.design_status}
+                        </span>
                       </div>
-                      <div className="font-bold text-green-400">
-                        {formatPrice(order.price)}
+                      <div>
+                        <PaymentStatusBadge status={order.payment_status as any} />
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        {formatPrice(order.final_price || order.estimated_price)}
                       </div>
                       <div className="text-right flex items-center justify-end gap-2">
                         <Button
@@ -359,7 +620,7 @@ const AdminDesignAssistance = () => {
                   Order ID: {selectedOrder?.id}
                 </DialogDescription>
               </div>
-              {selectedOrder?.file_url && (
+              {selectedOrder?.admin_design_file && (
                 <Button
                   onClick={() => selectedOrder && handleDownload3DFile(selectedOrder)}
                   className="bg-purple-600 hover:bg-purple-700"
@@ -377,15 +638,22 @@ const AdminDesignAssistance = () => {
             </div>
           ) : selectedOrder ? (
             <div className="space-y-6">
-              {/* 3D Model Viewer */}
-              {selectedOrder.file_url && (
+              {/* Reference Files */}
+              {selectedOrder.attached_files && selectedOrder.attached_files.length > 0 && (
                 <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-white">Reference File / 3D Model</CardTitle>
+                    <CardTitle className="text-white">Attached Reference Files</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-gray-950 rounded-lg p-4">
-                      <ModelViewerUrl url={selectedOrder.file_url} fileName={selectedOrder.file_name} />
+                    <div className="space-y-2">
+                      {selectedOrder.attached_files.map((file: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-900 rounded">
+                          <span className="text-white">{file.name || `File ${idx + 1}`}</span>
+                          <Button size="sm" onClick={() => window.open(file.url, '_blank')}>
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -400,48 +668,64 @@ const AdminDesignAssistance = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400">Project Name</label>
-                      <p className="text-white font-medium">{selectedOrder.file_name}</p>
+                      <p className="text-white font-medium">{selectedOrder.project_name}</p>
                     </div>
                     <div>
                       <label className="text-sm text-gray-400">Status</label>
-                      <p className="text-white font-medium capitalize">{selectedOrder.status}</p>
+                      <p className="text-white font-medium capitalize">{selectedOrder.design_status}</p>
                     </div>
                   </div>
 
-                  {selectedOrder.design_description && (
+                  <div>
+                    <label className="text-sm text-gray-400">Idea Description</label>
+                    <p className="text-white">{selectedOrder.idea_description}</p>
+                  </div>
+
+                  {selectedOrder.usage_type && (
                     <div>
-                      <label className="text-sm text-gray-400">Description</label>
-                      <p className="text-white">{selectedOrder.design_description}</p>
+                      <label className="text-sm text-gray-400">Usage Type</label>
+                      <p className="text-white capitalize">{selectedOrder.usage_type}</p>
                     </div>
                   )}
 
-                  {selectedOrder.design_requirements && (
+                  {selectedOrder.usage_details && (
                     <div>
-                      <label className="text-sm text-gray-400">Requirements</label>
-                      <p className="text-white whitespace-pre-wrap">{selectedOrder.design_requirements}</p>
+                      <label className="text-sm text-gray-400">Usage Details</label>
+                      <p className="text-white whitespace-pre-wrap">{selectedOrder.usage_details}</p>
                     </div>
                   )}
 
-                  {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
+                  {selectedOrder.approximate_dimensions && (
                     <div>
-                      <label className="text-sm text-gray-400">Reference Images</label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {selectedOrder.reference_images.map((img, idx) => (
-                          <img 
-                            key={idx} 
-                            src={img} 
-                            alt={`Reference ${idx + 1}`} 
-                            className="w-full h-32 object-cover rounded border border-gray-700"
-                          />
-                        ))}
-                      </div>
+                      <label className="text-sm text-gray-400">Approximate Dimensions</label>
+                      <p className="text-white">{selectedOrder.approximate_dimensions}</p>
                     </div>
                   )}
 
-                  {selectedOrder.parent_order_id && (
+                  {selectedOrder.desired_material && (
                     <div>
-                      <label className="text-sm text-gray-400">Linked to Print Order</label>
-                      <p className="text-purple-400 font-mono">#{selectedOrder.parent_order_id.slice(0, 8)}</p>
+                      <label className="text-sm text-gray-400">Desired Material</label>
+                      <p className="text-white">{selectedOrder.desired_material}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.admin_notes && (
+                    <div>
+                      <label className="text-sm text-gray-400">Admin Notes</label>
+                      <p className="text-white whitespace-pre-wrap">{selectedOrder.admin_notes}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.admin_design_file && (
+                    <div>
+                      <label className="text-sm text-gray-400">Admin Design File</label>
+                      <Button 
+                        onClick={() => window.open(selectedOrder.admin_design_file, '_blank')}
+                        className="mt-2"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Design File
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -471,41 +755,68 @@ const AdminDesignAssistance = () => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div>
-                      <label className="text-sm text-gray-400">Price</label>
-                      <p className="text-white font-bold text-xl">{formatPrice(selectedOrder.price)}</p>
+                      <label className="text-sm text-gray-400">Estimated Price</label>
+                      <p className="text-white font-bold text-xl">
+                        {selectedOrder.estimated_price ? formatPrice(selectedOrder.estimated_price) : 'Not set'}
+                      </p>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-400">Payment Status</label>
-                      <div className="mt-1">
-                        {selectedOrder.payment_status && (
-                          <PaymentStatusBadge status={selectedOrder.payment_status} amount={selectedOrder.paid_amount} />
-                        )}
-                      </div>
+                      <label className="text-sm text-gray-400">Final Price</label>
+                      <p className="text-white font-bold text-xl">
+                        {selectedOrder.final_price ? formatPrice(selectedOrder.final_price) : 'Not set'}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Order Timeline */}
+              {/* Design Timeline */}
               <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-white">Order Timeline</CardTitle>
+                  <CardTitle className="text-white">Design Request Timeline</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <OrderTimeline currentStatus={selectedOrder.status} />
+                  <OrderTimeline currentStatus={selectedOrder.design_status as OrderStatus} />
                 </CardContent>
               </Card>
 
-              {selectedOrder.notes && (
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-white">Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-white whitespace-pre-wrap">{selectedOrder.notes}</p>
-                  </CardContent>
-                </Card>
-              )}
+              {/* Admin Actions Section */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Admin Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-2 block">Update Status</label>
+                    <select 
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-md px-3 py-2"
+                      value={selectedOrder.design_status}
+                      onChange={(e) => {
+                        if (selectedOrder?.id) {
+                          updateOrderStatus(selectedOrder.id, e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_review">In Review</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm text-gray-400 mb-2 block">Set Estimated Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter price"
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-md px-3 py-2"
+                      defaultValue={selectedOrder.estimated_price || ''}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <div className="text-center py-12 text-gray-500">

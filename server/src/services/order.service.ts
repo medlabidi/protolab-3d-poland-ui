@@ -1,5 +1,9 @@
 import { Order, IOrder, OrderStatus, PaymentStatus, OrderType } from '../models/Order';
+import { PrintJob, IPrintJob } from '../models/PrintJob';
+import { DesignRequest, IDesignRequest } from '../models/DesignRequest';
 import { OrderCreateInput } from '../types';
+import { printJobService } from './printJob.service';
+import { designRequestService } from './designRequest.service';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
 import { getSupabase } from '../config/database';
@@ -7,53 +11,111 @@ import { conversationsService } from './conversations.service';
 import { logger } from '../config/logger';
 
 export class OrderService {
-  async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
-    // Use price from client calculation, or default to 0 if not provided
-    const orderPrice = data.price || 0;
-    
-    // Determine order type based on data
+  /**
+   * Create order - routes to appropriate service based on order type
+   * @deprecated Use printJobService.createPrintJob() or designRequestService.createDesignRequest() directly
+   */
+  async createOrder(userId: string, data: OrderCreateInput): Promise<IPrintJob | IDesignRequest | IOrder> {
     const orderType: OrderType = data.orderType || 'print';
     
-    const order = await Order.create({
-      user_id: userId,
-      order_type: orderType,
-      file_name: data.fileName,
-      file_url: data.fileUrl,
-      material: data.material,
-      color: data.color,
-      layer_height: data.layerHeight,
-      infill: data.infill,
-      quantity: data.quantity,
-      shipping_method: data.shippingMethod,
-      shipping_address: data.shippingAddress,
-      price: orderPrice,
-      paid_amount: orderPrice,
-      status: 'submitted',
-      payment_status: 'paid',
-      project_name: data.projectName,
-      design_description: data.designDescription,
-      design_requirements: data.designRequirements,
-      reference_images: data.referenceImages,
-    });
-    
-    // Auto-create conversation log for the order
-    try {
-      await conversationsService.getOrCreateConversation(
-        userId, 
-        order.id, 
-        `Job conversation for ${data.fileName}`
-      );
-      logger.info(`Auto-created conversation for order ${order.id}`);
-    } catch (err) {
-      // Don't fail order creation if conversation creation fails
-      logger.error({ err }, `Failed to auto-create conversation for order ${order.id}`);
+    if (orderType === 'design') {
+      // Create design request
+      return await designRequestService.createDesignRequest(userId, {
+        projectName: data.projectName || data.fileName,
+        ideaDescription: data.ideaDescription || data.designDescription || '',
+        usageType: data.usageType,
+        usageDetails: data.usageDetails,
+        approximateDimensions: data.approximateDimensions,
+        desiredMaterial: data.desiredMaterial,
+        attachedFiles: data.attachedFiles,
+        referenceImages: data.referenceImages,
+        requestChat: data.requestChat,
+        estimatedPrice: data.price,
+      });
+    } else {
+      // Create print job
+      return await printJobService.createPrintJob(userId, {
+        fileName: data.fileName,
+        fileUrl: data.fileUrl,
+        filePath: data.filePath,
+        material: data.material,
+        color: data.color,
+        layerHeight: data.layerHeight,
+        infill: data.infill,
+        quantity: data.quantity,
+        shippingMethod: data.shippingMethod,
+        shippingAddress: data.shippingAddress,
+        price: data.price,
+        projectName: data.projectName,
+      });
     }
-    
-    return order;
   }
 
-  async getOrdersByType(orderType: OrderType): Promise<IOrder[]> {
-    return await Order.findByType(orderType);
+  /**
+   * Get all orders (print jobs + design requests combined) - for admin dashboard
+   */
+  async getAllOrdersCombined(): Promise<any[]> {
+    const printJobs = await printJobService.getAllPrintJobs();
+    const designRequests = await designRequestService.getAllDesignRequests();
+    
+    // Transform to unified format
+    const printJobsTransformed = printJobs.map((job: any) => ({
+      ...job,
+      order_type: 'print',
+      name: job.file_name,
+      users: job.users,
+    }));
+    
+    const designRequestsTransformed = designRequests.map((req: any) => ({
+      ...req,
+      order_type: 'design',
+      name: req.project_name,
+      status: req.design_status,
+      users: req.users,
+    }));
+    
+    // Combine and sort by creation date
+    const combined = [...printJobsTransformed, ...designRequestsTransformed];
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return combined;
+  }
+
+  /**
+   * Get user's orders (both types combined)
+   */
+  async getUserOrdersCombined(userId: string): Promise<any[]> {
+    const printJobs = await printJobService.getUserPrintJobs(userId);
+    const designRequests = await designRequestService.getUserDesignRequests(userId);
+    
+    const printJobsTransformed = printJobs.map((job: any) => ({
+      ...job,
+      order_type: 'print',
+      name: job.file_name,
+    }));
+    
+    const designRequestsTransformed = designRequests.map((req: any) => ({
+      ...req,
+      order_type: 'design',
+      name: req.project_name,
+      status: req.design_status,
+    }));
+    
+    const combined = [...printJobsTransformed, ...designRequestsTransformed];
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return combined;
+  }
+
+  /**
+   * Get orders by type - routes to appropriate service
+   */
+  async getOrdersByType(orderType: OrderType): Promise<any[]> {
+    if (orderType === 'print') {
+      return await printJobService.getAllPrintJobs();
+    } else {
+      return await designRequestService.getAllDesignRequests();
+    }
   }
 
   async createPrintFromDesign(designOrderId: string, printData: {

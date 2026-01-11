@@ -3,12 +3,14 @@ import { AuthRequest } from '../types';
 import { orderService } from '../services/order.service';
 import { settingsService } from '../services/settings.service';
 import { authService } from '../services/auth.service';
+import { designRequestService } from '../services/designRequest.service';
 import { logger } from '../config/logger';
 
 export class AdminController {
   async getAllOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const orders = await orderService.getAllOrders();
+      // Get combined orders (print jobs + design requests)
+      const orders = await orderService.getAllOrdersCombined();
       
       res.json({ orders, count: orders.length });
     } catch (error) {
@@ -154,6 +156,78 @@ export class AdminController {
       const users = await authService.getAllUsers();
       
       res.json({ users, count: users.length });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Design Request Management
+  async getAllDesignRequests(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const requests = await designRequestService.getAllDesignRequests();
+      
+      res.json({ requests, count: requests.length });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDesignRequestById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const request = await designRequestService.getDesignRequestById(id);
+      
+      if (!request) {
+        res.status(404).json({ error: 'Design request not found' });
+        return;
+      }
+      
+      res.json({ request });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateDesignRequestStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const request = await designRequestService.updateDesignStatus(id, status);
+      
+      logger.info(`Design request status updated: ${id} -> ${status}`);
+      
+      res.json({ message: 'Design request status updated', request });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateDesignRequestPrice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { price } = req.body;
+      
+      const request = await designRequestService.setPrice(id, price);
+      
+      logger.info(`Design request price updated: ${id} -> ${price}`);
+      
+      res.json({ message: 'Price updated', request });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async attachDesignFile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { fileUrl, notes } = req.body;
+      
+      const request = await designRequestService.attachDesignFile(id, fileUrl, notes);
+      
+      logger.info(`Design file attached to request: ${id}`);
+      
+      res.json({ message: 'Design file attached', request });
     } catch (error) {
       next(error);
     }

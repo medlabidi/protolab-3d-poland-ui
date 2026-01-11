@@ -47,14 +47,8 @@ export class OrderController {
   
   async getMyOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const filter = req.query.filter as 'active' | 'archived' | 'deleted' | undefined;
-      
-      let orders;
-      if (filter && ['active', 'archived', 'deleted'].includes(filter)) {
-        orders = await orderService.getUserOrdersFiltered(req.user!.id, filter);
-      } else {
-        orders = await orderService.getUserOrders(req.user!.id);
-      }
+      // Get combined orders (print jobs + design requests)
+      const orders = await orderService.getUserOrdersCombined(req.user!.id);
       
       res.json({ orders, count: orders.length });
     } catch (error) {

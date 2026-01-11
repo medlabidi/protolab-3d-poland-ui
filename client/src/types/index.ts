@@ -26,7 +26,23 @@ export type OrderStatus =
   | 'finished' 
   | 'delivered';
 
-export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
+export type OrderType = 'print' | 'design';
+
+export type DesignStatus = 
+  | 'pending'
+  | 'in_review'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export type UsageType = 
+  | 'mechanical'
+  | 'decorative'
+  | 'functional'
+  | 'prototype'
+  | 'other';
+
+export type ShippingMethod = 'pickup' | 'inpost' | 'courier' | 'dpd';
 
 export interface PricingParams {
   materialWeight?: number;
@@ -36,6 +52,37 @@ export interface PricingParams {
   serviceFee: number;
 }
 
+// Print Job Input
+export interface PrintJobCreateInput {
+  fileName: string;
+  fileUrl: string;
+  material: string;
+  color: string;
+  layerHeight: number;
+  infill: number;
+  quantity: number;
+  shippingMethod: ShippingMethod;
+  shippingAddress?: string;
+  price?: number;
+  projectName?: string;
+  materialWeight?: number;
+  printTime?: number;
+}
+
+// Design Request Input
+export interface DesignRequestCreateInput {
+  projectName: string;
+  ideaDescription: string;
+  usageType?: UsageType;
+  usageDetails?: string;
+  approximateDimensions?: string;
+  desiredMaterial?: string;
+  attachedFiles?: string[];
+  referenceImages?: string[];
+  requestChat?: boolean;
+}
+
+// Legacy unified order input (backward compatibility)
 export interface OrderCreateInput {
   fileName: string;
   fileUrl: string;
@@ -45,4 +92,18 @@ export interface OrderCreateInput {
   infill: number;
   quantity: number;
   shippingMethod: ShippingMethod;
+  orderType?: OrderType;
+  price?: number;
+  projectName?: string;
+  shippingAddress?: string;
+  
+  // Design fields
+  ideaDescription?: string;
+  usageType?: UsageType;
+  usageDetails?: string;
+  approximateDimensions?: string;
+  desiredMaterial?: string;
+  attachedFiles?: string[];
+  referenceImages?: string[];
+  requestChat?: boolean;
 }
