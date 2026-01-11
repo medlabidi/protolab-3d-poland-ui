@@ -32,6 +32,7 @@ import {
   Calendar,
   Trash2,
   Edit,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -47,15 +48,13 @@ const AdminPrinters = () => {
   const [editingPrinter, setEditingPrinter] = useState<any>(null);
   const [deletingPrinter, setDeletingPrinter] = useState<any>(null);
   const [newPrinter, setNewPrinter] = useState({
-    name: "",
     brand: "",
     printer_model: "",
     max_build_volume: "",
     multi_color_printing: false,
     max_colors: 1,
-    available_nozzle_diameters: "0.4",
+    available_nozzle_diameters: [0.4],
     actual_nozzle_diameter: 0.4,
-    purchase_price: 0,
     lifespan_years: 5,
   });
 
@@ -247,17 +246,20 @@ const AdminPrinters = () => {
   };
 
   const handleAddPrinter = async () => {
-    if (!newPrinter.name.trim()) {
-      toast.error("Printer name is required");
-      return;
-    }
-
     if (!newPrinter.brand.trim()) {
       toast.error("Brand is required");
       return;
     }
 
+    if (!newPrinter.printer_model.trim()) {
+      toast.error("Model is required");
+      return;
+    }
+
     try {
+      // Auto-generate name from brand + model
+      const generatedName = `${newPrinter.brand} ${newPrinter.printer_model}`.trim();
+      
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'POST',
@@ -266,7 +268,7 @@ const AdminPrinters = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: newPrinter.name,
+          name: generatedName,
           brand: newPrinter.brand,
           printer_model: newPrinter.printer_model,
           status: "offline",
@@ -279,9 +281,8 @@ const AdminPrinters = () => {
           max_build_volume: newPrinter.max_build_volume,
           multi_color_printing: newPrinter.multi_color_printing,
           max_colors: newPrinter.multi_color_printing ? newPrinter.max_colors : 1,
-          available_nozzle_diameters: newPrinter.available_nozzle_diameters,
+          available_nozzle_diameters: newPrinter.available_nozzle_diameters.join(', '),
           actual_nozzle_diameter: newPrinter.actual_nozzle_diameter,
-          purchase_price: newPrinter.purchase_price,
           lifespan_years: newPrinter.lifespan_years,
           last_maintenance: new Date().toISOString().split('T')[0],
         }),
@@ -292,15 +293,13 @@ const AdminPrinters = () => {
         toast.success("Printer added successfully!");
         setShowAddDialog(false);
         setNewPrinter({
-          name: "",
           brand: "",
           printer_model: "",
           max_build_volume: "",
           multi_color_printing: false,
           max_colors: 1,
-          available_nozzle_diameters: "0.4",
+          available_nozzle_diameters: [0.4],
           actual_nozzle_diameter: 0.4,
-          purchase_price: 0,
           lifespan_years: 5,
         });
       } else {
@@ -538,17 +537,6 @@ const AdminPrinters = () => {
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Basic Information</h4>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="printer-name" className="text-gray-300">Printer Name *</Label>
-                    <Input
-                      id="printer-name"
-                      placeholder="e.g. Main Production Printer"
-                      className="bg-gray-800 border-gray-700 text-white"
-                      value={newPrinter.name}
-                      onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
-                    />
-                  </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="printer-brand" className="text-gray-300">Brand *</Label>
@@ -561,7 +549,7 @@ const AdminPrinters = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="printer-model" className="text-gray-300">Model</Label>
+                      <Label htmlFor="printer-model" className="text-gray-300">Model *</Label>
                       <Input
                         id="printer-model"
                         placeholder="e.g. i3 MK3S+, Ender 3"
@@ -571,6 +559,13 @@ const AdminPrinters = () => {
                       />
                     </div>
                   </div>
+                  
+                  {(newPrinter.brand || newPrinter.printer_model) && (
+                    <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-gray-300">
+                      <span className="text-gray-400">Printer will be named: </span>
+                      <span className="text-white font-semibold">{newPrinter.brand} {newPrinter.printer_model}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Build Specifications */}
@@ -627,62 +622,86 @@ const AdminPrinters = () => {
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Nozzle Specifications</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label className="text-gray-300">Available Nozzle Diameters (mm)</Label>
                     <div className="space-y-2">
-                      <Label htmlFor="available-nozzles" className="text-gray-300">Available Nozzle Diameters (mm)</Label>
-                      <Input
-                        id="available-nozzles"
-                        placeholder="e.g. 0.2, 0.4, 0.6, 0.8"
-                        className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.available_nozzle_diameters}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, available_nozzle_diameters: e.target.value })}
-                      />
-                      <p className="text-xs text-gray-500">Comma-separated values</p>
+                      {newPrinter.available_nozzle_diameters.map((diameter, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 0.4"
+                            className="bg-gray-800 border-gray-700 text-white flex-1"
+                            value={diameter}
+                            onChange={(e) => {
+                              const newDiameters = [...newPrinter.available_nozzle_diameters];
+                              newDiameters[index] = parseFloat(e.target.value) || 0;
+                              setNewPrinter({ ...newPrinter, available_nozzle_diameters: newDiameters });
+                            }}
+                          />
+                          {newPrinter.available_nozzle_diameters.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              onClick={() => {
+                                const newDiameters = newPrinter.available_nozzle_diameters.filter((_, i) => i !== index);
+                                setNewPrinter({ ...newPrinter, available_nozzle_diameters: newDiameters });
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                        onClick={() => {
+                          setNewPrinter({ 
+                            ...newPrinter, 
+                            available_nozzle_diameters: [...newPrinter.available_nozzle_diameters, 0.4] 
+                          });
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Nozzle Diameter
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="actual-nozzle" className="text-gray-300">Actual Nozzle Diameter (mm)</Label>
-                      <Input
-                        id="actual-nozzle"
-                        type="number"
-                        step="0.01"
-                        placeholder="e.g. 0.4"
-                        className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.actual_nozzle_diameter}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, actual_nozzle_diameter: parseFloat(e.target.value) || 0.4 })}
-                      />
-                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="actual-nozzle" className="text-gray-300">Currently Installed Nozzle (mm)</Label>
+                    <Input
+                      id="actual-nozzle"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 0.4"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.actual_nozzle_diameter}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, actual_nozzle_diameter: parseFloat(e.target.value) || 0.4 })}
+                    />
                   </div>
                 </div>
 
-                {/* Financial Information */}
+                {/* Lifecycle */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Financial & Lifecycle</h4>
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Lifecycle Information</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="purchase-price" className="text-gray-300">Purchase Price (PLN)</Label>
-                      <Input
-                        id="purchase-price"
-                        type="number"
-                        step="0.01"
-                        placeholder="e.g. 2500.00"
-                        className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.purchase_price}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, purchase_price: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lifespan" className="text-gray-300">Expected Lifespan (years)</Label>
-                      <Input
-                        id="lifespan"
-                        type="number"
-                        min="1"
-                        placeholder="e.g. 5"
-                        className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.lifespan_years}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, lifespan_years: parseInt(e.target.value) || 5 })}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lifespan" className="text-gray-300">Expected Lifespan (years)</Label>
+                    <Input
+                      id="lifespan"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.lifespan_years}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, lifespan_years: parseInt(e.target.value) || 5 })}
+                    />
                   </div>
                 </div>
               </div>
