@@ -92,9 +92,11 @@ const AdminMaterials = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Materials fetched:', data.materials);
         setMaterials(data.materials || []);
       } else {
         const error = await response.json().catch(() => ({}));
+        console.error('Materials fetch error:', error);
         toast.error(`Error: ${error.error || response.statusText}`);
       }
     } catch (error: any) {

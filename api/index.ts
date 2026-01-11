@@ -513,14 +513,14 @@ async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelRes
   
   const { data: materials, error } = await supabase
     .from('materials')
-    .select('*')
-    .order('type', { ascending: true });
+    .select('*');
   
   if (error) {
     console.error('Error fetching materials:', error);
-    return res.status(500).json({ error: 'Failed to fetch materials', details: error.message });
+    return res.status(500).json({ error: 'Failed to fetch materials', details: error.message, hint: error.hint, code: error.code });
   }
   
+  console.log('Materials fetched successfully:', materials?.length || 0);
   return res.status(200).json({ materials: materials || [] });
 }
 
