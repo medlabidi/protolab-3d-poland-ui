@@ -501,7 +501,7 @@ const AdminPrinters = () => {
                         <div>
                           <p className="text-gray-400 text-xs mb-1">Supported Materials</p>
                           <div className="flex flex-wrap gap-1">
-                            {printer.supported_materials.map((material, idx) => (
+                            {printer.supported_materials.map((material: string, idx: number) => (
                               <span key={idx} className="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded">
                                 {material}
                               </span>
