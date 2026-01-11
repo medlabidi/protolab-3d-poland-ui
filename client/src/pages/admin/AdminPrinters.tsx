@@ -449,20 +449,22 @@ const AdminPrinters = () => {
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Online</p>
-                <p className="text-2xl font-bold text-green-400">{printers.filter(p => p.status === 'online').length}</p>
+                <p className="text-gray-400 text-sm mb-2">Active</p>
+                <p className="text-2xl font-bold text-green-400">{printers.filter(p => p.is_active).length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Offline</p>
-                <p className="text-2xl font-bold text-red-400">{printers.filter(p => p.status === 'offline').length}</p>
+                <p className="text-gray-400 text-sm mb-2">Inactive</p>
+                <p className="text-2xl font-bold text-red-400">{printers.filter(p => !p.is_active).length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Maintenance</p>
-                <p className="text-2xl font-bold text-yellow-400">{printers.filter(p => p.status === 'maintenance').length}</p>
+                <p className="text-gray-400 text-sm mb-2">Default Printer</p>
+                <p className="text-xl font-bold text-yellow-400 truncate">
+                  {printers.find(p => p.is_default)?.name || 'None'}
+                </p>
               </CardContent>
             </Card>
           </div>
