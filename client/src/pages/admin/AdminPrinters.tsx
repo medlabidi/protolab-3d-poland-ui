@@ -83,7 +83,7 @@ const AdminPrinters = () => {
       const token = localStorage.getItem('accessToken');
       
       if (!token) {
-        toast.error('Token d\'authentification manquant. Veuillez vous reconnecter.');
+        toast.error('Authentication token missing. Please login again.');
         setLoading(false);
         return;
       }
@@ -105,29 +105,29 @@ const AdminPrinters = () => {
         setPrinters(mappedPrinters);
         
         if (mappedPrinters.length === 0) {
-          toast.info('Aucune imprimante trouvée. Ajoutez-en une pour commencer!');
+          toast.info('No printers found. Add one to get started!');
         }
       } else if (response.status === 404) {
-        toast.error('Table printers introuvable. Veuillez exécuter SQL/create-printers-table.sql dans Supabase.');
+        toast.error('Printers table not found. Please run SQL/create-printers-table.sql in Supabase.');
         console.error('Table printers does not exist. Run SQL migration first.');
       } else if (response.status === 401) {
-        toast.error('Non autorisé. Votre session a peut-être expiré.');
+        toast.error('Unauthorized. Your session may have expired.');
         console.error('Authentication failed. Token might be expired.');
       } else if (response.status === 403) {
-        toast.error('Accès refusé. Vous devez être administrateur.');
+        toast.error('Access denied. You must be an administrator.');
         console.error('Forbidden. User is not admin.');
       } else {
         const errorData = await response.json().catch(() => ({}));
-        toast.error(`Erreur: ${errorData.error || response.statusText}`);
+        toast.error(`Error: ${errorData.error || response.statusText}`);
         console.error('API Error:', errorData);
       }
     } catch (error: any) {
       console.error('Error fetching printers:', error);
       
       if (error.message?.includes('Failed to fetch')) {
-        toast.error('Impossible de se connecter au serveur. Vérifiez que l\'API est démarrée.');
+        toast.error('Unable to connect to server. Check that the API is running.');
       } else {
-        toast.error(`Erreur de connexion: ${error.message}`);
+        toast.error(`Connection error: ${error.message}`);
       }
     } finally {
       setLoading(false);
@@ -152,13 +152,13 @@ const AdminPrinters = () => {
             ? { ...printer, status: newStatus }
             : printer
         ));
-        toast.success(`Statut de l'imprimante mis à jour: ${newStatus}`);
+        toast.success(`Printer status updated: ${newStatus}`);
       } else {
-        toast.error('Échec de la mise à jour du statut');
+        toast.error('Failed to update status');
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Error updating status');
     }
   };
 
@@ -173,7 +173,7 @@ const AdminPrinters = () => {
 
   const handleUpdatePrinter = async () => {
     if (!editingPrinter || !editingPrinter.name.trim()) {
-      toast.error("Le nom de l'imprimante est requis");
+      toast.error("Printer name is required");
       return;
     }
 
@@ -199,15 +199,15 @@ const AdminPrinters = () => {
 
       if (response.ok) {
         await fetchPrinters(); // Reload printers from server
-        toast.success(`Imprimante "${editingPrinter.name}" mise à jour!`);
+        toast.success(`Printer "${editingPrinter.name}" updated!`);
         setShowEditDialog(false);
         setEditingPrinter(null);
       } else {
-        toast.error('Échec de la mise à jour');
+        toast.error('Failed to update printer');
       }
     } catch (error) {
       console.error('Error updating printer:', error);
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Error updating printer');
     }
   };
 
@@ -230,21 +230,21 @@ const AdminPrinters = () => {
 
       if (response.ok) {
         await fetchPrinters(); // Reload printers from server
-        toast.success(`Imprimante "${deletingPrinter.name}" supprimée!`);
+        toast.success(`Printer "${deletingPrinter.name}" deleted!`);
         setShowDeleteDialog(false);
         setDeletingPrinter(null);
       } else {
-        toast.error('Échec de la suppression');
+        toast.error('Failed to delete printer');
       }
     } catch (error) {
       console.error('Error deleting printer:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error('Error deleting printer');
     }
   };
 
   const handleAddPrinter = async () => {
     if (!newPrinter.name.trim()) {
-      toast.error("Le nom de l'imprimante est requis");
+      toast.error("Printer name is required");
       return;
     }
 
@@ -277,7 +277,7 @@ const AdminPrinters = () => {
 
       if (response.ok) {
         await fetchPrinters(); // Reload printers from server
-        toast.success("Imprimante ajoutée avec succès!");
+        toast.success("Printer added successfully!");
         setShowAddDialog(false);
         setNewPrinter({
           name: "",
@@ -288,11 +288,11 @@ const AdminPrinters = () => {
           maintenanceIntervalDays: 90,
         });
       } else {
-        toast.error('Échec de l\'ajout de l\'imprimante');
+        toast.error('Failed to add printer');
       }
     } catch (error) {
       console.error('Error adding printer:', error);
-      toast.error('Erreur lors de l\'ajout');
+      toast.error('Error adding printer');
     }
   };
 
@@ -339,22 +339,15 @@ const AdminPrinters = () => {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-400">Chargement des imprimantes...</p>
+                <p className="text-gray-400">Loading printers...</p>
               </div>
             </div>
           ) : printers.length === 0 ? (
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-12 text-center">
                 <Printer className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Aucune imprimante</h3>
-                <p className="text-gray-400 mb-4">Commencez par ajouter votre première imprimante</p>
-                <Button 
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setShowAddDialog(true)}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Ajouter une imprimante
-                </Button>
+                <h3 className="text-xl font-semibold text-white mb-2">No Printers</h3>
+                <p className="text-gray-400">Start by adding your first printer using the button above</p>
               </CardContent>
             </Card>
           ) : (
@@ -490,16 +483,16 @@ const AdminPrinters = () => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-4 h-4 text-blue-400" />
-                        <span className="text-gray-400 text-xs">Coût Maintenance</span>
+                        <span className="text-gray-400 text-xs">Maintenance Cost</span>
                       </div>
                       <span className="text-white font-semibold text-sm">
-                        {printer.maintenanceCostMonthly?.toFixed(2) || '0.00'} PLN/mois
+                        {printer.maintenanceCostMonthly?.toFixed(2) || '0.00'} PLN/month
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-green-400" />
-                        <span className="text-gray-400 text-xs">Prochaine Maintenance</span>
+                        <span className="text-gray-400 text-xs">Next Maintenance</span>
                       </div>
                       <span className="text-gray-300 text-xs">
                         {printer.nextMaintenance ? new Date(printer.nextMaintenance).toLocaleDateString() : 'N/A'}
@@ -517,24 +510,24 @@ const AdminPrinters = () => {
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Ajouter une nouvelle imprimante</DialogTitle>
+                <DialogTitle className="text-white">Add New Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Remplissez les informations de la nouvelle imprimante 3D
+                  Fill in the information for the new 3D printer
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="printer-name" className="text-gray-300">Nom de l'imprimante *</Label>
+                  <Label htmlFor="printer-name" className="text-gray-300">Printer Name *</Label>
                   <Input
                     id="printer-name"
-                    placeholder="Ex: Prusa i3 MK4"
+                    placeholder="e.g. Prusa i3 MK4"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={newPrinter.name}
                     onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="printer-status" className="text-gray-300">Statut initial</Label>
+                  <Label htmlFor="printer-status" className="text-gray-300">Initial Status</Label>
                   <Select
                     value={newPrinter.status}
                     onValueChange={(value) => setNewPrinter({ ...newPrinter, status: value })}
@@ -551,7 +544,7 @@ const AdminPrinters = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nozzle-temp" className="text-gray-300">Temp. buse (°C)</Label>
+                    <Label htmlFor="nozzle-temp" className="text-gray-300">Nozzle Temp (°C)</Label>
                     <Input
                       id="nozzle-temp"
                       type="number"
@@ -561,7 +554,7 @@ const AdminPrinters = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="bed-temp" className="text-gray-300">Temp. plateau (°C)</Label>
+                    <Label htmlFor="bed-temp" className="text-gray-300">Bed Temp (°C)</Label>
                     <Input
                       id="bed-temp"
                       type="number"
@@ -576,18 +569,18 @@ const AdminPrinters = () => {
                 <div className="pt-4 border-t border-gray-700">
                   <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-blue-400" />
-                    Paramètres de Maintenance
+                    Maintenance Settings
                   </h4>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="maintenance-cost" className="text-gray-300">
-                        Coût Mensuel (PLN)
+                        Monthly Cost (PLN)
                       </Label>
                       <Input
                         id="maintenance-cost"
                         type="number"
                         step="0.01"
-                        placeholder="Ex: 75.00"
+                        placeholder="e.g. 75.00"
                         className="bg-gray-800 border-gray-700 text-white"
                         value={newPrinter.maintenanceCostMonthly}
                         onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceCostMonthly: parseFloat(e.target.value) || 0 })}
@@ -595,12 +588,12 @@ const AdminPrinters = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="maintenance-interval" className="text-gray-300">
-                        Intervalle (jours)
+                        Interval (days)
                       </Label>
                       <Input
                         id="maintenance-interval"
                         type="number"
-                        placeholder="Ex: 90"
+                        placeholder="e.g. 90"
                         className="bg-gray-800 border-gray-700 text-white"
                         value={newPrinter.maintenanceIntervalDays}
                         onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceIntervalDays: parseInt(e.target.value) || 90 })}
@@ -611,13 +604,13 @@ const AdminPrinters = () => {
                       <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Coût Annuel:</span>
+                            <span className="text-gray-400">Annual Cost:</span>
                             <span className="text-white font-semibold">
                               {(newPrinter.maintenanceCostMonthly * 12).toFixed(2)} PLN
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Maintenances/An:</span>
+                            <span className="text-gray-400">Maintenances/Year:</span>
                             <span className="text-white font-semibold">
                               ≈ {Math.floor(365 / newPrinter.maintenanceIntervalDays)} interventions
                             </span>
@@ -634,13 +627,13 @@ const AdminPrinters = () => {
                   onClick={() => setShowAddDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleAddPrinter}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Ajouter l'imprimante
+                  Add Printer
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -650,24 +643,24 @@ const AdminPrinters = () => {
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Modifier l'Imprimante</DialogTitle>
+                <DialogTitle className="text-white">Edit Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Modifiez les informations de l'imprimante
+                  Modify the printer information
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-printer-name" className="text-gray-300">Nom de l'imprimante *</Label>
+                  <Label htmlFor="edit-printer-name" className="text-gray-300">Printer Name *</Label>
                   <Input
                     id="edit-printer-name"
-                    placeholder="Ex: Prusa i3 MK4"
+                    placeholder="e.g. Prusa i3 MK4"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={editingPrinter?.name || ""}
                     onChange={(e) => setEditingPrinter({ ...editingPrinter, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-printer-status" className="text-gray-300">Statut</Label>
+                  <Label htmlFor="edit-printer-status" className="text-gray-300">Status</Label>
                   <Select
                     value={editingPrinter?.status || "offline"}
                     onValueChange={(value) => setEditingPrinter({ ...editingPrinter, status: value })}
@@ -684,7 +677,7 @@ const AdminPrinters = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-nozzle-temp" className="text-gray-300">Temp. buse (°C)</Label>
+                    <Label htmlFor="edit-nozzle-temp" className="text-gray-300">Nozzle Temp (°C)</Label>
                     <Input
                       id="edit-nozzle-temp"
                       type="number"
@@ -694,7 +687,7 @@ const AdminPrinters = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-bed-temp" className="text-gray-300">Temp. plateau (°C)</Label>
+                    <Label htmlFor="edit-bed-temp" className="text-gray-300">Bed Temp (°C)</Label>
                     <Input
                       id="edit-bed-temp"
                       type="number"
@@ -705,10 +698,10 @@ const AdminPrinters = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-current-job" className="text-gray-300">Job actuel</Label>
+                  <Label htmlFor="edit-current-job" className="text-gray-300">Current Job</Label>
                   <Input
                     id="edit-current-job"
-                    placeholder="Ex: Aucun"
+                    placeholder="e.g. None"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={editingPrinter?.currentJob || "None"}
                     onChange={(e) => setEditingPrinter({ ...editingPrinter, currentJob: e.target.value })}
@@ -719,18 +712,18 @@ const AdminPrinters = () => {
                 <div className="pt-4 border-t border-gray-700">
                   <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-blue-400" />
-                    Paramètres de Maintenance
+                    Maintenance Settings
                   </h4>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-maintenance-cost" className="text-gray-300">
-                        Coût Mensuel (PLN)
+                        Monthly Cost (PLN)
                       </Label>
                       <Input
                         id="edit-maintenance-cost"
                         type="number"
                         step="0.01"
-                        placeholder="Ex: 75.00"
+                        placeholder="e.g. 75.00"
                         className="bg-gray-800 border-gray-700 text-white"
                         value={editingPrinter?.maintenanceCostMonthly || 0}
                         onChange={(e) => setEditingPrinter({ 
@@ -741,12 +734,12 @@ const AdminPrinters = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-maintenance-interval" className="text-gray-300">
-                        Intervalle (jours)
+                        Interval (days)
                       </Label>
                       <Input
                         id="edit-maintenance-interval"
                         type="number"
-                        placeholder="Ex: 90"
+                        placeholder="e.g. 90"
                         className="bg-gray-800 border-gray-700 text-white"
                         value={editingPrinter?.maintenanceIntervalDays || 90}
                         onChange={(e) => setEditingPrinter({ 
@@ -760,13 +753,13 @@ const AdminPrinters = () => {
                       <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Coût Annuel:</span>
+                            <span className="text-gray-400">Annual Cost:</span>
                             <span className="text-white font-semibold">
                               {((editingPrinter?.maintenanceCostMonthly || 0) * 12).toFixed(2)} PLN
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Maintenances/An:</span>
+                            <span className="text-gray-400">Maintenances/Year:</span>
                             <span className="text-white font-semibold">
                               ≈ {Math.floor(365 / (editingPrinter?.maintenanceIntervalDays || 90))} interventions
                             </span>
@@ -783,14 +776,14 @@ const AdminPrinters = () => {
                   onClick={() => setShowEditDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleUpdatePrinter}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  Mettre à jour
+                  Update
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -800,9 +793,9 @@ const AdminPrinters = () => {
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
+                <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Êtes-vous sûr de vouloir supprimer cette imprimante ?
+                  Are you sure you want to delete this printer?
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -812,11 +805,11 @@ const AdminPrinters = () => {
                     <div>
                       <p className="text-white font-semibold mb-1">{deletingPrinter?.name}</p>
                       <p className="text-sm text-gray-400">
-                        Cette action est irréversible. Toutes les données associées à cette imprimante seront supprimées.
+                        This action is irreversible. All data associated with this printer will be deleted.
                       </p>
                       <div className="mt-3 space-y-1 text-xs text-gray-500">
-                        <p>• Statut: {deletingPrinter?.status}</p>
-                        <p>• Total impressions: {deletingPrinter?.totalPrints}</p>
+                        <p>• Status: {deletingPrinter?.status}</p>
+                        <p>• Total prints: {deletingPrinter?.totalPrints}</p>
                         <p>• Uptime: {deletingPrinter?.uptime}</p>
                       </div>
                     </div>
@@ -829,14 +822,14 @@ const AdminPrinters = () => {
                   onClick={() => setShowDeleteDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleConfirmDelete}
                   className="bg-red-600 hover:bg-red-700"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Supprimer
+                  Delete
                 </Button>
               </DialogFooter>
             </DialogContent>
