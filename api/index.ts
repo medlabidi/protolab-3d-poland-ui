@@ -275,6 +275,8 @@ async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelRes
 }
 
 async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  console.log('[UPDATE_STATUS] Function called');
+  
   const user = requireAuth(req, res);
   if (!user) return;
   
@@ -287,6 +289,7 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
     .single();
   
   if (userError || userData?.role !== 'admin') {
+    console.log('[UPDATE_STATUS] Admin check failed:', { userError, role: userData?.role });
     return res.status(403).json({ error: 'Admin access required' });
   }
   
@@ -294,6 +297,8 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
   const path = url.split('?')[0].replace('/api', '');
   const orderId = path.split('/')[3]; // /admin/orders/:id/status -> index 3
   const { status, payment_status } = req.body;
+  
+  console.log('[UPDATE_STATUS] Extracted data:', { url, path, orderId, status, payment_status });
   
   if (!orderId) {
     return res.status(400).json({ error: 'Order ID is required' });
@@ -1145,6 +1150,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return await handleAdminGetOrderById(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/admin\/orders\/[^/]+\/status$/) && req.method === 'PATCH') {
+      console.log('[ROUTE_MATCH] Admin update order status matched!', { path, method: req.method });
       return await handleAdminUpdateOrderStatus(req as AuthenticatedRequest, res);
     }
     if (path === '/admin/users' && req.method === 'GET') {
