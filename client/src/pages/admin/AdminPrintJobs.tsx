@@ -348,15 +348,20 @@ const AdminPrintJobs = () => {
                       </div>
                     </div>
 
-                    <div onClick={(e) => e.stopPropagation()} className="mt-4">
+                    <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="mt-4">
                       <Select
                         value={order.status}
-                        onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        onValueChange={(value) => {
+                          updateOrderStatus(order.id, value);
+                        }}
                       >
                         <SelectTrigger className="w-full h-8 bg-gray-900 border-gray-600 text-xs">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent 
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
                           <SelectItem value="submitted">Submitted</SelectItem>
                           <SelectItem value="in_queue">In Queue</SelectItem>
                           <SelectItem value="printing">Printing</SelectItem>
