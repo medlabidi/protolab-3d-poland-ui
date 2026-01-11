@@ -505,6 +505,8 @@ const AdminPrinters = () => {
               </Card>
             ))}
           </div>
+            </>
+          )}
 
           {/* Add Printer Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -834,8 +836,6 @@ const AdminPrinters = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-            </>
-          )}
         </div>
       </main>
     </div>
