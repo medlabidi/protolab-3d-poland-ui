@@ -704,15 +704,68 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
+  // Count total printers
+  const { count: totalPrinters } = await supabase
+    .from('printers')
+    .select('*', { count: 'exact', head: true });
+  
+  console.log('[PRINTER_UPDATE] Total printers:', totalPrinters);
+  console.log('[PRINTER_UPDATE] Updates:', updates);
+  
+  // If only one printer, it MUST be default - force it
+  if (totalPrinters === 1) {
+    console.log('[PRINTER_UPDATE] Only one printer - forcing is_default=true');
+    updates.is_default = true;
+  }
+  
   // If setting as default, unset all other printers first
-  if (updates.is_default === true) {
+  if (updates.is_default === true && totalPrinters > 1) {
+    console.log('[PRINTER_UPDATE] Setting as default - unsetting others');
     const { error: unsetError } = await supabase
       .from('printers')
       .update({ is_default: false })
       .neq('id', id);
     
     if (unsetError) {
-      console.error('Error unsetting other default printers:', unsetError);
+      console.error('[PRINTER_UPDATE] Error unsetting other default printers:', unsetError);
+    }
+  }
+  
+  // If trying to unset default on the only printer, reject it
+  if (updates.is_default === false && totalPrinters === 1) {
+    return res.status(400).json({ 
+      error: 'Cannot unset default on the only printer',
+      message: 'At least one printer must be set as default for pricing calculations'
+    });
+  }
+  
+  // If unsetting default and multiple printers exist, ensure another one becomes default
+  if (updates.is_default === false && totalPrinters > 1) {
+    const { data: otherDefault } = await supabase
+      .from('printers')
+      .select('id')
+      .eq('is_default', true)
+      .neq('id', id)
+      .limit(1)
+      .single();
+    
+    if (!otherDefault) {
+      // No other default exists, find first active printer and make it default
+      const { data: firstActive } = await supabase
+        .from('printers')
+        .select('id')
+        .eq('is_active', true)
+        .neq('id', id)
+        .limit(1)
+        .single();
+      
+      if (firstActive) {
+        console.log('[PRINTER_UPDATE] Making another printer default:', firstActive.id);
+        await supabase
+          .from('printers')
+          .update({ is_default: true })
+          .eq('id', firstActive.id);
+      }
     }
   }
   
@@ -724,9 +777,11 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
     .single();
   
   if (error) {
+    console.error('[PRINTER_UPDATE] Error updating printer:', error);
     return res.status(500).json({ error: 'Failed to update printer', details: error.message });
   }
   
+  console.log('[PRINTER_UPDATE] Successfully updated printer:', printer.id);
   return res.status(200).json({ printer });
 }
 

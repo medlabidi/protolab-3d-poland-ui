@@ -601,17 +601,24 @@ const AdminPrinters = () => {
                           } else {
                             const error = await response.json();
                             console.error('Set default error:', error);
-                            toast.error(error.error || "Failed to set as default");
+                            toast.error(error.message || error.error || "Failed to set as default");
                           }
                         } catch (error) {
                           console.error('Set default exception:', error);
                           toast.error("Failed to set as default");
                         }
                       }}
-                      disabled={printer.is_default}
-                      className={`flex-1 ${printer.is_default ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'}`}
+                      disabled={printer.is_default || printers.length === 1}
+                      className={`flex-1 ${
+                        printer.is_default 
+                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' 
+                          : printers.length === 1
+                          ? 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20 cursor-not-allowed'
+                          : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+                      }`}
+                      title={printers.length === 1 ? 'Only one printer - must be default' : ''}
                     >
-                      {printer.is_default ? '✓ Default' : 'Set as Default'}
+                      {printer.is_default ? '✓ Default' : printers.length === 1 ? '✓ Default (Only)' : 'Set as Default'}
                     </Button>
                     <Button
                       variant="outline"
