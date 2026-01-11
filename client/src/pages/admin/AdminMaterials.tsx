@@ -84,7 +84,7 @@ const AdminMaterials = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/materials`, {
+      const response = await fetch(`${API_URL}/admin/materials`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -113,7 +113,7 @@ const AdminMaterials = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/materials`, {
+      const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ const AdminMaterials = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/materials`, {
+      const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ const AdminMaterials = () => {
   const handleDeleteMaterial = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/materials?id=${selectedMaterial.id}`, {
+      const response = await fetch(`${API_URL}/admin/materials?id=${selectedMaterial.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,7 +202,7 @@ const AdminMaterials = () => {
   const handleToggleActive = async (material: any) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/materials`, {
+      const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

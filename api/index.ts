@@ -551,6 +551,204 @@ async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResp
   return res.status(200).json({ printers: printers || [] });
 }
 
+async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: material, error } = await supabase
+    .from('materials')
+    .insert([req.body])
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to create material', details: error.message });
+  }
+  
+  return res.status(201).json({ material });
+}
+
+async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { id, ...updates } = req.body;
+  
+  if (!id) {
+    return res.status(400).json({ error: 'Material ID is required' });
+  }
+  
+  const { data: material, error } = await supabase
+    .from('materials')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update material', details: error.message });
+  }
+  
+  return res.status(200).json({ material });
+}
+
+async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialId = req.query.id;
+  
+  if (!materialId) {
+    return res.status(400).json({ error: 'Material ID is required' });
+  }
+  
+  const { error } = await supabase
+    .from('materials')
+    .delete()
+    .eq('id', materialId);
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to delete material', details: error.message });
+  }
+  
+  return res.status(200).json({ success: true });
+}
+
+async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: printer, error } = await supabase
+    .from('printers')
+    .insert([req.body])
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to create printer', details: error.message });
+  }
+  
+  return res.status(201).json({ printer });
+}
+
+async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { id, ...updates } = req.body;
+  
+  if (!id) {
+    return res.status(400).json({ error: 'Printer ID is required' });
+  }
+  
+  const { data: printer, error } = await supabase
+    .from('printers')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update printer', details: error.message });
+  }
+  
+  return res.status(200).json({ printer });
+}
+
+async function handleAdminDeletePrinter(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const printerId = req.query.id;
+  
+  if (!printerId) {
+    return res.status(400).json({ error: 'Printer ID is required' });
+  }
+  
+  const { error } = await supabase
+    .from('printers')
+    .delete()
+    .eq('id', printerId);
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to delete printer', details: error.message });
+  }
+  
+  return res.status(200).json({ success: true });
+}
+
 async function handleAdminGetConversations(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1188,8 +1386,26 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/admin/materials' && req.method === 'GET') {
       return await handleAdminGetMaterials(req as AuthenticatedRequest, res);
     }
+    if (path === '/admin/materials' && req.method === 'POST') {
+      return await handleAdminCreateMaterial(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/materials' && req.method === 'PATCH') {
+      return await handleAdminUpdateMaterial(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/materials' && req.method === 'DELETE') {
+      return await handleAdminDeleteMaterial(req as AuthenticatedRequest, res);
+    }
     if (path === '/admin/printers' && req.method === 'GET') {
       return await handleAdminGetPrinters(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/printers' && req.method === 'POST') {
+      return await handleAdminCreatePrinter(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/printers' && req.method === 'PATCH') {
+      return await handleAdminUpdatePrinter(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/printers' && req.method === 'DELETE') {
+      return await handleAdminDeletePrinter(req as AuthenticatedRequest, res);
     }
     
     // Admin conversation routes

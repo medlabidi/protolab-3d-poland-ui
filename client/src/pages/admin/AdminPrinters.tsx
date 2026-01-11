@@ -88,9 +88,9 @@ const AdminPrinters = () => {
         return;
       }
 
-      console.log('Fetching printers from:', `${API_URL}/printers`);
+      console.log('Fetching printers from:', `${API_URL}/admin/printers`);
       
-      const response = await fetch(`${API_URL}/printers`, {
+      const response = await fetch(`${API_URL}/admin/printers`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -137,7 +137,7 @@ const AdminPrinters = () => {
   const handleStatusChange = async (printerId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/printers`, {
+      const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ const AdminPrinters = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/printers`, {
+      const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ const AdminPrinters = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/printers?id=${deletingPrinter.id}`, {
+      const response = await fetch(`${API_URL}/admin/printers?id=${deletingPrinter.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -253,7 +253,7 @@ const AdminPrinters = () => {
       nextMaintenanceDate.setDate(nextMaintenanceDate.getDate() + newPrinter.maintenanceIntervalDays);
 
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/printers`, {
+      const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
