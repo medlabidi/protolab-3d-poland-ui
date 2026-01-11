@@ -453,36 +453,36 @@ const AdminMaterials = () => {
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Material Color Name *</Label>
+                  <Label className="text-gray-300">Material Type *</Label>
                   <Input
-                    placeholder="Ex: PLA - White"
+                    placeholder="PLA, PETG, TPU, ABS..."
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.material_Color Name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.material_type}
+                    onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color Name</Label>
+                  <Label className="text-gray-300">Color Name *</Label>
                   <Input
-                    placeholder="PLA, PETG, TPU..."
+                    placeholder="Blue, Red, White..."
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.material_Color Name}
-                    onChange={(e) => setFormData({ ...formData, Color Name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Color</Label>
-                  <Input
-                    Color Name="color"
-                    className="bg-gray-800 border-gray-700 h-10"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-gray-300">Hex Color</Label>
+                  <Input
+                    type="color"
+                    className="bg-gray-800 border-gray-700 h-10"
+                    value={formData.hex_color}
+                    onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
-                    Color Name="number"
+                    type="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.price_per_kg}
@@ -490,60 +490,38 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Densité</Label>
-                  <Input
-                    Color Name="number"
-                    step="0.01"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_status}
-                    onChange={(e) => setFormData({ ...formData, Stock Status: parseFloat(e.target.value) || 1.24 })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Stock Status</Label>
-                  <Input
-                    Color Name="number"
-                    step="0.1"
-                    className="bg-gray-800 border-gray-700 text-white"
+                  <Select
                     value={formData.stock_status}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
-                  />
+                    onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="available" className="text-white">Available</SelectItem>
+                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Lead Time (days) (°C)</Label>
+                  <Label className="text-gray-300">Lead Time (days)</Label>
                   <Input
-                    Color Name="number"
+                    type="number"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Hex Color (°C)</Label>
-                  <Input
-                    Color Name="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
+                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseInt(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Color Name *</Label>
-                  <Select
-                    value={formData.color}
-                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un Supplier" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      {availableSuppliers.map((supplier) => (
-                        <SelectItem key={supplier} value={supplier} className="text-white">
-                          {supplier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-gray-300">Description</Label>
+                  <Input
+                    placeholder="Material description..."
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -552,7 +530,7 @@ const AdminMaterials = () => {
                   onClick={() => setShowAddDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleAddMaterial}
@@ -568,41 +546,43 @@ const AdminMaterials = () => {
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="text-white">Modifier le matériau</DialogTitle>
+                <DialogTitle className="text-white">Edit Material</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Modifiez les informations du matériau
+                  Edit material information
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom *</Label>
+                  <Label className="text-gray-300">Material Type *</Label>
                   <Input
+                    placeholder="PLA, PETG, TPU, ABS..."
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.material_Color Name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.material_type}
+                    onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color Name</Label>
+                  <Label className="text-gray-300">Color Name *</Label>
                   <Input
+                    placeholder="Blue, Red, White..."
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.material_Color Name}
-                    onChange={(e) => setFormData({ ...formData, Color Name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Color</Label>
-                  <Input
-                    Color Name="color"
-                    className="bg-gray-800 border-gray-700 h-10"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-gray-300">Hex Color</Label>
+                  <Input
+                    type="color"
+                    className="bg-gray-800 border-gray-700 h-10"
+                    value={formData.hex_color}
+                    onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
-                    Color Name="number"
+                    type="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.price_per_kg}
@@ -610,60 +590,38 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Densité</Label>
-                  <Input
-                    Color Name="number"
-                    step="0.01"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_status}
-                    onChange={(e) => setFormData({ ...formData, Stock Status: parseFloat(e.target.value) || 1.24 })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Stock Status</Label>
-                  <Input
-                    Color Name="number"
-                    step="0.1"
-                    className="bg-gray-800 border-gray-700 text-white"
+                  <Select
                     value={formData.stock_status}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
-                  />
+                    onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="available" className="text-white">Available</SelectItem>
+                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Lead Time (days) (°C)</Label>
+                  <Label className="text-gray-300">Lead Time (days)</Label>
                   <Input
-                    Color Name="number"
+                    type="number"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Hex Color (°C)</Label>
-                  <Input
-                    Color Name="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
+                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseInt(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Color Name *</Label>
-                  <Select
-                    value={formData.color}
-                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un Supplier" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      {availableSuppliers.map((supplier) => (
-                        <SelectItem key={supplier} value={supplier} className="text-white">
-                          {supplier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-gray-300">Description</Label>
+                  <Input
+                    placeholder="Material description..."
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -672,13 +630,13 @@ const AdminMaterials = () => {
                   onClick={() => setShowEditDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleEditMaterial}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Sauvegarder
+                  Save
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -688,10 +646,10 @@ const AdminMaterials = () => {
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
+                <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Êtes-vous sûr de vouloir supprimer le matériau "{selectedMaterial?.name}" ?
-                  Cette action est irréversible.
+                  Are you sure you want to delete "{selectedMaterial?.material_type} - {selectedMaterial?.color}"?
+                  This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -700,7 +658,7 @@ const AdminMaterials = () => {
                   onClick={() => setShowDeleteDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleDeleteMaterial}
