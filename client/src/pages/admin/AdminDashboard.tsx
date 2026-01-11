@@ -373,29 +373,42 @@ const AdminDashboard = () => {
             )}
 
             {/* Design Assistance Notification */}
-            {stats.designJobs > 0 && (
-              <Card 
-                className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-purple-700/50 cursor-pointer hover:from-purple-900/60 hover:to-purple-800/40 transition-all group"
-                onClick={() => navigate('/admin/orders/design-assistance')}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-purple-600 rounded-lg group-hover:scale-110 transition-transform">
-                        <Palette className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white mb-1">
-                          {stats.designJobs} Design {stats.designJobs === 1 ? 'Request' : 'Requests'}
-                        </h3>
-                        <p className="text-purple-200 text-sm">Click to view and respond</p>
-                      </div>
+            <Card 
+              className={`${
+                stats.designJobs > 0 
+                  ? 'bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-purple-700/50' 
+                  : 'bg-gradient-to-br from-gray-800/50 to-gray-700/30 border-gray-600/50'
+              } cursor-pointer hover:from-purple-900/60 hover:to-purple-800/40 transition-all group`}
+              onClick={() => navigate('/admin/orders/design-assistance')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 ${
+                      stats.designJobs > 0 ? 'bg-purple-600' : 'bg-gray-600'
+                    } rounded-lg group-hover:scale-110 transition-transform`}>
+                      <Palette className="w-6 h-6 text-white" />
                     </div>
-                    <ArrowUpRight className="w-6 h-6 text-purple-300 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-1">
+                        {stats.designJobs > 0 
+                          ? `${stats.designJobs} Design ${stats.designJobs === 1 ? 'Request' : 'Requests'}`
+                          : 'No Design Requests'
+                        }
+                      </h3>
+                      <p className={`${
+                        stats.designJobs > 0 ? 'text-purple-200' : 'text-gray-400'
+                      } text-sm`}>
+                        {stats.designJobs > 0 ? 'Click to view and respond' : 'Click to view all requests'}
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <ArrowUpRight className={`w-6 h-6 ${
+                    stats.designJobs > 0 ? 'text-purple-300' : 'text-gray-400'
+                  } group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform`} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Quick Actions */}
