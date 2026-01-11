@@ -5,9 +5,24 @@ export interface AuthenticatedRequest extends VercelRequest {
   user?: JWTPayload;
 }
 
-export const cors = (res: VercelResponse) => {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
+export const cors = (req: VercelRequest, res: VercelResponse) => {
+  const origin = req.headers.origin || '';
+  
+  // Allow production and local development origins
+  const allowedOrigins = [
+    'https://protolab.info',
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 };

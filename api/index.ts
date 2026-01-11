@@ -1193,9 +1193,22 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
 export default async (req: VercelRequest, res: VercelResponse) => {
   console.log('[ENTRY] Function invoked:', req.method, req.url);
   
-  // Set CORS headers immediately
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', (process.env.CORS_ORIGIN || '*').trim());
+  // Set CORS headers dynamically based on origin
+  const origin = req.headers.origin || '';
+  const allowedOrigins = [
+    'https://protolab.info',
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
