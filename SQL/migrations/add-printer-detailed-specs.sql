@@ -28,8 +28,4 @@ COMMENT ON COLUMN printers.actual_nozzle_diameter IS 'Currently installed nozzle
 COMMENT ON COLUMN printers.purchase_price IS 'Purchase price in PLN';
 COMMENT ON COLUMN printers.lifespan_years IS 'Expected lifespan in years';
 
--- Migrate existing data (optional - update existing records with model/manufacturer data)
-UPDATE printers SET brand = manufacturer WHERE brand IS NULL AND manufacturer IS NOT NULL;
-UPDATE printers SET printer_model = model WHERE printer_model IS NULL AND model IS NOT NULL;
-
 COMMIT;
