@@ -364,8 +364,10 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
     };
     
     // Insert notification (don't block on error)
-    await supabase.from('notifications').insert(notification).catch(err => {
-      console.error('Failed to create notification:', err);
+    supabase.from('notifications').insert(notification).then(({ error }) => {
+      if (error) {
+        console.error('Failed to create notification:', error);
+      }
     });
   }
   
