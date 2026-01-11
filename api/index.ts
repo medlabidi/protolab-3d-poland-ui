@@ -304,10 +304,10 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
     return res.status(400).json({ error: 'Order ID is required' });
   }
   
-  // First get the order details to get user_id and order_number
+  // First get the order details to get user_id and file_name
   const { data: existingOrder, error: fetchError } = await supabase
     .from('orders')
-    .select('user_id, order_number, file_name, status')
+    .select('user_id, file_name, status')
     .eq('id', orderId)
     .single();
   
@@ -357,7 +357,6 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
       data: {
         orderId: orderId,
         newStatus: status,
-        orderNumber: existingOrder.order_number || orderId.slice(0, 8),
         fileName: existingOrder.file_name
       },
       read: false,
