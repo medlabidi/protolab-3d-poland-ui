@@ -62,14 +62,14 @@ const DesignAssistance = () => {
       // Create design order in database
       const orderData = {
         order_type: 'design',
-        status: 'submitted',
         file_name: `Design Request - ${formData.usage}`,
+        file_url: 'n/a',
         material: 'To be determined',
         color: 'To be determined',
         quantity: 1,
-        price: 0, // Price will be determined after design is created
-        layer_height: '0.2mm',
-        infill: '20%',
+        price: 0,
+        layer_height: 0.2,
+        infill: 20,
         design_description: formData.ideaDescription,
         design_usage: formData.usage,
         design_usage_details: formData.usageDetails,

@@ -2067,8 +2067,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   } else {
     // Handle JSON body
     const body = req.body || {};
-    fileName = body.fileName;
-    fileUrl = body.fileUrl;
+    fileName = body.fileName || body.file_name;
+    fileUrl = body.fileUrl || body.file_url;
     material = body.material || 'PLA';
     color = body.color || 'white';
     quantity = body.quantity || 1;
@@ -2078,7 +2078,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     shippingMethod = body.shippingMethod;
     shippingAddress = body.shippingAddress;
     paymentMethod = body.paymentMethod;
-    layerHeight = body.layerHeight;
+    orderType = body.order_type;
+    layerHeight = body.layerHeight || body.layer_height;
     infill = body.infill;
     supportType = body.supportType;
     infillPattern = body.infillPattern;
@@ -2086,8 +2087,15 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     customInfill = body.customInfill;
     advancedMode = body.advancedMode;
     
-    if (!fileName || !fileUrl) {
+    // For design orders, file is not required
+    if (orderType !== 'design' && (!fileName || !fileUrl)) {
       return res.status(400).json({ error: 'File name and URL required' });
+    }
+    
+    // For design orders, set default values if file not provided
+    if (orderType === 'design') {
+      if (!fileName) fileName = body.file_name || 'Design Request';
+      if (!fileUrl) fileUrl = 'n/a';
     }
   }
   
@@ -2102,8 +2110,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     price: price || 0,
     payment_status: 'on_hold', // Use on_hold for new orders awaiting payment (constraint allows: paid, on_hold, refunding, refunded)
     shipping_method: shippingMethod || 'pickup',
-    layer_height: parseFloat(layerHeight || '0.2'),
-    infill: parseInt(infill || '20', 10),
+    layer_height: parseFloat(String(layerHeight || '0.2').replace('mm', '')),
+    infill: parseInt(String(infill || '20').replace('%', ''), 10),
     status: orderType === 'credits_purchase' ? 'pending_payment' : 'submitted',
   };
 
@@ -2116,6 +2124,14 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   }
   if (creditsAmount && creditsAmount > 0) {
     orderData.credits_amount = creditsAmount;
+  }
+  
+  // Add design-specific fields if this is a design order
+  if (orderType === 'design') {
+    if (req.body.design_description) orderData.design_description = req.body.design_description;
+    if (req.body.design_usage) orderData.design_usage = req.body.design_usage;
+    if (req.body.design_usage_details) orderData.design_usage_details = req.body.design_usage_details;
+    if (req.body.design_dimensions) orderData.design_dimensions = req.body.design_dimensions;
   }
   
   // If paying with credits, check balance and deduct
