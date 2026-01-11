@@ -62,6 +62,7 @@ const AdminPrinters = () => {
     supported_materials: [] as string[],
     layer_height_min: 0.1,
     layer_height_max: 0.3,
+    cost_pln: 0,
   });
 
   // Fetch printers on mount
@@ -286,6 +287,7 @@ const AdminPrinters = () => {
           actual_nozzle_diameter: newPrinter.actual_nozzle_diameter,
           lifespan_years: newPrinter.lifespan_years,
           power_watts: newPrinter.power_watts,
+          cost_pln: newPrinter.cost_pln,
           supported_materials: newPrinter.supported_materials.filter(m => m.trim()),
           layer_height_min: newPrinter.layer_height_min,
           layer_height_max: newPrinter.layer_height_max,
@@ -311,6 +313,7 @@ const AdminPrinters = () => {
           supported_materials: [],
           layer_height_min: 0.1,
           layer_height_max: 0.3,
+          cost_pln: 0,
         });
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -740,6 +743,20 @@ const AdminPrinters = () => {
                       className="bg-gray-800 border-gray-700 text-white"
                       value={newPrinter.power_watts}
                       onChange={(e) => setNewPrinter({ ...newPrinter, power_watts: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="cost" className="text-gray-300">Purchase Cost (PLN)</Label>
+                    <Input
+                      id="cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g. 5000"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.cost_pln}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, cost_pln: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
                   
