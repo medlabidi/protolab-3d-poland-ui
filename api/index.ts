@@ -704,6 +704,18 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
+  // If setting as default, unset all other printers first
+  if (updates.is_default === true) {
+    const { error: unsetError } = await supabase
+      .from('printers')
+      .update({ is_default: false })
+      .neq('id', id);
+    
+    if (unsetError) {
+      console.error('Error unsetting other default printers:', unsetError);
+    }
+  }
+  
   const { data: printer, error } = await supabase
     .from('printers')
     .update(updates)
