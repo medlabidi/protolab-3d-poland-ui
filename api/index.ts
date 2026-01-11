@@ -258,7 +258,8 @@ async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelRes
   }
   
   const url = req.url || '';
-  const orderId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const orderId = path.split('/')[3]; // /admin/orders/:id
   
   const { data: order, error } = await supabase
     .from('orders')
@@ -290,8 +291,13 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
   }
   
   const url = req.url || '';
-  const orderId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const orderId = path.split('/')[3]; // /admin/orders/:id/status -> index 3
   const { status, payment_status } = req.body;
+  
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID is required' });
+  }
   
   // First get the order details to get user_id and order_number
   const { data: existingOrder, error: fetchError } = await supabase
@@ -372,7 +378,8 @@ async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelR
   }
   
   const url = req.url || '';
-  const targetUserId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const targetUserId = path.split('/')[3]; // /admin/users/:id/role
   const { role } = req.body;
   
   if (!['user', 'admin'].includes(role)) {
@@ -576,7 +583,8 @@ async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[3]; // /admin/conversations/:id/messages
   
   const supabase = getSupabase();
   
@@ -609,7 +617,8 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[3]; // /admin/conversations/:id/messages
   
   const supabase = getSupabase();
   
@@ -746,7 +755,8 @@ async function handleAdminUpdateConversationStatus(req: AuthenticatedRequest, re
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[3]; // /admin/conversations/:id/status
   
   const supabase = getSupabase();
   
@@ -830,7 +840,8 @@ async function handleAdminMarkConversationRead(req: AuthenticatedRequest, res: V
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[3]; // /admin/conversations/:id/read
   
   const supabase = getSupabase();
   
@@ -861,7 +872,8 @@ async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: Ve
   if (!user) return;
   
   const url = req.url || '';
-  const userId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const userId = path.split('/')[3]; // /admin/users/:id/business-invoices
   
   const supabase = getSupabase();
   
@@ -2945,7 +2957,8 @@ async function handleSetTypingStatus(req: AuthenticatedRequest, res: VercelRespo
   if (!user) return;
   
   const url = req.url || '';
-  const conversationId = url.split('/')[4];
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[2]; // /conversations/:id/typing
   const { isTyping } = req.body;
   
   const supabase = getSupabase();
