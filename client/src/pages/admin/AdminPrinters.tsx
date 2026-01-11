@@ -273,13 +273,6 @@ const AdminPrinters = () => {
           name: generatedName,
           brand: newPrinter.brand,
           printer_model: newPrinter.printer_model,
-          status: "offline",
-          current_job: "None",
-          progress: 0,
-          temperature: 25,
-          bed_temp: 25,
-          uptime: "0%",
-          total_prints: 0,
           build_volume_x: newPrinter.build_volume_x,
           build_volume_y: newPrinter.build_volume_y,
           build_volume_z: newPrinter.build_volume_z,
@@ -288,7 +281,6 @@ const AdminPrinters = () => {
           available_nozzle_diameters: newPrinter.available_nozzle_diameters.join(', '),
           actual_nozzle_diameter: newPrinter.actual_nozzle_diameter,
           lifespan_years: newPrinter.lifespan_years,
-          last_maintenance: new Date().toISOString().split('T')[0],
         }),
       });
 

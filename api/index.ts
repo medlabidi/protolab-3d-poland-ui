@@ -666,6 +666,8 @@ async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelRe
     return res.status(403).json({ error: 'Admin access required' });
   }
   
+  console.log('Creating printer with data:', req.body);
+  
   const { data: printer, error } = await supabase
     .from('printers')
     .insert([req.body])
@@ -673,7 +675,8 @@ async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelRe
     .single();
   
   if (error) {
-    return res.status(500).json({ error: 'Failed to create printer', details: error.message });
+    console.error('Printer creation error:', error);
+    return res.status(500).json({ error: 'Failed to create printer', details: error.message, hint: error.hint });
   }
   
   return res.status(201).json({ printer });
