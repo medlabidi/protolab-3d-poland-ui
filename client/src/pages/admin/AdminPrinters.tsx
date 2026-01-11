@@ -74,6 +74,8 @@ const AdminPrinters = () => {
   const mapPrinterData = (printer: any) => ({
     id: printer.id,
     name: printer.name,
+    brand: printer.brand,
+    printer_model: printer.printer_model,
     status: printer.status,
     currentJob: printer.current_job || printer.currentJob || "None",
     progress: printer.progress || 0,
@@ -85,6 +87,22 @@ const AdminPrinters = () => {
     maintenanceCostMonthly: printer.maintenance_cost_monthly || printer.maintenanceCostMonthly || 0,
     maintenanceIntervalDays: printer.maintenance_interval_days || printer.maintenanceIntervalDays || 90,
     nextMaintenance: printer.next_maintenance || printer.nextMaintenance,
+    // New fields
+    build_volume_x: printer.build_volume_x,
+    build_volume_y: printer.build_volume_y,
+    build_volume_z: printer.build_volume_z,
+    multi_color_printing: printer.multi_color_printing,
+    max_colors: printer.max_colors,
+    available_nozzle_diameters: printer.available_nozzle_diameters,
+    actual_nozzle_diameter: printer.actual_nozzle_diameter,
+    lifespan_years: printer.lifespan_years,
+    power_watts: printer.power_watts,
+    cost_pln: printer.cost_pln,
+    supported_materials: printer.supported_materials,
+    layer_height_min: printer.layer_height_min,
+    layer_height_max: printer.layer_height_max,
+    is_active: printer.is_active,
+    is_default: printer.is_default,
   });
 
   const fetchPrinters = async () => {
@@ -111,7 +129,11 @@ const AdminPrinters = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Printers data:', data);
+        console.log('First printer RAW:', data.printers?.[0]);
+        console.log('is_active:', data.printers?.[0]?.is_active);
+        console.log('is_default:', data.printers?.[0]?.is_default);
         const mappedPrinters = (data.printers || []).map(mapPrinterData);
+        console.log('First printer MAPPED:', mappedPrinters[0]);
         setPrinters(mappedPrinters);
         
         if (mappedPrinters.length === 0) {
@@ -173,21 +195,44 @@ const AdminPrinters = () => {
   };
 
   const handleEditPrinter = (printer: any) => {
-    setEditingPrinter({ 
-      ...printer,
-      maintenanceCostMonthly: printer.maintenanceCostMonthly || printer.maintenance_cost_monthly || 0,
-      maintenanceIntervalDays: printer.maintenanceIntervalDays || printer.maintenance_interval_days || 90,
-    });
+    console.log('Editing printer - raw data:', printer);
+    
+    const editData = { 
+      id: printer.id,
+      name: printer.name,
+      brand: printer.brand || '',
+      printer_model: printer.printer_model || '',
+      build_volume_x: printer.build_volume_x || 0,
+      build_volume_y: printer.build_volume_y || 0,
+      build_volume_z: printer.build_volume_z || 0,
+      multi_color_printing: printer.multi_color_printing || false,
+      max_colors: printer.max_colors || 1,
+      available_nozzle_diameters: typeof printer.available_nozzle_diameters === 'string' 
+        ? printer.available_nozzle_diameters.split(',').map((d: string) => parseFloat(d.trim())).filter((d: number) => !isNaN(d))
+        : (printer.available_nozzle_diameters || [0.4]),
+      actual_nozzle_diameter: printer.actual_nozzle_diameter || 0.4,
+      lifespan_years: printer.lifespan_years || 5,
+      power_watts: printer.power_watts || 0,
+      cost_pln: printer.cost_pln || 0,
+      supported_materials: printer.supported_materials || [],
+      layer_height_min: printer.layer_height_min || 0.1,
+      layer_height_max: printer.layer_height_max || 0.3,
+    };
+    
+    console.log('Edit data prepared:', editData);
+    setEditingPrinter(editData);
     setShowEditDialog(true);
   };
 
   const handleUpdatePrinter = async () => {
-    if (!editingPrinter || !editingPrinter.name.trim()) {
-      toast.error("Printer name is required");
+    if (!editingPrinter || !editingPrinter.brand?.trim() || !editingPrinter.printer_model?.trim()) {
+      toast.error("Brand and model are required");
       return;
     }
 
     try {
+      const generatedName = `${editingPrinter.brand} ${editingPrinter.printer_model}`.trim();
+      
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'PATCH',
@@ -197,23 +242,35 @@ const AdminPrinters = () => {
         },
         body: JSON.stringify({
           id: editingPrinter.id,
-          name: editingPrinter.name,
-          status: editingPrinter.status,
-          temperature: editingPrinter.temperature,
-          bed_temp: editingPrinter.bedTemp,
-          current_job: editingPrinter.currentJob,
-          maintenance_cost_monthly: editingPrinter.maintenanceCostMonthly,
-          maintenance_interval_days: editingPrinter.maintenanceIntervalDays,
+          name: generatedName,
+          brand: editingPrinter.brand,
+          printer_model: editingPrinter.printer_model,
+          build_volume_x: editingPrinter.build_volume_x,
+          build_volume_y: editingPrinter.build_volume_y,
+          build_volume_z: editingPrinter.build_volume_z,
+          multi_color_printing: editingPrinter.multi_color_printing,
+          max_colors: editingPrinter.multi_color_printing ? editingPrinter.max_colors : 1,
+          available_nozzle_diameters: Array.isArray(editingPrinter.available_nozzle_diameters) 
+            ? editingPrinter.available_nozzle_diameters.join(', ')
+            : editingPrinter.available_nozzle_diameters,
+          actual_nozzle_diameter: editingPrinter.actual_nozzle_diameter,
+          lifespan_years: editingPrinter.lifespan_years,
+          power_watts: editingPrinter.power_watts,
+          cost_pln: editingPrinter.cost_pln,
+          supported_materials: editingPrinter.supported_materials,
+          layer_height_min: editingPrinter.layer_height_min,
+          layer_height_max: editingPrinter.layer_height_max,
         }),
       });
 
       if (response.ok) {
-        await fetchPrinters(); // Reload printers from server
-        toast.success(`Printer "${editingPrinter.name}" updated!`);
+        await fetchPrinters();
+        toast.success(`Printer "${generatedName}" updated!`);
         setShowEditDialog(false);
         setEditingPrinter(null);
       } else {
-        toast.error('Failed to update printer');
+        const data = await response.json();
+        toast.error(data.error || 'Failed to update printer');
       }
     } catch (error) {
       console.error('Error updating printer:', error);
@@ -461,7 +518,7 @@ const AdminPrinters = () => {
                     {printer.build_volume_x && printer.build_volume_y && printer.build_volume_z && (
                       <div>
                         <p className="text-gray-400 text-xs mb-1">Build Volume</p>
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-white text-sm font-semibold">
                           {printer.build_volume_x} × {printer.build_volume_y} × {printer.build_volume_z} mm
                         </p>
                       </div>
@@ -469,19 +526,19 @@ const AdminPrinters = () => {
                     {printer.actual_nozzle_diameter && (
                       <div>
                         <p className="text-gray-400 text-xs mb-1">Nozzle Diameter</p>
-                        <p className="text-white text-sm font-medium">{printer.actual_nozzle_diameter} mm</p>
+                        <p className="text-white text-sm font-semibold">{printer.actual_nozzle_diameter} mm</p>
                       </div>
                     )}
                     {printer.power_watts && (
                       <div>
                         <p className="text-gray-400 text-xs mb-1">Power</p>
-                        <p className="text-white text-sm font-medium">{printer.power_watts} W</p>
+                        <p className="text-white text-sm font-semibold">{printer.power_watts} W</p>
                       </div>
                     )}
                     {printer.layer_height_min && printer.layer_height_max && (
                       <div>
                         <p className="text-gray-400 text-xs mb-1">Layer Height</p>
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-white text-sm font-semibold">
                           {printer.layer_height_min} - {printer.layer_height_max} mm
                         </p>
                       </div>
@@ -494,7 +551,7 @@ const AdminPrinters = () => {
                       {printer.multi_color_printing && (
                         <div className="flex items-center gap-2">
                           <span className="text-gray-400 text-xs">Multi-Color:</span>
-                          <span className="text-green-400 text-sm">Yes ({printer.max_colors} colors)</span>
+                          <span className="text-green-400 text-sm font-semibold">Yes ({printer.max_colors} colors)</span>
                         </div>
                       )}
                       {printer.supported_materials?.length > 0 && (
@@ -502,7 +559,7 @@ const AdminPrinters = () => {
                           <p className="text-gray-400 text-xs mb-1">Supported Materials</p>
                           <div className="flex flex-wrap gap-1">
                             {printer.supported_materials.map((material: string, idx: number) => (
-                              <span key={idx} className="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded">
+                              <span key={idx} className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded font-medium">
                                 {material}
                               </span>
                             ))}
@@ -516,7 +573,7 @@ const AdminPrinters = () => {
                   {printer.available_nozzle_diameters && (
                     <div className="pt-3 border-t border-gray-800">
                       <p className="text-gray-400 text-xs mb-1">Available Nozzles</p>
-                      <p className="text-white text-sm">{printer.available_nozzle_diameters}</p>
+                      <p className="text-white text-sm font-semibold">{printer.available_nozzle_diameters}</p>
                     </div>
                   )}
 
@@ -527,27 +584,32 @@ const AdminPrinters = () => {
                       size="sm"
                       onClick={async () => {
                         try {
+                          console.log('Setting printer as default:', printer.id);
                           const token = localStorage.getItem('accessToken');
-                          const response = await fetch(`${API_URL}/admin/printers/${printer.id}`, {
+                          const response = await fetch(`${API_URL}/admin/printers`, {
                             method: 'PATCH',
                             headers: {
                               'Content-Type': 'application/json',
                               'Authorization': `Bearer ${token}`,
                             },
-                            body: JSON.stringify({ is_default: true }),
+                            body: JSON.stringify({ id: printer.id, is_default: true }),
                           });
+                          console.log('Set default response:', response.status);
                           if (response.ok) {
                             await fetchPrinters();
                             toast.success("Printer set as default!");
                           } else {
-                            toast.error("Failed to set as default");
+                            const error = await response.json();
+                            console.error('Set default error:', error);
+                            toast.error(error.error || "Failed to set as default");
                           }
                         } catch (error) {
+                          console.error('Set default exception:', error);
                           toast.error("Failed to set as default");
                         }
                       }}
                       disabled={printer.is_default}
-                      className={`flex-1 ${printer.is_default ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                      className={`flex-1 ${printer.is_default ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'}`}
                     >
                       {printer.is_default ? '✓ Default' : 'Set as Default'}
                     </Button>
@@ -556,26 +618,31 @@ const AdminPrinters = () => {
                       size="sm"
                       onClick={async () => {
                         try {
+                          console.log('Toggling active status for:', printer.id, 'current:', printer.is_active);
                           const token = localStorage.getItem('accessToken');
-                          const response = await fetch(`${API_URL}/admin/printers/${printer.id}`, {
+                          const response = await fetch(`${API_URL}/admin/printers`, {
                             method: 'PATCH',
                             headers: {
                               'Content-Type': 'application/json',
                               'Authorization': `Bearer ${token}`,
                             },
-                            body: JSON.stringify({ is_active: !printer.is_active }),
+                            body: JSON.stringify({ id: printer.id, is_active: !printer.is_active }),
                           });
+                          console.log('Toggle active response:', response.status);
                           if (response.ok) {
                             await fetchPrinters();
                             toast.success(printer.is_active ? "Printer deactivated" : "Printer activated");
                           } else {
-                            toast.error("Failed to update status");
+                            const error = await response.json();
+                            console.error('Toggle active error:', error);
+                            toast.error(error.error || "Failed to update status");
                           }
                         } catch (error) {
+                          console.error('Toggle active exception:', error);
                           toast.error("Failed to update status");
                         }
                       }}
-                      className={`flex-1 ${printer.is_active ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                      className={`flex-1 ${printer.is_active ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30' : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'}`}
                     >
                       {printer.is_active ? 'Active' : 'Inactive'}
                     </Button>
@@ -914,132 +981,171 @@ const AdminPrinters = () => {
 
           {/* Edit Printer Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Modify the printer information
+                  Modify printer specifications
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-printer-name" className="text-gray-300">Printer Name *</Label>
-                  <Input
-                    id="edit-printer-name"
-                    placeholder="e.g. Prusa i3 MK4"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={editingPrinter?.name || ""}
-                    onChange={(e) => setEditingPrinter({ ...editingPrinter, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-printer-status" className="text-gray-300">Status</Label>
-                  <Select
-                    value={editingPrinter?.status || "offline"}
-                    onValueChange={(value) => setEditingPrinter({ ...editingPrinter, status: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-nozzle-temp" className="text-gray-300">Nozzle Temp (°C)</Label>
-                    <Input
-                      id="edit-nozzle-temp"
-                      type="number"
-                      className="bg-gray-800 border-gray-700 text-white"
-                      value={editingPrinter?.temperature || 25}
-                      onChange={(e) => setEditingPrinter({ ...editingPrinter, temperature: parseInt(e.target.value) || 25 })}
-                    />
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Basic Information</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-brand" className="text-gray-300">Brand *</Label>
+                      <Input
+                        id="edit-brand"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.brand || ''}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, brand: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-model" className="text-gray-300">Model *</Label>
+                      <Input
+                        id="edit-model"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.printer_model || ''}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, printer_model: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-bed-temp" className="text-gray-300">Bed Temp (°C)</Label>
-                    <Input
-                      id="edit-bed-temp"
-                      type="number"
-                      className="bg-gray-800 border-gray-700 text-white"
-                      value={editingPrinter?.bedTemp || 25}
-                      onChange={(e) => setEditingPrinter({ ...editingPrinter, bedTemp: parseInt(e.target.value) || 25 })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-current-job" className="text-gray-300">Current Job</Label>
-                  <Input
-                    id="edit-current-job"
-                    placeholder="e.g. None"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={editingPrinter?.currentJob || "None"}
-                    onChange={(e) => setEditingPrinter({ ...editingPrinter, currentJob: e.target.value })}
-                  />
                 </div>
 
-                {/* Maintenance Section */}
-                <div className="pt-4 border-t border-gray-700">
-                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-blue-400" />
-                    Maintenance Settings
-                  </h4>
-                  <div className="space-y-4">
+                {/* Build Volume */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Build Volume (mm)</h4>
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-maintenance-cost" className="text-gray-300">
-                        Monthly Cost (PLN)
-                      </Label>
+                      <Label className="text-gray-300">X</Label>
                       <Input
-                        id="edit-maintenance-cost"
+                        type="number"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.build_volume_x || 0}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, build_volume_x: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Y</Label>
+                      <Input
+                        type="number"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.build_volume_y || 0}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, build_volume_y: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Z</Label>
+                      <Input
+                        type="number"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.build_volume_z || 0}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, build_volume_z: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multi-color & Nozzles */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Color & Nozzle Settings</h4>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="edit-multicolor"
+                      checked={editingPrinter?.multi_color_printing || false}
+                      onChange={(e) => setEditingPrinter({ ...editingPrinter, multi_color_printing: e.target.checked })}
+                      className="rounded"
+                    />
+                    <Label htmlFor="edit-multicolor" className="text-gray-300">Multi-Color Printing</Label>
+                  </div>
+
+                  {editingPrinter?.multi_color_printing && (
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Max Colors</Label>
+                      <Input
+                        type="number"
+                        min="2"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.max_colors || 2}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, max_colors: parseInt(e.target.value) || 2 })}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-300">Current Nozzle Diameter (mm)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={editingPrinter?.actual_nozzle_diameter || 0.4}
+                      onChange={(e) => setEditingPrinter({ ...editingPrinter, actual_nozzle_diameter: parseFloat(e.target.value) || 0.4 })}
+                    />
+                  </div>
+                </div>
+
+                {/* Other specs */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Additional Specifications</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Power (watts)</Label>
+                      <Input
+                        type="number"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.power_watts || 0}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, power_watts: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Cost (PLN)</Label>
+                      <Input
                         type="number"
                         step="0.01"
-                        placeholder="e.g. 75.00"
                         className="bg-gray-800 border-gray-700 text-white"
-                        value={editingPrinter?.maintenanceCostMonthly || 0}
-                        onChange={(e) => setEditingPrinter({ 
-                          ...editingPrinter, 
-                          maintenanceCostMonthly: parseFloat(e.target.value) || 0 
-                        })}
+                        value={editingPrinter?.cost_pln || 0}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, cost_pln: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Min Layer Height (mm)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={editingPrinter?.layer_height_min || 0.1}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, layer_height_min: parseFloat(e.target.value) || 0.1 })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-maintenance-interval" className="text-gray-300">
-                        Interval (days)
-                      </Label>
+                      <Label className="text-gray-300">Max Layer Height (mm)</Label>
                       <Input
-                        id="edit-maintenance-interval"
                         type="number"
-                        placeholder="e.g. 90"
+                        step="0.01"
                         className="bg-gray-800 border-gray-700 text-white"
-                        value={editingPrinter?.maintenanceIntervalDays || 90}
-                        onChange={(e) => setEditingPrinter({ 
-                          ...editingPrinter, 
-                          maintenanceIntervalDays: parseInt(e.target.value) || 90 
-                        })}
+                        value={editingPrinter?.layer_height_max || 0.3}
+                        onChange={(e) => setEditingPrinter({ ...editingPrinter, layer_height_max: parseFloat(e.target.value) || 0.3 })}
                       />
                     </div>
-                    {/* Calcul automatique */}
-                    {(editingPrinter?.maintenanceCostMonthly > 0) && (
-                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div className="space-y-1 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Annual Cost:</span>
-                            <span className="text-white font-semibold">
-                              {((editingPrinter?.maintenanceCostMonthly || 0) * 12).toFixed(2)} PLN
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Maintenances/Year:</span>
-                            <span className="text-white font-semibold">
-                              ≈ {Math.floor(365 / (editingPrinter?.maintenanceIntervalDays || 90))} interventions
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-300">Lifespan (years)</Label>
+                    <Input
+                      type="number"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={editingPrinter?.lifespan_years || 5}
+                      onChange={(e) => setEditingPrinter({ ...editingPrinter, lifespan_years: parseInt(e.target.value) || 5 })}
+                    />
                   </div>
                 </div>
               </div>
