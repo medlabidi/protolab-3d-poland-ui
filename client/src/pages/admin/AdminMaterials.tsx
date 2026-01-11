@@ -56,15 +56,12 @@ const AdminMaterials = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    type: "PLA",
-    color: "#FFFFFF",
+    material_Color Name: "PLA",
+    color: "",
+    hex_color: "#FFFFFF",
     price_per_kg: 0,
-    density: 1.24,
-    stock_quantity: 0,
-    print_temp: 200,
-    bed_temp: 60,
-    supplier: "",
+    stock_status: "available" as 'available' | 'low_stock' | 'out_of_stock',
+    lead_time_days: 0,
     description: "",
     is_active: true,
   });
@@ -93,6 +90,10 @@ const AdminMaterials = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Materials fetched:', data.materials);
+        if (data.materials && data.materials.length > 0) {
+          console.log('First material sample:', data.materials[0]);
+          console.log('Material keys:', Object.keys(data.materials[0]));
+        }
         setMaterials(data.materials || []);
       } else {
         const error = await response.json().catch(() => ({}));
@@ -108,8 +109,8 @@ const AdminMaterials = () => {
   };
 
   const handleAddMaterial = async () => {
-    if (!formData.name.trim() || !formData.supplier.trim()) {
-      toast.error("Name and supplier are required");
+    if (!formData.material_Color Name.trim() || !formData.color.trim()) {
+      toast.error("Material Color Name and color are required");
       return;
     }
 
@@ -118,7 +119,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Color Name': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
@@ -141,8 +142,8 @@ const AdminMaterials = () => {
   };
 
   const handleEditMaterial = async () => {
-    if (!formData.name.trim() || !formData.supplier.trim()) {
-      toast.error("Name and supplier are required");
+    if (!formData.material_Color Name.trim() || !formData.color.trim()) {
+      toast.error("Material Color Name and color are required");
       return;
     }
 
@@ -151,7 +152,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Color Name': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -207,7 +208,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Color Name': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -232,15 +233,12 @@ const AdminMaterials = () => {
   const openEditDialog = (material: any) => {
     setSelectedMaterial(material);
     setFormData({
-      name: material.name,
-      type: material.type,
+      material_Color Name: material.material_Color Name,
       color: material.color,
+      hex_color: material.hex_color,
       price_per_kg: material.price_per_kg,
-      density: material.density,
-      stock_quantity: material.stock_quantity,
-      print_temp: material.print_temp,
-      bed_temp: material.bed_temp,
-      supplier: material.supplier,
+      stock_status: material.stock_status,
+      lead_time_days: material.lead_time_days,
       description: material.description || "",
       is_active: material.is_active,
     });
@@ -254,15 +252,12 @@ const AdminMaterials = () => {
 
   const resetForm = () => {
     setFormData({
-      name: "",
-      type: "PLA",
-      color: "#FFFFFF",
+      material_Color Name: "PLA",
+      color: "",
+      hex_color: "#FFFFFF",
       price_per_kg: 0,
-      density: 1.24,
-      stock_quantity: 0,
-      print_temp: 200,
-      bed_temp: 60,
-      supplier: "",
+      stock_status: "available",
+      lead_time_days: 0,
       description: "",
       is_active: true,
     });
@@ -355,7 +350,7 @@ const AdminMaterials = () => {
                     <thead>
                       <tr className="border-b border-gray-800">
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Name</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
@@ -372,20 +367,27 @@ const AdminMaterials = () => {
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-8 h-8 rounded-lg border border-gray-700"
-                                  style={{ backgroundColor: material.color }}
+                                  style={{ backgroundColor: material.hex_color || material.color }}
                                 ></div>
-                                <p className="font-medium text-white">{material.name || `${material.type} - ${material.color}`}</p>
+                                <p className="font-medium text-white">{material.material_Color Name} - {material.color}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
-                                {material.type || 'N/A'}
+                                {material.material_Color Name || 'N/A'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
                               <div>
-                                <p className={`font-semibold ${stockStatus.color}`}>{material.stock_quantity || 0} kg</p>
-                                <p className={`text-xs ${stockStatus.color}`}>{stockStatus.label}</p>
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                  material.stock_status === 'available' ? 'bg-green-500/20 text-green-400' :
+                                  material.stock_status === 'low_stock' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {material.stock_status === 'available' ? 'Available' :
+                                   material.stock_status === 'low_stock' ? 'Low Stock' :
+                                   'Out of Stock'}
+                                </span>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
@@ -451,27 +453,27 @@ const AdminMaterials = () => {
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Name *</Label>
+                  <Label className="text-gray-300">Material Color Name *</Label>
                   <Input
                     placeholder="Ex: PLA - White"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.name}
+                    value={formData.material_Color Name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Type</Label>
+                  <Label className="text-gray-300">Color Name</Label>
                   <Input
                     placeholder="PLA, PETG, TPU..."
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    value={formData.material_Color Name}
+                    onChange={(e) => setFormData({ ...formData, Color Name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-gray-300">Color</Label>
                   <Input
-                    type="color"
+                    Color Name="color"
                     className="bg-gray-800 border-gray-700 h-10"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
@@ -480,7 +482,7 @@ const AdminMaterials = () => {
                 <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.price_per_kg}
@@ -490,45 +492,45 @@ const AdminMaterials = () => {
                 <div className="space-y-2">
                   <Label className="text-gray-300">Densité</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.density}
-                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                    value={formData.stock_status}
+                    onChange={(e) => setFormData({ ...formData, Stock Status: parseFloat(e.target.value) || 1.24 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Label className="text-gray-300">Stock Status</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.1"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_quantity}
+                    value={formData.stock_status}
                     onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Print Temp (°C)</Label>
+                  <Label className="text-gray-300">Lead Time (days) (°C)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.print_temp}
+                    value={formData.lead_time_days}
                     onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Bed Temp (°C)</Label>
+                  <Label className="text-gray-300">Hex Color (°C)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.bed_temp}
+                    value={formData.lead_time_days}
                     onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Supplier *</Label>
+                  <Label className="text-gray-300">Color Name *</Label>
                   <Select
-                    value={formData.supplier}
+                    value={formData.color}
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
@@ -576,22 +578,22 @@ const AdminMaterials = () => {
                   <Label className="text-gray-300">Nom *</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.name}
+                    value={formData.material_Color Name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Type</Label>
+                  <Label className="text-gray-300">Color Name</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    value={formData.material_Color Name}
+                    onChange={(e) => setFormData({ ...formData, Color Name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-gray-300">Color</Label>
                   <Input
-                    type="color"
+                    Color Name="color"
                     className="bg-gray-800 border-gray-700 h-10"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
@@ -600,7 +602,7 @@ const AdminMaterials = () => {
                 <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.price_per_kg}
@@ -610,45 +612,45 @@ const AdminMaterials = () => {
                 <div className="space-y-2">
                   <Label className="text-gray-300">Densité</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.01"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.density}
-                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                    value={formData.stock_status}
+                    onChange={(e) => setFormData({ ...formData, Stock Status: parseFloat(e.target.value) || 1.24 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Label className="text-gray-300">Stock Status</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     step="0.1"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_quantity}
+                    value={formData.stock_status}
                     onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Print Temp (°C)</Label>
+                  <Label className="text-gray-300">Lead Time (days) (°C)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.print_temp}
+                    value={formData.lead_time_days}
                     onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Bed Temp (°C)</Label>
+                  <Label className="text-gray-300">Hex Color (°C)</Label>
                   <Input
-                    type="number"
+                    Color Name="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.bed_temp}
+                    value={formData.lead_time_days}
                     onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Supplier *</Label>
+                  <Label className="text-gray-300">Color Name *</Label>
                   <Select
-                    value={formData.supplier}
+                    value={formData.color}
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
@@ -716,4 +718,5 @@ const AdminMaterials = () => {
 };
 
 export default AdminMaterials;
+
 

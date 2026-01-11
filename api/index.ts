@@ -513,7 +513,8 @@ async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelRes
   
   const { data: materials, error } = await supabase
     .from('materials')
-    .select('*');
+    .select('*')
+    .order('material_type', { ascending: true });
   
   if (error) {
     console.error('Error fetching materials:', error);
