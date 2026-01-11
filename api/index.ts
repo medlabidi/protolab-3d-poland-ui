@@ -311,7 +311,14 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
     .eq('id', orderId)
     .single();
   
+  console.log('[UPDATE_STATUS] Fetch existing order result:', { 
+    existingOrder, 
+    fetchError: fetchError?.message,
+    orderId 
+  });
+  
   if (fetchError || !existingOrder) {
+    console.log('[UPDATE_STATUS] Order not found, returning 404');
     return res.status(404).json({ error: 'Order not found' });
   }
   
