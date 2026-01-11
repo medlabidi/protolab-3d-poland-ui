@@ -1,6 +1,18 @@
 -- Run this in your Supabase SQL Editor
 
--- Add new columns to printers table
+-- Step 1: Make non-essential fields nullable
+ALTER TABLE printers ALTER COLUMN power_watts DROP NOT NULL;
+ALTER TABLE printers ALTER COLUMN cost_pln DROP NOT NULL;
+ALTER TABLE printers ALTER COLUMN lifespan_hours DROP NOT NULL;
+ALTER TABLE printers ALTER COLUMN maintenance_rate DROP NOT NULL;
+
+-- Set defaults for these columns
+ALTER TABLE printers ALTER COLUMN power_watts SET DEFAULT 0;
+ALTER TABLE printers ALTER COLUMN cost_pln SET DEFAULT 0;
+ALTER TABLE printers ALTER COLUMN lifespan_hours SET DEFAULT 5000;
+ALTER TABLE printers ALTER COLUMN maintenance_rate SET DEFAULT 0.03;
+
+-- Step 2: Add new columns to printers table
 ALTER TABLE printers ADD COLUMN IF NOT EXISTS brand VARCHAR(255);
 ALTER TABLE printers ADD COLUMN IF NOT EXISTS printer_model VARCHAR(255);
 ALTER TABLE printers ADD COLUMN IF NOT EXISTS multi_color_printing BOOLEAN DEFAULT false;
