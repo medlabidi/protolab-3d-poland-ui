@@ -56,7 +56,7 @@ const AdminMaterials = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [formData, setFormData] = useState({
-    material_Color Name: "PLA",
+    material_type: "PLA",
     color: "",
     hex_color: "#FFFFFF",
     price_per_kg: 0,
