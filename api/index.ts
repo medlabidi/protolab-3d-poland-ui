@@ -998,6 +998,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   const path = url.split('?')[0].replace('/api', '');
   const contentType = req.headers['content-type'] || '';
   
+  // CRITICAL DEBUG: Log admin order status requests specifically
+  if (path.includes('/admin/orders/') && path.includes('/status')) {
+    console.log('🔴 [ADMIN_ORDER_STATUS] Request detected!', {
+      method: req.method,
+      fullUrl: url,
+      path: path,
+      pathParts: path.split('/'),
+      matchesRegex: path.match(/^\/admin\/orders\/[^/]+\/status$/) !== null
+    });
+  }
+  
   // Debug logging for ALL requests to see what's happening
   console.log('[DEBUG] Incoming request:', {
     fullUrl: url,
