@@ -37,7 +37,7 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const AdminMaterials = () => {
-  // Liste des fournisseurs disponibles
+  // Liste des Suppliers disponibles
   const availableSuppliers = [
     "Prusament",
     "NinjaTek",
@@ -357,8 +357,7 @@ const AdminMaterials = () => {
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price/kg</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Temps</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
@@ -375,12 +374,12 @@ const AdminMaterials = () => {
                                   className="w-8 h-8 rounded-lg border border-gray-700"
                                   style={{ backgroundColor: material.color }}
                                 ></div>
-                                <p className="font-medium text-white">{material.name}</p>
+                                <p className="font-medium text-white">{material.name || `${material.type} - ${material.color}`}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
-                                {material.type}
+                                {material.type || 'N/A'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -389,10 +388,7 @@ const AdminMaterials = () => {
                                 <p className={`text-xs ${stockStatus.color}`}>{stockStatus.label}</p>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-white">${material.price_per_kg}</td>
-                            <td className="px-6 py-4 text-sm text-gray-400">
-                              <div>{material.print_temp}°C / {material.bed_temp}°C</div>
-                            </td>
+                            <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
                             <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
                             <td className="px-6 py-4">
                               <Button
@@ -448,14 +444,14 @@ const AdminMaterials = () => {
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="text-white">Ajouter un nouveau matériau</DialogTitle>
+                <DialogTitle className="text-white">Add New Material</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Remplissez les informations du nouveau matériau
+                  Fill in the details for the new material
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom *</Label>
+                  <Label className="text-gray-300">Name *</Label>
                   <Input
                     placeholder="Ex: PLA - White"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -473,7 +469,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Couleur</Label>
+                  <Label className="text-gray-300">Color</Label>
                   <Input
                     type="color"
                     className="bg-gray-800 border-gray-700 h-10"
@@ -482,7 +478,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Prix/kg ($)</Label>
+                  <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -512,7 +508,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Temp. impression (°C)</Label>
+                  <Label className="text-gray-300">Print Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -521,7 +517,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Temp. plateau (°C)</Label>
+                  <Label className="text-gray-300">Bed Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -530,13 +526,13 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Fournisseur *</Label>
+                  <Label className="text-gray-300">Supplier *</Label>
                   <Select
                     value={formData.supplier}
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un fournisseur" />
+                      <SelectValue placeholder="Sélectionnez un Supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
                       {availableSuppliers.map((supplier) => (
@@ -593,7 +589,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Couleur</Label>
+                  <Label className="text-gray-300">Color</Label>
                   <Input
                     type="color"
                     className="bg-gray-800 border-gray-700 h-10"
@@ -602,7 +598,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Prix/kg ($)</Label>
+                  <Label className="text-gray-300">Price/kg (PLN)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -632,7 +628,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Temp. impression (°C)</Label>
+                  <Label className="text-gray-300">Print Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -641,7 +637,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Temp. plateau (°C)</Label>
+                  <Label className="text-gray-300">Bed Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -650,13 +646,13 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Fournisseur *</Label>
+                  <Label className="text-gray-300">Supplier *</Label>
                   <Select
                     value={formData.supplier}
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un fournisseur" />
+                      <SelectValue placeholder="Sélectionnez un Supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
                       {availableSuppliers.map((supplier) => (
@@ -720,3 +716,4 @@ const AdminMaterials = () => {
 };
 
 export default AdminMaterials;
+
