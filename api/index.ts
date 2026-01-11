@@ -1146,12 +1146,13 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/admin/orders' && req.method === 'GET') {
       return await handleAdminGetOrders(req as AuthenticatedRequest, res);
     }
-    if (path.match(/^\/admin\/orders\/[^/]+$/) && req.method === 'GET') {
-      return await handleAdminGetOrderById(req as AuthenticatedRequest, res);
-    }
+    // IMPORTANT: Check status route BEFORE the general :id route
     if (path.match(/^\/admin\/orders\/[^/]+\/status$/) && req.method === 'PATCH') {
       console.log('[ROUTE_MATCH] Admin update order status matched!', { path, method: req.method });
       return await handleAdminUpdateOrderStatus(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/orders\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminGetOrderById(req as AuthenticatedRequest, res);
     }
     if (path === '/admin/users' && req.method === 'GET') {
       return await handleAdminGetUsers(req as AuthenticatedRequest, res);
