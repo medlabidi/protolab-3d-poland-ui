@@ -48,11 +48,15 @@ const AdminPrinters = () => {
   const [deletingPrinter, setDeletingPrinter] = useState<any>(null);
   const [newPrinter, setNewPrinter] = useState({
     name: "",
-    status: "offline",
-    temperature: 25,
-    bedTemp: 25,
-    maintenanceCostMonthly: 0,
-    maintenanceIntervalDays: 90,
+    brand: "",
+    printer_model: "",
+    max_build_volume: "",
+    multi_color_printing: false,
+    max_colors: 1,
+    available_nozzle_diameters: "0.4",
+    actual_nozzle_diameter: 0.4,
+    purchase_price: 0,
+    lifespan_years: 5,
   });
 
   // Fetch printers on mount
@@ -248,10 +252,12 @@ const AdminPrinters = () => {
       return;
     }
 
-    try {
-      const nextMaintenanceDate = new Date();
-      nextMaintenanceDate.setDate(nextMaintenanceDate.getDate() + newPrinter.maintenanceIntervalDays);
+    if (!newPrinter.brand.trim()) {
+      toast.error("Brand is required");
+      return;
+    }
 
+    try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/printers`, {
         method: 'POST',
@@ -261,17 +267,23 @@ const AdminPrinters = () => {
         },
         body: JSON.stringify({
           name: newPrinter.name,
-          status: newPrinter.status,
+          brand: newPrinter.brand,
+          printer_model: newPrinter.printer_model,
+          status: "offline",
           current_job: "None",
           progress: 0,
-          temperature: newPrinter.temperature,
-          bed_temp: newPrinter.bedTemp,
+          temperature: 25,
+          bed_temp: 25,
           uptime: "0%",
           total_prints: 0,
+          max_build_volume: newPrinter.max_build_volume,
+          multi_color_printing: newPrinter.multi_color_printing,
+          max_colors: newPrinter.multi_color_printing ? newPrinter.max_colors : 1,
+          available_nozzle_diameters: newPrinter.available_nozzle_diameters,
+          actual_nozzle_diameter: newPrinter.actual_nozzle_diameter,
+          purchase_price: newPrinter.purchase_price,
+          lifespan_years: newPrinter.lifespan_years,
           last_maintenance: new Date().toISOString().split('T')[0],
-          maintenance_cost_monthly: newPrinter.maintenanceCostMonthly,
-          maintenance_interval_days: newPrinter.maintenanceIntervalDays,
-          next_maintenance: nextMaintenanceDate.toISOString().split('T')[0],
         }),
       });
 
@@ -281,11 +293,15 @@ const AdminPrinters = () => {
         setShowAddDialog(false);
         setNewPrinter({
           name: "",
-          status: "offline",
-          temperature: 25,
-          bedTemp: 25,
-          maintenanceCostMonthly: 0,
-          maintenanceIntervalDays: 90,
+          brand: "",
+          printer_model: "",
+          max_build_volume: "",
+          multi_color_printing: false,
+          max_colors: 1,
+          available_nozzle_diameters: "0.4",
+          actual_nozzle_diameter: 0.4,
+          purchase_price: 0,
+          lifespan_years: 5,
         });
       } else {
         toast.error('Failed to add printer');
@@ -510,116 +526,163 @@ const AdminPrinters = () => {
 
           {/* Add Printer Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Add New Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Fill in the information for the new 3D printer
+                  Fill in the specifications for the new 3D printer
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="printer-name" className="text-gray-300">Printer Name *</Label>
-                  <Input
-                    id="printer-name"
-                    placeholder="e.g. Prusa i3 MK4"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={newPrinter.name}
-                    onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="printer-status" className="text-gray-300">Initial Status</Label>
-                  <Select
-                    value={newPrinter.status}
-                    onValueChange={(value) => setNewPrinter({ ...newPrinter, status: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Basic Information</h4>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="nozzle-temp" className="text-gray-300">Nozzle Temp (°C)</Label>
+                    <Label htmlFor="printer-name" className="text-gray-300">Printer Name *</Label>
                     <Input
-                      id="nozzle-temp"
-                      type="number"
+                      id="printer-name"
+                      placeholder="e.g. Main Production Printer"
                       className="bg-gray-800 border-gray-700 text-white"
-                      value={newPrinter.temperature}
-                      onChange={(e) => setNewPrinter({ ...newPrinter, temperature: parseInt(e.target.value) || 25 })}
+                      value={newPrinter.name}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, name: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bed-temp" className="text-gray-300">Bed Temp (°C)</Label>
-                    <Input
-                      id="bed-temp"
-                      type="number"
-                      className="bg-gray-800 border-gray-700 text-white"
-                      value={newPrinter.bedTemp}
-                      onChange={(e) => setNewPrinter({ ...newPrinter, bedTemp: parseInt(e.target.value) || 25 })}
-                    />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="printer-brand" className="text-gray-300">Brand *</Label>
+                      <Input
+                        id="printer-brand"
+                        placeholder="e.g. Prusa, Creality"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.brand}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, brand: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="printer-model" className="text-gray-300">Model</Label>
+                      <Input
+                        id="printer-model"
+                        placeholder="e.g. i3 MK3S+, Ender 3"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.printer_model}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, printer_model: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Maintenance Section */}
-                <div className="pt-4 border-t border-gray-700">
-                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-blue-400" />
-                    Maintenance Settings
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="maintenance-cost" className="text-gray-300">
-                        Monthly Cost (PLN)
-                      </Label>
+                {/* Build Specifications */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Build Specifications</h4>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="build-volume" className="text-gray-300">Max Build Volume</Label>
+                    <Input
+                      id="build-volume"
+                      placeholder="e.g. 220x220x250mm"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newPrinter.max_build_volume}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, max_build_volume: e.target.value })}
+                    />
+                    <p className="text-xs text-gray-500">Format: Width x Depth x Height (e.g. 220x220x250mm)</p>
+                  </div>
+                </div>
+
+                {/* Multi-Color Printing */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Color Capabilities</h4>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="multi-color"
+                      className="w-4 h-4 rounded bg-gray-800 border-gray-700"
+                      checked={newPrinter.multi_color_printing}
+                      onChange={(e) => setNewPrinter({ ...newPrinter, multi_color_printing: e.target.checked })}
+                    />
+                    <Label htmlFor="multi-color" className="text-gray-300 cursor-pointer">
+                      Multi-Color Printing Capability
+                    </Label>
+                  </div>
+
+                  {newPrinter.multi_color_printing && (
+                    <div className="space-y-2 pl-6">
+                      <Label htmlFor="max-colors" className="text-gray-300">Maximum Colors at Once</Label>
                       <Input
-                        id="maintenance-cost"
+                        id="max-colors"
+                        type="number"
+                        min="2"
+                        max="10"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.max_colors}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, max_colors: parseInt(e.target.value) || 2 })}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Nozzle Specifications */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Nozzle Specifications</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="available-nozzles" className="text-gray-300">Available Nozzle Diameters (mm)</Label>
+                      <Input
+                        id="available-nozzles"
+                        placeholder="e.g. 0.2, 0.4, 0.6, 0.8"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.available_nozzle_diameters}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, available_nozzle_diameters: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500">Comma-separated values</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="actual-nozzle" className="text-gray-300">Actual Nozzle Diameter (mm)</Label>
+                      <Input
+                        id="actual-nozzle"
                         type="number"
                         step="0.01"
-                        placeholder="e.g. 75.00"
+                        placeholder="e.g. 0.4"
                         className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.maintenanceCostMonthly}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceCostMonthly: parseFloat(e.target.value) || 0 })}
+                        value={newPrinter.actual_nozzle_diameter}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, actual_nozzle_diameter: parseFloat(e.target.value) || 0.4 })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Information */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Financial & Lifecycle</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="purchase-price" className="text-gray-300">Purchase Price (PLN)</Label>
+                      <Input
+                        id="purchase-price"
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 2500.00"
+                        className="bg-gray-800 border-gray-700 text-white"
+                        value={newPrinter.purchase_price}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, purchase_price: parseFloat(e.target.value) || 0 })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="maintenance-interval" className="text-gray-300">
-                        Interval (days)
-                      </Label>
+                      <Label htmlFor="lifespan" className="text-gray-300">Expected Lifespan (years)</Label>
                       <Input
-                        id="maintenance-interval"
+                        id="lifespan"
                         type="number"
-                        placeholder="e.g. 90"
+                        min="1"
+                        placeholder="e.g. 5"
                         className="bg-gray-800 border-gray-700 text-white"
-                        value={newPrinter.maintenanceIntervalDays}
-                        onChange={(e) => setNewPrinter({ ...newPrinter, maintenanceIntervalDays: parseInt(e.target.value) || 90 })}
+                        value={newPrinter.lifespan_years}
+                        onChange={(e) => setNewPrinter({ ...newPrinter, lifespan_years: parseInt(e.target.value) || 5 })}
                       />
                     </div>
-                    {/* Calcul automatique */}
-                    {newPrinter.maintenanceCostMonthly > 0 && (
-                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div className="space-y-1 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Annual Cost:</span>
-                            <span className="text-white font-semibold">
-                              {(newPrinter.maintenanceCostMonthly * 12).toFixed(2)} PLN
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Maintenances/Year:</span>
-                            <span className="text-white font-semibold">
-                              ≈ {Math.floor(365 / newPrinter.maintenanceIntervalDays)} interventions
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
