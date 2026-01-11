@@ -413,7 +413,7 @@ const AdminPrinters = () => {
           {/* Printers Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {printers.map(printer => (
-              <Card key={printer.id} className="bg-gray-900 border-gray-800 overflow-hidden">
+              <Card key={printer.id} className={`bg-gray-900 border-gray-800 overflow-hidden ${!printer.is_active ? 'opacity-60' : ''}`}>
                 <CardHeader className="border-b border-gray-800">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -421,29 +421,18 @@ const AdminPrinters = () => {
                         <Printer className="w-6 h-6 text-blue-400" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{printer.name}</h3>
-                        <Select
-                          value={printer.status}
-                          onValueChange={(value) => handleStatusChange(printer.id, value)}
-                        >
-                          <SelectTrigger className={`w-fit border-0 h-auto p-0 mt-1 ${getStatusColor(printer.status)}`}>
-                            <div className="flex items-center gap-2 px-2 py-1 rounded-full text-sm">
-                              {getStatusIcon(printer.status)}
-                              <SelectValue />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent className="bg-gray-800 border-gray-700">
-                            <SelectItem value="online" className="text-green-400">
-                              Online
-                            </SelectItem>
-                            <SelectItem value="offline" className="text-red-400">
-                              Offline
-                            </SelectItem>
-                            <SelectItem value="maintenance" className="text-yellow-400">
-                              Maintenance
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-white">{printer.name}</h3>
+                          {printer.is_default && (
+                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">Default</span>
+                          )}
+                          {!printer.is_active && (
+                            <span className="px-2 py-0.5 bg-gray-700 text-gray-400 text-xs rounded-full">Inactive</span>
+                          )}
+                        </div>
+                        {printer.brand && printer.printer_model && (
+                          <p className="text-gray-400 text-sm mt-1">{printer.brand} {printer.printer_model}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -467,69 +456,129 @@ const AdminPrinters = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4">
-                  {/* Current Job */}
-                  <div>
-                    <p className="text-gray-400 text-sm mb-2">Current Job</p>
-                    <p className="text-white font-medium">{printer.currentJob}</p>
-                    {printer.progress > 0 && (
-                      <div className="mt-2 w-full bg-gray-800 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full transition-all"
-                          style={{ width: `${printer.progress}%` }}
-                        ></div>
+                  {/* Specifications */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {printer.build_volume_x && printer.build_volume_y && printer.build_volume_z && (
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Build Volume</p>
+                        <p className="text-white text-sm font-medium">
+                          {printer.build_volume_x} × {printer.build_volume_y} × {printer.build_volume_z} mm
+                        </p>
                       </div>
                     )}
-                    {printer.progress > 0 && <p className="text-xs text-gray-500 mt-1">{printer.progress}% complete</p>}
-                  </div>
-
-                  {/* Temperatures */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Nozzle Temp</p>
-                      <p className="text-white font-semibold">{printer.temperature}°C</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Bed Temp</p>
-                      <p className="text-white font-semibold">{printer.bedTemp}°C</p>
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-800">
-                    <div>
-                      <p className="text-gray-400 text-xs">Uptime</p>
-                      <p className="text-white text-sm font-medium">{printer.uptime}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs">Total Prints</p>
-                      <p className="text-white text-sm font-medium">{printer.totalPrints}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs">Last Service</p>
-                      <p className="text-white text-xs">{new Date(printer.lastMaintenance).toLocaleDateString()}</p>
-
-                  {/* Maintenance Info */}
-                  <div className="pt-3 border-t border-gray-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-blue-400" />
-                        <span className="text-gray-400 text-xs">Maintenance Cost</span>
+                    {printer.actual_nozzle_diameter && (
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Nozzle Diameter</p>
+                        <p className="text-white text-sm font-medium">{printer.actual_nozzle_diameter} mm</p>
                       </div>
-                      <span className="text-white font-semibold text-sm">
-                        {printer.maintenanceCostMonthly?.toFixed(2) || '0.00'} PLN/month
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-green-400" />
-                        <span className="text-gray-400 text-xs">Next Maintenance</span>
+                    )}
+                    {printer.power_watts && (
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Power</p>
+                        <p className="text-white text-sm font-medium">{printer.power_watts} W</p>
                       </div>
-                      <span className="text-gray-300 text-xs">
-                        {printer.nextMaintenance ? new Date(printer.nextMaintenance).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
+                    )}
+                    {printer.layer_height_min && printer.layer_height_max && (
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Layer Height</p>
+                        <p className="text-white text-sm font-medium">
+                          {printer.layer_height_min} - {printer.layer_height_max} mm
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Multi-color and Materials */}
+                  {(printer.multi_color_printing || printer.supported_materials?.length > 0) && (
+                    <div className="pt-3 border-t border-gray-800 space-y-2">
+                      {printer.multi_color_printing && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 text-xs">Multi-Color:</span>
+                          <span className="text-green-400 text-sm">Yes ({printer.max_colors} colors)</span>
+                        </div>
+                      )}
+                      {printer.supported_materials?.length > 0 && (
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Supported Materials</p>
+                          <div className="flex flex-wrap gap-1">
+                            {printer.supported_materials.map((material, idx) => (
+                              <span key={idx} className="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded">
+                                {material}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {/* Available Nozzles */}
+                  {printer.available_nozzle_diameters && (
+                    <div className="pt-3 border-t border-gray-800">
+                      <p className="text-gray-400 text-xs mb-1">Available Nozzles</p>
+                      <p className="text-white text-sm">{printer.available_nozzle_diameters}</p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="pt-3 border-t border-gray-800 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('accessToken');
+                          const response = await fetch(`${API_URL}/admin/printers/${printer.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ is_default: true }),
+                          });
+                          if (response.ok) {
+                            await fetchPrinters();
+                            toast.success("Printer set as default!");
+                          } else {
+                            toast.error("Failed to set as default");
+                          }
+                        } catch (error) {
+                          toast.error("Failed to set as default");
+                        }
+                      }}
+                      disabled={printer.is_default}
+                      className={`flex-1 ${printer.is_default ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                    >
+                      {printer.is_default ? '✓ Default' : 'Set as Default'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('accessToken');
+                          const response = await fetch(`${API_URL}/admin/printers/${printer.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ is_active: !printer.is_active }),
+                          });
+                          if (response.ok) {
+                            await fetchPrinters();
+                            toast.success(printer.is_active ? "Printer deactivated" : "Printer activated");
+                          } else {
+                            toast.error("Failed to update status");
+                          }
+                        } catch (error) {
+                          toast.error("Failed to update status");
+                        }
+                      }}
+                      className={`flex-1 ${printer.is_active ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                    >
+                      {printer.is_active ? 'Active' : 'Inactive'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
