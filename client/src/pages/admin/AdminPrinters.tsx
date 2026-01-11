@@ -309,11 +309,13 @@ const AdminPrinters = () => {
           lifespan_years: 5,
         });
       } else {
-        toast.error('Failed to add printer');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to add printer:', errorData);
+        toast.error(`Failed to add printer: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
       console.error('Error adding printer:', error);
-      toast.error('Error adding printer');
+      toast.error(`Error adding printer: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
