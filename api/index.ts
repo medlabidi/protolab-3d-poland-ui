@@ -118,7 +118,7 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     .from('orders')
     .select(`
       *,
-      users:user_id (
+      users (
         id,
         name,
         email
