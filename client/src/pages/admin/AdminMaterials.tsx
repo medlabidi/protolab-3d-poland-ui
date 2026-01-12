@@ -57,11 +57,13 @@ const AdminMaterials = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [formData, setFormData] = useState({
     material_type: "PLA",
-    color: "",
-    hex_color: "#FFFFFF",
+    color: "#FFFFFF",
     price_per_kg: 0,
-    stock_status: "available" as 'available' | 'low_stock' | 'out_of_stock',
-    lead_time_days: 0,
+    density: 1.24,
+    stock_quantity: 0,
+    print_temp: 200,
+    bed_temp: 60,
+    supplier: "",
     description: "",
     is_active: true,
   });
@@ -109,8 +111,8 @@ const AdminMaterials = () => {
   };
 
   const handleAddMaterial = async () => {
-    if (!formData.material_type.trim() || !formData.color.trim()) {
-      toast.error("Material type and color are required");
+    if (!formData.supplier.trim()) {
+      toast.error("Supplier is required");
       return;
     }
 
@@ -119,7 +121,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'POST',
         headers: {
-          'Content-type': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
@@ -142,8 +144,8 @@ const AdminMaterials = () => {
   };
 
   const handleEditMaterial = async () => {
-    if (!formData.material_type.trim() || !formData.color.trim()) {
-      toast.error("Material type and color are required");
+    if (!formData.supplier.trim()) {
+      toast.error("Supplier is required");
       return;
     }
 
@@ -152,7 +154,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-type': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -208,7 +210,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-type': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -235,10 +237,12 @@ const AdminMaterials = () => {
     setFormData({
       material_type: material.material_type,
       color: material.color,
-      hex_color: material.hex_color,
       price_per_kg: material.price_per_kg,
-      stock_status: material.stock_status,
-      lead_time_days: material.lead_time_days,
+      density: material.density,
+      stock_quantity: material.stock_quantity,
+      print_temp: material.print_temp,
+      bed_temp: material.bed_temp,
+      supplier: material.supplier,
       description: material.description || "",
       is_active: material.is_active,
     });
@@ -253,11 +257,13 @@ const AdminMaterials = () => {
   const resetForm = () => {
     setFormData({
       material_type: "PLA",
-      color: "",
-      hex_color: "#FFFFFF",
+      color: "#FFFFFF",
       price_per_kg: 0,
-      stock_status: "available",
-      lead_time_days: 0,
+      density: 1.24,
+      stock_quantity: 0,
+      print_temp: 200,
+      bed_temp: 60,
+      supplier: "",
       description: "",
       is_active: true,
     });
@@ -350,7 +356,7 @@ const AdminMaterials = () => {
                     <thead>
                       <tr className="border-b border-gray-800">
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">type</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
@@ -367,9 +373,9 @@ const AdminMaterials = () => {
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-8 h-8 rounded-lg border border-gray-700"
-                                  style={{ backgroundColor: material.hex_color || material.color }}
+                                  style={{ backgroundColor: material.color }}
                                 ></div>
-                                <p className="font-medium text-white">{material.material_type} - {material.color}</p>
+                                <p className="font-medium text-white">{`${material.material_type} - ${material.color}`}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -379,15 +385,8 @@ const AdminMaterials = () => {
                             </td>
                             <td className="px-6 py-4">
                               <div>
-                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                  material.stock_status === 'available' ? 'bg-green-500/20 text-green-400' :
-                                  material.stock_status === 'low_stock' ? 'bg-yellow-500/20 text-yellow-400' :
-                                  'bg-red-500/20 text-red-400'
-                                }`}>
-                                  {material.stock_status === 'available' ? 'Available' :
-                                   material.stock_status === 'low_stock' ? 'Low Stock' :
-                                   'Out of Stock'}
-                                </span>
+                                <p className={`font-semibold ${stockStatus.color}`}>{material.stock_quantity || 0} kg</p>
+                                <p className={`text-xs ${stockStatus.color}`}>{stockStatus.label}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
@@ -462,21 +461,12 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">type *</Label>
-                  <Input
-                    placeholder="Blue, Red, White..."
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Hex Color</Label>
+                  <Label className="text-gray-300">Color</Label>
                   <Input
                     type="color"
                     className="bg-gray-800 border-gray-700 h-10"
-                    value={formData.hex_color}
-                    onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -490,38 +480,60 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">stock_status</Label>
-                  <Select
-                    value={formData.stock_status}
-                    onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="available" className="text-white">Available</SelectItem>
-                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
-                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-gray-300">Densité</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.density}
+                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Lead Time (days)</Label>
+                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.stock_quantity}
+                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Print Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseInt(e.target.value) || 0 })}
+                    value={formData.print_temp}
+                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Bed Temp (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.bed_temp}
+                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Description</Label>
-                  <Input
-                    placeholder="Material description..."
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
+                  <Label className="text-gray-300">Supplier *</Label>
+                  <Select
+                    value={formData.supplier}
+                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Sélectionnez un Supplier" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {availableSuppliers.map((supplier) => (
+                        <SelectItem key={supplier} value={supplier} className="text-white">
+                          {supplier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter>
@@ -536,7 +548,7 @@ const AdminMaterials = () => {
                   onClick={handleAddMaterial}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Ajouter
+                  Add
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -548,35 +560,25 @@ const AdminMaterials = () => {
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Material</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Edit material information
+                  Update the material information
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
                   <Label className="text-gray-300">Material Type *</Label>
                   <Input
-                    placeholder="PLA, PETG, TPU, ABS..."
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.material_type}
                     onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">type *</Label>
-                  <Input
-                    placeholder="Blue, Red, White..."
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Hex Color</Label>
+                  <Label className="text-gray-300">Color</Label>
                   <Input
                     type="color"
                     className="bg-gray-800 border-gray-700 h-10"
-                    value={formData.hex_color}
-                    onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -590,38 +592,60 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">stock_status</Label>
-                  <Select
-                    value={formData.stock_status}
-                    onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="available" className="text-white">Available</SelectItem>
-                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
-                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-gray-300">Densité</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.density}
+                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Lead Time (days)</Label>
+                  <Label className="text-gray-300">Stock (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.stock_quantity}
+                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Print Temp (°C)</Label>
                   <Input
                     type="number"
                     className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseInt(e.target.value) || 0 })}
+                    value={formData.print_temp}
+                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Bed Temp (°C)</Label>
+                  <Input
+                    type="number"
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={formData.bed_temp}
+                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Description</Label>
-                  <Input
-                    placeholder="Material description..."
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
+                  <Label className="text-gray-300">Supplier *</Label>
+                  <Select
+                    value={formData.supplier}
+                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Sélectionnez un Supplier" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {availableSuppliers.map((supplier) => (
+                        <SelectItem key={supplier} value={supplier} className="text-white">
+                          {supplier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter>
@@ -646,10 +670,10 @@ const AdminMaterials = () => {
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
+                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Are you sure you want to delete "{selectedMaterial?.material_type} - {selectedMaterial?.color}"?
-                  This action cannot be undone.
+                  Êtes-vous sûr de vouloir supprimer le matériau "{selectedMaterial?.name}" ?
+                  Cette action est irréversible.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -664,7 +688,7 @@ const AdminMaterials = () => {
                   onClick={handleDeleteMaterial}
                   className="bg-red-600 hover:bg-red-700"
                 >
-                  Supprimer
+                  Delete
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -676,6 +700,4 @@ const AdminMaterials = () => {
 };
 
 export default AdminMaterials;
-
-
 
