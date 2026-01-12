@@ -72,6 +72,9 @@ export class AdminController {
       // Filter orders by type from all orders
       const allOrders = await orderService.getAllOrders();
       const orders = allOrders.filter(order => order.order_type === type);
+      
+      res.json({ orders, count: orders.length, type });
+    } catch (error) {
       next(error);
     }
   }
@@ -86,21 +89,37 @@ export class AdminController {
         return;
       }
       
-      const printOrder = await orderService.createPrintFromDesign(designOrderId, {
-        material,
-        color,
-        layerHeight,
-        infill,
-        quantity,
-        price
-      });
+      // Get the design order first
+      const designOrder = await orderService.getOrderById(designOrderId);
+      if (!designOrder) {
+        res.status(404).json({ error: 'Design order not found' });
+        return;
+      }
+      
+      if (designOrder.order_type !== 'design') {
+        res.status(400).json({ error: 'Parent order must be a design order' });
+        return;
+      }
+      
+      // Create a print order linked to the design
+      const printOrder = await orderService.createOrder(
+        designOrder.user_id,
+        {
+          fileName: designOrder.file_name || 'design-converted.stl',
+          fileUrl: designOrder.file_url || '',
+          material,
+          color,
+          layerHeight,
+          infill,
+          quantity,
+          shippingMethod: designOrder.shipping_method || 'pickup',
+          price,
+          projectName: designOrder.project_name,
+        }
+      );
       
       res.status(201).json({ order: printOrder });
     } catch (error: any) {
-      if (error.message === 'Design order not found' || error.message === 'Parent order must be a design order') {
-        res.status(404).json({ error: error.message });
-        return;
-      }
       next(error);
     }
   }
