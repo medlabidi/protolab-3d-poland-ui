@@ -1,10 +1,17 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Chargement explicite du .env depuis le dossier server
-const envPath = path.resolve(__dirname, '../.env');
+// Load .env from server directory
+const envPath = path.resolve(__dirname, '../../.env');
 console.log('📁 Loading .env from:', envPath);
 const result = dotenv.config({ path: envPath });
+
+// Also try loading from server/.env if root .env doesn't work
+if (result.error) {
+  const serverEnvPath = path.resolve(__dirname, '../.env');
+  console.log('📁 Trying server .env from:', serverEnvPath);
+  dotenv.config({ path: serverEnvPath });
+}
 
 if (result.error) {
   console.error('❌ Error loading .env:', result.error);
