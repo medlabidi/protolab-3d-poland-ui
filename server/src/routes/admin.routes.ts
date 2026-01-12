@@ -56,4 +56,9 @@ router.patch('/printers/:id', adminController.updatePrinter);
 router.patch('/printers/:id/set-default', adminController.setDefaultPrinter);
 router.delete('/printers/:id', adminController.deletePrinter);
 
+// Design requests routes
+router.get('/design-requests', adminController.getAllDesignRequests);
+router.get('/design-requests/:id', adminController.getDesignRequestById);
+router.patch('/design-requests/:id/status', adminController.updateDesignRequestStatus);
+
 export default router;

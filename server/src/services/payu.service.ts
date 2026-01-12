@@ -42,11 +42,17 @@ export class PayUService {
         }
       );
 
-      this.accessToken = response.data.access_token;
+      const token = response.data.access_token;
+      if (!token) {
+        throw new Error('Access token is empty');
+      }
+      
+      this.accessToken = token;
       // Set expiry time with 60 second buffer
       this.tokenExpiry = Date.now() + (response.data.expires_in - 60) * 1000;
 
       logger.info('PayU OAuth token obtained successfully');
+      
       return this.accessToken;
     } catch (error: any) {
       logger.error('Failed to obtain PayU OAuth token:', error.response?.data || error.message);
