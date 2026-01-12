@@ -37,16 +37,10 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const AdminMaterials = () => {
-  // Liste des Suppliers disponibles
   const availableSuppliers = [
     "Prusament",
-    "NinjaTek",
-    "MatterHackers",
-    "FormFutura",
-    "ColorFabb",
-    "eSun",
     "Polymaker",
-    "3DJake",
+    "eSun",
   ];
 
   const [materials, setMaterials] = useState<any[]>([]);
@@ -59,6 +53,7 @@ const AdminMaterials = () => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [newMaterialType, setNewMaterialType] = useState("");
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     material_type: "PLA",
     color: "#FFFFFF",
@@ -282,7 +277,8 @@ const AdminMaterials = () => {
 
   const getUniqueTypes = () => {
     const types = materials.map(m => m.material_type).filter(Boolean);
-    return [...new Set(types)].sort();
+    const allTypes = [...new Set([...types, ...customTypes])];
+    return allTypes.sort();
   };
 
   const getFilteredMaterials = () => {
@@ -352,38 +348,6 @@ const AdminMaterials = () => {
           {/* Materials Table */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="p-0">
-              {/* Filters */}
-              <div className="p-4 border-b border-gray-800 flex gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="text-gray-300">Type:</Label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="all" className="text-white">All Types</SelectItem>
-                      {getUniqueTypes().map(type => (
-                        <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-gray-300">Stock Status:</Label>
-                  <Select value={stockFilter} onValueChange={setStockFilter}>
-                    <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="all" className="text-white">All Status</SelectItem>
-                      <SelectItem value="available" className="text-white">Available</SelectItem>
-                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
-                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -401,9 +365,39 @@ const AdminMaterials = () => {
                       <tr className="border-b border-gray-800">
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Swatch</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Code</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
+                        <th className="px-6 py-4 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-300">Type</span>
+                            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                              <SelectTrigger className="w-32 h-8 bg-gray-800 border-gray-700 text-white text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectItem value="all" className="text-white">All</SelectItem>
+                                {getUniqueTypes().map(type => (
+                                  <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock Status</th>
+                        <th className="px-6 py-4 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-300">Stock Status</span>
+                            <Select value={stockFilter} onValueChange={setStockFilter}>
+                              <SelectTrigger className="w-32 h-8 bg-gray-800 border-gray-700 text-white text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectItem value="all" className="text-white">All</SelectItem>
+                                <SelectItem value="available" className="text-white">Available</SelectItem>
+                                <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                                <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Active</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
@@ -411,7 +405,6 @@ const AdminMaterials = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                       {getFilteredMaterials().map(material => {
-                        const stockStatus = getStockStatus(material.stock_quantity || 0);
                         return (
                           <tr key={material.id} className={`hover:bg-gray-800/50 transition-colors ${!material.is_active ? 'opacity-50' : ''}`}>
                             <td className="px-6 py-4">
@@ -431,49 +424,46 @@ const AdminMaterials = () => {
                             </td>
                             <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
                             <td className="px-6 py-4">
-                              <div className="space-y-1">
-                                <p className="text-white font-semibold">{material.stock_quantity || 0} kg</p>
-                                <Select
-                                  value={material.stock_status || "available"}
-                                  onValueChange={async (value) => {
-                                    try {
-                                      const token = localStorage.getItem('accessToken');
-                                      const response = await fetch(`${API_URL}/admin/materials`, {
-                                        method: 'PATCH',
-                                        headers: {
-                                          'Content-Type': 'application/json',
-                                          'Authorization': `Bearer ${token}`,
-                                        },
-                                        body: JSON.stringify({
-                                          id: material.id,
-                                          stock_status: value,
-                                        }),
-                                      });
-                                      if (response.ok) {
-                                        toast.success("Stock status updated!");
-                                        fetchMaterials();
-                                      } else {
-                                        toast.error("Failed to update stock status");
-                                      }
-                                    } catch (error) {
-                                      toast.error("Error updating stock status");
+                              <Select
+                                value={material.stock_status || "available"}
+                                onValueChange={async (value) => {
+                                  try {
+                                    const token = localStorage.getItem('accessToken');
+                                    const response = await fetch(`${API_URL}/admin/materials`, {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`,
+                                      },
+                                      body: JSON.stringify({
+                                        id: material.id,
+                                        stock_status: value,
+                                      }),
+                                    });
+                                    if (response.ok) {
+                                      toast.success("Stock status updated!");
+                                      fetchMaterials();
+                                    } else {
+                                      toast.error("Failed to update stock status");
                                     }
-                                  }}
-                                >
-                                  <SelectTrigger className={`w-32 h-7 text-xs border-0 ${
-                                    material.stock_status === 'available' ? 'bg-green-900/30 text-green-400' :
-                                    material.stock_status === 'low_stock' ? 'bg-yellow-900/30 text-yellow-400' :
-                                    'bg-red-900/30 text-red-400'
-                                  }`}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-gray-800 border-gray-700">
-                                    <SelectItem value="available" className="text-white">Available</SelectItem>
-                                    <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
-                                    <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                                  } catch (error) {
+                                    toast.error("Error updating stock status");
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className={`w-36 h-8 text-xs border-0 ${
+                                  material.stock_status === 'available' ? 'bg-green-900/30 text-green-400' :
+                                  material.stock_status === 'low_stock' ? 'bg-yellow-900/30 text-yellow-400' :
+                                  'bg-red-900/30 text-red-400'
+                                }`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-800 border-gray-700">
+                                  <SelectItem value="available" className="text-white">Available</SelectItem>
+                                  <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                                  <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </td>
                             <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
                             <td className="px-6 py-4">
@@ -586,16 +576,6 @@ const AdminMaterials = () => {
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.price_per_kg}
                     onChange={(e) => setFormData({ ...formData, price_per_kg: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Densité</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.density}
-                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -723,16 +703,6 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Density</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.density}
-                    onChange={(e) => setFormData({ ...formData, density: parseFloat(e.target.value) || 1.24 })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Stock (kg)</Label>
                   <Input
                     type="number"
@@ -840,11 +810,12 @@ const AdminMaterials = () => {
                       if (getUniqueTypes().includes(newMaterialType.trim())) {
                         toast.error("Material type already exists");
                       } else {
-                        toast.success(`Material type "${newMaterialType}" noted. You can now add materials with this type.`);
+                        setCustomTypes([...customTypes, newMaterialType.trim()]);
+                        toast.success(`Material type "${newMaterialType}" added! Now select it in the add material form.`);
                         setShowAddTypeDialog(false);
+                        setFormData({...formData, material_type: newMaterialType.trim()});
                         setNewMaterialType("");
                         setShowAddDialog(true);
-                        setFormData({...formData, material_type: newMaterialType.trim()});
                       }
                     } else {
                       toast.error("Please enter a material type name");
