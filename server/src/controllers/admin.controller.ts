@@ -625,7 +625,16 @@ export class AdminController {
       
       if (error) throw error;
       
-      res.json({ designRequests: designRequests || [], count: designRequests?.length || 0 });
+      // Format user data with combined name
+      const formattedRequests = (designRequests || []).map((request: any) => ({
+        ...request,
+        users: request.users ? {
+          ...request.users,
+          name: `${request.users.first_name || ''} ${request.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      }));
+      
+      res.json({ designRequests: formattedRequests, count: formattedRequests.length });
     } catch (error) {
       next(error);
     }
@@ -648,7 +657,16 @@ export class AdminController {
         return;
       }
       
-      res.json({ designRequest });
+      // Format user data with combined name
+      const formattedRequest = {
+        ...designRequest,
+        users: designRequest.users ? {
+          ...designRequest.users,
+          name: `${designRequest.users.first_name || ''} ${designRequest.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      };
+      
+      res.json({ designRequest: formattedRequest });
     } catch (error) {
       next(error);
     }
@@ -668,7 +686,7 @@ export class AdminController {
       
       const { data: designRequest, error } = await supabase
         .from('orders')
-        .update({ status })
+        .update({ design_status: status })
         .eq('id', id)
         .eq('order_type', 'design')
         .select('*, users(id, email, first_name, last_name)')
@@ -680,9 +698,18 @@ export class AdminController {
         return;
       }
       
+      // Format user data with combined name
+      const formattedRequest = {
+        ...designRequest,
+        users: designRequest.users ? {
+          ...designRequest.users,
+          name: `${designRequest.users.first_name || ''} ${designRequest.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      };
+      
       logger.info(`Design request ${id} status updated to ${status}`);
       
-      res.json({ message: 'Design request updated successfully', designRequest });
+      res.json({ message: 'Design request updated successfully', designRequest: formattedRequest });
     } catch (error) {
       next(error);
     }

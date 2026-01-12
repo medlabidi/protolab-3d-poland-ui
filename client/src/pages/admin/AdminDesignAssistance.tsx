@@ -78,7 +78,7 @@ const AdminDesignAssistance = () => {
       if (response.ok) {
         const data = await response.json();
         // The new endpoint returns design requests directly
-        setOrders(data.requests || []);
+        setOrders(data.designRequests || []);
       } else {
         toast.error('Failed to fetch design assistance orders');
       }

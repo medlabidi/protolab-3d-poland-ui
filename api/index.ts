@@ -192,6 +192,50 @@ async function handleGetNotifications(req: AuthenticatedRequest, res: VercelResp
   }
 }
 
+async function handleMarkNotificationRead(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  const path = (req.query?.path as string) || req.url || '';
+  const notificationId = path.split('/')[3]; // /users/notifications/:id/read
+  
+  if (!notificationId) {
+    return res.status(400).json({ error: 'Notification ID is required' });
+  }
+  
+  try {
+    // First verify the notification belongs to the user
+    const { data: notification, error: fetchError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', notificationId)
+      .eq('user_id', user.userId)
+      .single();
+    
+    if (fetchError || !notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    
+    // Mark as read
+    const { error: updateError } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      .eq('user_id', user.userId);
+    
+    if (updateError) {
+      console.error('Failed to mark notification as read:', updateError);
+      return res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1383,6 +1427,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/users/notifications' && req.method === 'GET') {
       return await handleGetNotifications(req as AuthenticatedRequest, res);
     }
+    if (path.match(/^\/users\/notifications\/[^/]+\/read$/) && req.method === 'PATCH') {
+      return await handleMarkNotificationRead(req as AuthenticatedRequest, res);
+    }
     
     // Materials routes
     if (path === '/materials/by-type' && req.method === 'GET') {
@@ -1546,6 +1593,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         'GET /api/users/profile',
         'PUT /api/users/profile',
         'GET /api/users/notifications',
+        'PATCH /api/users/notifications/:id/read',
         'GET /api/materials/by-type',
         'POST /api/upload/presigned-url',
         'POST /api/upload/analyze',
