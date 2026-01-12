@@ -431,9 +431,48 @@ const AdminMaterials = () => {
                             </td>
                             <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
                             <td className="px-6 py-4">
-                              <div>
-                                <p className={`font-semibold ${stockStatus.color}`}>{material.stock_quantity || 0} kg</p>
-                                <p className={`text-xs ${stockStatus.color}`}>{material.stock_status || stockStatus.label}</p>
+                              <div className="space-y-1">
+                                <p className="text-white font-semibold">{material.stock_quantity || 0} kg</p>
+                                <Select
+                                  value={material.stock_status || "available"}
+                                  onValueChange={async (value) => {
+                                    try {
+                                      const token = localStorage.getItem('accessToken');
+                                      const response = await fetch(`${API_URL}/admin/materials`, {
+                                        method: 'PATCH',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          'Authorization': `Bearer ${token}`,
+                                        },
+                                        body: JSON.stringify({
+                                          id: material.id,
+                                          stock_status: value,
+                                        }),
+                                      });
+                                      if (response.ok) {
+                                        toast.success("Stock status updated!");
+                                        fetchMaterials();
+                                      } else {
+                                        toast.error("Failed to update stock status");
+                                      }
+                                    } catch (error) {
+                                      toast.error("Error updating stock status");
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className={`w-32 h-7 text-xs border-0 ${
+                                    material.stock_status === 'available' ? 'bg-green-900/30 text-green-400' :
+                                    material.stock_status === 'low_stock' ? 'bg-yellow-900/30 text-yellow-400' :
+                                    'bg-red-900/30 text-red-400'
+                                  }`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-800 border-gray-700">
+                                    <SelectItem value="available" className="text-white">Available</SelectItem>
+                                    <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                                    <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
@@ -570,22 +609,20 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Print Temp (°C)</Label>
-                  <Input
-                    type="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.print_temp}
-                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Bed Temp (°C)</Label>
-                  <Input
-                    type="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.bed_temp}
-                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
-                  />
+                  <Label className="text-gray-300">Stock Status</Label>
+                  <Select
+                    value={formData.stock_status}
+                    onValueChange={(value) => setFormData({ ...formData, stock_status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="available" className="text-white">Available</SelectItem>
+                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-gray-300">Supplier *</Label>
@@ -594,7 +631,7 @@ const AdminMaterials = () => {
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un Supplier" />
+                      <SelectValue placeholder="Select a supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
                       {availableSuppliers.map((supplier) => (
@@ -720,24 +757,6 @@ const AdminMaterials = () => {
                       <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Print Temp (°C)</Label>
-                  <Input
-                    type="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.print_temp}
-                    onChange={(e) => setFormData({ ...formData, print_temp: parseInt(e.target.value) || 200 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Bed Temp (°C)</Label>
-                  <Input
-                    type="number"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.bed_temp}
-                    onChange={(e) => setFormData({ ...formData, bed_temp: parseInt(e.target.value) || 60 })}
-                  />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-gray-300">Supplier *</Label>
