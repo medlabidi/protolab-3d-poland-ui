@@ -44,6 +44,7 @@ const AdminMaterials = () => {
   ];
 
   const [materials, setMaterials] = useState<any[]>([]);
+  const [materialTypes, setMaterialTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -53,7 +54,7 @@ const AdminMaterials = () => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [newMaterialType, setNewMaterialType] = useState("");
-  const [customTypes, setCustomTypes] = useState<string[]>([]);
+  const [newMaterialTypeDescription, setNewMaterialTypeDescription] = useState("");
   const [formData, setFormData] = useState({
     material_type: "PLA",
     color: "#FFFFFF",
@@ -66,10 +67,36 @@ const AdminMaterials = () => {
     is_active: true,
   });
 
-  // Fetch materials on mount
+  // Fetch materials and material types on mount
   useEffect(() => {
     fetchMaterials();
+    fetchMaterialTypes();
   }, []);
+
+  const fetchMaterialTypes = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/admin/material-types`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMaterialTypes(data.materialTypes || []);
+      } else {
+        console.error('Material types fetch error');
+      }
+    } catch (error: any) {
+      console.error('Error fetching material types:', error);
+    }
+  };
 
   const fetchMaterials = async () => {
     try {
@@ -270,9 +297,10 @@ const AdminMaterials = () => {
   };
 
   const getUniqueTypes = () => {
-    const types = materials.map(m => m.material_type).filter(Boolean);
-    const allTypes = [...new Set([...types, ...customTypes])];
-    return allTypes.sort();
+    return materialTypes
+      .filter(mt => mt.is_active)
+      .map(mt => mt.name)
+      .sort();
   };
 
   const getFilteredMaterials = () => {
@@ -573,16 +601,6 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_quantity}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Stock Status</Label>
                   <Select
                     value={formData.stock_status}
@@ -697,16 +715,6 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.stock_quantity}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Stock Status</Label>
                   <Select
                     value={formData.stock_status}
@@ -778,6 +786,15 @@ const AdminMaterials = () => {
                     onChange={(e) => setNewMaterialType(e.target.value.toUpperCase())}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Description (optional)</Label>
+                  <Input
+                    placeholder="Brief description of the material type..."
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={newMaterialTypeDescription}
+                    onChange={(e) => setNewMaterialTypeDescription(e.target.value)}
+                  />
+                </div>
                 <div className="text-sm text-gray-400">
                   <p className="font-semibold mb-1">Current Material Types:</p>
                   <div className="flex flex-wrap gap-2">
@@ -793,23 +810,50 @@ const AdminMaterials = () => {
                   onClick={() => {
                     setShowAddTypeDialog(false);
                     setNewMaterialType("");
+                    setNewMaterialTypeDescription("");
                   }}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
                 <Button 
-                  onClick={() => {
+                  onClick={async () => {
                     if (newMaterialType.trim()) {
                       if (getUniqueTypes().includes(newMaterialType.trim())) {
                         toast.error("Material type already exists");
-                      } else {
-                        setCustomTypes([...customTypes, newMaterialType.trim()]);
-                        toast.success(`Material type "${newMaterialType}" added! Now select it in the add material form.`);
-                        setShowAddTypeDialog(false);
-                        setFormData({...formData, material_type: newMaterialType.trim()});
-                        setNewMaterialType("");
-                        setShowAddDialog(true);
+                        return;
+                      }
+                      
+                      try {
+                        const token = localStorage.getItem('accessToken');
+                        const response = await fetch(`${API_URL}/admin/material-types`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({
+                            name: newMaterialType.trim(),
+                            description: newMaterialTypeDescription.trim() || null,
+                          }),
+                        });
+
+                        if (response.ok) {
+                          const data = await response.json();
+                          toast.success(`Material type "${newMaterialType}" added successfully!`);
+                          await fetchMaterialTypes(); // Refresh the list
+                          setShowAddTypeDialog(false);
+                          setFormData({...formData, material_type: newMaterialType.trim()});
+                          setNewMaterialType("");
+                          setNewMaterialTypeDescription("");
+                          setShowAddDialog(true);
+                        } else {
+                          const error = await response.json().catch(() => ({}));
+                          toast.error(`Error: ${error.error || 'Failed to add material type'}`);
+                        }
+                      } catch (error: any) {
+                        console.error('Error adding material type:', error);
+                        toast.error(`Connection error: ${error.message}`);
                       }
                     } else {
                       toast.error("Please enter a material type name");

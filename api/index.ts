@@ -668,6 +668,172 @@ async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelR
   return res.status(200).json({ success: true });
 }
 
+// Material Types handlers
+async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: materialTypes, error } = await supabase
+    .from('material_types')
+    .select('*')
+    .order('name', { ascending: true });
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch material types', details: error.message });
+  }
+  
+  return res.status(200).json({ materialTypes });
+}
+
+async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { name, description } = req.body;
+  
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ error: 'Material type name is required' });
+  }
+  
+  const { data: materialType, error } = await supabase
+    .from('material_types')
+    .insert([{ 
+      name: name.trim(), 
+      description: description || null,
+      is_active: true 
+    }])
+    .select()
+    .single();
+  
+  if (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(409).json({ error: 'Material type already exists' });
+    }
+    return res.status(500).json({ error: 'Failed to create material type', details: error.message });
+  }
+  
+  return res.status(201).json({ materialType });
+}
+
+async function handleAdminUpdateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialTypeId = req.query.id;
+  
+  if (!materialTypeId) {
+    return res.status(400).json({ error: 'Material type ID is required' });
+  }
+  
+  const { name, description, is_active } = req.body;
+  
+  const updateData: any = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (description !== undefined) updateData.description = description;
+  if (is_active !== undefined) updateData.is_active = is_active;
+  
+  const { data: materialType, error } = await supabase
+    .from('material_types')
+    .update(updateData)
+    .eq('id', materialTypeId)
+    .select()
+    .single();
+  
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Material type name already exists' });
+    }
+    return res.status(500).json({ error: 'Failed to update material type', details: error.message });
+  }
+  
+  return res.status(200).json({ materialType });
+}
+
+async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialTypeId = req.query.id;
+  
+  if (!materialTypeId) {
+    return res.status(400).json({ error: 'Material type ID is required' });
+  }
+  
+  // Check if any materials are using this type
+  const { data: materials, error: checkError } = await supabase
+    .from('materials')
+    .select('id')
+    .eq('material_type_id', materialTypeId)
+    .limit(1);
+  
+  if (checkError) {
+    return res.status(500).json({ error: 'Failed to check material type usage', details: checkError.message });
+  }
+  
+  if (materials && materials.length > 0) {
+    return res.status(409).json({ error: 'Cannot delete material type that is in use by materials' });
+  }
+  
+  const { error } = await supabase
+    .from('material_types')
+    .delete()
+    .eq('id', materialTypeId);
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to delete material type', details: error.message });
+  }
+  
+  return res.status(200).json({ success: true });
+}
+
 async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1496,6 +1662,21 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/admin/materials' && req.method === 'DELETE') {
       return await handleAdminDeleteMaterial(req as AuthenticatedRequest, res);
     }
+    
+    // Material types routes
+    if (path === '/admin/material-types' && req.method === 'GET') {
+      return await handleAdminGetMaterialTypes(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/material-types' && req.method === 'POST') {
+      return await handleAdminCreateMaterialType(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/material-types' && req.method === 'PATCH') {
+      return await handleAdminUpdateMaterialType(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/material-types' && req.method === 'DELETE') {
+      return await handleAdminDeleteMaterialType(req as AuthenticatedRequest, res);
+    }
+    
     if (path === '/admin/printers' && req.method === 'GET') {
       return await handleAdminGetPrinters(req as AuthenticatedRequest, res);
     }
