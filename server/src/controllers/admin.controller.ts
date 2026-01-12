@@ -47,30 +47,13 @@ export class AdminController {
   async getOrderById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
       const order = await orderService.getOrderById(id);
-      
+
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
         return;
       }
-      
-      res.json({ order });
-    } catch (error) {
-      next(error);
-    }
-  }
-  
-  async getOrderById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id } = req.params;
-      const order = await orderService.getOrderById(id);
-      
-      if (!order) {
-        res.status(404).json({ error: 'Order not found' });
-        return;
-      }
-      
+
       res.json({ order });
     } catch (error) {
       next(error);
@@ -80,16 +63,15 @@ export class AdminController {
   async getOrdersByType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { type } = req.params;
-      
+
       if (type !== 'print' && type !== 'design') {
         res.status(400).json({ error: 'Invalid order type. Must be "print" or "design"' });
         return;
       }
-      
-      const orders = await orderService.getOrdersByType(type);
-      
-      res.json({ orders, count: orders.length, type });
-    } catch (error) {
+
+      // Filter orders by type from all orders
+      const allOrders = await orderService.getAllOrders();
+      const orders = allOrders.filter(order => order.order_type === type);
       next(error);
     }
   }

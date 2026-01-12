@@ -50,8 +50,8 @@ export class OrderController {
   
   async getMyOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Get combined orders (print jobs + design requests)
-      const orders = await orderService.getUserOrdersCombined(req.user!.id);
+      // Get user orders
+      const orders = await orderService.getUserOrders(req.user!.id);
       
       res.json({ orders, count: orders.length });
     } catch (error) {
