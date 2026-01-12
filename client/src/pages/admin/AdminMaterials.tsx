@@ -54,13 +54,19 @@ const AdminMaterials = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAddTypeDialog, setShowAddTypeDialog] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>("all");
+  const [newMaterialType, setNewMaterialType] = useState("");
   const [formData, setFormData] = useState({
     material_type: "PLA",
     color: "#FFFFFF",
+    hex_color: "#FFFFFF",
     price_per_kg: 0,
     density: 1.24,
     stock_quantity: 0,
+    stock_status: "available",
     print_temp: 200,
     bed_temp: 60,
     supplier: "",
@@ -124,7 +130,7 @@ const AdminMaterials = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({...formData, hex_color: formData.color}),
       });
 
       if (response.ok) {
@@ -160,6 +166,7 @@ const AdminMaterials = () => {
         body: JSON.stringify({
           id: selectedMaterial.id,
           ...formData,
+          hex_color: formData.color,
         }),
       });
 
@@ -236,10 +243,12 @@ const AdminMaterials = () => {
     setSelectedMaterial(material);
     setFormData({
       material_type: material.material_type,
-      color: material.color,
+      color: material.hex_color || material.color || "#FFFFFF",
+      hex_color: material.hex_color || material.color || "#FFFFFF",
       price_per_kg: material.price_per_kg,
       density: material.density,
       stock_quantity: material.stock_quantity,
+      stock_status: material.stock_status || "available",
       print_temp: material.print_temp,
       bed_temp: material.bed_temp,
       supplier: material.supplier,
@@ -258,14 +267,29 @@ const AdminMaterials = () => {
     setFormData({
       material_type: "PLA",
       color: "#FFFFFF",
+      hex_color: "#FFFFFF",
       price_per_kg: 0,
       density: 1.24,
       stock_quantity: 0,
+      stock_status: "available",
       print_temp: 200,
       bed_temp: 60,
       supplier: "",
       description: "",
       is_active: true,
+    });
+  };
+
+  const getUniqueTypes = () => {
+    const types = materials.map(m => m.material_type).filter(Boolean);
+    return [...new Set(types)].sort();
+  };
+
+  const getFilteredMaterials = () => {
+    return materials.filter(material => {
+      const typeMatch = typeFilter === "all" || material.material_type === typeFilter;
+      const stockMatch = stockFilter === "all" || material.stock_status === stockFilter;
+      return typeMatch && stockMatch;
     });
   };
 
@@ -291,6 +315,14 @@ const AdminMaterials = () => {
               <Button 
                 variant="outline"
                 className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                onClick={() => setShowAddTypeDialog(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Material Type
+              </Button>
+              <Button 
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
                 onClick={fetchMaterials}
                 disabled={loading}
               >
@@ -308,31 +340,11 @@ const AdminMaterials = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Total Materials</p>
                 <p className="text-2xl font-bold text-white">{materials.length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Total Stock</p>
-                <p className="text-2xl font-bold text-blue-400">{materials.reduce((sum, m) => sum + (m.stock_quantity || 0), 0).toFixed(1)} kg</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Inventory Value</p>
-                <p className="text-2xl font-bold text-purple-400">
-                  ${(materials.reduce((sum, m) => sum + ((m.stock_quantity || 0) * (m.price_per_kg || 0)), 0)).toFixed(2)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Low Stock Items</p>
-                <p className="text-2xl font-bold text-yellow-400">{materials.filter(m => (m.stock_quantity || 0) < 2).length}</p>
               </CardContent>
             </Card>
           </div>
@@ -340,11 +352,43 @@ const AdminMaterials = () => {
           {/* Materials Table */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="p-0">
+              {/* Filters */}
+              <div className="p-4 border-b border-gray-800 flex gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-gray-300">Type:</Label>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="all" className="text-white">All Types</SelectItem>
+                      {getUniqueTypes().map(type => (
+                        <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-gray-300">Stock Status:</Label>
+                  <Select value={stockFilter} onValueChange={setStockFilter}>
+                    <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="all" className="text-white">All Status</SelectItem>
+                      <SelectItem value="available" className="text-white">Available</SelectItem>
+                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                 </div>
-              ) : materials.length === 0 ? (
+              ) : getFilteredMaterials().length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <Palette className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No materials found</p>
@@ -355,41 +399,43 @@ const AdminMaterials = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-800">
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Swatch</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Code</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock Status</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Active</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {materials.map(material => {
+                      {getFilteredMaterials().map(material => {
                         const stockStatus = getStockStatus(material.stock_quantity || 0);
                         return (
                           <tr key={material.id} className={`hover:bg-gray-800/50 transition-colors ${!material.is_active ? 'opacity-50' : ''}`}>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-8 h-8 rounded-lg border border-gray-700"
-                                  style={{ backgroundColor: material.color }}
-                                ></div>
-                                <p className="font-medium text-white">{`${material.material_type} - ${material.color}`}</p>
-                              </div>
+                              <div
+                                className="w-12 h-12 rounded-lg border border-gray-700"
+                                style={{ backgroundColor: material.hex_color || material.color }}
+                              ></div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-white font-mono text-sm">{material.color || 'N/A'}</p>
+                              <p className="text-gray-400 text-xs">{material.hex_color || material.color}</p>
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
                                 {material.material_type || 'N/A'}
                               </span>
                             </td>
+                            <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
                             <td className="px-6 py-4">
                               <div>
                                 <p className={`font-semibold ${stockStatus.color}`}>{material.stock_quantity || 0} kg</p>
-                                <p className={`text-xs ${stockStatus.color}`}>{stockStatus.label}</p>
+                                <p className={`text-xs ${stockStatus.color}`}>{material.stock_status || stockStatus.label}</p>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
                             <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
                             <td className="px-6 py-4">
                               <Button
@@ -401,12 +447,12 @@ const AdminMaterials = () => {
                                 {material.is_active ? (
                                   <>
                                     <Eye className="w-4 h-4 mr-1" />
-                                    Visible
+                                    Active
                                   </>
                                 ) : (
                                   <>
                                     <EyeOff className="w-4 h-4 mr-1" />
-                                    Hidden
+                                    Inactive
                                   </>
                                 )}
                               </Button>
@@ -453,21 +499,45 @@ const AdminMaterials = () => {
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
                   <Label className="text-gray-300">Material Type *</Label>
-                  <Input
-                    placeholder="PLA, PETG, TPU, ABS..."
-                    className="bg-gray-800 border-gray-700 text-white"
+                  <Select
                     value={formData.material_type}
-                    onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, material_type: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Select material type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {getUniqueTypes().map(type => (
+                        <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color</Label>
+                  <Label className="text-gray-300">Color Name</Label>
                   <Input
-                    type="color"
-                    className="bg-gray-800 border-gray-700 h-10"
+                    placeholder="White, Blue, Black..."
+                    className="bg-gray-800 border-gray-700 text-white"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Hex Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      className="bg-gray-800 border-gray-700 h-10 w-20"
+                      value={formData.hex_color}
+                      onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    />
+                    <Input
+                      placeholder="#FFFFFF"
+                      className="bg-gray-800 border-gray-700 text-white flex-1"
+                      value={formData.hex_color}
+                      onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
@@ -566,20 +636,44 @@ const AdminMaterials = () => {
               <div className="grid grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
                   <Label className="text-gray-300">Material Type *</Label>
-                  <Input
-                    className="bg-gray-800 border-gray-700 text-white"
+                  <Select
                     value={formData.material_type}
-                    onChange={(e) => setFormData({ ...formData, material_type: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, material_type: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {getUniqueTypes().map(type => (
+                        <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color</Label>
+                  <Label className="text-gray-300">Color Name</Label>
                   <Input
-                    type="color"
-                    className="bg-gray-800 border-gray-700 h-10"
+                    className="bg-gray-800 border-gray-700 text-white"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Hex Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      className="bg-gray-800 border-gray-700 h-10 w-20"
+                      value={formData.hex_color}
+                      onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    />
+                    <Input
+                      placeholder="#FFFFFF"
+                      className="bg-gray-800 border-gray-700 text-white flex-1"
+                      value={formData.hex_color}
+                      onChange={(e) => setFormData({ ...formData, hex_color: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-gray-300">Price/kg (PLN)</Label>
@@ -592,7 +686,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Densité</Label>
+                  <Label className="text-gray-300">Density</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -610,6 +704,22 @@ const AdminMaterials = () => {
                     value={formData.stock_quantity}
                     onChange={(e) => setFormData({ ...formData, stock_quantity: parseFloat(e.target.value) || 0 })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Stock Status</Label>
+                  <Select
+                    value={formData.stock_status}
+                    onValueChange={(value) => setFormData({ ...formData, stock_status: value })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      <SelectItem value="available" className="text-white">Available</SelectItem>
+                      <SelectItem value="low_stock" className="text-white">Low Stock</SelectItem>
+                      <SelectItem value="out_of_stock" className="text-white">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-gray-300">Print Temp (°C)</Label>
@@ -636,7 +746,7 @@ const AdminMaterials = () => {
                     onValueChange={(value) => setFormData({ ...formData, supplier: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Sélectionnez un Supplier" />
+                      <SelectValue placeholder="Select a supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
                       {availableSuppliers.map((supplier) => (
@@ -661,6 +771,69 @@ const AdminMaterials = () => {
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Material Type Dialog */}
+          <Dialog open={showAddTypeDialog} onOpenChange={setShowAddTypeDialog}>
+            <DialogContent className="bg-gray-900 border-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Add New Material Type</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Add a new material type to the system (e.g., PLA, PETG, TPU, ABS)
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Material Type Name *</Label>
+                  <Input
+                    placeholder="e.g., PLA, PETG, TPU, ABS, Nylon..."
+                    className="bg-gray-800 border-gray-700 text-white"
+                    value={newMaterialType}
+                    onChange={(e) => setNewMaterialType(e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div className="text-sm text-gray-400">
+                  <p className="font-semibold mb-1">Current Material Types:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {getUniqueTypes().map(type => (
+                      <span key={type} className="px-2 py-1 bg-gray-800 rounded text-xs">{type}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAddTypeDialog(false);
+                    setNewMaterialType("");
+                  }}
+                  className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => {
+                    if (newMaterialType.trim()) {
+                      if (getUniqueTypes().includes(newMaterialType.trim())) {
+                        toast.error("Material type already exists");
+                      } else {
+                        toast.success(`Material type "${newMaterialType}" noted. You can now add materials with this type.`);
+                        setShowAddTypeDialog(false);
+                        setNewMaterialType("");
+                        setShowAddDialog(true);
+                        setFormData({...formData, material_type: newMaterialType.trim()});
+                      }
+                    } else {
+                      toast.error("Please enter a material type name");
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Add Type
                 </Button>
               </DialogFooter>
             </DialogContent>
