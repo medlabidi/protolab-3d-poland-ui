@@ -569,13 +569,29 @@ async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelR
     return res.status(403).json({ error: 'Admin access required' });
   }
   
+  // Extract only the fields that exist in the database
+  const { material_type, color, hex_color, price_per_kg, stock_quantity, stock_status, supplier, description, is_active } = req.body;
+  
+  const materialData = {
+    material_type,
+    color,
+    hex_color,
+    price_per_kg,
+    stock_quantity,
+    stock_status,
+    supplier,
+    description,
+    is_active
+  };
+  
   const { data: material, error } = await supabase
     .from('materials')
-    .insert([req.body])
+    .insert([materialData])
     .select()
     .single();
   
   if (error) {
+    console.error('Create material error:', error);
     return res.status(500).json({ error: 'Failed to create material', details: error.message });
   }
   
