@@ -109,8 +109,8 @@ const AdminMaterials = () => {
   };
 
   const handleAddMaterial = async () => {
-    if (!formData.material_Color Name.trim() || !formData.color.trim()) {
-      toast.error("Material Color Name and color are required");
+    if (!formData.material_type.trim() || !formData.color.trim()) {
+      toast.error("Material type and color are required");
       return;
     }
 
@@ -119,7 +119,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'POST',
         headers: {
-          'Content-Color Name': 'application/json',
+          'Content-type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
@@ -142,8 +142,8 @@ const AdminMaterials = () => {
   };
 
   const handleEditMaterial = async () => {
-    if (!formData.material_Color Name.trim() || !formData.color.trim()) {
-      toast.error("Material Color Name and color are required");
+    if (!formData.material_type.trim() || !formData.color.trim()) {
+      toast.error("Material type and color are required");
       return;
     }
 
@@ -152,7 +152,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-Color Name': 'application/json',
+          'Content-type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ const AdminMaterials = () => {
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
-          'Content-Color Name': 'application/json',
+          'Content-type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -233,7 +233,7 @@ const AdminMaterials = () => {
   const openEditDialog = (material: any) => {
     setSelectedMaterial(material);
     setFormData({
-      material_Color Name: material.material_Color Name,
+      material_type: material.material_type,
       color: material.color,
       hex_color: material.hex_color,
       price_per_kg: material.price_per_kg,
@@ -252,7 +252,7 @@ const AdminMaterials = () => {
 
   const resetForm = () => {
     setFormData({
-      material_Color Name: "PLA",
+      material_type: "PLA",
       color: "",
       hex_color: "#FFFFFF",
       price_per_kg: 0,
@@ -350,7 +350,7 @@ const AdminMaterials = () => {
                     <thead>
                       <tr className="border-b border-gray-800">
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Material</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Name</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">type</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Stock</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
@@ -369,12 +369,12 @@ const AdminMaterials = () => {
                                   className="w-8 h-8 rounded-lg border border-gray-700"
                                   style={{ backgroundColor: material.hex_color || material.color }}
                                 ></div>
-                                <p className="font-medium text-white">{material.material_Color Name} - {material.color}</p>
+                                <p className="font-medium text-white">{material.material_type} - {material.color}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
-                                {material.material_Color Name || 'N/A'}
+                                {material.material_type || 'N/A'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -462,7 +462,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color Name *</Label>
+                  <Label className="text-gray-300">type *</Label>
                   <Input
                     placeholder="Blue, Red, White..."
                     className="bg-gray-800 border-gray-700 text-white"
@@ -490,7 +490,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock Status</Label>
+                  <Label className="text-gray-300">stock_status</Label>
                   <Select
                     value={formData.stock_status}
                     onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
@@ -562,7 +562,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Color Name *</Label>
+                  <Label className="text-gray-300">type *</Label>
                   <Input
                     placeholder="Blue, Red, White..."
                     className="bg-gray-800 border-gray-700 text-white"
@@ -590,7 +590,7 @@ const AdminMaterials = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Stock Status</Label>
+                  <Label className="text-gray-300">stock_status</Label>
                   <Select
                     value={formData.stock_status}
                     onValueChange={(value: 'available' | 'low_stock' | 'out_of_stock') => setFormData({ ...formData, stock_status: value })}
@@ -676,5 +676,6 @@ const AdminMaterials = () => {
 };
 
 export default AdminMaterials;
+
 
 
