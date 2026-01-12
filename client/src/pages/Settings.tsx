@@ -139,7 +139,8 @@ const Settings = () => {
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>("general");
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     address: "",
@@ -209,12 +210,13 @@ const Settings = () => {
         const userData = JSON.parse(userStr);
         setUser(userData);
         setFormData({
-          name: userData.name || "",
+          firstName: userData.first_name || userData.firstName || "",
+          lastName: userData.last_name || userData.lastName || "",
           email: userData.email || "",
           phone: userData.phone || "",
           address: userData.address || "",
           city: userData.city || "",
-          zipCode: userData.zip_code || "",
+          zipCode: userData.zipCode || userData.zip_code || "",
           country: userData.country || "",
         });
       } catch (error) {
@@ -254,6 +256,18 @@ const Settings = () => {
 
     // Load activity log from localStorage
     loadActivityLog();
+  }, []);
+
+  // Check URL for section navigation (e.g., from password change button)
+  useEffect(() => {
+    // Check if there's a hash to scroll to password section
+    if (window.location.hash === '#password-section') {
+      setActiveSection('security');
+      // Small delay to ensure section is rendered
+      setTimeout(() => {
+        document.getElementById('password-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   }, []);
 
   // Activity log functions
@@ -591,7 +605,8 @@ const Settings = () => {
       // Update localStorage
       const updatedUser = {
         ...user,
-        name: formData.name,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
@@ -617,7 +632,8 @@ const Settings = () => {
             'Authorization': `Bearer ${authToken}`,
           },
           body: JSON.stringify({
-            name: formData.name,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
             phone: formData.phone,
             address: formData.address,
             city: formData.city,
@@ -790,25 +806,34 @@ const Settings = () => {
                   <CardContent className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="name">{t('settings.general.fullName')}</Label>
+                        <Label htmlFor="firstName">{t('settings.general.firstName')}</Label>
                         <Input 
-                          id="name" 
-                          value={formData.name}
+                          id="firstName" 
+                          value={formData.firstName}
                           onChange={handleInputChange}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="email">{t('settings.general.emailAddress')}</Label>
+                        <Label htmlFor="lastName">{t('settings.general.lastName')}</Label>
                         <Input 
-                          id="email" 
-                          type="email" 
-                          value={formData.email}
+                          id="lastName" 
+                          value={formData.lastName}
                           onChange={handleInputChange}
-                          disabled
                         />
-                        <p className="text-xs text-muted-foreground">{t('settings.general.emailCannotChange')}</p>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">{t('settings.general.emailAddress')}</Label>
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        disabled
+                      />
+                      <p className="text-xs text-muted-foreground">{t('settings.general.emailCannotChange')}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -999,7 +1024,7 @@ const Settings = () => {
               {/* Security Settings */}
               {activeSection === "security" && (
                 <>
-                  <Card>
+                  <Card id="password-section">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Key className="w-5 h-5" />

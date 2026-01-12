@@ -106,4 +106,10 @@ export interface OrderCreateInput {
   attachedFiles?: string[];
   referenceImages?: string[];
   requestChat?: boolean;
+  
+  // Print configuration fields from mahmoud
+  supportType?: 'none' | 'normal' | 'tree';
+  infillPattern?: 'grid' | 'honeycomb' | 'triangles' | 'gyroid';
+  customLayerHeight?: number;
+  customInfill?: number;
 }

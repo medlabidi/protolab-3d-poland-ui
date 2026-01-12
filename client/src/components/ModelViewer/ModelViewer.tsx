@@ -16,6 +16,11 @@ interface ModelViewerProps {
 const getErrorInfo = (errorMessage: string): { icon: typeof AlertTriangle; title: string; color: string } => {
   const lowerError = errorMessage.toLowerCase();
   
+  // Special case for 3MF files (informational, not an error)
+  if (errorMessage.includes('3MF_NO_PREVIEW')) {
+    return { icon: BoxIcon, title: '3MF File Accepted', color: 'text-blue-500' };
+  }
+  
   if (lowerError.includes('empty') || lowerError.includes('no valid 3d geometry')) {
     return { icon: FileX, title: 'Empty or Invalid File', color: 'text-orange-500' };
   }
@@ -138,6 +143,18 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
 
     loadModel(file)
       .then((loadedGeometry) => {
+        // Handle 3MF files (null geometry = no preview available)
+        if (!loadedGeometry) {
+          const is3MF = file.name.toLowerCase().endsWith('.3mf');
+          if (is3MF) {
+            setGeometry(null);
+            setError('3MF_NO_PREVIEW: 3MF files are accepted for printing but cannot be previewed. The file will still be processed for pricing and ordering.');
+            onError?.('3MF_NO_PREVIEW');
+            setLoading(false);
+          }
+          return;
+        }
+        
         setGeometry(loadedGeometry);
         setError(null);
         onError?.(null);
@@ -179,7 +196,6 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Error loading model:', err);
         const errorMessage = err.message || 'Failed to load model';
         setError(errorMessage);
         onError?.(errorMessage);
@@ -215,11 +231,13 @@ export const ModelViewer = ({ file, onAnalysisComplete, onError }: ModelViewerPr
                 {(() => {
                   const errorInfo = getErrorInfo(error);
                   const IconComponent = errorInfo.icon;
+                  // Strip technical prefix from error message
+                  const displayError = error.replace(/^3MF_NO_PREVIEW:/, '').trim();
                   return (
                     <>
                       <IconComponent className={`w-12 h-12 ${errorInfo.color} mx-auto mb-2`} />
                       <p className={`text-sm font-bold ${errorInfo.color} mb-1`}>{errorInfo.title}</p>
-                      <p className="text-xs text-muted-foreground">{error}</p>
+                      <p className="text-xs text-muted-foreground">{displayError}</p>
                     </>
                   );
                 })()}

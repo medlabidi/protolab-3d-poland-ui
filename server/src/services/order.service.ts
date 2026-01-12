@@ -1,9 +1,5 @@
-import { Order, IOrder, OrderStatus, PaymentStatus, OrderType } from '../models/Order';
-import { PrintJob, IPrintJob } from '../models/PrintJob';
-import { DesignRequest, IDesignRequest } from '../models/DesignRequest';
+import { Order, IOrder, OrderStatus, PaymentStatus } from '../models/Order';
 import { OrderCreateInput } from '../types';
-import { printJobService } from './printJob.service';
-import { designRequestService } from './designRequest.service';
 import { pricingService } from './pricing.service';
 import { settingsService } from './settings.service';
 import { getSupabase } from '../config/database';
@@ -11,171 +7,45 @@ import { conversationsService } from './conversations.service';
 import { logger } from '../config/logger';
 
 export class OrderService {
-  /**
-   * Create order - routes to appropriate service based on order type
-   * @deprecated Use printJobService.createPrintJob() or designRequestService.createDesignRequest() directly
-   */
-  async createOrder(userId: string, data: OrderCreateInput): Promise<IPrintJob | IDesignRequest | IOrder> {
-    const orderType: OrderType = data.orderType || 'print';
+  async createOrder(userId: string, data: OrderCreateInput): Promise<IOrder> {
+    // Use price from client calculation, or default to 0 if not provided
+    const orderPrice = data.price || 0;
     
-    if (orderType === 'design') {
-      // Create design request
-      return await designRequestService.createDesignRequest(userId, {
-        projectName: data.projectName || data.fileName,
-        ideaDescription: data.ideaDescription || data.designDescription || '',
-        usageType: data.usageType,
-        usageDetails: data.usageDetails,
-        approximateDimensions: data.approximateDimensions,
-        desiredMaterial: data.desiredMaterial,
-        attachedFiles: data.attachedFiles,
-        referenceImages: data.referenceImages,
-        requestChat: data.requestChat,
-        estimatedPrice: data.price,
-      });
-    } else {
-      // Create print job
-      return await printJobService.createPrintJob(userId, {
-        fileName: data.fileName,
-        fileUrl: data.fileUrl,
-        filePath: data.filePath,
-        material: data.material,
-        color: data.color,
-        layerHeight: data.layerHeight,
-        infill: data.infill,
-        quantity: data.quantity,
-        shippingMethod: data.shippingMethod,
-        shippingAddress: data.shippingAddress,
-        price: data.price,
-        projectName: data.projectName,
-      });
-    }
-  }
-
-  /**
-   * Get all orders (print jobs + design requests combined) - for admin dashboard
-   */
-  async getAllOrdersCombined(): Promise<any[]> {
-    const printJobs = await printJobService.getAllPrintJobs();
-    const designRequests = await designRequestService.getAllDesignRequests();
-    
-    // Transform to unified format
-    const printJobsTransformed = printJobs.map((job: any) => ({
-      ...job,
-      order_type: 'print',
-      name: job.file_name,
-      users: job.users,
-    }));
-    
-    const designRequestsTransformed = designRequests.map((req: any) => ({
-      ...req,
-      order_type: 'design',
-      name: req.project_name,
-      status: req.design_status,
-      users: req.users,
-    }));
-    
-    // Combine and sort by creation date
-    const combined = [...printJobsTransformed, ...designRequestsTransformed];
-    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    return combined;
-  }
-
-  /**
-   * Get user's orders (both types combined)
-   */
-  async getUserOrdersCombined(userId: string): Promise<any[]> {
-    const printJobs = await printJobService.getUserPrintJobs(userId);
-    const designRequests = await designRequestService.getUserDesignRequests(userId);
-    
-    const printJobsTransformed = printJobs.map((job: any) => ({
-      ...job,
-      order_type: 'print',
-      name: job.file_name,
-    }));
-    
-    const designRequestsTransformed = designRequests.map((req: any) => ({
-      ...req,
-      order_type: 'design',
-      name: req.project_name,
-      status: req.design_status,
-    }));
-    
-    const combined = [...printJobsTransformed, ...designRequestsTransformed];
-    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    return combined;
-  }
-
-  /**
-   * Get orders by type - routes to appropriate service
-   */
-  async getOrdersByType(orderType: OrderType): Promise<any[]> {
-    if (orderType === 'print') {
-      return await printJobService.getAllPrintJobs();
-    } else {
-      return await designRequestService.getAllDesignRequests();
-    }
-  }
-
-  async createPrintFromDesign(designOrderId: string, printData: {
-    material: string;
-    color: string;
-    layerHeight: number;
-    infill: number;
-    quantity: number;
-    price: number;
-  }): Promise<IOrder> {
-    const supabase = getSupabase();
-    
-    // Get the design order
-    const { data: designOrder, error: fetchError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', designOrderId)
-      .single();
-    
-    if (fetchError || !designOrder) {
-      throw new Error('Design order not found');
-    }
-    
-    if (designOrder.order_type !== 'design') {
-      throw new Error('Parent order must be a design order');
-    }
-    
-    // Create new print order linked to design order
-    const printOrder = await Order.create({
-      user_id: designOrder.user_id,
-      order_type: 'print',
-      parent_order_id: designOrderId,
-      file_name: designOrder.file_name,
-      file_url: designOrder.file_url,
-      material: printData.material,
-      color: printData.color,
-      layer_height: printData.layerHeight,
-      infill: printData.infill,
-      quantity: printData.quantity,
-      shipping_method: designOrder.shipping_method,
-      shipping_address: designOrder.shipping_address,
-      price: printData.price,
-      paid_amount: printData.price,
+    const order = await Order.create({
+      user_id: userId,
+      file_name: data.fileName,
+      file_url: data.fileUrl,
+      material: data.material,
+      color: data.color,
+      layer_height: data.layerHeight,
+      infill: data.infill,
+      quantity: data.quantity,
+      shipping_method: data.shippingMethod,
+      shipping_address: data.shippingAddress,
+      price: orderPrice,
+      paid_amount: orderPrice,
       status: 'submitted',
       payment_status: 'paid',
-      project_name: `Print de: ${designOrder.project_name || designOrder.file_name}`,
+      project_name: data.projectName,
+      material_weight: data.materialWeight,  // Store weight in grams
+      print_time: data.printTime,            // Store time in minutes
+      model_volume_cm3: data.modelVolume,    // Store base volume in cm³
     });
     
-    // Auto-create conversation
+    // Auto-create conversation log for the order
     try {
       await conversationsService.getOrCreateConversation(
-        designOrder.user_id,
-        printOrder.id,
-        `Print job from design ${designOrder.file_name}`
+        userId, 
+        order.id, 
+        `Job conversation for ${data.fileName}`
       );
+      logger.info(`Auto-created conversation for order ${order.id}`);
     } catch (err) {
-      logger.error({ err }, `Failed to auto-create conversation for print order ${printOrder.id}`);
+      // Don't fail order creation if conversation creation fails
+      logger.error({ err }, `Failed to auto-create conversation for order ${order.id}`);
     }
     
-    return printOrder;
+    return order;
   }
   
   async getOrderById(orderId: string, userId?: string): Promise<IOrder | null> {
@@ -344,7 +214,7 @@ export class OrderService {
       updates.print_time = printTime;
     }
     
-    const pricingResult = pricingService.calculatePrice({
+    const pricingResult = await pricingService.calculatePrice({
       materialType: order.material,
       color: order.color,
       materialWeightGrams: (materialWeight ?? order.material_weight ?? 0) * 1000,
@@ -402,6 +272,10 @@ export class OrderService {
     payment_status?: PaymentStatus;
     paid_amount?: number;
     project_name?: string;
+    refund_method?: 'credit' | 'bank' | 'original';
+    refund_amount?: number;
+    refund_reason?: string;
+    refund_bank_details?: string;
   }): Promise<IOrder> {
     const supabase = getSupabase();
     
@@ -449,6 +323,12 @@ export class OrderService {
     if (updates.paid_amount !== undefined) allowedUpdates.paid_amount = updates.paid_amount;
     if (updates.status !== undefined) allowedUpdates.status = updates.status;
     
+    // Refund fields can always be updated
+    if (updates.refund_method !== undefined) allowedUpdates.refund_method = updates.refund_method;
+    if (updates.refund_amount !== undefined) allowedUpdates.refund_amount = updates.refund_amount;
+    if (updates.refund_reason !== undefined) allowedUpdates.refund_reason = updates.refund_reason;
+    if (updates.refund_bank_details !== undefined) allowedUpdates.refund_bank_details = updates.refund_bank_details;
+    
     // If no valid updates, throw error
     if (Object.keys(allowedUpdates).length === 0) {
       throw new Error('No valid updates provided');
@@ -458,6 +338,79 @@ export class OrderService {
     
     if (!updatedOrder) {
       throw new Error('Failed to update order');
+    }
+    
+    // If this is a store credit refund, add credits to user's wallet
+    if (updates.refund_method === 'credit' && updates.refund_amount) {
+      try {
+        const refundAmount = typeof updates.refund_amount === 'number' 
+          ? updates.refund_amount 
+          : parseFloat(updates.refund_amount);
+        
+        console.log('=== STORE CREDIT REFUND DETECTED ===');
+        console.log('User ID:', userId);
+        console.log('Refund Amount:', refundAmount);
+        console.log('Order ID:', orderId);
+        
+        if (refundAmount > 0) {
+          // Get current credit balance
+          const { data: creditData, error: fetchError } = await supabase
+            .from('credits')
+            .select('balance')
+            .eq('user_id', userId)
+            .single();
+
+          console.log('Current credit data:', creditData);
+          console.log('Fetch error:', fetchError);
+
+          const currentBalance = creditData?.balance || 0;
+          const newBalance = currentBalance + refundAmount;
+
+          console.log('Current Balance:', currentBalance);
+          console.log('New Balance:', newBalance);
+
+          // Update or insert credit balance
+          const { data: upsertData, error: creditError } = await supabase
+            .from('credits')
+            .upsert({
+              user_id: userId,
+              balance: newBalance,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id'
+            })
+            .select();
+
+          console.log('Upsert result:', upsertData);
+          console.log('Upsert error:', creditError);
+
+          if (creditError) {
+            console.error('Credit update error:', creditError);
+          } else {
+            // Record the transaction
+            const { data: txData, error: txError } = await supabase
+              .from('credits_transactions')
+              .insert({
+                user_id: userId,
+                amount: refundAmount,
+                type: 'refund',
+                description: `Refund for order ${updatedOrder.order_number || orderId}`,
+                balance_after: newBalance,
+              })
+              .select();
+            
+            console.log('Transaction record result:', txData);
+            console.log('Transaction error:', txError);
+            
+            console.log(`✅ Added ${refundAmount} PLN store credit for user ${userId}`);
+          }
+        } else {
+          console.log('❌ Refund amount is 0 or negative:', refundAmount);
+        }
+      } catch (creditError) {
+        console.error('Failed to add store credit:', creditError);
+        // Don't fail the order update if credit addition fails
+      }
     }
     
     return updatedOrder;
@@ -496,10 +449,14 @@ export class OrderService {
       throw new Error('This order cannot be cancelled');
     }
     
+    // Get refund method from the order
+    const refundMethod = (order as any).refund_method || 'original';
+    
     // Update status to suspended and payment status to refunding
     const updatedOrder = await Order.updateById(orderId, {
       status: 'suspended',
       payment_status: 'refunding',
+      refund_method: refundMethod,
     });
     
     if (!updatedOrder) {
@@ -527,6 +484,53 @@ export class OrderService {
     if (!updatedOrder) {
       throw new Error('Failed to process refund');
     }
+    
+    return updatedOrder;
+  }
+
+  async submitRefundRequest(
+    orderId: string,
+    userId: string,
+    refundDetails: {
+      refundMethod: 'credit' | 'bank' | 'original';
+      refundAmount: number;
+      reason: string;
+      bankDetails?: {
+        accountNumber: string;
+        bankName: string;
+        accountHolder: string;
+      };
+    }
+  ): Promise<IOrder> {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Verify order belongs to user
+    if (order.user_id !== userId) {
+      throw new Error('Unauthorized: Order does not belong to user');
+    }
+
+    // Update order with refund details
+    const updates: Record<string, unknown> = {
+      refund_method: refundDetails.refundMethod,
+      refund_reason: refundDetails.reason,
+      status: 'suspended',
+      payment_status: 'refunding',
+    };
+
+    // Store bank details if provided
+    if (refundDetails.bankDetails) {
+      updates.refund_bank_details = JSON.stringify(refundDetails.bankDetails);
+    }
+
+    const updatedOrder = await Order.updateById(orderId, updates);
+    if (!updatedOrder) {
+      throw new Error('Failed to submit refund request');
+    }
+
+    logger.info(`Refund request submitted for order ${orderId} with method ${refundDetails.refundMethod}`);
     
     return updatedOrder;
   }

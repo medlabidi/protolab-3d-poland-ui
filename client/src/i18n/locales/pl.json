@@ -732,7 +732,7 @@
     "projectMultiple": "Projekt (wiele plików)",
     "dropFileHere": "Upuść plik tutaj!",
     "clickToUpload": "Kliknij, aby przesłać lub przeciągnij i upuść",
-    "fileFormats": "Pliki STL, OBJ lub STEP",
+    "fileFormats": "Pliki STL, OBJ lub 3MF",
     "analysisComplete": "Analiza zakończona",
     "estWeight": "Szac. waga",
     "estPrintTime": "Szac. czas druku",
@@ -1100,8 +1100,7 @@
       "bank": "Przelew bankowy",
       "bankDesc": "Bezpośredni przelew na Twoje konto bankowe",
       "credit": "Kredyty sklepowe",
-      "creditDesc": "Dodaj do salda konta na przyszłe zamówienia",
-      "creditBonus": "+5% bonus"
+      "creditDesc": "Dodaj do salda konta na przyszłe zamówienia"
     },
     "bankDetails": "Dane konta bankowego",
     "accountHolder": "Imię i nazwisko właściciela konta",
@@ -1344,6 +1343,8 @@
     "general": {
       "title": "Ustawienia ogólne",
       "description": "Zaktualizuj swoje dane osobowe i kontaktowe",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
       "fullName": "Imię i nazwisko",
       "emailAddress": "Adres email",
       "emailCannotChange": "Email nie może być zmieniony",
@@ -1553,6 +1554,8 @@
     "title": "Utwórz konto",
     "subtitle": "Zarejestruj się, aby korzystać z naszych usług druku 3D",
     "fields": {
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
       "fullName": "Imię i nazwisko",
       "email": "Email",
       "password": "Hasło",
@@ -1565,6 +1568,8 @@
       "country": "Kraj"
     },
     "placeholders": {
+      "firstName": "Jan",
+      "lastName": "Kowalski",
       "fullName": "Jan Kowalski",
       "email": "twoj@email.com",
       "password": "Co najmniej 6 znaków",

@@ -12,7 +12,8 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export class AuthService {
   async register(data: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
     phone?: string;
@@ -24,8 +25,8 @@ export class AuthService {
     longitude?: number;
   }): Promise<{ user: Partial<IUser>; message: string }> {
     // Validate input
-    if (!data.email || !data.password || !data.name) {
-      throw new Error('Name, email, and password are required');
+    if (!data.email || !data.password || !data.firstName || !data.lastName) {
+      throw new Error('First name, last name, email, and password are required');
     }
 
     // Check for existing user (case-insensitive)
@@ -41,7 +42,8 @@ export class AuthService {
     
     // Create user with auto-verified status (no approval workflow)
     const user = await User.create({
-      name: data.name,
+      first_name: data.firstName,
+      last_name: data.lastName,
       email: normalizedEmail,
       password_hash,
       phone: data.phone,
@@ -60,7 +62,7 @@ export class AuthService {
     
     // Send registration confirmation email
     try {
-      await emailService.sendRegistrationConfirmation(user.email, user.name);
+      await emailService.sendRegistrationConfirmation(user.email, `${user.first_name} ${user.last_name}`);
     } catch (error) {
       console.error('Failed to send registration confirmation:', error);
       // Don't throw - user is already created, continue with verification email
@@ -68,7 +70,7 @@ export class AuthService {
 
     // Send verification email
     try {
-      await emailService.sendVerificationEmail(user.email, user.name, verificationToken);
+      await emailService.sendVerificationEmail(user.email, `${user.first_name} ${user.last_name}`, verificationToken);
     } catch (error) {
       console.error('Failed to send verification email:', error);
       throw new Error('Registration successful but failed to send verification email. Please contact support.');

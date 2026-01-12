@@ -8,21 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Wallet, Plus, CreditCard, Smartphone, Building2, Gift, Clock, CheckCircle2, Sparkles, Zap, Crown } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiFormData } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CreditPackage {
   id: string;
   amount: number;
   price: number;
-  bonus: number;
   popular?: boolean;
   bestValue?: boolean;
 }
 
 interface Transaction {
   id: string;
-  type: "credit" | "debit" | "bonus" | "refund";
+  type: "credit" | "debit" | "refund";
   amount: number;
   description: string;
   created_at: string;
@@ -52,10 +51,10 @@ const Credits = () => {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
 
   const creditPackages: CreditPackage[] = [
-    { id: "small", amount: 50, price: 50, bonus: 0 },
-    { id: "medium", amount: 100, price: 100, bonus: 5, popular: true },
-    { id: "large", amount: 200, price: 200, bonus: 15 },
-    { id: "xl", amount: 500, price: 500, bonus: 50, bestValue: true },
+    { id: "small", amount: 50, price: 50 },
+    { id: "medium", amount: 100, price: 100, popular: true },
+    { id: "large", amount: 200, price: 200 },
+    { id: "xl", amount: 500, price: 500, bestValue: true },
   ];
 
   const paymentMethods = [
@@ -111,7 +110,7 @@ const Credits = () => {
   const getSelectedPackageDetails = () => {
     if (selectedPackage === "custom") {
       const amount = parseFloat(customAmount) || 0;
-      return { amount, price: amount, bonus: 0 };
+      return { amount, price: amount };
     }
     return creditPackages.find(p => p.id === selectedPackage);
   };
@@ -128,10 +127,8 @@ const Credits = () => {
       return;
     }
 
-    // Handle saved card payment - no additional validation needed
-    if (selectedPayment.startsWith("saved_")) {
-      // Saved card - proceed
-    } else if (selectedPayment === "blik" && blikCode.length !== 6) {
+    // For BLIK, validate code
+    if (selectedPayment === "blik" && blikCode.length !== 6) {
       toast.error(t('credits.toasts.invalidBlik'));
       return;
     }
@@ -139,38 +136,39 @@ const Credits = () => {
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Add credits to user account
-      const totalCredits = packageDetails.amount + (packageDetails.bonus || 0);
-      const response = await apiFetch("/credits/add", {
-        method: "POST",
-        body: JSON.stringify({
-          amount: totalCredits,
-          type: "credit",
-          description: `Purchased ${packageDetails.amount} PLN credits${packageDetails.bonus ? ` + ${packageDetails.bonus} PLN bonus` : ""}`,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to add credits");
+      // Get user data
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.id) {
+        toast.error('Please log in to purchase credits');
+        navigate('/login');
+        return;
       }
 
-      toast.success(t('credits.toasts.addedSuccess').replace('{amount}', String(totalCredits)));
+      // Create credits purchase order first
+      const formData = new FormData();
+      formData.append('order_type', 'credits_purchase');
+      formData.append('description', `Store Credit: ${packageDetails.amount} PLN`);
+      formData.append('price', packageDetails.amount.toString());
+      formData.append('credits_amount', packageDetails.amount.toString());
+      formData.append('paymentMethod', 'pending');
+
+      toast.info('Creating order...');
+
+      const orderResponse = await apiFormData('/orders', formData);
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.message || 'Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
       
-      // Reset form
-      setSelectedPackage(null);
-      setCustomAmount("");
-      setSelectedPayment(null);
-      setBlikCode("");
-      
-      // Refresh data
-      fetchCreditsData();
+      // Navigate to PaymentPage with order ID
+      toast.success('Redirecting to payment...');
+      navigate(`/payment/${orderData.id}`);
     } catch (error) {
       console.error("Purchase error:", error);
-      toast.error(t('credits.toasts.paymentFailed'));
-    } finally {
+      toast.error(error instanceof Error ? error.message : t('credits.toasts.paymentFailed'));
       setIsProcessing(false);
     }
   };
@@ -188,7 +186,6 @@ const Credits = () => {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "credit": return <Plus className="w-4 h-4 text-green-500" />;
-      case "bonus": return <Gift className="w-4 h-4 text-purple-500" />;
       case "debit": return <CreditCard className="w-4 h-4 text-red-500" />;
       case "refund": return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
@@ -284,11 +281,6 @@ const Credits = () => {
                         )}
                         <div className="text-center">
                           <p className="text-3xl font-bold gradient-text">{pkg.amount} PLN</p>
-                          {pkg.bonus > 0 && (
-                            <p className="text-sm text-green-600 font-medium mt-1">
-                              +{pkg.bonus} PLN {t('credits.bonus')}
-                            </p>
-                          )}
                           <p className="text-sm text-muted-foreground mt-2">
                             {t('credits.pay')} {pkg.price} PLN
                           </p>
@@ -416,23 +408,9 @@ const Credits = () => {
                           <span className="text-muted-foreground">{t('credits.creditsLabel')}</span>
                           <span className="font-medium">{getSelectedPackageDetails()!.amount} PLN</span>
                         </div>
-                        {getSelectedPackageDetails()!.bonus > 0 && (
-                          <div className="flex justify-between text-green-600">
-                            <span className="flex items-center gap-1">
-                              <Gift className="w-4 h-4" /> {t('credits.bonusLabel')}
-                            </span>
-                            <span className="font-medium">+{getSelectedPackageDetails()!.bonus} PLN</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="border-t pt-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold">{t('credits.totalCredits')}</span>
-                          <span className="text-xl font-bold text-green-600">
-                            {(getSelectedPackageDetails()!.amount + (getSelectedPackageDetails()!.bonus || 0)).toFixed(2)} PLN
-                          </span>
-                        </div>
                         <div className="flex justify-between items-center">
                           <span className="font-bold">{t('credits.payLabel')}</span>
                           <span className="text-2xl font-bold gradient-text">

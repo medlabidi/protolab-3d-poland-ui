@@ -42,9 +42,9 @@ export const validateFile = (file: File): ValidationResult => {
 
   // Check file extension
   const extension = file.name.split('.').pop()?.toLowerCase();
-  const supportedFormats = ['stl', 'obj', 'step'];
+  const supportedFormats = ['stl', 'obj', '3mf'];
   if (!extension || !supportedFormats.includes(extension)) {
-    return { isValid: false, error: `Unsupported file format: .${extension}. Supported formats: STL, OBJ, STEP` };
+    return { isValid: false, error: `Unsupported file format: .${extension}. Supported formats: STL, OBJ, 3MF` };
   }
 
   return { isValid: true };
@@ -302,24 +302,27 @@ export const loadOBJFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
   });
 };
 
-export const loadModel = async (file: File): Promise<THREE.BufferGeometry> => {
-  // First validate the file before attempting to parse
+export const loadModel = async (file: File): Promise<THREE.BufferGeometry | null> => {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  
+  // Handle 3MF files - return null to indicate no preview (not an error)
+  if (extension === '3mf') {
+    return null;
+  }
+  
+  // Validate the file before attempting to parse
   const fileValidation = validateFile(file);
   if (!fileValidation.isValid) {
     throw new Error(fileValidation.error);
   }
-
-  const extension = file.name.split('.').pop()?.toLowerCase();
   
   switch (extension) {
     case 'stl':
       return loadSTL(file);
     case 'obj':
       return loadOBJ(file);
-    case 'step':
-      throw new Error('STEP file support coming soon. Please convert to STL or OBJ format for now.');
     default:
-      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ`);
+      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ, 3MF`);
   }
 };
 
@@ -331,9 +334,9 @@ export const loadModelFromUrl = async (url: string, fileName: string): Promise<T
       return loadSTLFromUrl(url);
     case 'obj':
       return loadOBJFromUrl(url);
-    case 'step':
-      throw new Error('STEP file support coming soon. Please convert to STL or OBJ format for now.');
+    case '3mf':
+      throw new Error('3MF files are accepted for printing but cannot be previewed in 3D.');
     default:
-      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ`);
+      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ, 3MF`);
   }
 };

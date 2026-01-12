@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { adminController } from '../controllers/admin.controller';
-import { userController } from '../controllers/user.controller';
-import { adminConversationsController } from '../controllers/admin-conversations.controller';
+import { adminBusinessController } from '../controllers/admin-business.controller';
 import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roleGuard';
 import { validate } from '../middleware/validate';
@@ -17,37 +16,44 @@ const router = Router();
 router.use(authenticate);
 router.use(requireAdmin);
 
-// Order management
 router.get('/orders', adminController.getAllOrders);
-router.get('/orders/type/:type', adminController.getOrdersByType);
 router.get('/orders/:id', adminController.getOrderById);
-router.post('/orders/:designOrderId/create-print', adminController.createPrintFromDesign);
 router.patch('/orders/:id/status', validate(updateOrderStatusSchema), adminController.updateOrderStatus);
 router.patch('/orders/:id/pricing', validate(updateOrderPricingSchema), adminController.updateOrderPricing);
 router.patch('/orders/:id/tracking', validate(updateOrderTrackingSchema), adminController.updateOrderTracking);
 
-// Design request management
-router.get('/design-requests', adminController.getAllDesignRequests);
-router.get('/design-requests/:id', adminController.getDesignRequestById);
-router.patch('/design-requests/:id/status', adminController.updateDesignRequestStatus);
-router.patch('/design-requests/:id/price', adminController.updateDesignRequestPrice);
-router.post('/design-requests/:id/attach-file', adminController.attachDesignFile);
-
-// User management
 router.get('/users', adminController.getAllUsers);
-router.get('/users/all', (req, res) => userController.getAllUsers(req, res));
-router.delete('/users/:id', (req, res) => userController.deleteUser(req, res));
+router.get('/users/:id', adminController.getUserById);
+router.patch('/users/:id/role', adminController.updateUserRole);
+router.put('/users/:userId', adminBusinessController.updateBusiness);
 
-// Settings management
+// Business management routes
+router.get('/businesses', adminBusinessController.getBusinesses);
+router.get('/businesses/:userId/invoices', adminBusinessController.getBusinessInvoices);
+
 router.get('/settings', adminController.getSettings);
 router.patch('/settings', validate(updateSettingsSchema), adminController.updateSettings);
 
-// Conversation management
-router.get('/conversations', adminConversationsController.getAllConversations);
-router.get('/conversations/:conversationId', adminConversationsController.getConversation);
-router.get('/conversations/:conversationId/messages', adminConversationsController.getConversationMessages);
-router.post('/conversations/:conversationId/messages', adminConversationsController.sendConversationMessage);
-router.patch('/conversations/:conversationId/status', adminConversationsController.updateConversationStatus);
-router.post('/conversations/:conversationId/read', adminConversationsController.markConversationAsRead);
+// Conversations and Support
+router.get('/conversations', adminController.getAllConversations);
+router.get('/conversations/:conversationId/messages', adminController.getConversationMessages);
+router.post('/conversations/:conversationId/messages', adminController.sendMessageToUser);
+router.patch('/conversations/:conversationId/status', adminController.updateConversationStatus);
+router.patch('/conversations/:conversationId/read', adminController.markConversationMessagesAsRead);
+
+// Materials routes
+router.get('/materials', adminController.getAllMaterials);
+router.get('/materials/:id', adminController.getMaterialById);
+router.post('/materials', adminController.createMaterial);
+router.patch('/materials/:id', adminController.updateMaterial);
+router.delete('/materials/:id', adminController.deleteMaterial);
+
+// Printers routes
+router.get('/printers', adminController.getAllPrinters);
+router.get('/printers/:id', adminController.getPrinterById);
+router.post('/printers', adminController.createPrinter);
+router.patch('/printers/:id', adminController.updatePrinter);
+router.patch('/printers/:id/set-default', adminController.setDefaultPrinter);
+router.delete('/printers/:id', adminController.deletePrinter);
 
 export default router;

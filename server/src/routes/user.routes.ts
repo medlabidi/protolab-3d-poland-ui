@@ -8,5 +8,7 @@ const router = Router();
 router.get('/me', authenticate, (req, res) => userController.getMe(req, res));
 router.put('/me', authenticate, (req, res) => userController.updateMe(req, res));
 router.delete('/me', authenticate, (req, res) => userController.deleteMe(req, res));
+router.get('/notifications', authenticate, (req, res) => userController.getNotifications(req, res));
+router.patch('/notifications/:id/read', authenticate, (req, res) => userController.markNotificationRead(req, res));
 
 export default router;

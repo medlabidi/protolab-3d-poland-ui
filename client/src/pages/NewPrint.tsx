@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Calculator, Send, CreditCard, FileText, FolderOpen, X, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Calculator, Send, CreditCard, FileText, FolderOpen, X, Plus, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryOptions, deliveryOptions } from "@/components/DeliveryOptions";
 import { LockerPickerModal } from "@/components/LockerPickerModal";
@@ -16,6 +16,7 @@ import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DP
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
 import { apiFormData } from "@/lib/api";
+import { API_URL } from "@/config/api";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -44,6 +45,13 @@ interface ProjectFile {
   isExpanded: boolean;
   estimatedPrice: number | null;
   priceBreakdown: PriceBreakdown | null;
+  estimatedWeight: number | null;
+  estimatedPrintTime: number | null;
+  advancedMode?: boolean;
+  customLayerHeight?: string;
+  customInfill?: string;
+  supportType?: string;
+  infillPattern?: string;
 }
 
 // Memoized ModelViewer wrapper to prevent re-renders when other project file properties change
@@ -70,6 +78,17 @@ const MemoizedModelViewer = memo(({
   return prevProps.file === nextProps.file && prevProps.fileId === nextProps.fileId;
 });
 
+interface MaterialData {
+  id: string;
+  material_type: string;
+  color: string;
+  price_per_kg: number;
+  stock_status: 'available' | 'low_stock' | 'out_of_stock';
+  lead_time_days: number;
+  hex_color?: string;
+  is_active: boolean;
+}
+
 const NewPrint = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -79,13 +98,62 @@ const NewPrint = () => {
   
   // Single file state
   const [file, setFile] = useState<File | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false); // Toggle between normal and advanced mode
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [material, setMaterial] = useState("");
   const [quality, setQuality] = useState("");
   const [quantity, setQuantity] = useState(1);
+  
+  // Advanced settings state (override quality-based defaults when advanced is enabled)
+  const [customLayerHeight, setCustomLayerHeight] = useState<string | undefined>(undefined);
+  const [customInfill, setCustomInfill] = useState<string | undefined>(undefined);
+  const [supportType, setSupportType] = useState("none");
+  const [infillPattern, setInfillPattern] = useState("grid");
+  
+  // Quality presets with characteristics
+  const qualityPresets = {
+    draft: { layerHeight: '0.28mm', infill: '10%', speed: 'Very Fast', detail: 'Low', icon: '⚡' },
+    standard: { layerHeight: '0.20mm', infill: '20%', speed: 'Fast', detail: 'Medium', icon: '✨' },
+    high: { layerHeight: '0.12mm', infill: '30%', speed: 'Medium', detail: 'High', icon: '💎' },
+    ultra: { layerHeight: '0.08mm', infill: '40%', speed: 'Slow', detail: 'Very High', icon: '🏆' }
+  };
+  
+  // Materials from database
+  const [materials, setMaterials] = useState<MaterialData[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+
+  // Printer specifications from database
+  interface PrinterSpecs {
+    power_watts: number;
+    cost_pln: number;
+    lifespan_hours: number;
+    maintenance_rate: number;
+  }
+  const [printerSpecs, setPrinterSpecs] = useState<PrinterSpecs>({
+    power_watts: 270,
+    cost_pln: 3483.39,
+    lifespan_hours: 5000,
+    maintenance_rate: 0.03,
+  });
+
+  const getMaterialKey = (materialType: string, color: string) => {
+    return `${materialType.toLowerCase()}-${color.toLowerCase()}`;
+  };
+
+  const isOutOfStock = (materialValue: string) => {
+    const material = materials.find(m => getMaterialKey(m.material_type, m.color) === materialValue);
+    return material?.stock_status === 'out_of_stock';
+  };
+
+  const getOutOfStockWarning = (materialValue: string) => {
+    const material = materials.find(m => getMaterialKey(m.material_type, m.color) === materialValue);
+    if (!material || material.stock_status !== 'out_of_stock') return null;
+    const days = material.lead_time_days || 2;
+    return `⚠️ Material color is out of stock. Print process will take approximately +${days} days longer.`;
+  };
   
   // Project (multi-file) state
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
@@ -127,6 +195,14 @@ const NewPrint = () => {
     high: 30,
     ultra: 40,
   };
+  
+  // Infill by layer height mapping
+  const INFILL_BY_LAYER_HEIGHT: Record<string, number> = {
+    '0.3': 10,   // Draft
+    '0.2': 20,   // Standard
+    '0.15': 30,  // High
+    '0.1': 40,   // Ultra
+  };
 
   // Print speed multipliers by quality (base speed in cm³/hour)
   const PRINT_SPEED_CM3_PER_HOUR: Record<string, number> = {
@@ -135,36 +211,68 @@ const NewPrint = () => {
     high: 6,        // Slower for quality
     ultra: 3,       // Slowest for finest detail
   };
+  
+  // Print speed by layer height mapping
+  const SPEED_BY_LAYER_HEIGHT: Record<string, number> = {
+    '0.3': 15,   // Draft
+    '0.2': 10,   // Standard
+    '0.15': 6,   // High
+    '0.1': 3,    // Ultra
+  };
 
   // Computed weight based on material, quality, and model volume
   const estimatedWeight = useMemo(() => {
-    if (!modelAnalysis || !material || !quality) return null;
+    if (!modelAnalysis || !material) return null;
+    
+    // In advanced mode, need customInfill. In normal mode, need quality.
+    if (advancedMode && !customInfill) return null;
+    if (!advancedMode && !quality) return null;
     
     const materialType = material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    
+    // Use custom infill if advanced settings are enabled, otherwise use quality-based default
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_QUALITY[quality] || 20);
     
     // Weight = volume × density × (1 + infill%)
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
-    return effectiveVolume * density;
-  }, [modelAnalysis, material, quality]);
+    const weight = effectiveVolume * density;
+    
+    return weight;
+  }, [modelAnalysis, material, quality, advancedMode, customInfill]);
 
   // Computed print time based on model volume and quality
   const estimatedPrintTime = useMemo(() => {
-    if (!modelAnalysis || !quality) return null;
+    if (!modelAnalysis) return null;
     
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
-    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[quality] || 10;
+    // In advanced mode, need custom layer height and infill. In normal mode, need quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) return null;
+    if (!advancedMode && !quality) return null;
+    
+    // Use custom values if advanced settings are enabled, otherwise use quality-based defaults
+    const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+                       (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+    
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_LAYER_HEIGHT[layerHeight] || 20);
+    
+    const speedCm3PerHour = SPEED_BY_LAYER_HEIGHT[layerHeight] || 10;
     
     // Effective volume with infill
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
     
     // Time = volume / speed (in hours)
-    const printTimeHours = effectiveVolume / speedCm3PerHour;
+    let printTimeHours = effectiveVolume / speedCm3PerHour;
+    
+    // Infill pattern affects print time
+    if (infillPattern === 'honeycomb' || infillPattern === 'gyroid') {
+      printTimeHours *= 1.05; // +5% for complex patterns
+    }
     
     // Add setup time (15 minutes minimum)
     return Math.max(0.25, printTimeHours);
-  }, [modelAnalysis, quality]);
+  }, [modelAnalysis, quality, advancedMode, customLayerHeight, customInfill, infillPattern]);
 
   // Format print time for display
   const formatPrintTime = (hours: number | null): string => {
@@ -177,11 +285,148 @@ const NewPrint = () => {
     return m > 0 ? `${h}h ${m}min` : `${h}h`;
   };
 
+  // Fetch materials from database
   useEffect(() => {
-    // Check if user is logged in
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedIn);
+    const fetchMaterials = async () => {
+      try {
+        const response = await fetch('/api/materials/by-type');
+        if (response.ok) {
+          const data = await response.json();
+          // Flatten the grouped materials with safe check
+          const allMaterials: MaterialData[] = [];
+          if (data.materials && typeof data.materials === 'object') {
+            Object.values(data.materials).forEach((typeMaterials: any) => {
+              if (Array.isArray(typeMaterials)) {
+                allMaterials.push(...typeMaterials);
+              }
+            });
+          }
+          setMaterials(allMaterials);
+        }
+      } catch (error) {
+        console.error('Failed to fetch materials:', error);
+        toast.error('Failed to load materials');
+      } finally {
+        setMaterialsLoading(false);
+      }
+    };
+    
+    const fetchPrinterSpecs = async () => {
+      try {
+        const response = await fetch('/api/printers/default');
+        if (response.ok) {
+          const data = await response.json();
+          setPrinterSpecs(data.printer);
+        }
+      } catch (error) {
+        console.error('Failed to fetch printer specs:', error);
+        // Continue with default fallback values
+      }
+    };
+    
+    fetchMaterials();
+    fetchPrinterSpecs();
   }, []);
+
+  useEffect(() => {
+    // Check if user is logged in by verifying both flag and token existence
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true" && 
+                     localStorage.getItem("accessToken") !== null;
+    setIsLoggedIn(loggedIn);
+
+    // Restore form state if coming back from checkout
+    const savedState = sessionStorage.getItem('newPrintFormState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        let restored = false;
+        
+        if (state.material) { setMaterial(state.material); restored = true; }
+        if (state.quality) { setQuality(state.quality); restored = true; }
+        if (state.quantity) { setQuantity(state.quantity); restored = true; }
+        if (state.advancedMode !== undefined) { setAdvancedMode(state.advancedMode); restored = true; }
+        if (state.customLayerHeight) { setCustomLayerHeight(state.customLayerHeight); restored = true; }
+        if (state.customInfill) { setCustomInfill(state.customInfill); restored = true; }
+        if (state.supportType) { setSupportType(state.supportType); restored = true; }
+        if (state.infillPattern) { setInfillPattern(state.infillPattern); restored = true; }
+        if (state.selectedDeliveryOption) { setSelectedDeliveryOption(state.selectedDeliveryOption); restored = true; }
+        if (state.shippingAddress) { setShippingAddress(state.shippingAddress); restored = true; }
+        if (state.selectedLocker) { setSelectedLocker(state.selectedLocker); restored = true; }
+        
+        if (restored) {
+          toast.info('Your previous settings have been restored. Please re-upload your file if needed.');
+        }
+        
+        // Clear saved state after restoration
+        sessionStorage.removeItem('newPrintFormState');
+      } catch (error) {
+        console.error('Failed to restore form state:', error);
+      }
+    }
+  }, []);
+
+  // Function to redirect directly to PayU payment
+  const redirectToPayUPayment = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        toast.error('Please log in to continue');
+        navigate('/login');
+        return;
+      }
+
+      // Get order details first
+      const orderResponse = await fetch(`${API_URL}/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const orderData = await orderResponse.json();
+      const order = orderData.order;
+
+      // Create PayU payment request
+      const payuResponse = await fetch(`${API_URL}/payments/payu/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          amount: order.price,
+          description: `Order #${order.id.slice(0, 8)} - ${order.file_name}`,
+          userId: order.user_id,
+          payMethods: undefined, // Let PayU show all available methods
+        }),
+      });
+
+      if (!payuResponse.ok) {
+        const errorData = await payuResponse.json();
+        throw new Error(errorData.error || 'Payment creation failed');
+      }
+
+      const payuData = await payuResponse.json();
+      console.log('PayU response data:', payuData);
+
+      // Redirect to PayU payment page (standard flow)
+      if (payuData.redirectUri) {
+        console.log('Redirecting to PayU payment page:', payuData.redirectUri);
+        window.location.href = payuData.redirectUri;
+      } else {
+        throw new Error('No payment redirect URL received from PayU');
+      }
+
+    } catch (error) {
+      console.error('PayU redirect error:', error);
+      toast.error(error instanceof Error ? error.message : 'Payment redirect failed');
+      setIsProcessing(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -239,10 +484,25 @@ const NewPrint = () => {
     setModelAnalysis(analysis);
     setIsModelLoading(false);
     setModelError(null);
+    
+    console.log('📦 Model Analysis Complete:');
+    console.log('  - Volume:', analysis.volumeCm3.toFixed(2), 'cm³');
+    console.log('  - Bounding Box:', 
+      `${analysis.boundingBox.x.toFixed(1)} × ${analysis.boundingBox.y.toFixed(1)} × ${analysis.boundingBox.z.toFixed(1)} cm`);
+    console.log('  - Surface Area:', analysis.surfaceArea.toFixed(2), 'cm²');
+    
     toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³`);
   };
 
   const handleModelError = (error: string | null) => {
+    // Special handling for 3MF files - this is informational, not a blocking error
+    if (error && error.includes('3MF_NO_PREVIEW')) {
+      setModelError(null); // Don't block price calculation for 3MF
+      setIsModelLoading(false);
+      toast.info("3MF file uploaded. Preview unavailable, but you can proceed with pricing.");
+      return;
+    }
+    
     setModelError(error);
     setIsModelLoading(false);
     if (error) {
@@ -280,6 +540,13 @@ const NewPrint = () => {
           isExpanded: false,
           estimatedPrice: null,
           priceBreakdown: null,
+          estimatedWeight: null,
+          estimatedPrintTime: null,
+          advancedMode: false,
+          customLayerHeight: '',
+          customInfill: '',
+          supportType: 'none',
+          infillPattern: 'grid',
         });
       }
     }
@@ -340,56 +607,83 @@ const NewPrint = () => {
   };
 
   // Calculate price for a single project file
-  const calculateProjectFilePrice = (projectFile: ProjectFile): PriceBreakdown | null => {
-    if (!projectFile.material || !projectFile.quality || !projectFile.modelAnalysis) {
+  const calculateProjectFilePrice = (projectFile: ProjectFile): { breakdown: PriceBreakdown; weight: number; printTime: number } | null => {
+    if (!projectFile.material || !projectFile.modelAnalysis) {
+      return null;
+    }
+    
+    // In advanced mode, need custom settings. In normal mode, need quality.
+    if (!projectFile.advancedMode && !projectFile.quality) {
+      return null;
+    }
+    if (projectFile.advancedMode && (!projectFile.customLayerHeight || !projectFile.customInfill)) {
       return null;
     }
 
     const materialType = projectFile.material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[projectFile.quality] || 20;
+    
+    // Use custom infill if advanced mode, otherwise quality preset
+    const infillPercent = projectFile.advancedMode && projectFile.customInfill
+      ? parseInt(projectFile.customInfill, 10)
+      : (INFILL_BY_QUALITY[projectFile.quality] || 20);
     
     const volumeCm3 = projectFile.modelAnalysis.volumeCm3;
     const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
+    
     const materialWeightGrams = effectiveVolume * density;
     
-    const speedCm3PerHour = PRINT_SPEED_CM3_PER_HOUR[projectFile.quality] || 10;
-    const printTimeHours = Math.max(0.25, effectiveVolume / speedCm3PerHour);
+    // Calculate print time
+    const layerHeight = projectFile.advancedMode && projectFile.customLayerHeight
+      ? projectFile.customLayerHeight
+      : (projectFile.quality === 'draft' ? '0.3' : projectFile.quality === 'standard' ? '0.2' : projectFile.quality === 'high' ? '0.15' : '0.1');
+    const speedCm3PerHour = SPEED_BY_LAYER_HEIGHT[layerHeight] || 10;
+    let printTimeHours = effectiveVolume / speedCm3PerHour;
     
-    const materialPrices: Record<string, number> = {
-      "pla-white": 39, "pla-black": 39, "pla-red": 49, "pla-yellow": 49, "pla-blue": 49,
-      "abs-silver": 50, "abs-transparent": 50, "abs-black": 50, "abs-grey": 50,
-      "abs-red": 50, "abs-white": 50, "abs-blue": 50, "abs-green": 50,
-      "petg-black": 30, "petg-white": 35, "petg-red": 39, "petg-green": 39,
-      "petg-blue": 39, "petg-yellow": 39, "petg-pink": 39, "petg-orange": 39, "petg-silver": 39,
-    };
-
-    const materialPricePerKg = materialPrices[projectFile.material] || 39;
+    // Infill pattern affects print time
+    if (projectFile.infillPattern === 'honeycomb' || projectFile.infillPattern === 'gyroid') {
+      printTimeHours *= 1.05; // +5% for complex patterns
+    }
+    
+    printTimeHours = Math.max(0.25, printTimeHours);
+    
+    // Get price from database materials
+    const materialData = materials.find(m => 
+      getMaterialKey(m.material_type, m.color) === projectFile.material
+    );
+    const materialPricePerKg = materialData?.price_per_kg || 39;
     const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
-    const Cenergy = printTimeHours * 0.27 * 0.914;
+    
+    // Use printer specs from database
+    const powerKW = printerSpecs.power_watts / 1000;
+    const Cenergy = printTimeHours * powerKW * 0.914;
     const Clabor = 31.40 * (10 / 60);
-    const Cdepreciation = (3483.39 / 5000) * printTimeHours;
-    const Cmaintenance = Cdepreciation * 0.03;
+    const Cdepreciation = (printerSpecs.cost_pln / printerSpecs.lifespan_hours) * printTimeHours;
+    const Cmaintenance = Cdepreciation * printerSpecs.maintenance_rate;
     const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
     const vat = Cinternal * 0.23;
     const totalPrice = Math.round((Cinternal + vat) * projectFile.quantity * 100) / 100;
 
     return {
-      materialCost: Math.round(Cmaterial * 100) / 100,
-      energyCost: Math.round(Cenergy * 100) / 100,
-      serviceFee: Math.round(Clabor * 100) / 100,
-      depreciation: Math.round(Cdepreciation * 100) / 100,
-      maintenance: Math.round(Cmaintenance * 100) / 100,
-      internalCost: Math.round(Cinternal * 100) / 100,
-      vat: Math.round(vat * 100) / 100,
-      totalPrice,
+      breakdown: {
+        materialCost: Math.round(Cmaterial * 100) / 100,
+        energyCost: Math.round(Cenergy * 100) / 100,
+        serviceFee: Math.round(Clabor * 100) / 100,
+        depreciation: Math.round(Cdepreciation * 100) / 100,
+        maintenance: Math.round(Cmaintenance * 100) / 100,
+        internalCost: Math.round(Cinternal * 100) / 100,
+        vat: Math.round(vat * 100) / 100,
+        totalPrice,
+      },
+      weight: materialWeightGrams,
+      printTime: printTimeHours,
     };
   };
 
   const calculateAllProjectPrices = () => {
     let hasErrors = false;
     const updatedFiles = projectFiles.map(pf => {
-      if (!pf.material || !pf.quality) {
+      if (!pf.material || (!pf.advancedMode && !pf.quality)) {
         hasErrors = true;
         return pf;
       }
@@ -401,8 +695,14 @@ const NewPrint = () => {
         hasErrors = true;
         return pf;
       }
-      const breakdown = calculateProjectFilePrice(pf);
-      return { ...pf, priceBreakdown: breakdown, estimatedPrice: breakdown?.totalPrice || null };
+      const result = calculateProjectFilePrice(pf);
+      return { 
+        ...pf, 
+        priceBreakdown: result?.breakdown || null, 
+        estimatedPrice: result?.breakdown.totalPrice || null,
+        estimatedWeight: result?.weight || null,
+        estimatedPrintTime: result?.printTime || null
+      };
     });
 
     if (hasErrors) {
@@ -436,44 +736,30 @@ const NewPrint = () => {
       return;
     }
     
-    if (!quality) {
+    // In advanced mode, check custom values. In normal mode, check quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) {
+      toast.error("Please fill in all advanced settings");
+      return;
+    }
+    
+    if (!advancedMode && !quality) {
       toast.error("Please select print quality");
       return;
     }
     
-    // MATERIAL PRICES (PLN per kg) - exact pricing
-    const materialPrices: Record<string, number> = {
-      // PLA
-      "pla-white": 39,
-      "pla-black": 39,
-      "pla-red": 49,
-      "pla-yellow": 49,
-      "pla-blue": 49,
-      // ABS
-      "abs-silver": 50,
-      "abs-transparent": 50,
-      "abs-black": 50,
-      "abs-grey": 50,
-      "abs-red": 50,
-      "abs-white": 50,
-      "abs-blue": 50,
-      "abs-green": 50,
-      // PETG
-      "petg-black": 30,
-      "petg-white": 35,
-      "petg-red": 39,
-      "petg-green": 39,
-      "petg-blue": 39,
-      "petg-yellow": 39,
-      "petg-pink": 39,
-      "petg-orange": 39,
-      "petg-silver": 39,
-    };
+    // Get material price from database
+    const materialData = materials.find(m => 
+      getMaterialKey(m.material_type, m.color) === material
+    );
+    const materialPricePerKg = materialData?.price_per_kg || 39;
 
     // Get material type from selection (e.g., "pla-white" -> "pla")
     const materialType = material.split('-')[0];
     const density = MATERIAL_DENSITIES[materialType] || 1.24;
-    const infillPercent = INFILL_BY_QUALITY[quality] || 20;
+    
+    // Use custom infill if advanced settings are enabled
+    const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
+                         (INFILL_BY_QUALITY[quality] || 20);
     
     // Calculate weight using volume, density, and infill factor (matches backend)
     let materialWeightGrams: number;
@@ -491,11 +777,10 @@ const NewPrint = () => {
     const printTimeHours = estimatedPrintTime || 4;
     
     // Material cost: Cmaterial = materialPricePerKg * (materialWeightGrams / 1000)
-    const materialPricePerKg = materialPrices[material] || 39;
     const Cmaterial = materialPricePerKg * (materialWeightGrams / 1000);
     
-    // Energy cost: Cenergy = T * W * Pe
-    const W = 0.27; // 270W = 0.27 kW
+    // Energy cost: Cenergy = T * W * Pe (using printer specs from database)
+    const W = printerSpecs.power_watts / 1000; // Convert watts to kW
     const Pe = 0.914; // PLN per kWh in Krakow
     const Cenergy = printTimeHours * W * Pe;
     
@@ -504,13 +789,11 @@ const NewPrint = () => {
     const laborTimeMinutes = 10;
     const Clabor = R * (laborTimeMinutes / 60);
     
-    // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours
-    const machineCost = 3483.39;
-    const lifespanHours = 5000;
-    const Cdepreciation = (machineCost / lifespanHours) * printTimeHours;
+    // Machine depreciation: Cdepreciation = (machineCost / lifespanHours) * printTimeHours (using printer specs from database)
+    const Cdepreciation = (printerSpecs.cost_pln / printerSpecs.lifespan_hours) * printTimeHours;
     
-    // Maintenance cost: Cmaintenance = Cdepreciation * 0.03 (3% - matches backend)
-    const Cmaintenance = Cdepreciation * 0.03;
+    // Maintenance cost: Cmaintenance = Cdepreciation * maintenanceRate (using printer specs from database)
+    const Cmaintenance = Cdepreciation * printerSpecs.maintenance_rate;
     
     // Total internal cost
     const Cinternal = Cmaterial + Cenergy + Clabor + Cdepreciation + Cmaintenance;
@@ -521,6 +804,30 @@ const NewPrint = () => {
     // Final price (without delivery)
     const priceWithoutDelivery = Cinternal + vat;
     const totalPrice = Math.round(priceWithoutDelivery * quantity * 100) / 100;
+    
+    console.log('=== NEW PRINT: Price Calculation ===' , {
+      material: materialType,
+      volume: modelAnalysis?.volumeCm3,
+      density,
+      infillPercent,
+      materialWeightGrams: materialWeightGrams.toFixed(2),
+      massKg: (materialWeightGrams / 1000).toFixed(3),
+      printTimeHours: printTimeHours.toFixed(2),
+      materialCost: Cmaterial.toFixed(2),
+      energyCost: Cenergy.toFixed(2),
+      laborCost: Clabor.toFixed(2),
+      depreciationCost: Cdepreciation.toFixed(2),
+      maintenanceCost: Cmaintenance.toFixed(2),
+      internalCost: Cinternal.toFixed(2),
+      vat: vat.toFixed(2),
+      priceWithoutDelivery: priceWithoutDelivery.toFixed(2),
+      quantity,
+      totalPrice: totalPrice.toFixed(2),
+      advancedMode,
+      infillPattern,
+      customInfill,
+      customLayerHeight
+    });
     
     // Store detailed breakdown
     const breakdown: PriceBreakdown = {
@@ -539,7 +846,74 @@ const NewPrint = () => {
     toast.success(`Price calculated! Weight: ${materialWeightGrams.toFixed(1)}g, Time: ${formatPrintTime(printTimeHours)}`);
   };
 
-  const proceedToPayment = () => {
+  // Auto-calculate price when required fields change
+  useEffect(() => {
+    if (!file || modelError || !material || !modelAnalysis) return;
+    
+    // In advanced mode, need custom values. In normal mode, need quality.
+    if (advancedMode && (!customLayerHeight || !customInfill)) return;
+    if (!advancedMode && !quality) return;
+    
+    calculatePrice();
+  }, [file, modelError, material, quality, quantity, advancedMode, customLayerHeight, customInfill, infillPattern, modelAnalysis]);
+
+  // Auto-calculate prices for project files
+  useEffect(() => {
+    if (projectFiles.length === 0 || !printerSpecs || !materials.length) return;
+
+    let hasChanges = false;
+    const updatedFiles = projectFiles.map(pf => {
+      // Only calculate if file has all required data
+      if (!pf.modelAnalysis || pf.error || !pf.material) {
+        return pf;
+      }
+
+      // In advanced mode, need custom values. In normal mode, need quality.
+      if (!pf.advancedMode && !pf.quality) {
+        return pf;
+      }
+      if (pf.advancedMode && (!pf.customLayerHeight || !pf.customInfill)) {
+        return pf;
+      }
+
+      const result = calculateProjectFilePrice(pf);
+      if (result && result.breakdown.totalPrice !== pf.estimatedPrice) {
+        hasChanges = true;
+        return { 
+          ...pf, 
+          priceBreakdown: result.breakdown, 
+          estimatedPrice: result.breakdown.totalPrice,
+          estimatedWeight: result.weight,
+          estimatedPrintTime: result.printTime
+        };
+      }
+      return pf;
+    });
+
+    if (hasChanges) {
+      setProjectFiles(updatedFiles);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(projectFiles.map(pf => ({
+    id: pf.id,
+    material: pf.material,
+    quality: pf.quality,
+    quantity: pf.quantity,
+    advancedMode: pf.advancedMode,
+    customLayerHeight: pf.customLayerHeight,
+    customInfill: pf.customInfill,
+    infillPattern: pf.infillPattern,
+    volumeCm3: pf.modelAnalysis?.volumeCm3
+  }))), printerSpecs, materials]);
+
+  const proceedToPayment = async () => {
+    // Check authentication first
+    if (!isLoggedIn) {
+      toast.error("Please log in to create orders");
+      navigate('/signin');
+      return;
+    }
+
     // Check which mode we're in
     if (uploadMode === 'project') {
       // Project mode validation
@@ -562,10 +936,16 @@ const NewPrint = () => {
         return;
       }
 
-      // Check if all files have material and quality set
-      const filesWithoutConfig = projectFiles.filter(pf => !pf.material || !pf.quality);
+      // Check if all files have material and required settings (quality in normal mode, custom values in advanced mode)
+      const filesWithoutConfig = projectFiles.filter(pf => {
+        if (!pf.material) return true;
+        if (pf.advancedMode) {
+          return !pf.customLayerHeight || !pf.customInfill;
+        }
+        return !pf.quality;
+      });
       if (filesWithoutConfig.length > 0) {
-        toast.error(`${filesWithoutConfig.length} file(s) need material and quality selected`);
+        toast.error(`${filesWithoutConfig.length} file(s) need material and settings configured`);
         return;
       }
 
@@ -596,8 +976,8 @@ const NewPrint = () => {
 
       // Calculate total price for project
       const projectTotal = projectFiles.reduce((sum, pf) => {
-        const breakdown = calculateProjectFilePrice(pf);
-        return sum + (breakdown?.totalPrice || 0);
+        const result = calculateProjectFilePrice(pf);
+        return sum + (result?.breakdown.totalPrice || 0);
       }, 0);
 
       if (projectTotal <= 0) {
@@ -609,29 +989,49 @@ const NewPrint = () => {
       const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
       const totalAmount = projectTotal + deliveryPrice;
 
-      // Navigate to payment page with project order data
-      navigate('/payment', {
-        state: {
-          orderData: {
-            isProject: true,
-            projectName: projectName || 'Untitled Project',
-            files: projectFiles.map(pf => ({
-              file: pf.file,
-              material: pf.material,
-              quality: pf.quality,
-              quantity: pf.quantity,
-              modelAnalysis: pf.modelAnalysis,
-              estimatedPrice: calculateProjectFilePrice(pf)?.totalPrice || 0,
-            })),
-            deliveryOption: selectedDeliveryOption,
-            locker: selectedLocker,
-            shippingAddress,
-            projectTotal,
-            deliveryPrice,
-            totalAmount,
-          }
-        }
-      });
+      // Store project data in session storage and navigate to checkout
+      const projectData = {
+        files: projectFiles.map(pf => ({
+          fileName: pf.file.name,
+          fileSize: pf.file.size,
+          material: pf.material,
+          quality: pf.quality,
+          quantity: pf.quantity,
+          advancedMode: pf.advancedMode,
+          customLayerHeight: pf.customLayerHeight,
+          customInfill: pf.customInfill,
+          infillPattern: pf.infillPattern,
+          estimatedWeight: pf.estimatedWeight,
+          estimatedPrintTime: pf.estimatedPrintTime,
+          estimatedPrice: pf.estimatedPrice
+        })),
+        projectName: projectName || 'Untitled Project',
+        deliveryOption: selectedDeliveryOption,
+        deliveryPrice,
+        totalAmount,
+        shippingAddress: selectedDeliveryOption === 'inpost' && selectedLocker 
+          ? { lockerCode: selectedLocker.name, lockerAddress: selectedLocker.address }
+          : selectedDeliveryOption === 'dpd' && shippingAddress 
+          ? shippingAddress
+          : selectedDeliveryOption === 'pickup'
+          ? { type: 'pickup', address: 'Zielonogórska 13, 30-406 Kraków' }
+          : null
+      };
+
+      sessionStorage.setItem('projectCheckoutData', JSON.stringify(projectData));
+      
+      // Store actual file objects separately (they can't be stringified)
+      const fileStore = projectFiles.map(pf => pf.file);
+      sessionStorage.setItem('projectFiles', JSON.stringify(fileStore.map((f, i) => i))); // Store indices
+      
+      // Use a global variable to temporarily store files (session storage can't store File objects)
+      (window as any).__projectFiles = fileStore;
+
+      setIsProcessing(false);
+      
+      // Navigate to checkout page with project mode flag
+      toast.success(`Project ready for checkout!`);
+      navigate('/checkout?projectMode=true');
       return;
     }
 
@@ -653,9 +1053,9 @@ const NewPrint = () => {
       return;
     }
 
-    // Validate price calculation
+    // Price should be calculated automatically, but double-check
     if (!estimatedPrice || !priceBreakdown) {
-      toast.error("Please calculate the price first");
+      toast.error("Price calculation in progress, please wait");
       return;
     }
 
@@ -681,23 +1081,155 @@ const NewPrint = () => {
     const deliveryPrice = deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0;
     const totalAmount = estimatedPrice + deliveryPrice;
 
-    // Navigate to payment page with order data
-    navigate('/payment', {
-      state: {
-        orderData: {
-          file,
-          material,
-          quality,
-          quantity,
-          deliveryOption: selectedDeliveryOption,
-          locker: selectedLocker,
-          shippingAddress,
-          priceBreakdown,
-          deliveryPrice,
-          totalAmount,
+    try {
+      setIsProcessing(true);
+      
+      // Check if there's a previous pending order from going back
+      const savedState = sessionStorage.getItem('newPrintFormState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          if (state.orderId) {
+            // Cancel the previous pending order
+            const token = localStorage.getItem('accessToken');
+            await fetch(`${API_URL}/orders/${state.orderId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                status: 'cancelled',
+                payment_status: 'cancelled'
+              }),
+            });
+            console.log('Cancelled previous pending order:', state.orderId);
+          }
+        } catch (error) {
+          console.error('Failed to cancel previous order:', error);
+          // Continue anyway
         }
       }
-    });
+      
+      // Create order first
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('material', material.split('-')[0]);
+      formData.append('color', material.split('-')[1] || 'white');
+      
+      // Use custom layer height if advanced settings enabled, otherwise quality preset
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+                         (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('layerHeight', layerHeight);
+      
+      // Use custom infill if advanced settings enabled, otherwise quality preset
+      const infill = advancedMode && customInfill ? customInfill :
+                    (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
+      formData.append('infill', infill);
+      
+      formData.append('quantity', quantity.toString());
+      formData.append('shippingMethod', selectedDeliveryOption);
+      formData.append('paymentMethod', 'pending');
+      formData.append('price', totalAmount.toString());
+      
+      // Add advanced mode flag
+      formData.append('advancedMode', advancedMode.toString());
+      
+      // Add quality preset if not in advanced mode
+      if (!advancedMode) {
+        formData.append('quality', quality);
+      }
+      
+      // Add advanced settings only if advanced mode is enabled
+      if (advancedMode) {
+        formData.append('infillPattern', infillPattern);
+      }
+      
+      // Add custom values if advanced mode was used
+      if (advancedMode) {
+        if (customLayerHeight) {
+          formData.append('customLayerHeight', customLayerHeight);
+        }
+        if (customInfill) {
+          formData.append('customInfill', customInfill);
+        }
+      }
+      
+      // Add material weight and print time for accurate price recalculation later
+      if (estimatedWeight && estimatedPrintTime) {
+        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
+        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+      }
+      
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+      }
+
+      // Add delivery details
+      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+        formData.append('shippingAddress', JSON.stringify({
+          lockerCode: selectedLocker.name,
+          lockerAddress: selectedLocker.address
+        }));
+      } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
+        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+      } else if (selectedDeliveryOption === 'pickup') {
+        formData.append('shippingAddress', JSON.stringify({
+          type: 'pickup',
+          address: 'Zielonogórska 13, 30-406 Kraków'
+        }));
+      }
+
+      const response = await apiFormData('/orders', formData);
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to create order';
+        try {
+          const error = await response.json();
+          errorMessage = error.message || error.error || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          if (response.status === 403) {
+            errorMessage = 'Access denied. Your account may not be approved or your session may have expired. Please log out and log back in.';
+          } else if (response.status === 401) {
+            errorMessage = 'Authentication required. Please log in again.';
+          } else {
+            errorMessage = `Server error: ${response.status}`;
+          }
+        }
+        console.error('Order creation failed:', { status: response.status, errorMessage });
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      
+      // Save form state and orderId before navigating to checkout
+      const formState = {
+        orderId: result.id,
+        material,
+        quality,
+        quantity,
+        advancedMode,
+        customLayerHeight,
+        customInfill,
+        supportType,
+        infillPattern,
+        selectedDeliveryOption,
+        shippingAddress,
+        selectedLocker,
+      };
+      sessionStorage.setItem('newPrintFormState', JSON.stringify(formState));
+      
+      // Navigate to checkout page for review before payment
+      toast.success('Order created. Please review your order before payment.');
+      navigate(`/checkout?orderId=${result.id}`);
+    } catch (error) {
+      console.error('Order creation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create order');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const submitOrder = async () => {
@@ -719,9 +1251,9 @@ const NewPrint = () => {
       return;
     }
 
-    // Validate price calculation
+    // Price should be calculated automatically
     if (!estimatedPrice) {
-      toast.error(t('newPrint.toasts.calculatePriceFirst'));
+      toast.error("Price calculation in progress, please wait");
       return;
     }
 
@@ -749,11 +1281,49 @@ const NewPrint = () => {
       formData.append('file', file);
       formData.append('material', material.split('-')[0]); // e.g., 'pla-white' -> 'pla'
       formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
-      formData.append('layerHeight', quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('infill', quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '50' : '100');
+      
+      // Use custom layer height if advanced settings enabled, otherwise quality preset
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+                         (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
+      formData.append('layerHeight', layerHeight);
+      
+      // Use custom infill if advanced settings enabled, otherwise quality preset
+      const infill = advancedMode && customInfill ? customInfill :
+                    (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
+      formData.append('infill', infill);
+      
       formData.append('quantity', quantity.toString());
       formData.append('shippingMethod', selectedDeliveryOption);
       formData.append('price', estimatedPrice.toString());
+      
+      // Add advanced mode flag
+      formData.append('advancedMode', advancedMode.toString());
+      
+      // Add advanced settings
+      formData.append('supportType', supportType);
+      formData.append('infillPattern', infillPattern);
+      
+      // Add custom values if advanced mode was used
+      if (advancedMode) {
+        if (customLayerHeight) {
+          formData.append('customLayerHeight', customLayerHeight);
+        }
+        if (customInfill) {
+          formData.append('customInfill', customInfill);
+        }
+      }
+      
+      // Add material weight and print time for accurate price recalculation later
+      // These values are calculated based on actual model analysis
+      if (estimatedWeight && estimatedPrintTime) {
+        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
+        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+      }
+      
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+      }
       
       // Add delivery-specific details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {
@@ -853,7 +1423,7 @@ const NewPrint = () => {
                       type="file"
                       id="file-upload"
                       className="hidden"
-                      accept=".stl,.obj,.step"
+                      accept=".stl,.obj,.3mf"
                       onChange={handleFileChange}
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
@@ -951,7 +1521,7 @@ const NewPrint = () => {
                         type="file"
                         id="project-file-upload"
                         className="hidden"
-                        accept=".stl,.obj,.step"
+                        accept=".stl,.obj,.3mf"
                         multiple
                         onChange={handleProjectFileChange}
                       />
@@ -1007,16 +1577,15 @@ const NewPrint = () => {
                                     {pf.isLoading && <span className="text-xs text-yellow-600">{t('common.loading')}</span>}
                                     {pf.error && <span className="text-xs text-red-600">{t('common.error')}</span>}
                                     {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
+                                    <div 
+                                      className="p-1 hover:bg-muted rounded cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removeProjectFile(pf.id);
                                       }}
                                     >
                                       <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
-                                    </Button>
+                                    </div>
                                     {pf.isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                   </div>
                                 </div>
@@ -1043,22 +1612,34 @@ const NewPrint = () => {
                                       <Select 
                                         value={pf.material} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { material: v })}
+                                        disabled={materialsLoading}
                                       >
                                         <SelectTrigger className="h-10">
-                                          <SelectValue placeholder="Select" />
+                                          <SelectValue placeholder={materialsLoading ? "Loading..." : "Select"} />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[300px]">
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">PLA</div>
-                                          <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
-                                          <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
-                                          <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
-                                          <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">ABS</div>
-                                          <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
-                                          <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
-                                          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-1">PETG</div>
-                                          <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
-                                          <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
+                                          {materialsLoading ? (
+                                            <div className="px-2 py-2 text-sm text-muted-foreground">Loading materials...</div>
+                                          ) : (
+                                            ['PLA', 'ABS', 'PETG'].map(type => {
+                                              const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
+                                              if (typeMaterials.length === 0) return null;
+                                              return (
+                                                <div key={type}>
+                                                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">{type}</div>
+                                                  {typeMaterials.map(mat => {
+                                                    const materialKey = getMaterialKey(mat.material_type, mat.color);
+                                                    const isOOS = mat.stock_status === 'out_of_stock';
+                                                    return (
+                                                      <SelectItem key={mat.id} value={materialKey}>
+                                                        <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                                      </SelectItem>
+                                                    );
+                                                  })}
+                                                </div>
+                                              );
+                                            })
+                                          )}
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -1068,6 +1649,7 @@ const NewPrint = () => {
                                       <Select 
                                         value={pf.quality} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { quality: v })}
+                                        disabled={pf.advancedMode}
                                       >
                                         <SelectTrigger className="h-10">
                                           <SelectValue placeholder="Select" />
@@ -1093,9 +1675,83 @@ const NewPrint = () => {
                                     </div>
                                   </div>
 
+                                  {/* Advanced Settings Toggle */}
+                                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-primary/10">
+                                    <div>
+                                      <p className="font-semibold text-sm">Advanced Settings</p>
+                                      <p className="text-xs text-muted-foreground">Configure detailed print parameters</p>
+                                    </div>
+                                    <Checkbox
+                                      checked={pf.advancedMode || false}
+                                      onCheckedChange={(checked) => {
+                                        updateProjectFile(pf.id, { 
+                                          advancedMode: checked as boolean,
+                                          // Set defaults from quality preset when enabling
+                                          customLayerHeight: checked && pf.quality ? 
+                                            (pf.quality === 'draft' ? '0.3' : 
+                                             pf.quality === 'standard' ? '0.2' : 
+                                             pf.quality === 'high' ? '0.15' : '0.1') : '',
+                                          customInfill: checked && pf.quality ?
+                                            (pf.quality === 'draft' ? '10' :
+                                             pf.quality === 'standard' ? '20' :
+                                             pf.quality === 'high' ? '30' : '40') : ''
+                                        });
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* Advanced Settings Fields */}
+                                  {pf.advancedMode && (
+                                    <div className="space-y-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <AlertCircle className="w-4 h-4 text-primary" />
+                                        <span className="font-semibold text-sm text-primary">Advanced Mode Active</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Layer Height (mm)</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="e.g., 0.20"
+                                            value={pf.customLayerHeight || ''}
+                                            onChange={(e) => updateProjectFile(pf.id, { customLayerHeight: e.target.value })}
+                                            className="h-9"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Infill (%)</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="e.g., 20"
+                                            value={pf.customInfill || ''}
+                                            onChange={(e) => updateProjectFile(pf.id, { customInfill: e.target.value })}
+                                            className="h-9"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Infill Pattern</Label>
+                                          <Select 
+                                            value={pf.infillPattern || 'grid'} 
+                                            onValueChange={(v) => updateProjectFile(pf.id, { infillPattern: v })}
+                                          >
+                                            <SelectTrigger className="h-9">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="grid">Grid</SelectItem>
+                                              <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                                              <SelectItem value="triangles">Triangles</SelectItem>
+                                              <SelectItem value="gyroid">Gyroid</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* File Stats */}
                                   {pf.modelAnalysis && (
-                                    <div className="grid grid-cols-3 gap-3 text-center">
+                                    <div className="grid grid-cols-4 gap-3 text-center">
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
                                         <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
@@ -1103,13 +1759,13 @@ const NewPrint = () => {
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
                                         <p className="font-bold text-primary">
-                                          {pf.material && pf.quality ? (() => {
-                                            const materialType = pf.material.split('-')[0];
-                                            const density = MATERIAL_DENSITIES[materialType] || 1.24;
-                                            const infillPercent = INFILL_BY_QUALITY[pf.quality] || 20;
-                                            const effectiveVolume = pf.modelAnalysis!.volumeCm3 * (1 + (infillPercent / 100));
-                                            return `${(effectiveVolume * density).toFixed(1)}g`;
-                                          })() : '--'}
+                                          {pf.estimatedWeight ? `${pf.estimatedWeight.toFixed(1)}g` : '--'}
+                                        </p>
+                                      </div>
+                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground">Print Time</p>
+                                        <p className="font-bold text-primary">
+                                          {pf.estimatedPrintTime ? formatPrintTime(pf.estimatedPrintTime) : '--'}
                                         </p>
                                       </div>
                                       <div className="p-2 bg-muted/50 rounded-lg">
@@ -1159,55 +1815,89 @@ const NewPrint = () => {
               <div className="grid md:grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="material" className="text-base font-semibold">{t('newPrint.material')}</Label>
-                  <Select value={material} onValueChange={setMaterial}>
+                  <Select value={material} onValueChange={setMaterial} disabled={materialsLoading}>
                     <SelectTrigger id="material" className="h-12">
-                      <SelectValue placeholder={t('newPrint.selectMaterial')} />
+                      <SelectValue placeholder={materialsLoading ? "Loading materials..." : t('newPrint.selectMaterial')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">PLA</div>
-                      <SelectItem value="pla-white">🤍 PLA - White</SelectItem>
-                      <SelectItem value="pla-black">🖤 PLA - Black</SelectItem>
-                      <SelectItem value="pla-red">❤️ PLA - Red</SelectItem>
-                      <SelectItem value="pla-yellow">💛 PLA - Yellow</SelectItem>
-                      <SelectItem value="pla-blue">💙 PLA - Blue</SelectItem>
-                      
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">ABS</div>
-                      <SelectItem value="abs-silver">⚪ ABS - Silver</SelectItem>
-                      <SelectItem value="abs-transparent">💎 ABS - Transparent</SelectItem>
-                      <SelectItem value="abs-black">🖤 ABS - Black</SelectItem>
-                      <SelectItem value="abs-grey">🩶 ABS - Grey</SelectItem>
-                      <SelectItem value="abs-red">❤️ ABS - Red</SelectItem>
-                      <SelectItem value="abs-white">🤍 ABS - White</SelectItem>
-                      <SelectItem value="abs-blue">💙 ABS - Blue</SelectItem>
-                      <SelectItem value="abs-green">💚 ABS - Green</SelectItem>
-                      
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">PETG</div>
-                      <SelectItem value="petg-black">🖤 PETG - Black</SelectItem>
-                      <SelectItem value="petg-white">🤍 PETG - White</SelectItem>
-                      <SelectItem value="petg-red">❤️ PETG - Red</SelectItem>
-                      <SelectItem value="petg-green">💚 PETG - Green</SelectItem>
-                      <SelectItem value="petg-blue">💙 PETG - Blue</SelectItem>
-                      <SelectItem value="petg-yellow">💛 PETG - Yellow</SelectItem>
-                      <SelectItem value="petg-pink">💗 PETG - Pink</SelectItem>
-                      <SelectItem value="petg-orange">🧡 PETG - Orange</SelectItem>
-                      <SelectItem value="petg-silver">⚪ PETG - Silver</SelectItem>
+                      {materialsLoading ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground">Loading materials...</div>
+                      ) : (
+                        ['PLA', 'ABS', 'PETG'].map(type => {
+                          const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
+                          if (typeMaterials.length === 0) return null;
+                          return (
+                            <div key={type}>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{type}</div>
+                              {typeMaterials.map(mat => {
+                                const materialKey = getMaterialKey(mat.material_type, mat.color);
+                                const isOOS = mat.stock_status === 'out_of_stock';
+                                return (
+                                  <SelectItem key={mat.id} value={materialKey}>
+                                    <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                  </SelectItem>
+                                );
+                              })}
+                            </div>
+                          );
+                        })
+                      )}
                     </SelectContent>
                   </Select>
+                  {material && isOutOfStock(material) && (
+                    <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-scale-in">
+                      <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                        {getOutOfStockWarning(material)}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="quality" className="text-base font-semibold">{t('newPrint.quality')}</Label>
-                  <Select value={quality} onValueChange={setQuality}>
+                  <Select value={quality} onValueChange={setQuality} disabled={advancedMode}>
                     <SelectTrigger id="quality" className="h-12">
                       <SelectValue placeholder={t('newPrint.selectQuality')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">⚡ Draft - Fast</SelectItem>
-                      <SelectItem value="standard">✨ Standard</SelectItem>
-                      <SelectItem value="high">💎 High Quality</SelectItem>
-                      <SelectItem value="ultra">🏆 Ultra - Finest</SelectItem>
+                      <SelectItem value="draft">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">⚡ Draft - Fast</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.28mm | Infill: 10% | Speed: Very Fast</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="standard">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">✨ Standard</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.20mm | Infill: 20% | Speed: Fast</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">💎 High Quality</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.12mm | Infill: 30% | Speed: Medium</div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="ultra">
+                        <div className="flex flex-col py-1">
+                          <div className="font-semibold">🏆 Ultra - Finest</div>
+                          <div className="text-xs text-muted-foreground">Layer: 0.08mm | Infill: 40% | Speed: Slow</div>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  {quality && !advancedMode && (
+                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                      <div className="font-medium mb-1">{qualityPresets[quality as keyof typeof qualityPresets].icon} {quality.charAt(0).toUpperCase() + quality.slice(1)} Quality</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>• Layer Height: {qualityPresets[quality as keyof typeof qualityPresets].layerHeight}</div>
+                        <div>• Infill: {qualityPresets[quality as keyof typeof qualityPresets].infill}</div>
+                        <div>• Print Speed: {qualityPresets[quality as keyof typeof qualityPresets].speed}</div>
+                        <div>• Detail Level: {qualityPresets[quality as keyof typeof qualityPresets].detail}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1232,75 +1922,73 @@ const NewPrint = () => {
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="advanced"
-                  checked={showAdvanced}
-                  onCheckedChange={(checked) => setShowAdvanced(checked as boolean)}
-                />
-                <Label htmlFor="advanced" className="cursor-pointer">
-                  {t('newPrint.showAdvanced')}
-                </Label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div>
+                    <Label htmlFor="advancedMode" className="text-base font-semibold cursor-pointer">Advanced Mode</Label>
+                    <p className="text-sm text-muted-foreground">Manually configure all print parameters</p>
+                  </div>
+                  <Checkbox
+                    id="advancedMode"
+                    checked={advancedMode}
+                    onCheckedChange={(checked) => {
+                      setAdvancedMode(checked as boolean);
+                      if (checked) {
+                        // When switching to advanced mode, set defaults from quality preset
+                        if (quality) {
+                          const preset = qualityPresets[quality as keyof typeof qualityPresets];
+                          setCustomLayerHeight(preset.layerHeight);
+                          setCustomInfill(preset.infill);
+                        }
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
-              {showAdvanced && (
-                <div className="grid md:grid-cols-2 gap-6 p-4 bg-muted rounded-lg">
-                  <div className="space-y-2">
-                    <Label htmlFor="layer-height">{t('newPrint.settings.layerHeight')}</Label>
-                    <Select>
-                      <SelectTrigger id="layer-height">
-                        <SelectValue placeholder={t('newPrint.selectLayerHeight')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0.1">0.1mm - Ultra Fine</SelectItem>
-                        <SelectItem value="0.2">0.2mm - Standard</SelectItem>
-                        <SelectItem value="0.3">0.3mm - Fast</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {advancedMode && (
+                <div className="space-y-4 p-4 bg-muted rounded-lg border-2 border-primary/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="w-5 h-5 text-primary" />
+                    <span className="font-semibold text-primary">Advanced Settings Active</span>
                   </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customLayerHeight">Layer Height (mm)</Label>
+                      <Input
+                        id="customLayerHeight"
+                        type="text"
+                        placeholder="e.g., 0.20"
+                        value={customLayerHeight || ''}
+                        onChange={(e) => setCustomLayerHeight(e.target.value)}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="infill">{t('newPrint.infill')}</Label>
-                    <Select>
-                      <SelectTrigger id="infill">
-                        <SelectValue placeholder={t('newPrint.selectInfill')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10% - Light</SelectItem>
-                        <SelectItem value="20">20% - Standard</SelectItem>
-                        <SelectItem value="50">50% - Strong</SelectItem>
-                        <SelectItem value="100">100% - Solid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customInfill">Infill (%)</Label>
+                      <Input
+                        id="customInfill"
+                        type="text"
+                        placeholder="e.g., 20"
+                        value={customInfill || ''}
+                        onChange={(e) => setCustomInfill(e.target.value)}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="pattern">Infill Pattern</Label>
-                    <Select>
-                      <SelectTrigger id="pattern">
-                        <SelectValue placeholder={t('newPrint.selectPattern')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="grid">{t('newPrint.patterns.grid')}</SelectItem>
-                        <SelectItem value="honeycomb">{t('newPrint.patterns.honeycomb')}</SelectItem>
-                        <SelectItem value="triangles">{t('newPrint.patterns.triangles')}</SelectItem>
-                        <SelectItem value="gyroid">{t('newPrint.patterns.gyroid')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="supports">{t('newPrint.settings.supports')}</Label>
-                    <Select>
-                      <SelectTrigger id="supports">
-                        <SelectValue placeholder={t('newPrint.selectSupports')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t('newPrint.supports.none')}</SelectItem>
-                        <SelectItem value="normal">{t('newPrint.supports.normal')}</SelectItem>
-                        <SelectItem value="tree">{t('newPrint.supports.tree')}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Label htmlFor="infillPattern">Infill Pattern</Label>
+                      <Select value={infillPattern} onValueChange={setInfillPattern}>
+                        <SelectTrigger id="infillPattern">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="grid">Grid</SelectItem>
+                          <SelectItem value="honeycomb">Honeycomb (+5% time)</SelectItem>
+                          <SelectItem value="triangles">Triangles</SelectItem>
+                          <SelectItem value="gyroid">Gyroid (+5% time)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1330,23 +2018,7 @@ const NewPrint = () => {
                     🔒 {t('newPrint.loginRequired')}
                   </span>
                 </Button>
-              ) : uploadMode === 'single' ? (
-                <Button onClick={calculatePrice} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default">
-                  <span className="relative z-10 flex items-center">
-                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {t('newPrint.calculatePrice')}
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </Button>
-              ) : (
-                <Button onClick={calculateAllProjectPrices} className="w-full h-12 hover-lift shadow-lg group relative overflow-hidden" variant="default" disabled={projectFiles.length === 0}>
-                  <span className="relative z-10 flex items-center">
-                    <Calculator className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {t('newPrint.calculateAllPrices')} ({projectFiles.length} {t('newPrint.files')})
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </Button>
-              )}
+              ) : null}
 
               {/* Single file price breakdown */}
               {uploadMode === 'single' && estimatedPrice !== null && priceBreakdown && (

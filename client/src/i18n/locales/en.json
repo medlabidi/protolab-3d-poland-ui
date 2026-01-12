@@ -715,7 +715,7 @@
     "projectMultiple": "Project (Multiple Files)",
     "dropFileHere": "Drop your file here!",
     "clickToUpload": "Click to upload or drag and drop",
-    "fileFormats": "STL, OBJ, or STEP files",
+    "fileFormats": "STL, OBJ, or 3MF files",
     "analysisComplete": "Analysis Complete",
     "estWeight": "Est. Weight",
     "estPrintTime": "Est. Print Time",
@@ -1094,8 +1094,7 @@
       "bank": "Bank Transfer",
       "bankDesc": "Direct transfer to your bank account",
       "credit": "Store Credit",
-      "creditDesc": "Add to your account balance for future orders",
-      "creditBonus": "+5% bonus"
+      "creditDesc": "Add to your account balance for future orders"
     },
     "bankDetails": "Bank Account Details",
     "accountHolder": "Account Holder Name",
@@ -1338,6 +1337,8 @@
     "general": {
       "title": "General Settings",
       "description": "Update your personal details and contact information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
       "fullName": "Full Name",
       "emailAddress": "Email Address",
       "emailCannotChange": "Email cannot be changed",
@@ -1547,6 +1548,8 @@
     "title": "Create Account",
     "subtitle": "Sign up to start using our 3D printing services",
     "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
       "fullName": "Full Name",
       "email": "Email",
       "password": "Password",
@@ -1559,6 +1562,8 @@
       "country": "Country"
     },
     "placeholders": {
+      "firstName": "John",
+      "lastName": "Doe",
       "fullName": "John Doe",
       "email": "your@email.com",
       "password": "At least 6 characters",

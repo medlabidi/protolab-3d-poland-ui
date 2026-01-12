@@ -13,7 +13,11 @@ import orderRoutes from './routes/order.routes';
 import adminRoutes from './routes/admin.routes';
 import creditsRoutes from './routes/credits.routes';
 import conversationsRoutes from './routes/conversations.routes';
-import designRequestRoutes from './routes/designRequest.routes';
+import paymentRoutes from './routes/payment.routes';
+import materialsRoutes from './routes/materials.routes';
+import printersRoutes from './routes/printers.routes';
+import shippingRoutes from './routes/shipping.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const createApp = (): Application => {
   const app = express();
@@ -73,7 +77,11 @@ const createApp = (): Application => {
   app.use('/api/admin', adminRoutes);
   app.use('/api/credits', creditsRoutes);
   app.use('/api/conversations', conversationsRoutes);
-  app.use('/api/design-requests', designRequestRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/api/materials', materialsRoutes);
+  app.use('/api/printers', printersRoutes);
+  app.use('/api/admin/shipping', shippingRoutes);
+  app.use('/api/admin/analytics', analyticsRoutes);
   
   // Error handling
   app.use(notFoundHandler);

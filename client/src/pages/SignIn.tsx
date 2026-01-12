@@ -178,6 +178,7 @@ const SignIn = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
+                autoComplete="email"
                 className="h-12 border-2 focus:border-primary transition-all"
               />
             </div>
@@ -190,6 +191,7 @@ const SignIn = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                autoComplete="current-password"
                 className="h-12 border-2 focus:border-primary transition-all"
               />
             </div>

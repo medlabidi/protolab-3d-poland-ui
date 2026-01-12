@@ -103,7 +103,7 @@ export async function handleAnalyzeFile(req: Request, res: Response): Promise<vo
     );
 
     // Calculate price using pricing service
-    const pricing = pricingService.calculatePrice({
+    const pricing = await pricingService.calculatePrice({
       materialType: material,
       color,
       materialWeightGrams: estimations.material_weight_g,
@@ -175,7 +175,7 @@ export async function handleFinalizePrintJob(req: Request, res: Response): Promi
     );
 
     // Calculate price
-    const pricing = pricingService.calculatePrice({
+    const pricing = await pricingService.calculatePrice({
       materialType: material,
       color,
       materialWeightGrams: estimations.material_weight_g,

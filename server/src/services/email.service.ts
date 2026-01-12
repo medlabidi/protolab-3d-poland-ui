@@ -336,6 +336,93 @@ export class EmailService {
       return { invoiceNumber: invoiceDetails.invoiceNumber, success: false };
     }
   }
+
+  /**
+   * Send order status change notification email
+   */
+  async sendOrderStatusChangeEmail(
+    toEmail: string,
+    userName: string,
+    orderNumber: string,
+    newStatus: string,
+    orderId: string
+  ): Promise<void> {
+    const statusMessages: Record<string, string> = {
+      'submitted': 'has been received and is awaiting review',
+      'in_queue': 'is now in the printing queue',
+      'printing': 'is currently being printed',
+      'finished': 'has been completed and is ready',
+      'delivered': 'has been delivered',
+      'on_hold': 'has been placed on hold',
+      'suspended': 'has been suspended'
+    };
+
+    const statusMessage = statusMessages[newStatus] || `status has been updated to ${newStatus.replace('_', ' ')}`;
+    const subject = `Order Status Update - ${orderNumber}`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .status-badge { display: inline-block; padding: 8px 16px; background: #667eea; color: white; border-radius: 20px; font-weight: bold; margin: 15px 0; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Order Status Update</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your order <strong>${orderNumber}</strong> ${statusMessage}.</p>
+            <div style="text-align: center;">
+              <span class="status-badge">${newStatus.replace('_', ' ').toUpperCase()}</span>
+            </div>
+            <p>You can view your order details and track its progress by clicking the button below:</p>
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders/${orderId}" class="button">View Order Details</a>
+            </div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>Best regards,<br>ProtoLab 3D Poland Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      if (!isEmailEnabled) {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📧 ORDER STATUS CHANGE EMAIL (NOT SENT - Email Disabled)`);
+        console.log(`To: ${toEmail}`);
+        console.log(`Order: ${orderNumber} | New Status: ${newStatus}`);
+        console.log(`${'='.repeat(80)}\n`);
+        return;
+      }
+
+      await resend!.emails.send({
+        from: `ProtoLab 3D Poland <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      logger.info(`Status change email sent to ${toEmail} for order ${orderNumber}`);
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send status change email to ${toEmail}`);
+      // Don't throw - this is not critical
+    }
+  }
 }
 
 export const emailService = new EmailService();

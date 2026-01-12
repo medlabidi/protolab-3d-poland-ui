@@ -3,8 +3,8 @@ import { JWTPayload, TokenPair } from '../types';
 
 const ACCESS_SECRET: Secret = process.env.JWT_ACCESS_SECRET || 'access-secret';
 const REFRESH_SECRET: Secret = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
-const ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '8h';
+const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
 export const generateAccessToken = (payload: JWTPayload): string => {
   return jwt.sign(payload, ACCESS_SECRET as Secret, {
