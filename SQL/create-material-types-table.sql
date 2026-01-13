@@ -41,6 +41,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS material_types_updated_at ON material_types;
 CREATE TRIGGER material_types_updated_at
 BEFORE UPDATE ON material_types
 FOR EACH ROW
