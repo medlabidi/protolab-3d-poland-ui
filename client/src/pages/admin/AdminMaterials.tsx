@@ -57,7 +57,7 @@ const AdminMaterials = () => {
   const [newMaterialTypeDescription, setNewMaterialTypeDescription] = useState("");
   const [formData, setFormData] = useState({
     material_type: "PLA",
-    color: "#FFFFFF",
+    color: "",
     hex_color: "#FFFFFF",
     price_per_kg: 0,
     stock_quantity: 0,
@@ -143,13 +143,26 @@ const AdminMaterials = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
+      const payload = {
+        material_type: formData.material_type,
+        color: formData.color || formData.material_type,
+        hex_color: formData.hex_color,
+        price_per_kg: formData.price_per_kg,
+        stock_quantity: formData.stock_quantity,
+        stock_status: formData.stock_status,
+        supplier: formData.supplier,
+        description: formData.description,
+        is_active: formData.is_active
+      };
+      console.log('Creating material with payload:', payload);
+      
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({...formData, hex_color: formData.color}),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -160,7 +173,8 @@ const AdminMaterials = () => {
         resetForm();
       } else {
         const error = await response.json().catch(() => ({}));
-        toast.error(`Error: ${error.error || 'Failed to add material'}`);
+        console.error('Material creation error:', error);
+        toast.error(`Error: ${error.error || error.details || 'Failed to add material'}`);
       }
     } catch (error: any) {
       console.error('Error adding material:', error);
@@ -176,17 +190,26 @@ const AdminMaterials = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
+      const payload = {
+        id: selectedMaterial.id,
+        material_type: formData.material_type,
+        color: formData.color || formData.material_type,
+        hex_color: formData.hex_color,
+        price_per_kg: formData.price_per_kg,
+        stock_quantity: formData.stock_quantity,
+        stock_status: formData.stock_status,
+        supplier: formData.supplier,
+        description: formData.description,
+        is_active: formData.is_active
+      };
+      
       const response = await fetch(`${API_URL}/admin/materials`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          id: selectedMaterial.id,
-          ...formData,
-          hex_color: formData.color,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -262,8 +285,8 @@ const AdminMaterials = () => {
     setSelectedMaterial(material);
     setFormData({
       material_type: material.material_type,
-      color: material.hex_color || material.color || "#FFFFFF",
-      hex_color: material.hex_color || material.color || "#FFFFFF",
+      color: material.color || "",
+      hex_color: material.hex_color || "#FFFFFF",
       price_per_kg: material.price_per_kg,
       stock_quantity: material.stock_quantity,
       stock_status: material.stock_status || "available",
