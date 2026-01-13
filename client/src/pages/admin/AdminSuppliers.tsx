@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +31,7 @@ import {
   Package,
   User,
   Globe,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,17 +46,24 @@ interface Supplier {
   postal_code: string;
   country: string;
   website?: string;
-  materials_supplied: string[];
-  payment_terms: string;
+  materials_supplied: number[]; // Material type IDs
   delivery_time: string;
   notes?: string;
-  rating: number;
   total_orders: number;
   active: boolean;
 }
 
+interface MaterialType {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: boolean;
+}
+
 const AdminSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([]);
+  const [selectedMaterialTypes, setSelectedMaterialTypes] = useState<number[]>([0]);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -65,13 +80,40 @@ const AdminSuppliers = () => {
     postal_code: "",
     country: "",
     website: "",
-    materials_supplied: "",
-    payment_terms: "Net 30",
     delivery_time: "",
     notes: "",
-    rating: 5,
     active: true,
   });
+
+  useEffect(() => {
+    fetchMaterialTypes();
+  }, []);
+
+  const fetchMaterialTypes = async () => {
+    try {
+      const response = await fetch('/api/admin/material-types');
+      if (response.ok) {
+        const data = await response.json();
+        setMaterialTypes(data.filter((mt: MaterialType) => mt.is_active));
+      }
+    } catch (error) {
+      console.error('Error fetching material types:', error);
+    }
+  };
+
+  const addMaterialTypeField = () => {
+    setSelectedMaterialTypes([...selectedMaterialTypes, 0]);
+  };
+
+  const removeMaterialTypeField = (index: number) => {
+    setSelectedMaterialTypes(selectedMaterialTypes.filter((_, i) => i !== index));
+  };
+
+  const updateMaterialType = (index: number, value: number) => {
+    const updated = [...selectedMaterialTypes];
+    updated[index] = value;
+    setSelectedMaterialTypes(updated);
+  };
 
   const handleAddSupplier = () => {
     if (!formData.name.trim() || !formData.email.trim()) {
@@ -90,11 +132,9 @@ const AdminSuppliers = () => {
       postal_code: formData.postal_code,
       country: formData.country,
       website: formData.website,
-      materials_supplied: formData.materials_supplied.split(',').map(m => m.trim()).filter(m => m),
-      payment_terms: formData.payment_terms,
+      materials_supplied: selectedMaterialTypes.filter(id => id > 0),
       delivery_time: formData.delivery_time,
       notes: formData.notes,
-      rating: formData.rating,
       total_orders: 0,
       active: formData.active,
     };
@@ -124,11 +164,9 @@ const AdminSuppliers = () => {
             postal_code: formData.postal_code,
             country: formData.country,
             website: formData.website,
-            materials_supplied: formData.materials_supplied.split(',').map(m => m.trim()).filter(m => m),
-            payment_terms: formData.payment_terms,
+            materials_supplied: selectedMaterialTypes.filter(id => id > 0),
             delivery_time: formData.delivery_time,
             notes: formData.notes,
-            rating: formData.rating,
             active: formData.active,
           }
         : s
@@ -158,13 +196,11 @@ const AdminSuppliers = () => {
       postal_code: supplier.postal_code,
       country: supplier.country,
       website: supplier.website || "",
-      materials_supplied: supplier.materials_supplied.join(', '),
-      payment_terms: supplier.payment_terms,
       delivery_time: supplier.delivery_time,
       notes: supplier.notes || "",
-      rating: supplier.rating,
       active: supplier.active,
     });
+    setSelectedMaterialTypes(supplier.materials_supplied.length > 0 ? supplier.materials_supplied : [0]);
     setShowEditDialog(true);
   };
 
@@ -189,13 +225,11 @@ const AdminSuppliers = () => {
       postal_code: "",
       country: "",
       website: "",
-      materials_supplied: "",
-      payment_terms: "Net 30",
       delivery_time: "",
       notes: "",
-      rating: 5,
       active: true,
     });
+    setSelectedMaterialTypes([0]);
   };
 
   const activeSuppliers = suppliers.filter(s => s.active);
@@ -239,7 +273,6 @@ const AdminSuppliers = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs ${supplier.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                             {supplier.active ? 'Active' : 'Inactive'}
                           </span>
-                          <span className="text-xs text-yellow-400">{'⭐'.repeat(supplier.rating)}</span>
                         </div>
                       </div>
                     </div>
@@ -274,23 +307,22 @@ const AdminSuppliers = () => {
                   <div className="pt-2 border-t border-gray-800">
                     <p className="text-xs text-gray-500 mb-2">Materials supplied:</p>
                     <div className="flex flex-wrap gap-1">
-                      {supplier.materials_supplied.map((material, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                          {material}
-                        </span>
-                      ))}
+                      {supplier.materials_supplied.map((materialTypeId, idx) => {
+                        const materialType = materialTypes.find(mt => mt.id === materialTypeId);
+                        return materialType ? (
+                          <span key={idx} className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
+                            {materialType.name}
+                          </span>
+                        ) : null;
+                      })}
                     </div>
                   </div>
 
                   {/* Details */}
-                  <div className="pt-2 border-t border-gray-800 grid grid-cols-2 gap-2 text-xs">
+                  <div className="pt-2 border-t border-gray-800 text-xs">
                     <div>
                       <p className="text-gray-500">Delivery time</p>
                       <p className="text-white font-medium">{supplier.delivery_time}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Payment terms</p>
-                      <p className="text-white font-medium">{supplier.payment_terms}</p>
                     </div>
                   </div>
 
@@ -449,42 +481,60 @@ const AdminSuppliers = () => {
                     Business Details
                   </h3>
                 </div>
+                <div className="space-y-3 col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-gray-300">Materials Supplied</Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={addMaterialTypeField}
+                      className="bg-blue-600 hover:bg-blue-700 h-8"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Material Type
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedMaterialTypes.map((materialTypeId, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Select
+                          value={materialTypeId.toString()}
+                          onValueChange={(value) => updateMaterialType(index, parseInt(value))}
+                        >
+                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                            <SelectValue placeholder="Select material type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="0" className="text-gray-400">Select material type</SelectItem>
+                            {materialTypes.map((mt) => (
+                              <SelectItem key={mt.id} value={mt.id.toString()} className="text-white">
+                                {mt.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedMaterialTypes.length > 1 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeMaterialTypeField(index)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Materials Supplied (comma separated)</Label>
-                  <Input
-                    placeholder="PLA, PETG, ABS"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.materials_supplied}
-                    onChange={(e) => setFormData({ ...formData, materials_supplied: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Payment Terms</Label>
-                  <Input
-                    placeholder="Net 30"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.payment_terms}
-                    onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Delivery Time</Label>
                   <Input
                     placeholder="3-5 days"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.delivery_time}
                     onChange={(e) => setFormData({ ...formData, delivery_time: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Rating (1-5)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="5"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.rating}
-                    onChange={(e) => setFormData({ ...formData, rating: parseInt(e.target.value) || 5 })}
                   />
                 </div>
                 <div className="space-y-2 flex items-center gap-2">
@@ -634,39 +684,59 @@ const AdminSuppliers = () => {
                     Business Details
                   </h3>
                 </div>
+                <div className="space-y-3 col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-gray-300">Materials Supplied</Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={addMaterialTypeField}
+                      className="bg-blue-600 hover:bg-blue-700 h-8"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Material Type
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedMaterialTypes.map((materialTypeId, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Select
+                          value={materialTypeId.toString()}
+                          onValueChange={(value) => updateMaterialType(index, parseInt(value))}
+                        >
+                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                            <SelectValue placeholder="Select material type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            <SelectItem value="0" className="text-gray-400">Select material type</SelectItem>
+                            {materialTypes.map((mt) => (
+                              <SelectItem key={mt.id} value={mt.id.toString()} className="text-white">
+                                {mt.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedMaterialTypes.length > 1 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeMaterialTypeField(index)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Materials Supplied</Label>
-                  <Input
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.materials_supplied}
-                    onChange={(e) => setFormData({ ...formData, materials_supplied: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Payment Terms</Label>
-                  <Input
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.payment_terms}
-                    onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-gray-300">Delivery Time</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.delivery_time}
                     onChange={(e) => setFormData({ ...formData, delivery_time: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Rating (1-5)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="5"
-                    className="bg-gray-800 border-gray-700 text-white"
-                    value={formData.rating}
-                    onChange={(e) => setFormData({ ...formData, rating: parseInt(e.target.value) || 5 })}
                   />
                 </div>
                 <div className="space-y-2 flex items-center gap-2">
@@ -755,25 +825,20 @@ const AdminSuppliers = () => {
                       <p className="text-white">{selectedSupplier.delivery_time}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Payment Terms</p>
-                      <p className="text-white">{selectedSupplier.payment_terms}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Rating</p>
-                      <p className="text-yellow-400">{'⭐'.repeat(selectedSupplier.rating)}</p>
-                    </div>
-                    <div>
                       <p className="text-sm text-gray-500 mb-1">Total Orders</p>
                       <p className="text-white">{selectedSupplier.total_orders}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-sm text-gray-500 mb-2">Materials Supplied</p>
                       <div className="flex flex-wrap gap-2">
-                        {selectedSupplier.materials_supplied.map((material, idx) => (
-                          <span key={idx} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded">
-                            {material}
-                          </span>
-                        ))}
+                        {selectedSupplier.materials_supplied.map((materialTypeId, idx) => {
+                          const materialType = materialTypes.find(mt => mt.id === materialTypeId);
+                          return materialType ? (
+                            <span key={idx} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded">
+                              {materialType.name}
+                            </span>
+                          ) : null;
+                        })}
                       </div>
                     </div>
                     {selectedSupplier.notes && (
