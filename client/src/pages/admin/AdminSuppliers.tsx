@@ -94,7 +94,8 @@ const AdminSuppliers = () => {
       const response = await fetch('/api/admin/material-types');
       if (response.ok) {
         const data = await response.json();
-        setMaterialTypes(data.filter((mt: MaterialType) => mt.is_active));
+        const types = data.materialTypes || data;
+        setMaterialTypes(Array.isArray(types) ? types.filter((mt: MaterialType) => mt.is_active) : []);
       }
     } catch (error) {
       console.error('Error fetching material types:', error);
