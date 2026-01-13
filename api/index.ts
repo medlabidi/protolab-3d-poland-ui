@@ -1103,6 +1103,195 @@ async function handleAdminDeleteSupplier(req: AuthenticatedRequest, res: VercelR
   }
 }
 
+// Maintenances handlers
+async function handleAdminGetMaintenances(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { data: maintenances, error } = await supabase
+      .from('maintenances')
+      .select('*')
+      .order('scheduled_date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching maintenances:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch maintenances', 
+        details: error.message 
+      });
+    }
+    
+    return res.status(200).json({ maintenances: maintenances || [] });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminGetMaintenances:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminCreateMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { 
+      printer_id, 
+      type, 
+      description, 
+      cost, 
+      scheduled_date, 
+      notes,
+      status = 'scheduled'
+    } = req.body;
+    
+    if (!printer_id || !type || !description || !scheduled_date) {
+      return res.status(400).json({ error: 'Printer ID, type, description, and scheduled date are required' });
+    }
+    
+    const { data: maintenance, error } = await supabase
+      .from('maintenances')
+      .insert([{ 
+        printer_id,
+        type,
+        description,
+        cost: cost || 0,
+        scheduled_date,
+        notes: notes || null,
+        status
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating maintenance:', error);
+      return res.status(500).json({ error: 'Failed to create maintenance', details: error.message });
+    }
+    
+    return res.status(201).json({ maintenance });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminCreateMaintenance:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminUpdateMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const maintenanceId = req.query.id;
+    
+    if (!maintenanceId) {
+      return res.status(400).json({ error: 'Maintenance ID is required' });
+    }
+    
+    const { data: maintenance, error } = await supabase
+      .from('maintenances')
+      .update(req.body)
+      .eq('id', maintenanceId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating maintenance:', error);
+      return res.status(500).json({ error: 'Failed to update maintenance', details: error.message });
+    }
+    
+    return res.status(200).json({ maintenance });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminUpdateMaintenance:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminDeleteMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const maintenanceId = req.query.id;
+    
+    if (!maintenanceId) {
+      return res.status(400).json({ error: 'Maintenance ID is required' });
+    }
+    
+    const { error } = await supabase
+      .from('maintenances')
+      .delete()
+      .eq('id', maintenanceId);
+    
+    if (error) {
+      console.error('Error deleting maintenance:', error);
+      return res.status(500).json({ error: 'Failed to delete maintenance', details: error.message });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminDeleteMaintenance:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
 async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1965,6 +2154,20 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path === '/admin/suppliers' && req.method === 'DELETE') {
       return await handleAdminDeleteSupplier(req as AuthenticatedRequest, res);
+    }
+    
+    // Maintenances routes
+    if (path === '/admin/maintenances' && req.method === 'GET') {
+      return await handleAdminGetMaintenances(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/maintenances' && req.method === 'POST') {
+      return await handleAdminCreateMaintenance(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/maintenances' && req.method === 'PATCH') {
+      return await handleAdminUpdateMaintenance(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/maintenances' && req.method === 'DELETE') {
+      return await handleAdminDeleteMaintenance(req as AuthenticatedRequest, res);
     }
     
     if (path === '/admin/printers' && req.method === 'GET') {
