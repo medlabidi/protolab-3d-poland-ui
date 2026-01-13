@@ -96,9 +96,20 @@ const AdminSuppliers = () => {
         const data = await response.json();
         const types = data.materialTypes || data;
         setMaterialTypes(Array.isArray(types) ? types.filter((mt: MaterialType) => mt.is_active) : []);
+      } else {
+        const text = await response.text();
+        console.error('Error fetching material types:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: text
+        });
+        // Set empty array so the page still works
+        setMaterialTypes([]);
       }
     } catch (error) {
       console.error('Error fetching material types:', error);
+      // Set empty array so the page still works
+      setMaterialTypes([]);
     }
   };
 

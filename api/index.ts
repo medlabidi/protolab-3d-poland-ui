@@ -672,31 +672,44 @@ async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelR
 
 // Material Types handlers
 async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { data: materialTypes, error } = await supabase
+      .from('material_types')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching material types:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch material types', 
+        details: error.message,
+        hint: 'The material_types table may not exist. Please run the SQL migration.'
+      });
+    }
+    
+    return res.status(200).json({ materialTypes: materialTypes || [] });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminGetMaterialTypes:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
-  
-  const { data: materialTypes, error } = await supabase
-    .from('material_types')
-    .select('*')
-    .order('name', { ascending: true });
-  
-  if (error) {
-    return res.status(500).json({ error: 'Failed to fetch material types', details: error.message });
-  }
-  
-  return res.status(200).json({ materialTypes });
 }
 
 async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
