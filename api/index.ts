@@ -880,7 +880,15 @@ async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelRes
       });
     }
     
-    return res.status(200).json({ suppliers: suppliers || [] });
+    // Ensure materials_supplied are integers, not strings
+    const suppliersWithIntegers = (suppliers || []).map(supplier => ({
+      ...supplier,
+      materials_supplied: Array.isArray(supplier.materials_supplied)
+        ? supplier.materials_supplied.map((id: any) => typeof id === 'string' ? parseInt(id, 10) : id)
+        : []
+    }));
+    
+    return res.status(200).json({ suppliers: suppliersWithIntegers });
   } catch (error) {
     console.error('Unexpected error in handleAdminGetSuppliers:', error);
     return res.status(500).json({ 

@@ -153,13 +153,19 @@ const AdminMaterials = () => {
 
     const filtered = suppliers.filter((supplier: any) => {
       const materialsSupplied = supplier.materials_supplied;
+      // Convert strings to numbers for comparison
+      const materialsAsNumbers = Array.isArray(materialsSupplied) 
+        ? materialsSupplied.map((id: any) => typeof id === 'string' ? parseInt(id, 10) : id)
+        : [];
+      
+      const includes = materialsAsNumbers.includes(selectedTypeId);
       console.log(`Checking supplier "${supplier.name}":`, {
         materials_supplied: materialsSupplied,
-        type: typeof materialsSupplied,
-        isArray: Array.isArray(materialsSupplied),
-        includes: materialsSupplied && Array.isArray(materialsSupplied) && materialsSupplied.includes(selectedTypeId)
+        materials_as_numbers: materialsAsNumbers,
+        selectedTypeId,
+        includes
       });
-      return materialsSupplied && Array.isArray(materialsSupplied) && materialsSupplied.includes(selectedTypeId);
+      return includes;
     });
     
     console.log('Filtered suppliers count:', filtered.length);
