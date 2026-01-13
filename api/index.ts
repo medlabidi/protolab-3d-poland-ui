@@ -1375,6 +1375,7 @@ async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse)
     const { data: materials, error } = await supabase
       .from('materials')
       .select('*')
+      .eq('is_active', true)
       .order('material_type', { ascending: true })
       .order('color', { ascending: true });
     
