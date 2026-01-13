@@ -849,6 +849,242 @@ async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: Ver
   return res.status(200).json({ success: true });
 }
 
+// Suppliers handlers
+async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { data: suppliers, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching suppliers:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch suppliers', 
+        details: error.message 
+      });
+    }
+    
+    return res.status(200).json({ suppliers: suppliers || [] });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminGetSuppliers:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { 
+      name, 
+      contact_name, 
+      email, 
+      phone, 
+      address, 
+      city, 
+      postal_code, 
+      country, 
+      website, 
+      materials_supplied, 
+      delivery_time, 
+      notes, 
+      active 
+    } = req.body;
+    
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+    
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .insert([{ 
+        name: name.trim(),
+        contact_name: contact_name || null,
+        email: email.trim(),
+        phone: phone || null,
+        address: address || null,
+        city: city || null,
+        postal_code: postal_code || null,
+        country: country || null,
+        website: website || null,
+        materials_supplied: materials_supplied || [],
+        delivery_time: delivery_time || null,
+        notes: notes || null,
+        total_orders: 0,
+        active: active !== false
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Supplier already exists' });
+      }
+      return res.status(500).json({ error: 'Failed to create supplier', details: error.message });
+    }
+    
+    return res.status(201).json({ supplier });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminCreateSupplier:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminUpdateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const supplierId = req.query.id;
+    
+    if (!supplierId) {
+      return res.status(400).json({ error: 'Supplier ID is required' });
+    }
+    
+    const { 
+      name, 
+      contact_name, 
+      email, 
+      phone, 
+      address, 
+      city, 
+      postal_code, 
+      country, 
+      website, 
+      materials_supplied, 
+      delivery_time, 
+      notes, 
+      active 
+    } = req.body;
+    
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (contact_name !== undefined) updateData.contact_name = contact_name;
+    if (email !== undefined) updateData.email = email.trim();
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (city !== undefined) updateData.city = city;
+    if (postal_code !== undefined) updateData.postal_code = postal_code;
+    if (country !== undefined) updateData.country = country;
+    if (website !== undefined) updateData.website = website;
+    if (materials_supplied !== undefined) updateData.materials_supplied = materials_supplied;
+    if (delivery_time !== undefined) updateData.delivery_time = delivery_time;
+    if (notes !== undefined) updateData.notes = notes;
+    if (active !== undefined) updateData.active = active;
+    
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .update(updateData)
+      .eq('id', supplierId)
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Supplier name already exists' });
+      }
+      return res.status(500).json({ error: 'Failed to update supplier', details: error.message });
+    }
+    
+    return res.status(200).json({ supplier });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminUpdateSupplier:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
+async function handleAdminDeleteSupplier(req: AuthenticatedRequest, res: VercelResponse) {
+  try {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const supplierId = req.query.id;
+    
+    if (!supplierId) {
+      return res.status(400).json({ error: 'Supplier ID is required' });
+    }
+    
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', supplierId);
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to delete supplier', details: error.message });
+    }
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Unexpected error in handleAdminDeleteSupplier:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
 async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -1697,6 +1933,20 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path === '/admin/material-types' && req.method === 'DELETE') {
       return await handleAdminDeleteMaterialType(req as AuthenticatedRequest, res);
+    }
+    
+    // Suppliers routes
+    if (path === '/admin/suppliers' && req.method === 'GET') {
+      return await handleAdminGetSuppliers(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/suppliers' && req.method === 'POST') {
+      return await handleAdminCreateSupplier(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/suppliers' && req.method === 'PATCH') {
+      return await handleAdminUpdateSupplier(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/suppliers' && req.method === 'DELETE') {
+      return await handleAdminDeleteSupplier(req as AuthenticatedRequest, res);
     }
     
     if (path === '/admin/printers' && req.method === 'GET') {

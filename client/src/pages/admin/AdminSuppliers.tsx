@@ -87,7 +87,39 @@ const AdminSuppliers = () => {
 
   useEffect(() => {
     fetchMaterialTypes();
+    fetchSuppliers();
   }, []);
+
+  const fetchSuppliers = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.warn('No access token found');
+        return;
+      }
+
+      const response = await fetch('/api/admin/suppliers', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data.suppliers || []);
+      } else {
+        const text = await response.text();
+        console.error('Error fetching suppliers:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: text
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
 
   const fetchMaterialTypes = async () => {
     try {
@@ -138,73 +170,131 @@ const AdminSuppliers = () => {
     setSelectedMaterialTypes(updated);
   };
 
-  const handleAddSupplier = () => {
+  const handleAddSupplier = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       toast.error("Name and email are required");
       return;
     }
 
-    const newSupplier: Supplier = {
-      id: suppliers.length + 1,
-      name: formData.name,
-      contact_name: formData.contact_name,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      city: formData.city,
-      postal_code: formData.postal_code,
-      country: formData.country,
-      website: formData.website,
-      materials_supplied: selectedMaterialTypes.filter(id => id > 0),
-      delivery_time: formData.delivery_time,
-      notes: formData.notes,
-      total_orders: 0,
-      active: formData.active,
-    };
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      const response = await fetch('/api/admin/suppliers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          contact_name: formData.contact_name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postal_code,
+          country: formData.country,
+          website: formData.website,
+          materials_supplied: selectedMaterialTypes.filter(id => id > 0),
+          delivery_time: formData.delivery_time,
+          notes: formData.notes,
+          active: formData.active,
+        }),
+      });
 
-    setSuppliers([...suppliers, newSupplier]);
-    toast.success("Supplier added successfully!");
-    setShowAddDialog(false);
-    resetForm();
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers([...suppliers, data.supplier]);
+        toast.success("Supplier added successfully!");
+        setShowAddDialog(false);
+        resetForm();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to add supplier");
+      }
+    } catch (error) {
+      console.error('Error adding supplier:', error);
+      toast.error("Failed to add supplier");
+    }
   };
 
-  const handleEditSupplier = () => {
+  const handleEditSupplier = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       toast.error("Name and email are required");
       return;
     }
 
-    setSuppliers(suppliers.map(s => 
-      s.id === selectedSupplier?.id
-        ? {
-            ...s,
-            name: formData.name,
-            contact_name: formData.contact_name,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            city: formData.city,
-            postal_code: formData.postal_code,
-            country: formData.country,
-            website: formData.website,
-            materials_supplied: selectedMaterialTypes.filter(id => id > 0),
-            delivery_time: formData.delivery_time,
-            notes: formData.notes,
-            active: formData.active,
-          }
-        : s
-    ));
-    toast.success("Supplier modified successfully!");
-    setShowEditDialog(false);
-    setSelectedSupplier(null);
-    resetForm();
+    if (!selectedSupplier) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      const response = await fetch(`/api/admin/suppliers?id=${selectedSupplier.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          contact_name: formData.contact_name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postal_code,
+          country: formData.country,
+          website: formData.website,
+          materials_supplied: selectedMaterialTypes.filter(id => id > 0),
+          delivery_time: formData.delivery_time,
+          notes: formData.notes,
+          active: formData.active,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(suppliers.map(s => s.id === selectedSupplier.id ? data.supplier : s));
+        toast.success("Supplier modified successfully!");
+        setShowEditDialog(false);
+        setSelectedSupplier(null);
+        resetForm();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update supplier");
+      }
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      toast.error("Failed to update supplier");
+    }
   };
 
-  const handleDeleteSupplier = () => {
-    setSuppliers(suppliers.filter(s => s.id !== selectedSupplier?.id));
-    toast.success("Supplier deleted successfully!");
-    setShowDeleteDialog(false);
-    setSelectedSupplier(null);
+  const handleDeleteSupplier = async () => {
+    if (!selectedSupplier) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      const response = await fetch(`/api/admin/suppliers?id=${selectedSupplier.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setSuppliers(suppliers.filter(s => s.id !== selectedSupplier.id));
+        toast.success("Supplier deleted successfully!");
+        setShowDeleteDialog(false);
+        setSelectedSupplier(null);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to delete supplier");
+      }
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      toast.error("Failed to delete supplier");
+    }
   };
 
   const openEditDialog = (supplier: Supplier) => {
