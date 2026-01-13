@@ -570,14 +570,13 @@ async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelR
   }
   
   // Extract only the fields that exist in the database
-  const { material_type, color, hex_color, price_per_kg, stock_quantity, stock_status, supplier, description, is_active } = req.body;
+  const { material_type, color, hex_color, price_per_kg, stock_status, supplier, description, is_active } = req.body;
   
   const materialData = {
     material_type,
     color,
     hex_color,
     price_per_kg,
-    stock_quantity,
     stock_status,
     supplier,
     description,
@@ -620,9 +619,12 @@ async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelR
     return res.status(400).json({ error: 'Material ID is required' });
   }
   
+  // Remove stock_quantity if it exists (column doesn't exist in DB)
+  const { stock_quantity, ...filteredUpdates } = updates;
+  
   const { data: material, error } = await supabase
     .from('materials')
-    .update(updates)
+    .update(filteredUpdates)
     .eq('id', id)
     .select()
     .single();
