@@ -843,27 +843,31 @@ const AdminMaterials = () => {
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-gray-300">Supplier *</Label>
-                  <Select
-                    value={formData.supplier}
-                    onValueChange={(value) => setFormData({ ...formData, supplier: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Select a supplier" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      {filteredSuppliers.length === 0 ? (
-                        <SelectItem value="none" disabled className="text-gray-400">
-                          No suppliers for this material type
-                        </SelectItem>
-                      ) : (
-                        filteredSuppliers.map((supplier) => (
+                  {!formData.material_type ? (
+                    <div className="bg-gray-800 border border-gray-700 rounded-md p-3 text-yellow-400 text-sm">
+                      ⚠️ Please select a material type first
+                    </div>
+                  ) : filteredSuppliers.length === 0 ? (
+                    <div className="bg-gray-800 border border-red-700 rounded-md p-3 text-red-400 text-sm">
+                      ❌ No suppliers provide this material type. Cannot save this material.
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.supplier}
+                      onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+                    >
+                      <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                        <SelectValue placeholder="Select a supplier" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700">
+                        {filteredSuppliers.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.name} className="text-white">
                             {supplier.name}
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
               <DialogFooter>
@@ -877,6 +881,7 @@ const AdminMaterials = () => {
                 <Button 
                   onClick={handleEditMaterial}
                   className="bg-blue-600 hover:bg-blue-700"
+                  disabled={!formData.material_type || filteredSuppliers.length === 0}
                 >
                   Save
                 </Button>

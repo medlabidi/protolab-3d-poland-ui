@@ -1621,7 +1621,7 @@ const NewPrint = () => {
                                           {materialsLoading ? (
                                             <div className="px-2 py-2 text-sm text-muted-foreground">Loading materials...</div>
                                           ) : (
-                                            ['PLA', 'ABS', 'PETG'].map(type => {
+                                            [...new Set(materials.filter(m => m.is_active).map(m => m.material_type))].sort().map(type => {
                                               const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
                                               if (typeMaterials.length === 0) return null;
                                               return (
@@ -1823,7 +1823,7 @@ const NewPrint = () => {
                       {materialsLoading ? (
                         <div className="px-2 py-3 text-sm text-muted-foreground">Loading materials...</div>
                       ) : (
-                        ['PLA', 'ABS', 'PETG'].map(type => {
+                        [...new Set(materials.filter(m => m.is_active).map(m => m.material_type))].sort().map(type => {
                           const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
                           if (typeMaterials.length === 0) return null;
                           return (
