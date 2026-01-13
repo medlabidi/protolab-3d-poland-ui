@@ -91,7 +91,20 @@ const AdminSuppliers = () => {
 
   const fetchMaterialTypes = async () => {
     try {
-      const response = await fetch('/api/admin/material-types');
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        console.warn('No access token found');
+        setMaterialTypes([]);
+        return;
+      }
+
+      const response = await fetch('/api/admin/material-types', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
       if (response.ok) {
         const data = await response.json();
         const types = data.materialTypes || data;
@@ -103,12 +116,10 @@ const AdminSuppliers = () => {
           statusText: response.statusText,
           body: text
         });
-        // Set empty array so the page still works
         setMaterialTypes([]);
       }
     } catch (error) {
       console.error('Error fetching material types:', error);
-      // Set empty array so the page still works
       setMaterialTypes([]);
     }
   };
