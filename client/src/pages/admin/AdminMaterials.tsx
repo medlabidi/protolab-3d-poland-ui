@@ -294,10 +294,19 @@ const AdminMaterials = () => {
   };
 
   const getUniqueTypes = () => {
-    return materialTypes
-      .filter(mt => mt.is_active)
-      .map(mt => mt.name)
-      .sort();
+    // First, try to get types from material_types table
+    if (materialTypes && materialTypes.length > 0) {
+      return materialTypes
+        .filter(mt => mt.is_active)
+        .map(mt => mt.name)
+        .sort();
+    }
+    
+    // Fallback: extract unique types from existing materials if material_types table is empty
+    const typesFromMaterials = materials
+      .map(m => m.material_type)
+      .filter(Boolean);
+    return [...new Set(typesFromMaterials)].sort();
   };
 
   const getFilteredMaterials = () => {
