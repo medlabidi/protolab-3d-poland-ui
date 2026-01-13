@@ -849,10 +849,8 @@ const AdminMaterials = () => {
                           toast.success(`Material type "${newMaterialType}" added successfully!`);
                           await fetchMaterialTypes(); // Refresh the list
                           setShowAddTypeDialog(false);
-                          setFormData({...formData, material_type: newMaterialType.trim()});
                           setNewMaterialType("");
                           setNewMaterialTypeDescription("");
-                          setShowAddDialog(true);
                         } else {
                           const error = await response.json().catch(() => ({}));
                           toast.error(`Error: ${error.error || 'Failed to add material type'}`);
