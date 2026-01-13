@@ -48,65 +48,7 @@ interface Supplier {
 }
 
 const AdminSuppliers = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([
-    {
-      id: 1,
-      name: "Prusament",
-      contact_name: "Jan Kowalski",
-      email: "contact@prusament.com",
-      phone: "+48 123 456 789",
-      address: "ul. Przykładowa 10",
-      city: "Prague",
-      postal_code: "10-100",
-      country: "Czech Republic",
-      website: "https://prusament.com",
-      materials_supplied: ["PLA", "PETG", "ASA"],
-      payment_terms: "Net 30",
-      delivery_time: "3-5 days",
-      notes: "Premium quality filaments",
-      rating: 5,
-      total_orders: 45,
-      active: true,
-    },
-    {
-      id: 2,
-      name: "NinjaTek",
-      contact_name: "Maria Schmidt",
-      email: "sales@ninjatek.com",
-      phone: "+1 555 123 4567",
-      address: "123 Industrial Ave",
-      city: "Boston",
-      postal_code: "02101",
-      country: "USA",
-      website: "https://ninjatek.com",
-      materials_supplied: ["TPU", "TPE"],
-      payment_terms: "Net 45",
-      delivery_time: "5-7 days",
-      notes: "Flexible filaments specialist",
-      rating: 4,
-      total_orders: 28,
-      active: true,
-    },
-    {
-      id: 3,
-      name: "MatterHackers",
-      contact_name: "John Davis",
-      email: "info@matterhackers.com",
-      phone: "+1 555 987 6543",
-      address: "789 Tech Park Blvd",
-      city: "San Diego",
-      postal_code: "92101",
-      country: "USA",
-      website: "https://matterhackers.com",
-      materials_supplied: ["Nylon", "PLA", "PETG", "ABS"],
-      payment_terms: "Net 30",
-      delivery_time: "4-6 days",
-      notes: "Wide range of materials",
-      rating: 4,
-      total_orders: 62,
-      active: true,
-    },
-  ]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -133,7 +75,7 @@ const AdminSuppliers = () => {
 
   const handleAddSupplier = () => {
     if (!formData.name.trim() || !formData.email.trim()) {
-      toast.error("Le nom et l'email sont requis");
+      toast.error("Name and email are required");
       return;
     }
 
@@ -158,14 +100,14 @@ const AdminSuppliers = () => {
     };
 
     setSuppliers([...suppliers, newSupplier]);
-    toast.success("Fournisseur ajouté avec succès!");
+    toast.success("Supplier added successfully!");
     setShowAddDialog(false);
     resetForm();
   };
 
   const handleEditSupplier = () => {
     if (!formData.name.trim() || !formData.email.trim()) {
-      toast.error("Le nom et l'email sont requis");
+      toast.error("Name and email are required");
       return;
     }
 
@@ -191,7 +133,7 @@ const AdminSuppliers = () => {
           }
         : s
     ));
-    toast.success("Fournisseur modifié avec succès!");
+    toast.success("Supplier modified successfully!");
     setShowEditDialog(false);
     setSelectedSupplier(null);
     resetForm();
@@ -199,7 +141,7 @@ const AdminSuppliers = () => {
 
   const handleDeleteSupplier = () => {
     setSuppliers(suppliers.filter(s => s.id !== selectedSupplier?.id));
-    toast.success("Fournisseur supprimé avec succès!");
+    toast.success("Supplier deleted successfully!");
     setShowDeleteDialog(false);
     setSelectedSupplier(null);
   };
@@ -269,7 +211,7 @@ const AdminSuppliers = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">Suppliers Management</h1>
-              <p className="text-gray-400">Gérer vos fournisseurs de matériaux</p>
+              <p className="text-gray-400">Manage your material suppliers</p>
             </div>
             <Button 
               className="bg-blue-600 hover:bg-blue-700"
@@ -278,36 +220,6 @@ const AdminSuppliers = () => {
               <Plus className="w-4 h-4 mr-2" />
               Add Supplier
             </Button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Total Fournisseurs</p>
-                <p className="text-2xl font-bold text-white">{suppliers.length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Actifs</p>
-                <p className="text-2xl font-bold text-green-400">{activeSuppliers.length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Total Commandes</p>
-                <p className="text-2xl font-bold text-blue-400">{totalOrders}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Note Moyenne</p>
-                <p className="text-2xl font-bold text-yellow-400">
-                  {(suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length).toFixed(1)} ⭐
-                </p>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Suppliers Grid */}
@@ -325,7 +237,7 @@ const AdminSuppliers = () => {
                         <p className="text-sm text-gray-400">{supplier.contact_name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${supplier.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                            {supplier.active ? 'Actif' : 'Inactif'}
+                            {supplier.active ? 'Active' : 'Inactive'}
                           </span>
                           <span className="text-xs text-yellow-400">{'⭐'.repeat(supplier.rating)}</span>
                         </div>
@@ -360,7 +272,7 @@ const AdminSuppliers = () => {
 
                   {/* Materials */}
                   <div className="pt-2 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2">Matériaux fournis:</p>
+                    <p className="text-xs text-gray-500 mb-2">Materials supplied:</p>
                     <div className="flex flex-wrap gap-1">
                       {supplier.materials_supplied.map((material, idx) => (
                         <span key={idx} className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
@@ -373,11 +285,11 @@ const AdminSuppliers = () => {
                   {/* Details */}
                   <div className="pt-2 border-t border-gray-800 grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <p className="text-gray-500">Délai livraison</p>
+                      <p className="text-gray-500">Delivery time</p>
                       <p className="text-white font-medium">{supplier.delivery_time}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Conditions paiement</p>
+                      <p className="text-gray-500">Payment terms</p>
                       <p className="text-white font-medium">{supplier.payment_terms}</p>
                     </div>
                   </div>
@@ -390,7 +302,7 @@ const AdminSuppliers = () => {
                       className="flex-1 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                       onClick={() => openDetailsDialog(supplier)}
                     >
-                      Détails
+                      Details
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -418,9 +330,9 @@ const AdminSuppliers = () => {
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-white">Ajouter un nouveau fournisseur</DialogTitle>
+                <DialogTitle className="text-white">Add New Supplier</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Remplissez toutes les informations du fournisseur
+                  Fill in all supplier information
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
@@ -428,22 +340,22 @@ const AdminSuppliers = () => {
                 <div className="col-span-2">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
-                    Informations entreprise
+                    Company Information
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom de l'entreprise *</Label>
+                  <Label className="text-gray-300">Company Name *</Label>
                   <Input
-                    placeholder="Ex: Prusament"
+                    placeholder="e.g. Prusament"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom du contact</Label>
+                  <Label className="text-gray-300">Contact Name</Label>
                   <Input
-                    placeholder="Ex: Jean Dupont"
+                    placeholder="e.g. John Smith"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.contact_name}
                     onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
@@ -468,7 +380,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Téléphone</Label>
+                  <Label className="text-gray-300">Phone</Label>
                   <Input
                     placeholder="+48 123 456 789"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -477,7 +389,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Site web</Label>
+                  <Label className="text-gray-300">Website</Label>
                   <Input
                     placeholder="https://example.com"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -490,40 +402,40 @@ const AdminSuppliers = () => {
                 <div className="col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    Adresse
+                    Address
                   </h3>
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Adresse</Label>
+                  <Label className="text-gray-300">Address</Label>
                   <Input
-                    placeholder="123 rue principale"
+                    placeholder="123 Main Street"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Ville</Label>
+                  <Label className="text-gray-300">City</Label>
                   <Input
-                    placeholder="Paris"
+                    placeholder="Warsaw"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Code postal</Label>
+                  <Label className="text-gray-300">Postal Code</Label>
                   <Input
-                    placeholder="75001"
+                    placeholder="00-001"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.postal_code}
                     onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Pays</Label>
+                  <Label className="text-gray-300">Country</Label>
                   <Input
-                    placeholder="France"
+                    placeholder="Poland"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
@@ -534,11 +446,11 @@ const AdminSuppliers = () => {
                 <div className="col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Package className="w-4 h-4" />
-                    Détails commerciaux
+                    Business Details
                   </h3>
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Matériaux fournis (séparés par virgule)</Label>
+                  <Label className="text-gray-300">Materials Supplied (comma separated)</Label>
                   <Input
                     placeholder="PLA, PETG, ABS"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -547,7 +459,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Conditions de paiement</Label>
+                  <Label className="text-gray-300">Payment Terms</Label>
                   <Input
                     placeholder="Net 30"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -556,16 +468,16 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Délai de livraison</Label>
+                  <Label className="text-gray-300">Delivery Time</Label>
                   <Input
-                    placeholder="3-5 jours"
+                    placeholder="3-5 days"
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.delivery_time}
                     onChange={(e) => setFormData({ ...formData, delivery_time: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Note (1-5)</Label>
+                  <Label className="text-gray-300">Rating (1-5)</Label>
                   <Input
                     type="number"
                     min="1"
@@ -583,12 +495,12 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <Label htmlFor="active" className="text-gray-300 cursor-pointer">Fournisseur actif</Label>
+                  <Label htmlFor="active" className="text-gray-300 cursor-pointer">Active Supplier</Label>
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-gray-300">Notes</Label>
                   <Textarea
-                    placeholder="Notes additionnelles..."
+                    placeholder="Additional notes..."
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -602,13 +514,13 @@ const AdminSuppliers = () => {
                   onClick={() => setShowAddDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleAddSupplier}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Ajouter
+                  Add
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -618,9 +530,9 @@ const AdminSuppliers = () => {
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-white">Modifier le fournisseur</DialogTitle>
+                <DialogTitle className="text-white">Edit Supplier</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Modifiez les informations du fournisseur
+                  Edit supplier information
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
@@ -628,11 +540,11 @@ const AdminSuppliers = () => {
                 <div className="col-span-2">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
-                    Informations entreprise
+                    Company Information
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom de l'entreprise *</Label>
+                  <Label className="text-gray-300">Company Name *</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.name}
@@ -640,7 +552,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Nom du contact</Label>
+                  <Label className="text-gray-300">Contact Name</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.contact_name}
@@ -663,7 +575,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Téléphone</Label>
+                  <Label className="text-gray-300">Phone</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.phone}
@@ -671,7 +583,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Site web</Label>
+                  <Label className="text-gray-300">Website</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.website}
@@ -681,11 +593,11 @@ const AdminSuppliers = () => {
                 <div className="col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    Adresse
+                    Address
                   </h3>
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Adresse</Label>
+                  <Label className="text-gray-300">Address</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.address}
@@ -693,7 +605,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Ville</Label>
+                  <Label className="text-gray-300">City</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.city}
@@ -701,7 +613,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Code postal</Label>
+                  <Label className="text-gray-300">Postal Code</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.postal_code}
@@ -709,7 +621,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Pays</Label>
+                  <Label className="text-gray-300">Country</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.country}
@@ -719,11 +631,11 @@ const AdminSuppliers = () => {
                 <div className="col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Package className="w-4 h-4" />
-                    Détails commerciaux
+                    Business Details
                   </h3>
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label className="text-gray-300">Matériaux fournis</Label>
+                  <Label className="text-gray-300">Materials Supplied</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.materials_supplied}
@@ -731,7 +643,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Conditions de paiement</Label>
+                  <Label className="text-gray-300">Payment Terms</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.payment_terms}
@@ -739,7 +651,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Délai de livraison</Label>
+                  <Label className="text-gray-300">Delivery Time</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
                     value={formData.delivery_time}
@@ -747,7 +659,7 @@ const AdminSuppliers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Note (1-5)</Label>
+                  <Label className="text-gray-300">Rating (1-5)</Label>
                   <Input
                     type="number"
                     min="1"
@@ -765,7 +677,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <Label htmlFor="edit-active" className="text-gray-300 cursor-pointer">Fournisseur actif</Label>
+                  <Label htmlFor="edit-active" className="text-gray-300 cursor-pointer">Active Supplier</Label>
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-gray-300">Notes</Label>
@@ -783,13 +695,13 @@ const AdminSuppliers = () => {
                   onClick={() => setShowEditDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleEditSupplier}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Sauvegarder
+                  Save
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -799,7 +711,7 @@ const AdminSuppliers = () => {
           <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="text-white">Détails du fournisseur</DialogTitle>
+                <DialogTitle className="text-white">Supplier Details</DialogTitle>
               </DialogHeader>
               {selectedSupplier && (
                 <div className="space-y-4 py-4">
@@ -819,11 +731,11 @@ const AdminSuppliers = () => {
                       <p className="text-white">{selectedSupplier.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Téléphone</p>
+                      <p className="text-sm text-gray-500 mb-1">Phone</p>
                       <p className="text-white">{selectedSupplier.phone}</p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-sm text-gray-500 mb-1">Adresse complète</p>
+                      <p className="text-sm text-gray-500 mb-1">Full Address</p>
                       <p className="text-white">
                         {selectedSupplier.address}<br />
                         {selectedSupplier.postal_code} {selectedSupplier.city}<br />
@@ -832,30 +744,30 @@ const AdminSuppliers = () => {
                     </div>
                     {selectedSupplier.website && (
                       <div className="col-span-2">
-                        <p className="text-sm text-gray-500 mb-1">Site web</p>
+                        <p className="text-sm text-gray-500 mb-1">Website</p>
                         <a href={selectedSupplier.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
                           {selectedSupplier.website}
                         </a>
                       </div>
                     )}
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Délai livraison</p>
+                      <p className="text-sm text-gray-500 mb-1">Delivery Time</p>
                       <p className="text-white">{selectedSupplier.delivery_time}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Conditions paiement</p>
+                      <p className="text-sm text-gray-500 mb-1">Payment Terms</p>
                       <p className="text-white">{selectedSupplier.payment_terms}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Note</p>
+                      <p className="text-sm text-gray-500 mb-1">Rating</p>
                       <p className="text-yellow-400">{'⭐'.repeat(selectedSupplier.rating)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Total commandes</p>
+                      <p className="text-sm text-gray-500 mb-1">Total Orders</p>
                       <p className="text-white">{selectedSupplier.total_orders}</p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-sm text-gray-500 mb-2">Matériaux fournis</p>
+                      <p className="text-sm text-gray-500 mb-2">Materials Supplied</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedSupplier.materials_supplied.map((material, idx) => (
                           <span key={idx} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded">
@@ -878,7 +790,7 @@ const AdminSuppliers = () => {
                   onClick={() => setShowDetailsDialog(false)}
                   className="bg-gray-800 hover:bg-gray-700"
                 >
-                  Fermer
+                  Close
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -888,10 +800,10 @@ const AdminSuppliers = () => {
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent className="bg-gray-900 border-gray-800 text-white">
               <DialogHeader>
-                <DialogTitle className="text-white">Confirmer la suppression</DialogTitle>
+                <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                  Êtes-vous sûr de vouloir supprimer le fournisseur "{selectedSupplier?.name}" ?
-                  Cette action est irréversible.
+                  Are you sure you want to delete the supplier "{selectedSupplier?.name}"?
+                  This action is irreversible.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -900,13 +812,13 @@ const AdminSuppliers = () => {
                   onClick={() => setShowDeleteDialog(false)}
                   className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleDeleteSupplier}
                   className="bg-red-600 hover:bg-red-700"
                 >
-                  Supprimer
+                  Delete
                 </Button>
               </DialogFooter>
             </DialogContent>
