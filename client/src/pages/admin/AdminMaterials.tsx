@@ -301,10 +301,9 @@ const AdminMaterials = () => {
   const resetForm = () => {
     setFormData({
       material_type: "PLA",
-      color: "#FFFFFF",
+      color: "",
       hex_color: "#FFFFFF",
       price_per_kg: 0,
-      stock_quantity: 0,
       stock_status: "available",
       supplier: "",
       description: "",
