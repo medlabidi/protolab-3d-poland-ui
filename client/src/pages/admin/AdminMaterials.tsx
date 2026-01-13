@@ -124,31 +124,47 @@ const AdminMaterials = () => {
 
   // Filter suppliers based on selected material type
   useEffect(() => {
+    console.log('=== SUPPLIER FILTERING DEBUG ===');
+    console.log('Selected material type:', formData.material_type);
+    console.log('Total suppliers:', suppliers.length);
+    console.log('All suppliers:', suppliers);
+    console.log('All material types:', materialTypes);
+    
     if (!formData.material_type) {
+      console.log('No material type selected, showing empty list');
       setFilteredSuppliers([]);
       return;
     }
 
     if (suppliers.length === 0) {
+      console.log('No suppliers available');
       setFilteredSuppliers([]);
       return;
     }
 
     const selectedTypeId = materialTypes.find(mt => mt.name === formData.material_type)?.id;
-    console.log('Filtering suppliers for material type:', formData.material_type, 'ID:', selectedTypeId);
+    console.log('Selected type ID:', selectedTypeId);
     
     if (!selectedTypeId) {
+      console.log('Could not find ID for material type');
       setFilteredSuppliers([]);
       return;
     }
 
     const filtered = suppliers.filter((supplier: any) => {
-      const hasType = supplier.materials_supplied && supplier.materials_supplied.includes(selectedTypeId);
-      console.log('Supplier:', supplier.name, 'materials_supplied:', supplier.materials_supplied, 'includes type?', hasType);
-      return hasType;
+      const materialsSupplied = supplier.materials_supplied;
+      console.log(`Checking supplier "${supplier.name}":`, {
+        materials_supplied: materialsSupplied,
+        type: typeof materialsSupplied,
+        isArray: Array.isArray(materialsSupplied),
+        includes: materialsSupplied && Array.isArray(materialsSupplied) && materialsSupplied.includes(selectedTypeId)
+      });
+      return materialsSupplied && Array.isArray(materialsSupplied) && materialsSupplied.includes(selectedTypeId);
     });
     
+    console.log('Filtered suppliers count:', filtered.length);
     console.log('Filtered suppliers:', filtered);
+    console.log('=== END DEBUG ===');
     setFilteredSuppliers(filtered);
   }, [formData.material_type, suppliers, materialTypes]);
   const fetchMaterials = async () => {
