@@ -37,14 +37,10 @@ import { toast } from "sonner";
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const AdminMaterials = () => {
-  const availableSuppliers = [
-    "Prusament",
-    "Polymaker",
-    "eSun",
-  ];
-
   const [materials, setMaterials] = useState<any[]>([]);
   const [materialTypes, setMaterialTypes] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [filteredSuppliers, setFilteredSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -66,10 +62,11 @@ const AdminMaterials = () => {
     is_active: true,
   });
 
-  // Fetch materials and material types on mount
+  // Fetch materials, material types, and suppliers on mount
   useEffect(() => {
     fetchMaterials();
     fetchMaterialTypes();
+    fetchSuppliers();
   }, []);
 
   const fetchMaterialTypes = async () => {
@@ -96,7 +93,50 @@ const AdminMaterials = () => {
       console.error('Error fetching material types:', error);
     }
   };
+  const fetchSuppliers = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      if (!token) {
+        return;
+      }
 
+      const response = await fetch(`${API_URL}/admin/suppliers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const activeSuppliers = (data.suppliers || []).filter((s: any) => s.active);
+        setSuppliers(activeSuppliers);
+        setFilteredSuppliers(activeSuppliers);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch suppliers:', error);
+    }
+  };
+
+  // Filter suppliers based on selected material type
+  useEffect(() => {
+    if (!formData.material_type || suppliers.length === 0) {
+      setFilteredSuppliers(suppliers);
+      return;
+    }
+
+    const selectedTypeId = materialTypes.find(mt => mt.name === formData.material_type)?.id;
+    if (!selectedTypeId) {
+      setFilteredSuppliers(suppliers);
+      return;
+    }
+
+    const filtered = suppliers.filter((supplier: any) => 
+      supplier.materials_supplied && supplier.materials_supplied.includes(selectedTypeId)
+    );
+    
+    setFilteredSuppliers(filtered.length > 0 ? filtered : suppliers);
+  }, [formData.material_type, suppliers, materialTypes]);
   const fetchMaterials = async () => {
     try {
       setLoading(true);
@@ -650,11 +690,17 @@ const AdminMaterials = () => {
                       <SelectValue placeholder="Select a supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
-                      {availableSuppliers.map((supplier) => (
-                        <SelectItem key={supplier} value={supplier} className="text-white">
-                          {supplier}
+                      {filteredSuppliers.length === 0 ? (
+                        <SelectItem value="none" disabled className="text-gray-400">
+                          No suppliers for this material type
                         </SelectItem>
-                      ))}
+                      ) : (
+                        filteredSuppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.name} className="text-white">
+                            {supplier.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -764,11 +810,17 @@ const AdminMaterials = () => {
                       <SelectValue placeholder="Select a supplier" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-700">
-                      {availableSuppliers.map((supplier) => (
-                        <SelectItem key={supplier} value={supplier} className="text-white">
-                          {supplier}
+                      {filteredSuppliers.length === 0 ? (
+                        <SelectItem value="none" disabled className="text-gray-400">
+                          No suppliers for this material type
                         </SelectItem>
-                      ))}
+                      ) : (
+                        filteredSuppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.name} className="text-white">
+                            {supplier.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
