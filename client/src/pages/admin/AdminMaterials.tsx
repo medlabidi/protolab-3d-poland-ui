@@ -98,6 +98,7 @@ const AdminMaterials = () => {
       const token = localStorage.getItem('accessToken');
       
       if (!token) {
+        console.warn('No token found for fetching suppliers');
         return;
       }
 
@@ -109,9 +110,12 @@ const AdminMaterials = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched suppliers:', data.suppliers);
         const activeSuppliers = (data.suppliers || []).filter((s: any) => s.active);
         setSuppliers(activeSuppliers);
         setFilteredSuppliers(activeSuppliers);
+      } else {
+        console.error('Failed to fetch suppliers:', response.status, response.statusText);
       }
     } catch (error: any) {
       console.error('Failed to fetch suppliers:', error);

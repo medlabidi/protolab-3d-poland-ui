@@ -927,6 +927,8 @@ async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelR
       return res.status(400).json({ error: 'Name and email are required' });
     }
     
+    console.log('Creating supplier with data:', { name, email, materials_supplied });
+    
     const { data: supplier, error } = await supabase
       .from('suppliers')
       .insert([{ 
@@ -949,12 +951,20 @@ async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelR
       .single();
     
     if (error) {
+      console.error('Error creating supplier:', error);
       if (error.code === '23505') {
         return res.status(409).json({ error: 'Supplier already exists' });
+      }
+      if (error.code === '42P01') {
+        return res.status(500).json({ 
+          error: 'Suppliers table does not exist. Please run the SQL migration.', 
+          details: error.message 
+        });
       }
       return res.status(500).json({ error: 'Failed to create supplier', details: error.message });
     }
     
+    console.log('Supplier created successfully:', supplier);
     return res.status(201).json({ supplier });
   } catch (error) {
     console.error('Unexpected error in handleAdminCreateSupplier:', error);

@@ -179,37 +179,43 @@ const AdminSuppliers = () => {
     try {
       const token = localStorage.getItem('accessToken');
       
+      const payload = {
+        name: formData.name,
+        contact_name: formData.contact_name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        postal_code: formData.postal_code,
+        country: formData.country,
+        website: formData.website,
+        materials_supplied: selectedMaterialTypes.filter(id => id > 0),
+        delivery_time: formData.delivery_time,
+        notes: formData.notes,
+        active: formData.active,
+      };
+      
+      console.log('Adding supplier with payload:', payload);
+      
       const response = await fetch('/api/admin/suppliers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: formData.name,
-          contact_name: formData.contact_name,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          postal_code: formData.postal_code,
-          country: formData.country,
-          website: formData.website,
-          materials_supplied: selectedMaterialTypes.filter(id => id > 0),
-          delivery_time: formData.delivery_time,
-          notes: formData.notes,
-          active: formData.active,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Supplier added successfully:', data.supplier);
         setSuppliers([...suppliers, data.supplier]);
         toast.success("Supplier added successfully!");
         setShowAddDialog(false);
         resetForm();
       } else {
         const error = await response.json();
+        console.error('Failed to add supplier:', error);
         toast.error(error.error || "Failed to add supplier");
       }
     } catch (error) {
