@@ -1371,6 +1371,10 @@ async function handleAdminGetBusinessInvoices(req: AuthenticatedRequest, res: Ve
 async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse) {
   const supabase = getSupabase();
   
+  // Add cache-control headers to prevent stale data
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  
   try {
     const { data: materials, error } = await supabase
       .from('materials')
@@ -1387,6 +1391,8 @@ async function handleGetMaterialsByType(req: VercelRequest, res: VercelResponse)
     if (!materials || materials.length === 0) {
       return res.status(200).json({ materials: {} });
     }
+    
+    console.log(`Fetched ${materials.length} active materials`);
     
     // Group materials by type
     const grouped = materials.reduce((acc: any, material: any) => {
