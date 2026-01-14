@@ -50,12 +50,33 @@ export class ConversationsController {
         return;
       }
       
-      // Get messages for this conversation
-      const messages = await conversationsService.getMessages(conversation.id, 100);
+      // Get messages for this conversation - fetch all messages (no limit)
+      const messages = await conversationsService.getMessages(conversation.id, 10000);
       
       res.json({ conversation, messages });
     } catch (error) {
       logger.error({ err: error, userId: req.user?.id }, 'Error in getConversationByDesignRequest');
+      next(error);
+    }
+  }
+
+  /**
+   * Get or create a conversation for a design request
+   */
+  async getOrCreateDesignRequestConversation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.id;
+      const { designRequestId } = req.params;
+      
+      logger.info({ adminId, designRequestId }, 'Admin creating/getting conversation for design request');
+      
+      const conversation = await conversationsService.getOrCreateDesignRequestConversation(designRequestId, adminId);
+      
+      logger.info({ conversationId: conversation.id }, 'Conversation created/retrieved successfully');
+      
+      res.json({ conversation });
+    } catch (error) {
+      logger.error({ err: error, adminId: req.user?.id }, 'Error in getOrCreateDesignRequestConversation');
       next(error);
     }
   }
@@ -119,6 +140,7 @@ export class ConversationsController {
   async sendMessage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
+      const userRole = req.user!.role;
       const { conversationId } = req.params;
       const { message, attachments } = req.body;
       
@@ -127,21 +149,27 @@ export class ConversationsController {
         return;
       }
       
-      // Verify user owns this conversation
-      const conversation = await conversationsService.getConversation(conversationId, userId);
-      if (!conversation) {
-        res.status(404).json({ error: 'Conversation not found' });
-        return;
+      // For admins, we don't need to verify ownership - they can send to any conversation
+      // For users, verify they own the conversation
+      if (userRole !== 'admin') {
+        const conversation = await conversationsService.getConversation(conversationId, userId);
+        if (!conversation) {
+          res.status(404).json({ error: 'Conversation not found' });
+          return;
+        }
       }
       
+      // Determine sender type based on role
+      const senderType = userRole === 'admin' ? 'engineer' : 'user';
+      
       const newMessage = await conversationsService.addMessage(conversationId, {
-        sender_type: 'user',
+        sender_type: senderType,
         sender_id: userId,
         message: message.trim(),
         attachments: attachments || []
       });
       
-      logger.info(`User ${userId} sent message in conversation ${conversationId}`);
+      logger.info(`${senderType} ${userId} sent message in conversation ${conversationId}`);
       
       res.json({ message: newMessage });
     } catch (error) {

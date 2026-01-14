@@ -271,7 +271,7 @@ const DesignAssistance = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-950">
+      <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -283,28 +283,28 @@ const DesignAssistance = () => {
   // Empty state - No design requests yet
   if (designRequests.length === 0) {
     return (
-      <div className="flex min-h-screen bg-gray-950">
+      <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
         
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Palette className="w-8 h-8 text-cyan-500" />
+            <div className="mb-4 sm:mb-6 md:mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
                 3D Design Assistance
               </h1>
-              <p className="text-gray-400 mt-2">Transform your ideas into custom 3D designs</p>
+              <p className="text-gray-400 mt-2 text-sm sm:text-base">Transform your ideas into custom 3D designs</p>
             </div>
 
             {/* Empty State Card */}
             <Card className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border-cyan-500/30">
-              <CardContent className="pt-16 pb-16 text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-cyan-500/20 mb-6">
-                  <Palette className="w-10 h-10 text-cyan-400" />
+              <CardContent className="pt-8 sm:pt-12 md:pt-16 pb-8 sm:pb-12 md:pb-16 text-center px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-cyan-500/20 mb-4 sm:mb-6">
+                  <Palette className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-3">Discover 3D Design Services</h2>
-                <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">Discover 3D Design Services</h2>
+                <p className="text-gray-400 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
                   Have an idea but no 3D model? Our expert team will design it for you. 
                   Just describe your concept and we'll bring it to life!
                 </p>
@@ -343,31 +343,31 @@ const DesignAssistance = () => {
 
   // Main view with design requests
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
       
-      <main className="flex-1 p-8 overflow-hidden">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
         <div className="h-full flex flex-col">
           {/* Header with Create Button */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Palette className="w-8 h-8 text-cyan-500" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
                 My Design Requests
               </h1>
-              <p className="text-gray-400 mt-1">Track your custom 3D design projects</p>
+              <p className="text-gray-400 mt-1 text-sm sm:text-base">Track your custom 3D design projects</p>
             </div>
             <Button 
               onClick={() => setShowFormDialog(true)}
-              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 w-full sm:w-auto"
             >
-              <Plus className="w-5 h-5 mr-2" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Discover New 3D Design
             </Button>
           </div>
 
           {/* Two Column Layout */}
-          <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 overflow-hidden">
             {/* Left Column - Order Details */}
             <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
               <CardHeader className="pb-4 flex-shrink-0">

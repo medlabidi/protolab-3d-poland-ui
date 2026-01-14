@@ -19,6 +19,9 @@ router.post('/order/:orderId', conversationsController.getOrCreateConversation);
 // Get conversation by design request ID
 router.get('/design-request/:designRequestId', conversationsController.getConversationByDesignRequest);
 
+// Get or create a conversation for a design request
+router.post('/design-request/:designRequestId', conversationsController.getOrCreateDesignRequestConversation);
+
 // Get a specific conversation
 router.get('/:conversationId', conversationsController.getConversation);
 

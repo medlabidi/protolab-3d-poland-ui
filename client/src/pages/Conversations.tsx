@@ -379,9 +379,9 @@ const Conversations = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+      <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
       </div>
@@ -389,13 +389,13 @@ const Conversations = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
 
-      <main className="flex-1 p-4 md:p-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
         <div className="max-w-[1600px] mx-auto h-full">
           {/* Header */}
-          <div className="mb-6 animate-slide-up">
+          <div className="mb-4 sm:mb-6 animate-slide-up">
             <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text flex items-center gap-3">
               <MessageSquare className="w-8 h-8 text-primary" />
               {t('conversations.title')}

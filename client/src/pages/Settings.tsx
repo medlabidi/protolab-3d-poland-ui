@@ -744,13 +744,13 @@ const Settings = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
       
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">{t('settings.title')}</h1>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('settings.title')}</h1>
             <p className="text-muted-foreground">{t('settings.profile.description')}</p>
           </div>
 

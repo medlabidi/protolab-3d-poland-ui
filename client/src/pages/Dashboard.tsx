@@ -421,7 +421,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+      <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
         <main className="flex-1 p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -431,7 +431,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
       
       <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -66,6 +66,7 @@ const AdminDesignAssistance = () => {
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -161,7 +162,7 @@ const AdminDesignAssistance = () => {
     }
   };
 
-  const handleSelectRequestForConversation = async (request: Order) => {
+  const handleSelectRequestForConversation = async (request: Order, shouldScroll: boolean = false) => {
     setSelectedRequestForConversation(request);
     
     try {
@@ -177,10 +178,26 @@ const AdminDesignAssistance = () => {
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
         
-        // Auto-scroll to top of page to show conversation section
-        setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 100);
+        // Scroll to conversation if requested (for Eye button clicks)
+        if (shouldScroll) {
+          setTimeout(() => {
+            conversationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      } else if (response.status === 404) {
+        // Conversation doesn't exist yet, initialize empty
+        setConversationId(null);
+        setMessages([]);
+        
+        // Scroll to conversation if requested (for Eye button clicks)
+        if (shouldScroll) {
+          setTimeout(() => {
+            conversationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      } else {
+        console.error('Failed to fetch conversation:', response.status);
+        toast.error('Failed to load conversation');
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
@@ -188,27 +205,101 @@ const AdminDesignAssistance = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim() && !attachedFile) {
+      toast.error('Please enter a message or attach a file');
+      return;
+    }
+    
+    if (!selectedRequestForConversation) {
+      toast.error('Please select a design request first');
+      return;
+    }
 
     setSendingMessage(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: newMessage }),
-      });
+      
+      // Create conversation if it doesn't exist
+      let currentConversationId = conversationId;
+      if (!currentConversationId) {
+        console.log('Creating conversation for design request:', selectedRequestForConversation.id);
+        const convResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        console.log('Conversation creation response status:', convResponse.status);
+        
+        if (convResponse.ok) {
+          const convData = await convResponse.json();
+          console.log('Conversation created:', convData);
+          currentConversationId = convData.conversation?.id || null;
+          setConversationId(currentConversationId);
+        } else {
+          const errorData = await convResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to create conversation:', errorData);
+          toast.error(errorData.error || 'Failed to create conversation');
+          return;
+        }
+        
+        if (!currentConversationId) {
+          toast.error('Failed to create conversation');
+          return;
+        }
+      }
+
+      // Send message with or without file
+      let response;
+      if (attachedFile) {
+        const formData = new FormData();
+        formData.append('message', newMessage);
+        formData.append('file', attachedFile);
+        
+        response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+      } else {
+        response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: newMessage }),
+        });
+      }
 
       if (response.ok) {
         const data = await response.json();
-        setMessages([...messages, data.message]);
+        
+        // Reload the conversation to get fresh messages from database
+        const conversationResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (conversationResponse.ok) {
+          const conversationData = await conversationResponse.json();
+          setMessages(conversationData.messages || []);
+        } else {
+          // Fallback to adding the message locally if reload fails
+          setMessages([...messages, data.message]);
+        }
+        
         setNewMessage('');
+        setAttachedFile(null);
         toast.success('Message sent');
       } else {
-        throw new Error('Failed to send message');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to send message:', errorData);
+        toast.error(errorData.error || 'Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -362,7 +453,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => handleSelectRequestForConversation(order)}
+                            onClick={() => handleSelectRequestForConversation(order, true)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -417,7 +508,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => handleSelectRequestForConversation(order)}
+                            onClick={() => handleSelectRequestForConversation(order, true)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -472,7 +563,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => handleSelectRequestForConversation(order)}
+                            onClick={() => handleSelectRequestForConversation(order, true)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -527,7 +618,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => handleSelectRequestForConversation(order)}
+                            onClick={() => handleSelectRequestForConversation(order, true)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -582,7 +673,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => handleSelectRequestForConversation(order)}
+                            onClick={() => handleSelectRequestForConversation(order, true)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -672,7 +763,7 @@ const AdminDesignAssistance = () => {
                           variant="ghost"
                           size="sm"
                           className="hover:bg-purple-500/20 text-purple-400"
-                          onClick={() => handleSelectRequestForConversation(order)}
+                          onClick={() => handleSelectRequestForConversation(order, true)}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -787,11 +878,11 @@ const AdminDesignAssistance = () => {
                         messages.map((msg) => (
                           <div
                             key={msg.id}
-                            className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                            className={`flex ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
                               className={`max-w-[80%] rounded-lg p-3 ${
-                                msg.sender_type === 'admin'
+                                msg.sender_type === 'engineer' || msg.sender_type === 'admin'
                                   ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                                   : 'bg-gray-800 text-gray-200'
                               }`}
@@ -811,22 +902,58 @@ const AdminDesignAssistance = () => {
                   </ScrollArea>
 
                   {/* Message Input */}
-                  <div className="flex gap-2 flex-shrink-0">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      placeholder="Type your message..."
-                      className="bg-gray-800 border-gray-700 text-white"
-                      disabled={sendingMessage}
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={sendingMessage || !newMessage.trim()}
-                      className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                    >
-                      {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                    </Button>
+                  <div className="flex-shrink-0 space-y-2">
+                    {attachedFile && (
+                      <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
+                        <Package className="w-4 h-4 text-cyan-400" />
+                        <span className="text-sm text-gray-300 flex-1 truncate">{attachedFile.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-red-500/20"
+                          onClick={() => setAttachedFile(null)}
+                        >
+                          <X className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        placeholder="Type your message..."
+                        className="bg-gray-800 border-gray-700 text-white"
+                        disabled={sendingMessage}
+                      />
+                      <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        accept=".stl,.obj,.3mf,.step,.stp,.iges,.igs"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setAttachedFile(file);
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-gray-700 hover:bg-cyan-500/20"
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                        disabled={sendingMessage}
+                        title="Attach 3D model file"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage || (!newMessage.trim() && !attachedFile)}
+                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                      >
+                        {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                      </Button>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1068,6 +1195,9 @@ const AdminDesignAssistance = () => {
               <Info className="w-6 h-6" />
               Order Details
             </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              View detailed information about this design request
+            </DialogDescription>
           </DialogHeader>
           
           {detailsRequest && (

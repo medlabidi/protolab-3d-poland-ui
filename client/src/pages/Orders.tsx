@@ -572,22 +572,22 @@ const Orders = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
       
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-2 gradient-text">{t('orders.title')}</h1>
-            <p className="text-muted-foreground text-lg">{t('orders.subtitle')}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 gradient-text">{t('orders.title')}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg">{t('orders.subtitle')}</p>
           </div>
 
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
             <CardHeader className="border-b">
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Package className="w-6 h-6 text-primary" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                    <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     {t('orders.allOrders')}
                   </CardTitle>
                   <Button
