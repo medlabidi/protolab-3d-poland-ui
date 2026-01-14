@@ -9,7 +9,10 @@ import {
   Wrench, 
   Plus,
   Pencil,
-  Trash2
+  Trash2,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   Table,
@@ -79,6 +82,8 @@ const AdminMaintenanceInsights = () => {
   });
 
   const [maintenanceRate, setMaintenanceRate] = useState(0);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
   useEffect(() => {
     fetchPrinters();
@@ -275,6 +280,30 @@ const AdminMaintenanceInsights = () => {
     return printer ? printer.name : 'Unknown';
   };
 
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getMaintenancesForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return maintenances.filter(m => m.scheduled_date === dateStr);
+  };
+
+  const previousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-950">
@@ -298,17 +327,132 @@ const AdminMaintenanceInsights = () => {
               <h1 className="text-3xl font-bold text-white mb-2">Maintenance Management</h1>
               <p className="text-gray-400">Schedule maintenance and manage maintenance rates for pricing calculations</p>
             </div>
-            <Button 
-              onClick={() => setShowAddDialog(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Maintenance
-            </Button>
+            <div className="flex gap-2">
+              <div className="flex gap-1 bg-gray-800 rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                  className={viewMode === 'calendar' ? 'bg-blue-600 hover:bg-blue-700' : 'text-gray-400 hover:text-white'}
+                >
+                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  Calendar
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={viewMode === 'list' ? 'bg-blue-600 hover:bg-blue-700' : 'text-gray-400 hover:text-white'}
+                >
+                  <Wrench className="w-4 h-4 mr-2" />
+                  List
+                </Button>
+              </div>
+              <Button 
+                onClick={() => setShowAddDialog(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Schedule Maintenance
+              </Button>
+            </div>
           </div>
 
+          {/* Calendar View */}
+          {viewMode === 'calendar' && (
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white">
+                    {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={previousMonth}
+                      className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentDate(new Date())}
+                      className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={nextMonth}
+                      className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-2">
+                  {/* Day headers */}
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center text-sm font-semibold text-gray-400 py-2">
+                      {day}
+                    </div>
+                  ))}
+                  
+                  {/* Empty cells for days before month starts */}
+                  {Array.from({ length: getFirstDayOfMonth(currentDate) }).map((_, i) => (
+                    <div key={`empty-${i}`} className="aspect-square p-2 bg-gray-800/30 rounded-lg" />
+                  ))}
+                  
+                  {/* Calendar days */}
+                  {Array.from({ length: getDaysInMonth(currentDate) }).map((_, i) => {
+                    const day = i + 1;
+                    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                    const dayMaintenances = getMaintenancesForDate(date);
+                    const isToday = date.toDateString() === today.toDateString();
+                    
+                    return (
+                      <div
+                        key={day}
+                        className={`aspect-square p-2 rounded-lg border transition-colors ${
+                          isToday 
+                            ? 'bg-blue-900/30 border-blue-500' 
+                            : 'bg-gray-800/50 border-gray-700 hover:bg-gray-800'
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-400' : 'text-gray-300'}`}>
+                          {day}
+                        </div>
+                        <div className="space-y-1">
+                          {dayMaintenances.map(m => (
+                            <div
+                              key={m.id}
+                              className={`text-xs p-1 rounded truncate ${
+                                m.type === 'preventive' ? 'bg-blue-500/20 text-blue-400' :
+                                m.type === 'corrective' ? 'bg-red-500/20 text-red-400' :
+                                'bg-purple-500/20 text-purple-400'
+                              }`}
+                              title={`${getPrinterName(m.printer_id)} - ${m.description}`}
+                            >
+                              {getPrinterName(m.printer_id).substring(0, 10)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Printers with Maintenance Rates */}
-          <Card className="bg-gray-900 border-gray-800">
+          {viewMode === 'list' && (
+            <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle className="text-white">Printers & Maintenance Rates</CardTitle>
               <CardDescription className="text-gray-400">
@@ -361,8 +505,9 @@ const AdminMaintenanceInsights = () => {
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* Maintenance Schedule */}
+          {/* Maintenance Schedule - visible in both views */}
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
