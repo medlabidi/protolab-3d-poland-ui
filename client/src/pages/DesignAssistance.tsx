@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -47,6 +47,8 @@ const DesignAssistance = () => {
   const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<DesignRequest | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsRequest, setDetailsRequest] = useState<DesignRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
   // Conversation state
@@ -92,8 +94,20 @@ const DesignAssistance = () => {
         const data = await response.json();
         setDesignRequests(data.requests || []);
         
-        // Auto-select the first request if exists
-        if (data.requests && data.requests.length > 0) {
+        // Check if there's a request ID in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestId = urlParams.get('request');
+        
+        if (requestId && data.requests) {
+          // Find and select the request from URL
+          const targetRequest = data.requests.find((r: DesignRequest) => r.id === requestId);
+          if (targetRequest) {
+            handleSelectRequest(targetRequest);
+          } else if (data.requests.length > 0) {
+            handleSelectRequest(data.requests[0]);
+          }
+        } else if (data.requests && data.requests.length > 0) {
+          // Auto-select the first request if exists
           handleSelectRequest(data.requests[0]);
         }
       }
@@ -355,40 +369,62 @@ const DesignAssistance = () => {
           {/* Two Column Layout */}
           <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
             {/* Left Column - Order Details */}
-            <Card className="bg-gray-900 border-gray-800 flex flex-col">
-              <CardHeader className="pb-4">
+            <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
+              <CardHeader className="pb-4 flex-shrink-0">
                 <CardTitle className="text-white flex items-center gap-2">
                   <Package className="w-5 h-5 text-cyan-400" />
-                  Design Requests
+                  Design Requests ({designRequests.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden flex flex-col gap-4">
+              <CardContent className="p-0">
                 {/* Orders List - Scrollable */}
-                <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-3">
+                <ScrollArea className="h-[400px] px-4">
+                  <div className="space-y-3 pt-4">
                     {designRequests.map((request) => (
                       <Card
                         key={request.id}
-                        className={`cursor-pointer transition-all ${
+                        className={`transition-all ${
                           selectedRequest?.id === request.id
                             ? 'bg-cyan-900/30 border-cyan-500'
                             : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'
                         }`}
-                        onClick={() => handleSelectRequest(request)}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-white font-semibold truncate flex-1">
+                            <h3 
+                              className="text-white font-semibold truncate flex-1 cursor-pointer"
+                              onClick={() => handleSelectRequest(request)}
+                            >
                               {request.project_name}
                             </h3>
-                            <Badge className={getStatusColor(request.design_status)}>
-                              {request.design_status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getStatusColor(request.design_status)}>
+                                {request.design_status}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 hover:bg-cyan-500/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailsRequest(request);
+                                  setShowDetailsDialog(true);
+                                }}
+                              >
+                                <Info className="w-4 h-4 text-cyan-400" />
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-2">
+                          <p 
+                            className="text-gray-400 text-sm mb-2 line-clamp-2 cursor-pointer"
+                            onClick={() => handleSelectRequest(request)}
+                          >
                             {request.idea_description}
                           </p>
-                          <div className="flex items-center justify-between text-xs">
+                          <div 
+                            className="flex items-center justify-between text-xs cursor-pointer"
+                            onClick={() => handleSelectRequest(request)}
+                          >
                             <span className="text-gray-500">{formatDate(request.created_at)}</span>
                             {request.estimated_price && (
                               <span className="text-cyan-400 font-semibold">
@@ -401,52 +437,23 @@ const DesignAssistance = () => {
                     ))}
                   </div>
                 </ScrollArea>
-
-                {/* Selected Order Details */}
-                {selectedRequest && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm text-gray-400">Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
-                      <div>
-                        <span className="text-gray-500">Type:</span>{' '}
-                        <span className="text-white">{selectedRequest.usage_type || 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Material:</span>{' '}
-                        <span className="text-white">{selectedRequest.desired_material || 'N/A'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Dimensions:</span>{' '}
-                        <span className="text-white">{selectedRequest.approximate_dimensions || 'N/A'}</span>
-                      </div>
-                      {selectedRequest.usage_details && (
-                        <div>
-                          <span className="text-gray-500">Usage Details:</span>{' '}
-                          <p className="text-white mt-1">{selectedRequest.usage_details}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
               </CardContent>
             </Card>
 
             {/* Right Column - Conversation */}
-            <Card className="bg-gray-900 border-gray-800 flex flex-col">
-              <CardHeader className="pb-4">
+            <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
+              <CardHeader className="pb-4 flex-shrink-0">
                 <CardTitle className="text-white flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-cyan-400" />
                   Conversation with Admin
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden flex flex-col">
+              <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
                 {selectedRequest ? (
                   <>
                     {/* Messages */}
-                    <ScrollArea className="flex-1 pr-4 mb-4">
-                      <div className="space-y-4">
+                    <ScrollArea className="flex-1 pr-4">
+                      <div className="space-y-4 pb-4">
                         {messages.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
                             No messages yet. Start the conversation!
@@ -479,7 +486,7 @@ const DesignAssistance = () => {
                     </ScrollArea>
 
                     {/* Message Input */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
@@ -524,6 +531,101 @@ const DesignAssistance = () => {
         handleSubmit={handleSubmit}
         submitting={submitting}
       />
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
+              <Info className="w-6 h-6" />
+              Order Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {detailsRequest && (
+            <div className="space-y-6 py-4">
+              {/* Project Name & Status */}
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
+                  <p className="text-gray-400 text-sm">Created: {formatDate(detailsRequest.created_at)}</p>
+                </div>
+                <Badge className={getStatusColor(detailsRequest.design_status)}>
+                  {detailsRequest.design_status}
+                </Badge>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label className="text-gray-400 text-sm">Description</Label>
+                <p className="text-white mt-1">{detailsRequest.idea_description}</p>
+              </div>
+
+              {/* Specifications Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-400 text-sm">Usage Type</Label>
+                  <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
+                </div>
+                <div>
+                  <Label className="text-gray-400 text-sm">Material</Label>
+                  <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-gray-400 text-sm">Dimensions</Label>
+                  <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
+                </div>
+              </div>
+
+              {/* Usage Details */}
+              {detailsRequest.usage_details && (
+                <div>
+                  <Label className="text-gray-400 text-sm">Usage Details</Label>
+                  <p className="text-white mt-1">{detailsRequest.usage_details}</p>
+                </div>
+              )}
+
+              {/* Pricing */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                {detailsRequest.estimated_price && (
+                  <div>
+                    <Label className="text-gray-400 text-sm">Estimated Price</Label>
+                    <p className="text-cyan-400 font-bold text-lg mt-1">{detailsRequest.estimated_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+                {detailsRequest.final_price && (
+                  <div>
+                    <Label className="text-gray-400 text-sm">Final Price</Label>
+                    <p className="text-green-400 font-bold text-lg mt-1">{detailsRequest.final_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Status */}
+              {detailsRequest.payment_status && (
+                <div>
+                  <Label className="text-gray-400 text-sm">Payment Status</Label>
+                  <Badge className={`mt-1 ${
+                    detailsRequest.payment_status === 'paid' ? 'bg-green-500/20 text-green-500' :
+                    detailsRequest.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                    'bg-gray-500/20 text-gray-500'
+                  }`}>
+                    {detailsRequest.payment_status}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Admin Notes */}
+              {detailsRequest.admin_notes && (
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <Label className="text-gray-400 text-sm">Admin Notes</Label>
+                  <p className="text-white mt-2">{detailsRequest.admin_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

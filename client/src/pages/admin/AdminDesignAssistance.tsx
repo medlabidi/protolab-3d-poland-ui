@@ -1,11 +1,13 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2 } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -59,8 +61,17 @@ const AdminDesignAssistance = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedRequestForConversation, setSelectedRequestForConversation] = useState<Order | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
+  
+  const conversationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -147,6 +158,63 @@ const AdminDesignAssistance = () => {
       toast.error('Failed to load design request details');
     } finally {
       setLoadingOrderDetails(false);
+    }
+  };
+
+  const handleSelectRequestForConversation = async (request: Order) => {
+    setSelectedRequestForConversation(request);
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/design-request/${request.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversationId(data.conversation?.id || null);
+        setMessages(data.messages || []);
+        
+        // Auto-scroll to top of page to show conversation section
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !conversationId) return;
+
+    setSendingMessage(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: newMessage }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([...messages, data.message]);
+        setNewMessage('');
+        toast.success('Message sent');
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -294,7 +362,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={() => handleSelectRequestForConversation(order)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -349,7 +417,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={() => handleSelectRequestForConversation(order)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -404,7 +472,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={() => handleSelectRequestForConversation(order)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -459,7 +527,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={() => handleSelectRequestForConversation(order)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -514,7 +582,7 @@ const AdminDesignAssistance = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-purple-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={() => handleSelectRequestForConversation(order)}
                           >
                             <Eye className="w-3 h-3 text-purple-400" />
                           </Button>
@@ -604,7 +672,7 @@ const AdminDesignAssistance = () => {
                           variant="ghost"
                           size="sm"
                           className="hover:bg-purple-500/20 text-purple-400"
-                          onClick={() => fetchOrderDetails(order.id)}
+                          onClick={() => handleSelectRequestForConversation(order)}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -616,7 +684,159 @@ const AdminDesignAssistance = () => {
             </CardContent>
           </Card>
         </div>
-      </main>
+
+        {/* Design Requests List with Conversations */}
+        <div className="grid grid-cols-2 gap-6 mt-8">
+          {/* Left Column - Design Requests List */}
+          <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
+            <CardHeader className="border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                  <Palette className="w-5 h-5 text-cyan-500" />
+                  Design Requests
+                  <span className="text-sm font-normal text-gray-400">({orders.length})</span>
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 px-4">
+                  <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">No design requests yet</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px] px-4">
+                  <div className="space-y-2 pt-4 pb-1">
+                    {filteredOrders.map((request) => (
+                      <div
+                        key={request.id}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer border ${
+                          selectedRequestForConversation?.id === request.id
+                            ? 'bg-cyan-900/30 border-cyan-500'
+                            : 'bg-gray-800 border-transparent hover:bg-cyan-500/5 hover:border-cyan-500/20'
+                        }`}
+                        onClick={() => handleSelectRequestForConversation(request)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate text-white">{request.project_name}</p>
+                            <p className="text-xs text-gray-400 truncate">
+                              {request.idea_description ? request.idea_description.substring(0, 50) + '...' : 'No description'}
+                            </p>
+                            <p className="text-xs text-cyan-600 mt-1">
+                              {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {request.estimated_price && ` • ${request.estimated_price.toFixed(2)} PLN`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${
+                            request.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                            request.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                            request.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                            request.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                            'bg-gray-500/20 text-gray-500'
+                          }`}>
+                            {request.design_status}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-cyan-500/20 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailsRequest(request);
+                              setShowDetailsDialog(true);
+                            }}
+                          >
+                            <Info className="w-4 h-4 text-cyan-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right Column - Conversation */}
+          <Card ref={conversationRef} className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
+            <CardHeader className="border-b border-gray-800 flex-shrink-0">
+              <CardTitle className="text-xl flex items-center gap-2 text-white">
+                <MessageSquare className="w-5 h-5 text-cyan-500" />
+                Conversation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
+              {selectedRequestForConversation ? (
+                <>
+                  {/* Messages */}
+                  <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-4 pb-4 pt-4">
+                      {messages.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          No messages yet. Start the conversation!
+                        </div>
+                      ) : (
+                        messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 ${
+                                msg.sender_type === 'admin'
+                                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                  : 'bg-gray-800 text-gray-200'
+                              }`}
+                            >
+                              <p className="text-sm">{msg.message}</p>
+                              <span className="text-xs opacity-70 mt-1 block">
+                                {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+
+                  {/* Message Input */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder="Type your message..."
+                      className="bg-gray-800 border-gray-700 text-white"
+                      disabled={sendingMessage}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={sendingMessage || !newMessage.trim()}
+                      className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                    >
+                      {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  Select a design request to view conversation
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>      </main>
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
@@ -834,6 +1054,113 @@ const AdminDesignAssistance = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowOrderDetails(false)} className="border-gray-700 text-white hover:bg-gray-800">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
+              <Info className="w-6 h-6" />
+              Order Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {detailsRequest && (
+            <div className="space-y-6 py-4">
+              {/* Project Name & Status */}
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
+                  <p className="text-gray-400 text-sm">Created: {new Date(detailsRequest.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <Badge className={`${
+                  detailsRequest.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                  detailsRequest.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                  detailsRequest.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                  detailsRequest.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                  'bg-gray-500/20 text-gray-500'
+                }`}>
+                  {detailsRequest.design_status}
+                </Badge>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-gray-400 text-sm">Description</label>
+                <p className="text-white mt-1">{detailsRequest.idea_description}</p>
+              </div>
+
+              {/* Specifications Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-400 text-sm">Usage Type</label>
+                  <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm">Material</label>
+                  <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-gray-400 text-sm">Dimensions</label>
+                  <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
+                </div>
+              </div>
+
+              {/* Usage Details */}
+              {detailsRequest.usage_details && (
+                <div>
+                  <label className="text-gray-400 text-sm">Usage Details</label>
+                  <p className="text-white mt-1">{detailsRequest.usage_details}</p>
+                </div>
+              )}
+
+              {/* Pricing */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                {detailsRequest.estimated_price && (
+                  <div>
+                    <label className="text-gray-400 text-sm">Estimated Price</label>
+                    <p className="text-cyan-400 font-bold text-lg mt-1">{detailsRequest.estimated_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+                {detailsRequest.final_price && (
+                  <div>
+                    <label className="text-gray-400 text-sm">Final Price</label>
+                    <p className="text-green-400 font-bold text-lg mt-1">{detailsRequest.final_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Status */}
+              {detailsRequest.payment_status && (
+                <div>
+                  <label className="text-gray-400 text-sm">Payment Status</label>
+                  <Badge className={`mt-1 ${
+                    detailsRequest.payment_status === 'paid' ? 'bg-green-500/20 text-green-500' :
+                    detailsRequest.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                    'bg-gray-500/20 text-gray-500'
+                  }`}>
+                    {detailsRequest.payment_status}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Admin Notes */}
+              {detailsRequest.admin_notes && (
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <label className="text-gray-400 text-sm">Admin Notes</label>
+                  <p className="text-white mt-2">{detailsRequest.admin_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDetailsDialog(false)} className="border-gray-700 text-white hover:bg-gray-800">
               Close
             </Button>
           </DialogFooter>

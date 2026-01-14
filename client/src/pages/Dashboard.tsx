@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -540,19 +541,31 @@ const Dashboard = () => {
                     Design Assistance
                     <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
                   </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/design-assistance')}
-                    className="hover:bg-cyan-500/10 hover:border-cyan-500"
-                  >
-                    New Request
-                  </Button>
+                  <div className="flex gap-2">
+                    {designRequests.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate('/design-assistance')}
+                        className="hover:bg-cyan-500/10"
+                      >
+                        View All
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/design-assistance')}
+                      className="hover:bg-cyan-500/10 hover:border-cyan-500"
+                    >
+                      New Request
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent className="p-0">
                 {designRequests.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-8 text-muted-foreground px-4">
                     <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p className="text-sm">No design requests yet</p>
                     <Button
@@ -565,29 +578,35 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {designRequests.slice(0, 5).map((request) => (
-                      <div
-                        key={request.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-cyan-500/5 transition-colors cursor-pointer border border-transparent hover:border-cyan-500/20"
-                        onClick={() => navigate('/design-assistance')}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{request.project_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {request.idea_description ? request.idea_description.substring(0, 40) + '...' : new Date(request.created_at).toLocaleDateString()}
-                            </p>
+                  <ScrollArea className="h-[400px] px-4">
+                    <div className="space-y-2 pt-4 pb-1">
+                      {designRequests.slice(0, 5).map((request) => (
+                        <div
+                          key={request.id}
+                          className="flex items-center justify-between p-3 rounded-lg hover:bg-cyan-500/5 transition-colors cursor-pointer border border-transparent hover:border-cyan-500/20"
+                          onClick={() => navigate(`/design-assistance?request=${request.id}`)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{request.project_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {request.idea_description ? request.idea_description.substring(0, 50) + '...' : 'No description'}
+                              </p>
+                              <p className="text-xs text-cyan-600 mt-1">
+                                {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {request.estimated_price && ` • ${request.estimated_price.toFixed(2)} PLN`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <StatusBadge status={request.design_status === 'pending' ? 'submitted' : request.design_status === 'in_review' ? 'in_queue' : request.design_status === 'in_progress' ? 'printing' : request.design_status === 'completed' ? 'finished' : 'submitted'} />
+                            <Eye className="w-4 h-4 text-muted-foreground" />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <StatusBadge status={request.design_status === 'pending' ? 'submitted' : request.design_status === 'in_progress' ? 'printing' : request.design_status === 'completed' ? 'finished' : 'in_queue'} />
-                          <Eye className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
               </CardContent>
             </Card>
