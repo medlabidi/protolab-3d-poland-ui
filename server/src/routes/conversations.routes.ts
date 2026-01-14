@@ -16,6 +16,9 @@ router.get('/unread', conversationsController.getUnreadCount);
 // Get or create a conversation for an order
 router.post('/order/:orderId', conversationsController.getOrCreateConversation);
 
+// Get conversation by design request ID
+router.get('/design-request/:designRequestId', conversationsController.getConversationByDesignRequest);
+
 // Get a specific conversation
 router.get('/:conversationId', conversationsController.getConversation);
 

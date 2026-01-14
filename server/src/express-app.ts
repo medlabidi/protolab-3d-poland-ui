@@ -18,6 +18,7 @@ import materialsRoutes from './routes/materials.routes';
 import printersRoutes from './routes/printers.routes';
 import shippingRoutes from './routes/shipping.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import designRequestRoutes from './routes/designRequest.routes';
 
 const createApp = (): Application => {
   const app = express();
@@ -82,6 +83,7 @@ const createApp = (): Application => {
   app.use('/api/printers', printersRoutes);
   app.use('/api/admin/shipping', shippingRoutes);
   app.use('/api/admin/analytics', analyticsRoutes);
+  app.use('/api/design-requests', designRequestRoutes);
   
   // Error handling
   app.use(notFoundHandler);

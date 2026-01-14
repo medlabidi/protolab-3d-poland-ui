@@ -46,6 +46,7 @@ const Dashboard = () => {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [printJobs, setPrintJobs] = useState<any[]>([]);
   const [designJobs, setDesignJobs] = useState<any[]>([]);
+  const [designRequests, setDesignRequests] = useState<any[]>([]);
   const [creditBalance, setCreditBalance] = useState<number>(0);
   const [stats, setStats] = useState({
     activeOrders: 0,
@@ -58,6 +59,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchCreditBalance();
+    fetchDesignRequests();
   }, []);
 
   const refreshAccessToken = async (): Promise<string | null> => {
@@ -172,7 +174,7 @@ const Dashboard = () => {
         completedPrints: completed,
         totalSpent: `${total.toFixed(2)} ${t('common.pln')}`,
         printJobsCount: printOrders.length,
-        designJobsCount: designOrders.length,
+        designJobsCount: designOrders.length, // Will be updated when designRequests loads
       });
 
       console.log('📊 Dashboard Data:', {
@@ -187,6 +189,40 @@ const Dashboard = () => {
       toast.error('Unable to connect to server. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDesignRequests = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+
+      console.log('🎨 Fetching design requests...');
+      const response = await fetch(`${API_URL}/design-requests/my`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('🎨 Response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🎨 Design requests data:', data);
+        setDesignRequests(data.requests || []);
+        
+        // Update stats with design requests count
+        setStats(prev => ({
+          ...prev,
+          designJobsCount: data.requests?.length || 0,
+        }));
+        
+        console.log('🎨 Design requests count:', data.requests?.length || 0);
+      } else {
+        console.error('🎨 Failed to fetch design requests:', response.statusText);
+      }
+    } catch (error) {
+      console.error('🎨 Failed to fetch design requests:', error);
     }
   };
 
@@ -496,33 +532,33 @@ const Dashboard = () => {
             </Card>
 
             {/* Design Assistance Card */}
-            <Card className="shadow-xl border-2 border-transparent hover:border-purple-500/20 transition-all bg-gradient-to-br from-card to-purple-500/5">
+            <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-card to-cyan-500/5">
               <CardHeader className="border-b">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-purple-500" />
+                    <Palette className="w-5 h-5 text-cyan-500" />
                     Design Assistance
                     <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
                   </CardTitle>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate('/services/design')}
-                    className="hover:bg-purple-500/10 hover:border-purple-500"
+                    onClick={() => navigate('/design-assistance')}
+                    className="hover:bg-cyan-500/10 hover:border-cyan-500"
                   >
                     New Request
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
-                {designJobs.length === 0 ? (
+                {designRequests.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p className="text-sm">No design requests yet</p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate('/services/design')}
+                      onClick={() => navigate('/design-assistance')}
                       className="mt-2 text-xs"
                     >
                       Request Design Help
@@ -530,23 +566,23 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {designJobs.map((order) => (
+                    {designRequests.slice(0, 5).map((request) => (
                       <div
-                        key={order.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-500/5 transition-colors cursor-pointer border border-transparent hover:border-purple-500/20"
-                        onClick={() => navigate(`/orders/${order.id}`)}
+                        key={request.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-cyan-500/5 transition-colors cursor-pointer border border-transparent hover:border-cyan-500/20"
+                        onClick={() => navigate('/design-assistance')}
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <Palette className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                          <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
                           <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="font-medium text-sm truncate">{request.project_name}</p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {order.design_description ? order.design_description.substring(0, 40) + '...' : new Date(order.created_at).toLocaleDateString()}
+                              {request.idea_description ? request.idea_description.substring(0, 40) + '...' : new Date(request.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <StatusBadge status={order.status as OrderStatus} />
+                          <StatusBadge status={request.design_status === 'pending' ? 'submitted' : request.design_status === 'in_progress' ? 'printing' : request.design_status === 'completed' ? 'finished' : 'in_queue'} />
                           <Eye className="w-4 h-4 text-muted-foreground" />
                         </div>
                       </div>

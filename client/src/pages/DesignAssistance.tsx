@@ -5,42 +5,63 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { Upload, Check, Download, X, Palette, FileText } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
-import { Logo } from "@/components/Logo";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
 
 interface DesignRequest {
   id: string;
-  ideaDescription: string;
-  usage: 'mechanical' | 'decorative' | 'functional' | 'other';
-  usageDetails: string;
-  status: 'pending' | 'completed';
-  adminFile?: {
-    url: string;
-    name: string;
-  };
+  project_name: string;
+  idea_description: string;
+  usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
+  usage_details?: string;
+  approximate_dimensions?: string;
+  desired_material?: string;
+  attached_files?: any[];
+  reference_images?: any[];
+  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
+  estimated_price?: number;
+  final_price?: number;
+  payment_status?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+interface Message {
+  id: string;
+  sender_type: 'user' | 'admin';
+  message: string;
+  created_at: string;
+  is_read: boolean;
 }
 
 const DesignAssistance = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  const [currentRequest, setCurrentRequest] = useState<DesignRequest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<DesignRequest | null>(null);
+  const [showFormDialog, setShowFormDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Conversation state
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
     ideaDescription: "",
-    usage: "mechanical" as 'mechanical' | 'decorative' | 'functional' | 'other',
+    usage: "functional" as 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other',
     usageDetails: "",
     approximateDimensions: "",
     desiredMaterial: "",
-    requestChat: false,
   });
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -49,57 +70,87 @@ const DesignAssistance = () => {
     const loggedIn = localStorage.getItem('isLoggedIn') === 'true' && !!localStorage.getItem('accessToken');
     setIsLoggedIn(loggedIn);
     
-    // Redirect to login if not logged in
     if (!loggedIn) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to access Design Assistance",
-      });
+      toast.error("Please log in to access Design Assistance");
       navigate("/login");
+      return;
     }
-  }, [navigate, toast]);
+
+    fetchDesignRequests();
+  }, [navigate]);
+
+  const fetchDesignRequests = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/design-requests/my`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDesignRequests(data.requests || []);
+        
+        // Auto-select the first request if exists
+        if (data.requests && data.requests.length > 0) {
+          handleSelectRequest(data.requests[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching design requests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectRequest = async (request: DesignRequest) => {
+    setSelectedRequest(request);
+    
+    // Fetch conversation for this request
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/design-request/${request.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversationId(data.conversation?.id || null);
+        setMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.ideaDescription || !formData.usageDetails) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
+    if (!formData.ideaDescription) {
+      toast.error("Please provide a description of your design idea");
       return;
     }
+
+    setSubmitting(true);
 
     try {
       const token = localStorage.getItem('accessToken');
       
-      if (!token) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to submit a design request",
-          variant: "destructive",
-        });
-        navigate("/login");
-        return;
-      }
-
-      // Prepare FormData for submission
       const submitData = new FormData();
+      submitData.append('projectName', `Design Request - ${formData.usage}`);
       submitData.append('ideaDescription', formData.ideaDescription);
       submitData.append('usage', formData.usage);
-      submitData.append('usageDetails', formData.usageDetails);
-      submitData.append('approximateDimensions', formData.approximateDimensions);
-      submitData.append('desiredMaterial', formData.desiredMaterial);
-      submitData.append('requestChat', formData.requestChat.toString());
-      submitData.append('projectName', `Design Request - ${formData.usage}`);
+      submitData.append('usageDetails', formData.usageDetails || 'Not specified');
+      submitData.append('approximateDimensions', formData.approximateDimensions || 'Not specified');
+      submitData.append('desiredMaterial', formData.desiredMaterial || 'Not specified');
 
-      // Attach files
       attachedFiles.forEach(file => {
         submitData.append('referenceFiles', file);
       });
 
-      // Submit design request
       const response = await fetch(`${API_URL}/design-requests`, {
         method: 'POST',
         headers: {
@@ -113,94 +164,62 @@ const DesignAssistance = () => {
         throw new Error(error.error || 'Failed to submit design request');
       }
 
-      const result = await response.json();
+      toast.success("Your design request has been submitted!");
       
-      toast({
-        title: "Request Submitted",
-        description: "Your design request has been sent to our team!",
-      });
-
       // Reset form
       setFormData({
         ideaDescription: "",
-        usage: "mechanical",
+        usage: "functional",
         usageDetails: "",
         approximateDimensions: "",
         desiredMaterial: "",
-        requestChat: false,
       });
       setAttachedFiles([]);
+      setShowFormDialog(false);
 
-      // Navigate to orders page
-      setTimeout(() => {
-        navigate("/orders");
-      }, 1500);
+      // Refresh the list
+      await fetchDesignRequests();
 
     } catch (error: any) {
       console.error('Submission error:', error);
-      toast({
-        title: "Submission Failed",
-        description: error.message || "Could not submit your design request. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Could not submit your design request");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleApprove = () => {
-    if (!currentRequest || !currentRequest.adminFile) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !conversationId) return;
 
-    // Download the file
-    toast({
-      title: "Download Started",
-      description: `Downloading ${currentRequest.adminFile.name}`,
-    });
-
-    // Redirect to price calculation
-    setTimeout(() => {
-      navigate("/new-print", {
-        state: {
-          preloadedFile: currentRequest.adminFile?.url,
-          fromDesignAssistance: true,
-        }
+    setSendingMessage(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: newMessage }),
       });
-    }, 500);
-  };
 
-  const handleCancel = () => {
-    setShowCompletionDialog(false);
-    setCurrentRequest(null);
-    setFormData({
-      ideaDescription: "",
-      usage: "mechanical",
-      usageDetails: "",
-      approximateDimensions: "",
-      desiredMaterial: "",
-      requestChat: false,
-    });
-    setAttachedFiles([]);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(prev => [...prev, data.message]);
+        setNewMessage("");
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error("Failed to send message");
+    } finally {
+      setSendingMessage(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
     }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -217,300 +236,481 @@ const DesignAssistance = () => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500/20 text-yellow-500';
+      case 'in_review': return 'bg-orange-500/20 text-orange-500';
+      case 'in_progress': return 'bg-blue-500/20 text-blue-500';
+      case 'completed': return 'bg-green-500/20 text-green-500';
+      case 'cancelled': return 'bg-red-500/20 text-red-500';
+      default: return 'bg-gray-500/20 text-gray-500';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-950">
+        <DashboardSidebar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        </main>
+      </div>
+    );
+  }
+
+  // Empty state - No design requests yet
+  if (designRequests.length === 0) {
+    return (
+      <div className="flex min-h-screen bg-gray-950">
+        <DashboardSidebar />
+        
+        <main className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Palette className="w-8 h-8 text-cyan-500" />
+                3D Design Assistance
+              </h1>
+              <p className="text-gray-400 mt-2">Transform your ideas into custom 3D designs</p>
+            </div>
+
+            {/* Empty State Card */}
+            <Card className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border-cyan-500/30">
+              <CardContent className="pt-16 pb-16 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-cyan-500/20 mb-6">
+                  <Palette className="w-10 h-10 text-cyan-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-3">Discover 3D Design Services</h2>
+                <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                  Have an idea but no 3D model? Our expert team will design it for you. 
+                  Just describe your concept and we'll bring it to life!
+                </p>
+                <Button 
+                  size="lg" 
+                  onClick={() => setShowFormDialog(true)}
+                  className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Discover 3D Design
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+
+        {/* Form Dialog */}
+        <DesignFormDialog
+          open={showFormDialog}
+          onOpenChange={setShowFormDialog}
+          formData={formData}
+          setFormData={setFormData}
+          attachedFiles={attachedFiles}
+          setAttachedFiles={setAttachedFiles}
+          isDragging={isDragging}
+          setIsDragging={setIsDragging}
+          handleFileChange={handleFileChange}
+          handleDrop={handleDrop}
+          removeFile={removeFile}
+          handleSubmit={handleSubmit}
+          submitting={submitting}
+        />
+      </div>
+    );
+  }
+
+  // Main view with design requests
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
-      {isLoggedIn && <DashboardSidebar />}
+    <div className="flex min-h-screen bg-gray-950">
+      <DashboardSidebar />
       
-      {!isLoggedIn && (
-        <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
+      <main className="flex-1 p-8 overflow-hidden">
+        <div className="h-full flex flex-col">
+          {/* Header with Create Button */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Palette className="w-8 h-8 text-cyan-500" />
+                My Design Requests
+              </h1>
+              <p className="text-gray-400 mt-1">Track your custom 3D design projects</p>
+            </div>
+            <Button 
+              onClick={() => setShowFormDialog(true)}
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
             >
-              <Logo size="sm" textClassName="text-xl" />
-            </button>
-            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-              Login
+              <Plus className="w-5 h-5 mr-2" />
+              Discover New 3D Design
             </Button>
           </div>
-        </header>
-      )}
-      
-      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Hero Section */}
-          <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-3 gradient-text">3D Design Assistance</h1>
-            <p className="text-muted-foreground text-lg">Describe your idea and we'll create a custom 3D design for you</p>
-          </div>
 
-          {/* Design Request Card */}
-          <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Palette className="w-6 h-6 text-primary" />
-                Describe Your Idea
-              </CardTitle>
-              <CardDescription className="text-base">
-                Tell us about your design idea and we'll create a 3D model for you
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Design Type Selection */}
-                <div className="space-y-3">
-                  <Label htmlFor="usage" className="text-base font-semibold">What type of design do you need?</Label>
-                  <RadioGroup
-                    value={formData.usage}
-                    onValueChange={(value) => setFormData({ ...formData, usage: value as any })}
-                    className="grid grid-cols-2 gap-3"
-                  >
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 hover:bg-primary/5 cursor-pointer transition-all">
-                      <RadioGroupItem value="mechanical" id="mechanical" />
-                      <Label htmlFor="mechanical" className="cursor-pointer font-medium">Mechanical Part</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 hover:bg-primary/5 cursor-pointer transition-all">
-                      <RadioGroupItem value="decorative" id="decorative" />
-                      <Label htmlFor="decorative" className="cursor-pointer font-medium">Decorative Piece</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 hover:bg-primary/5 cursor-pointer transition-all">
-                      <RadioGroupItem value="functional" id="functional" />
-                      <Label htmlFor="functional" className="cursor-pointer font-medium">Functional Object</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 hover:bg-primary/5 cursor-pointer transition-all">
-                      <RadioGroupItem value="other" id="other" />
-                      <Label htmlFor="other" className="cursor-pointer font-medium">Other</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {/* Attached Files */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">📎 Attached Files (Optional but Highly Recommended)</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4 text-sm text-muted-foreground">
-                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                      <p className="font-semibold text-primary mb-1">📷 Sketches</p>
-                      <p>Photo, PDF</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                      <p className="font-semibold text-primary mb-1">🎯 Existing 3D File</p>
-                      <p>STL, STEP, OBJ</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                      <p className="font-semibold text-primary mb-1">✨ Inspiration</p>
-                      <p>Images</p>
-                    </div>
-                  </div>
-
-                  {/* Drag & Drop Zone */}
-                  <div
-                    className={`border-3 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group ${
-                      isDragging
-                        ? 'border-primary bg-primary/10 scale-[1.02]'
-                        : 'border-primary/30 hover:border-primary hover:bg-primary/5'
-                    }`}
-                    onDragEnter={handleDragEnter}
-                    onDragLeave={handleDragLeave}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                  >
-                    <input
-                      type="file"
-                      id="attached-files"
-                      className="hidden"
-                      multiple
-                      accept="image/*,.pdf,.dwg,.dxf,.step,.stl,.obj"
-                      onChange={handleFileChange}
-                    />
-                    <label htmlFor="attached-files" className="cursor-pointer block">
-                      <div className={`w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg transition-all ${
-                        isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
-                      }`}>
-                        <Upload className="w-8 h-8 text-white" />
-                      </div>
-                      <p className={`font-bold text-lg mb-2 transition-colors ${
-                        isDragging ? 'text-primary' : 'group-hover:text-primary'
-                      }`}>
-                        {isDragging ? 'Drop your files here' : 'Click or drag & drop files'}
-                      </p>
-                      <p className="text-muted-foreground text-sm">Photos, PDF, 3D files (STL, STEP, OBJ) up to 50MB</p>
-                    </label>
-                  </div>
-
-                  {/* Attached Files List */}
-                  {attachedFiles.length > 0 && (
-                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-3">
-                        ✓ {attachedFiles.length} file(s) attached
-                      </p>
-                      <ul className="space-y-2">
-                        {attachedFiles.map((file, index) => (
-                          <li key={index} className="flex items-center justify-between p-2 bg-white dark:bg-background rounded border border-green-200 dark:border-green-800/50">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <FileText className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                              <span className="text-sm text-muted-foreground truncate">{file.name}</span>
-                              <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
-                                ({(file.size / 1024 / 1024).toFixed(2)} MB)
+          {/* Two Column Layout */}
+          <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
+            {/* Left Column - Order Details */}
+            <Card className="bg-gray-900 border-gray-800 flex flex-col">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-cyan-400" />
+                  Design Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden flex flex-col gap-4">
+                {/* Orders List - Scrollable */}
+                <ScrollArea className="flex-1 pr-4">
+                  <div className="space-y-3">
+                    {designRequests.map((request) => (
+                      <Card
+                        key={request.id}
+                        className={`cursor-pointer transition-all ${
+                          selectedRequest?.id === request.id
+                            ? 'bg-cyan-900/30 border-cyan-500'
+                            : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'
+                        }`}
+                        onClick={() => handleSelectRequest(request)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-white font-semibold truncate flex-1">
+                              {request.project_name}
+                            </h3>
+                            <Badge className={getStatusColor(request.design_status)}>
+                              {request.design_status}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-400 text-sm mb-2 line-clamp-2">
+                            {request.idea_description}
+                          </p>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500">{formatDate(request.created_at)}</span>
+                            {request.estimated_price && (
+                              <span className="text-cyan-400 font-semibold">
+                                {request.estimated_price} PLN
                               </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(index)}
-                              className="ml-2 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors flex-shrink-0"
-                            >
-                              <X className="w-4 h-4 text-red-500" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* Idea Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="ideaDescription" className="text-base font-semibold">Describe Your Idea *</Label>
-                  <Textarea
-                    id="ideaDescription"
-                    placeholder="Example: I need a custom phone stand that can hold my phone at a 45-degree angle. It should be stable and have a slot for the charging cable..."
-                    rows={6}
-                    value={formData.ideaDescription}
-                    onChange={(e) => setFormData({ ...formData, ideaDescription: e.target.value })}
-                    required
-                    className="resize-none border-2 focus:border-primary"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Be specific about dimensions, purpose, and any special requirements
-                  </p>
-                </div>
-
-                {/* Additional Details */}
-                <div className="space-y-2">
-                  <Label htmlFor="usageDetails" className="text-base font-semibold">Additional Details *</Label>
-                  <Textarea
-                    id="usageDetails"
-                    placeholder="How will you use this? Any specific measurements, materials preferences, or design constraints?"
-                    rows={4}
-                    value={formData.usageDetails}
-                    onChange={(e) => setFormData({ ...formData, usageDetails: e.target.value })}
-                    required
-                    className="resize-none border-2 focus:border-primary"
-                  />
-                </div>
-
-                {/* Approximate Dimensions */}
-                <div className="space-y-2">
-                  <Label htmlFor="approximateDimensions" className="text-base font-semibold">Approximate Dimensions</Label>
-                  <Input
-                    id="approximateDimensions"
-                    placeholder="E.g., 100mm x 50mm x 30mm (L x W x H)"
-                    value={formData.approximateDimensions}
-                    onChange={(e) => setFormData({ ...formData, approximateDimensions: e.target.value })}
-                    className="border-2 focus:border-primary"
-                  />
-                </div>
-
-                {/* Desired Material */}
-                <div className="space-y-2">
-                  <Label htmlFor="desiredMaterial" className="text-base font-semibold">Desired Material</Label>
-                  <select
-                    id="desiredMaterial"
-                    value={formData.desiredMaterial}
-                    onChange={(e) => setFormData({ ...formData, desiredMaterial: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg focus:border-primary focus:outline-none bg-background"
-                  >
-                    <option value="">Select a material...</option>
-                    <option value="pla">PLA</option>
-                    <option value="abs">ABS</option>
-                    <option value="petg">PETG</option>
-                    <option value="tpu">TPU (Flexible)</option>
-                    <option value="resin">Resin</option>
-                    <option value="unsure">Not sure / Recommend best option</option>
-                  </select>
-                </div>
-
-                {/* Request Chat Checkbox */}
-                <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="requestChat"
-                      checked={formData.requestChat}
-                      onChange={(e) => setFormData({ ...formData, requestChat: e.target.checked })}
-                      className="mt-1 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor="requestChat" className="text-base font-semibold cursor-pointer">
-                        💬 Request Chat with Admin
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        If you need to discuss details or have questions, check this box to open a conversation with the admin. You'll be notified when the admin responds.
-                      </p>
-                    </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                  {formData.requestChat && (
-                    <div className="ml-8 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-sm text-blue-700 dark:text-blue-400">
-                        ✓ A conversation will be automatically created when you submit this request. You can view it in the Conversations section.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                </ScrollArea>
 
-                {/* Submit Button */}
-                <Button type="submit" className="w-full h-12 text-lg font-semibold shadow-lg hover-lift" size="lg">
-                  <Palette className="w-5 h-5 mr-2" />
-                  Submit Design 
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                {/* Selected Order Details */}
+                {selectedRequest && (
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-gray-400">Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div>
+                        <span className="text-gray-500">Type:</span>{' '}
+                        <span className="text-white">{selectedRequest.usage_type || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Material:</span>{' '}
+                        <span className="text-white">{selectedRequest.desired_material || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Dimensions:</span>{' '}
+                        <span className="text-white">{selectedRequest.approximate_dimensions || 'N/A'}</span>
+                      </div>
+                      {selectedRequest.usage_details && (
+                        <div>
+                          <span className="text-gray-500">Usage Details:</span>{' '}
+                          <p className="text-white mt-1">{selectedRequest.usage_details}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Right Column - Conversation */}
+            <Card className="bg-gray-900 border-gray-800 flex flex-col">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-cyan-400" />
+                  Conversation with Admin
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden flex flex-col">
+                {selectedRequest ? (
+                  <>
+                    {/* Messages */}
+                    <ScrollArea className="flex-1 pr-4 mb-4">
+                      <div className="space-y-4">
+                        {messages.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            No messages yet. Start the conversation!
+                          </div>
+                        ) : (
+                          messages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[80%] rounded-lg p-3 ${
+                                  msg.sender_type === 'user'
+                                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                    : 'bg-gray-800 text-gray-200'
+                                }`}
+                              >
+                                <p className="text-sm">{msg.message}</p>
+                                <span className="text-xs opacity-70 mt-1 block">
+                                  {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+
+                    {/* Message Input */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        placeholder="Type your message..."
+                        className="bg-gray-800 border-gray-700 text-white"
+                        disabled={sendingMessage}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage || !newMessage.trim()}
+                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                      >
+                        {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-500">
+                    Select a design request to view conversation
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
 
-      {/* Completion Dialog */}
-      <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
-        <DialogContent className="max-w-md animate-scale-in">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl">
-              <Check className="w-6 h-6 text-green-500" />
-              3D Design Created!
-            </DialogTitle>
-          </DialogHeader>
+      {/* Form Dialog */}
+      <DesignFormDialog
+        open={showFormDialog}
+        onOpenChange={setShowFormDialog}
+        formData={formData}
+        setFormData={setFormData}
+        attachedFiles={attachedFiles}
+        setAttachedFiles={setAttachedFiles}
+        isDragging={isDragging}
+        setIsDragging={setIsDragging}
+        handleFileChange={handleFileChange}
+        handleDrop={handleDrop}
+        removeFile={removeFile}
+        handleSubmit={handleSubmit}
+        submitting={submitting}
+      />
+    </div>
+  );
+};
 
-          <div className="py-6 text-center space-y-4">
-            <div className="w-20 h-20 mx-auto bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center shadow-lg">
-              <Check className="w-10 h-10 text-green-600 dark:text-green-500" />
-            </div>
-            <p className="text-lg font-semibold">
-              Your custom 3D design has been created and is ready for review!
-            </p>
-            <p className="text-sm text-muted-foreground">
-              File: <span className="font-mono font-bold">{currentRequest?.adminFile?.name}</span>
-            </p>
+// Separate component for the form dialog
+const DesignFormDialog = ({
+  open,
+  onOpenChange,
+  formData,
+  setFormData,
+  attachedFiles,
+  setAttachedFiles,
+  isDragging,
+  setIsDragging,
+  handleFileChange,
+  handleDrop,
+  removeFile,
+  handleSubmit,
+  submitting,
+}: any) => {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Palette className="w-6 h-6 text-cyan-500" />
+            New Design Request
+          </DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {/* Design Type */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">What type of design do you need?</Label>
+            <RadioGroup
+              value={formData.usage}
+              onValueChange={(value) => setFormData({ ...formData, usage: value as any })}
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
+                <RadioGroupItem value="mechanical" id="mechanical" />
+                <Label htmlFor="mechanical" className="cursor-pointer">Mechanical Part</Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
+                <RadioGroupItem value="decorative" id="decorative" />
+                <Label htmlFor="decorative" className="cursor-pointer">Decorative Piece</Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
+                <RadioGroupItem value="functional" id="functional" />
+                <Label htmlFor="functional" className="cursor-pointer">Functional Object</Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
+                <RadioGroupItem value="prototype" id="prototype" />
+                <Label htmlFor="prototype" className="cursor-pointer">Prototype</Label>
+              </div>
+            </RadioGroup>
           </div>
 
-          <DialogFooter className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="flex-1 h-10"
+          {/* Idea Description */}
+          <div className="space-y-2">
+            <Label htmlFor="ideaDescription" className="text-base font-semibold">
+              Describe your idea <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="ideaDescription"
+              value={formData.ideaDescription}
+              onChange={(e) => setFormData({ ...formData, ideaDescription: e.target.value })}
+              placeholder="Tell us about your design idea in detail..."
+              className="bg-gray-800 border-gray-700 text-white min-h-32"
+              required
+            />
+          </div>
+
+          {/* Usage Details */}
+          <div className="space-y-2">
+            <Label htmlFor="usageDetails">Usage Details</Label>
+            <Input
+              id="usageDetails"
+              value={formData.usageDetails}
+              onChange={(e) => setFormData({ ...formData, usageDetails: e.target.value })}
+              placeholder="How will you use this?"
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+
+          {/* Dimensions & Material */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="dimensions">Approximate Dimensions</Label>
+              <Input
+                id="dimensions"
+                value={formData.approximateDimensions}
+                onChange={(e) => setFormData({ ...formData, approximateDimensions: e.target.value })}
+                placeholder="e.g., 10cm x 5cm"
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="material">Desired Material</Label>
+              <Input
+                id="material"
+                value={formData.desiredMaterial}
+                onChange={(e) => setFormData({ ...formData, desiredMaterial: e.target.value })}
+                placeholder="e.g., PLA, ABS"
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+
+          {/* File Upload */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Reference Files (Optional)</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4 text-sm">
+              <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                <p className="font-semibold text-cyan-400 mb-1">🖼️ Images</p>
+                <p className="text-gray-400 text-xs">JPG, PNG, GIF, SVG, WEBP, BMP, TIFF, ICO</p>
+              </div>
+              <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                <p className="font-semibold text-cyan-400 mb-1">📄 Documents</p>
+                <p className="text-gray-400 text-xs">PDF</p>
+              </div>
+              <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                <p className="font-semibold text-cyan-400 mb-1">🎯 3D Files</p>
+                <p className="text-gray-400 text-xs">STL, OBJ, STEP, STP, 3MF</p>
+              </div>
+            </div>
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                isDragging ? 'border-cyan-500 bg-cyan-500/10' : 'border-gray-700 hover:border-gray-600'
+              }`}
+              onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
             >
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button
-              onClick={handleApprove}
-              className="flex-1 h-10 shadow-lg"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Approve & Continue
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <Upload className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400 mb-2">Drag & drop files or</p>
+              <Button type="button" variant="outline" className="relative">
+                Browse Files
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.stl,.obj,.step,.stp,.3mf"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </Button>
+            </div>
+
+            {attachedFiles.length > 0 && (
+              <div className="space-y-2">
+                {attachedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-800 rounded">
+                    <span className="text-sm text-gray-300">{file.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(index)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+            size="lg"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              'Submit Design Request'
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

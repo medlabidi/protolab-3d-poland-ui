@@ -153,6 +153,36 @@ export class ConversationsService {
   }
 
   /**
+   * Get conversation by design request ID
+   */
+  async getConversationByDesignRequest(designRequestId: string, userId: string): Promise<Conversation | null> {
+    const supabase = getSupabase();
+    
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('design_request_id', designRequestId)
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No conversation found
+          return null;
+        }
+        logger.error({ err: error }, `Failed to get conversation for design request ${designRequestId}`);
+        return null;
+      }
+      
+      return data;
+    } catch (err) {
+      logger.error({ err }, `Error getting conversation for design request ${designRequestId}`);
+      return null;
+    }
+  }
+
+  /**
    * Get a conversation by ID
    */
   async getConversation(conversationId: string, userId: string): Promise<Conversation | null> {

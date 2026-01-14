@@ -69,18 +69,26 @@ const AdminDesignAssistance = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
+      console.log('Fetching design requests from:', `${API_URL}/admin/design-requests`);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(`${API_URL}/admin/design-requests`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Design requests data:', data);
         // The new endpoint returns design requests directly
         setOrders(data.designRequests || []);
       } else {
-        toast.error('Failed to fetch design assistance orders');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error response:', errorData);
+        toast.error(`Failed to fetch design assistance orders: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching design assistance orders:', error);

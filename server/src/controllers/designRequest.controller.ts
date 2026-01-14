@@ -88,7 +88,10 @@ class DesignRequestController {
 
       const designRequests = await designRequestService.getUserDesignRequests(userId);
 
-      res.json(designRequests);
+      res.json({ 
+        requests: designRequests,
+        count: designRequests.length 
+      });
     } catch (error: any) {
       console.error('Error fetching design requests:', error);
       res.status(500).json({

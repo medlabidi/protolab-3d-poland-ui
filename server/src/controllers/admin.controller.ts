@@ -618,9 +618,9 @@ export class AdminController {
       const supabase = getSupabase();
       
       const { data: designRequests, error } = await supabase
-        .from('orders')
+        .from('design_requests')
         .select('*, users(id, first_name, last_name, email)')
-        .eq('order_type', 'design')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -646,10 +646,10 @@ export class AdminController {
       const supabase = getSupabase();
       
       const { data: designRequest, error } = await supabase
-        .from('orders')
+        .from('design_requests')
         .select('*, users(id, first_name, last_name, email)')
         .eq('id', id)
-        .eq('order_type', 'design')
+        .is('deleted_at', null)
         .single();
       
       if (error || !designRequest) {
@@ -666,7 +666,7 @@ export class AdminController {
         } : null
       };
       
-      res.json({ designRequest: formattedRequest });
+      res.json({ request: formattedRequest });
     } catch (error) {
       next(error);
     }
@@ -685,10 +685,13 @@ export class AdminController {
       const supabase = getSupabase();
       
       const { data: designRequest, error } = await supabase
-        .from('orders')
-        .update({ design_status: status })
+        .from('design_requests')
+        .update({ 
+          design_status: status,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
-        .eq('order_type', 'design')
+        .is('deleted_at', null)
         .select('*, users(id, email, first_name, last_name)')
         .single();
       

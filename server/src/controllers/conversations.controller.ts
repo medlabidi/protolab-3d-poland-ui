@@ -36,6 +36,31 @@ export class ConversationsController {
   }
 
   /**
+   * Get conversation by design request ID
+   */
+  async getConversationByDesignRequest(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const { designRequestId } = req.params;
+      
+      const conversation = await conversationsService.getConversationByDesignRequest(designRequestId, userId);
+      
+      if (!conversation) {
+        res.status(404).json({ error: 'Conversation not found', conversation: null, messages: [] });
+        return;
+      }
+      
+      // Get messages for this conversation
+      const messages = await conversationsService.getMessages(conversation.id, 100);
+      
+      res.json({ conversation, messages });
+    } catch (error) {
+      logger.error({ err: error, userId: req.user?.id }, 'Error in getConversationByDesignRequest');
+      next(error);
+    }
+  }
+
+  /**
    * Get a specific conversation
    */
   async getConversation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
