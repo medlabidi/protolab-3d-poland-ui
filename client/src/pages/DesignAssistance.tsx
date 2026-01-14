@@ -28,6 +28,7 @@ interface DesignRequest {
   estimated_price?: number;
   final_price?: number;
   payment_status?: string;
+  admin_notes?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -777,7 +778,7 @@ const DesignFormDialog = ({
 
             {attachedFiles.length > 0 && (
               <div className="space-y-2">
-                {attachedFiles.map((file, index) => (
+                {attachedFiles.map((file: File, index: number) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-800 rounded">
                     <span className="text-sm text-gray-300">{file.name}</span>
                     <Button
