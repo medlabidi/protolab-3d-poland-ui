@@ -19,4 +19,8 @@ router.post(
 router.get('/my', designRequestController.getMyDesignRequests);
 router.get('/:id', designRequestController.getDesignRequestById);
 
+// Approve or reject design
+router.post('/:id/approve', designRequestController.approveDesign);
+router.post('/:id/reject', designRequestController.rejectDesign);
+
 export default router;

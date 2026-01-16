@@ -44,6 +44,9 @@ interface Order {
   design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
   admin_design_file?: string;
   admin_notes?: string;
+  user_approval_status?: 'pending' | 'approved' | 'rejected';
+  user_approval_at?: string;
+  user_rejection_reason?: string;
   estimated_price?: number;
   final_price?: number;
   paid_amount?: number;
@@ -344,6 +347,19 @@ const AdminDesignAssistance = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getApprovalStatusBadge = (status?: string) => {
+    if (!status || status === 'pending') {
+      return { className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500', text: '⏳ Pending' };
+    }
+    if (status === 'approved') {
+      return { className: 'bg-green-500/20 text-green-400 border-green-500', text: '✓ Approved' };
+    }
+    if (status === 'rejected') {
+      return { className: 'bg-red-500/20 text-red-400 border-red-500', text: '✗ Rejected' };
+    }
+    return { className: 'bg-gray-500/20 text-gray-400 border-gray-500', text: 'N/A' };
   };
 
   if (loading) {
@@ -835,6 +851,11 @@ const AdminDesignAssistance = () => {
                           }`}>
                             {request.design_status}
                           </Badge>
+                          {request.admin_design_file && (
+                            <Badge className={`${getApprovalStatusBadge(request.user_approval_status).className} border text-xs`}>
+                              {getApprovalStatusBadge(request.user_approval_status).text}
+                            </Badge>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -859,14 +880,63 @@ const AdminDesignAssistance = () => {
           {/* Right Column - Conversation */}
           <Card ref={conversationRef} className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
             <CardHeader className="border-b border-gray-800 flex-shrink-0">
-              <CardTitle className="text-xl flex items-center gap-2 text-white">
-                <MessageSquare className="w-5 h-5 text-cyan-500" />
-                Conversation
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                  <MessageSquare className="w-5 h-5 text-cyan-500" />
+                  Conversation
+                  {messages.length > 0 && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 text-xs">
+                      {messages.length} messages
+                    </Badge>
+                  )}
+                  {messages.filter(m => m.sender_type === 'user' && m.is_read === false).length > 0 && (
+                    <Badge className="bg-orange-500 text-white text-xs animate-pulse">
+                      {messages.filter(m => m.sender_type === 'user' && m.is_read === false).length} new
+                    </Badge>
+                  )}
+                </CardTitle>
+                {selectedRequestForConversation && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSelectRequestForConversation(selectedRequestForConversation)}
+                    className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                  >
+                    <Loader2 className="w-4 h-4 mr-1" />
+                    Refresh
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
               {selectedRequestForConversation ? (
                 <>
+                  {/* Project Info Bar */}
+                  <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold truncate">{selectedRequestForConversation.project_name}</h3>
+                        <p className="text-gray-400 text-xs truncate">{selectedRequestForConversation.idea_description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3">
+                        <Badge className={`${
+                          selectedRequestForConversation.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                          selectedRequestForConversation.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                          selectedRequestForConversation.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                          selectedRequestForConversation.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                          'bg-gray-500/20 text-gray-500'
+                        }`}>
+                          {selectedRequestForConversation.design_status}
+                        </Badge>
+                        {selectedRequestForConversation.admin_design_file && (
+                          <Badge className={`${getApprovalStatusBadge(selectedRequestForConversation.user_approval_status).className} border text-xs`}>
+                            {getApprovalStatusBadge(selectedRequestForConversation.user_approval_status).text}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Messages */}
                   <ScrollArea className="flex-1 pr-4">
                     <div className="space-y-4 pb-4 pt-4">
@@ -880,20 +950,83 @@ const AdminDesignAssistance = () => {
                             key={msg.id}
                             className={`flex ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div
-                              className={`max-w-[80%] rounded-lg p-3 ${
+                            <div className={`flex items-start gap-2 max-w-[85%] ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {/* Avatar/Badge */}
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                                 msg.sender_type === 'engineer' || msg.sender_type === 'admin'
-                                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
-                                  : 'bg-gray-800 text-gray-200'
-                              }`}
-                            >
-                              <p className="text-sm">{msg.message}</p>
-                              <span className="text-xs opacity-70 mt-1 block">
-                                {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
+                                  ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                                  : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+                              }`}>
+                                {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'A' : 'U'}
+                              </div>
+                              
+                              {/* Message Bubble */}
+                              <div className="flex flex-col gap-1 flex-1">
+                                {/* Sender Label */}
+                                <span className={`text-xs font-semibold ${
+                                  msg.sender_type === 'engineer' || msg.sender_type === 'admin' 
+                                    ? 'text-cyan-400 text-right' 
+                                    : 'text-purple-400 text-left'
+                                }`}>
+                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : 'User'}
+                                </span>
+                                
+                                <div
+                                  className={`rounded-lg p-3 ${
+                                    msg.sender_type === 'engineer' || msg.sender_type === 'admin'
+                                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                      : 'bg-gray-800 text-gray-200 border border-gray-700'
+                                  }`}
+                                >
+                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                  
+                                  {/* Attachments */}
+                                  {msg.attachments && msg.attachments.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
+                                      {msg.attachments.map((att: any, idx: number) => (
+                                        <div key={idx} className="flex items-center gap-2 text-xs opacity-90">
+                                          <Package className="w-3 h-3" />
+                                          <span className="truncate">{att.name || 'Attachment'}</span>
+                                          {att.url && (
+                                            <a 
+                                              href={att.url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-cyan-200 hover:text-cyan-100 underline"
+                                            >
+                                              View
+                                            </a>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Timestamp */}
+                                  <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
+                                    <span>
+                                      {new Date(msg.created_at).toLocaleDateString('en-US', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                    {msg.is_read === false && msg.sender_type === 'user' && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="text-orange-400 font-semibold">New</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))

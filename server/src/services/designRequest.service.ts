@@ -108,6 +108,21 @@ export class DesignRequestService {
       payment_status: 'paid',
     });
   }
+
+  async approveDesign(id: string): Promise<IDesignRequest> {
+    return await DesignRequest.update(id, {
+      user_approval_status: 'approved',
+      user_approval_at: new Date().toISOString(),
+    });
+  }
+
+  async rejectDesign(id: string, reason?: string): Promise<IDesignRequest> {
+    return await DesignRequest.update(id, {
+      user_approval_status: 'rejected',
+      user_approval_at: new Date().toISOString(),
+      user_rejection_reason: reason,
+    });
+  }
 }
 
 export const designRequestService = new DesignRequestService();

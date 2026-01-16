@@ -46,7 +46,7 @@ foreach ($statement in $statements) {
         } | ConvertTo-Json
 
         try {
-            $response = Invoke-RestMethod -Uri "$supabaseUrl/rest/v1/rpc/exec_sql" -Method Post -Headers $headers -Body $body -ErrorAction Stop
+            Invoke-RestMethod -Uri "$supabaseUrl/rest/v1/rpc/exec_sql" -Method Post -Headers $headers -Body $body -ErrorAction Stop | Out-Null
             Write-Host "Success!" -ForegroundColor Green
             $successCount++
         } catch {
@@ -56,7 +56,7 @@ foreach ($statement in $statements) {
                     sql = $statement
                 } | ConvertTo-Json
                 
-                $response = Invoke-WebRequest -Uri "$supabaseUrl/rest/v1/" -Method Post -Headers $headers -Body $altBody
+                Invoke-WebRequest -Uri "$supabaseUrl/rest/v1/" -Method Post -Headers $headers -Body $altBody | Out-Null
                 Write-Host "Success (alt method)!" -ForegroundColor Green
                 $successCount++
             } catch {

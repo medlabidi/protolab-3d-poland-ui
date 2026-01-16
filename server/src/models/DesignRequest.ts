@@ -20,6 +20,11 @@ export type PaymentStatus =
   | 'on_hold'
   | 'refunded';
 
+export type ApprovalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected';
+
 export interface IDesignRequest {
   id: string;
   user_id: string;
@@ -47,6 +52,11 @@ export interface IDesignRequest {
   design_status: DesignStatus;
   admin_design_file?: string;
   admin_notes?: string;
+  
+  // User approval
+  user_approval_status?: ApprovalStatus;
+  user_approval_at?: string;
+  user_rejection_reason?: string;
   
   // Pricing
   estimated_price?: number;

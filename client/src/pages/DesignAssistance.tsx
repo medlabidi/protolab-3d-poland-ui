@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 
 interface DesignRequest {
   id: string;
@@ -29,14 +30,19 @@ interface DesignRequest {
   final_price?: number;
   payment_status?: string;
   admin_notes?: string;
+  admin_design_file?: string;
+  user_approval_status?: 'pending' | 'approved' | 'rejected';
+  user_approval_at?: string;
+  user_rejection_reason?: string;
   created_at: string;
   updated_at?: string;
 }
 
 interface Message {
   id: string;
-  sender_type: 'user' | 'admin';
+  sender_type: 'user' | 'engineer' | 'system';
   message: string;
+  attachments?: any[];
   created_at: string;
   is_read: boolean;
 }
@@ -57,6 +63,11 @@ const DesignAssistance = () => {
   const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+
+  // Approval/Rejection state
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -245,6 +256,114 @@ const DesignAssistance = () => {
     if (e.dataTransfer.files) {
       setAttachedFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
     }
+  };
+
+  const handleApproveDesign = async (requestId: string) => {
+    if (!confirm('Are you sure you want to approve this design? You will proceed to payment.')) {
+      return;
+    }
+
+    setProcessingApproval(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(
+        `${API_URL}/design-requests/${requestId}/approve`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        toast.success('Design approved! Redirecting to payment...');
+        await fetchDesignRequests(); // Refresh data
+        
+        // Redirect to payment after a short delay
+        setTimeout(() => {
+          handleProceedToPayment(selectedRequest!);
+        }, 1500);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve design');
+      }
+    } catch (error: any) {
+      console.error('Error approving design:', error);
+      toast.error(error.message || 'Failed to approve design');
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  const handleRejectDesign = async () => {
+    if (!rejectionReason.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+
+    if (!selectedRequest) return;
+
+    setProcessingApproval(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(
+        `${API_URL}/design-requests/${selectedRequest.id}/reject`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ reason: rejectionReason })
+        }
+      );
+
+      if (response.ok) {
+        toast.success('Design rejected. The admin has been notified.');
+        setShowRejectDialog(false);
+        setRejectionReason('');
+        await fetchDesignRequests();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject design');
+      }
+    } catch (error: any) {
+      console.error('Error rejecting design:', error);
+      toast.error(error.message || 'Failed to reject design');
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  const handleProceedToPayment = (request: DesignRequest) => {
+    // Store request data in sessionStorage
+    sessionStorage.setItem('designPaymentData', JSON.stringify({
+      requestId: request.id,
+      amount: request.final_price || request.estimated_price || 0,
+      projectName: request.project_name,
+      type: 'design'
+    }));
+    
+    // Navigate to checkout
+    navigate(`/checkout?type=design&id=${request.id}`);
+  };
+
+  const getApprovalStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-500/20 text-green-400 border-green-500';
+      case 'rejected':
+        return 'bg-red-500/20 text-red-400 border-red-500';
+      case 'pending':
+      default:
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500';
+    }
+  };
+
+  const is3DFile = (filename: string) => {
+    const ext = filename.toLowerCase().split('.').pop();
+    return ['stl', 'obj', '3mf', 'step', 'stp', 'iges', 'igs'].includes(ext || '');
   };
 
   const removeFile = (index: number) => {
@@ -465,20 +584,150 @@ const DesignAssistance = () => {
                               key={msg.id}
                               className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
-                              <div
-                                className={`max-w-[80%] rounded-lg p-3 ${
+                              <div className={`flex items-start gap-2 max-w-[85%] ${msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                {/* Avatar */}
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                                   msg.sender_type === 'user'
-                                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
-                                    : 'bg-gray-800 text-gray-200'
-                                }`}
-                              >
-                                <p className="text-sm">{msg.message}</p>
-                                <span className="text-xs opacity-70 mt-1 block">
-                                  {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
+                                    ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                                    : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+                                }`}>
+                                  {msg.sender_type === 'user' ? 'Y' : 'A'}
+                                </div>
+                                
+                                {/* Message Content */}
+                                <div className="flex flex-col gap-1 flex-1">
+                                  {/* Sender Label */}
+                                  <span className={`text-xs font-semibold ${
+                                    msg.sender_type === 'user' 
+                                      ? 'text-cyan-400 text-right' 
+                                      : 'text-purple-400 text-left'
+                                  }`}>
+                                    {msg.sender_type === 'user' ? 'You' : 'Admin'}
+                                  </span>
+                                  
+                                  <div
+                                    className={`rounded-lg p-3 ${
+                                      msg.sender_type === 'user'
+                                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                        : 'bg-gray-800 text-gray-200 border border-gray-700'
+                                    }`}
+                                  >
+                                    <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                    
+                                    {/* Timestamp */}
+                                    <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
+                                      <span>
+                                        {new Date(msg.created_at).toLocaleDateString('en-US', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          year: 'numeric',
+                                        })}
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })}
+                                      </span>
+                                    </div>
+
+                                {/* 3D File Attachments from Admin */}
+                                {msg.sender_type === 'engineer' && msg.attachments && msg.attachments.length > 0 && (
+                                  <div className="mt-3 space-y-3">
+                                    {msg.attachments.filter((att: any) => att.url && is3DFile(att.name || att.url)).map((attachment: any, idx: number) => (
+                                      <div key={idx} className="p-4 bg-gray-900 rounded-lg border-2 border-cyan-500/30">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <span className="text-cyan-400 font-semibold flex items-center gap-2">
+                                            <Palette className="w-4 h-4" />
+                                            🎨 Design File Ready for Review
+                                          </span>
+                                          <Badge className={`${getApprovalStatusBadge(selectedRequest.user_approval_status)} border`}>
+                                            {selectedRequest.user_approval_status === 'approved' && '✓ Approved'}
+                                            {selectedRequest.user_approval_status === 'rejected' && '✗ Rejected'}
+                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && '⏳ Pending Review'}
+                                          </Badge>
+                                        </div>
+                                        
+                                        {/* ModelViewer - Preview Only */}
+                                        {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending' || selectedRequest.user_approval_status === 'approved') ? (
+                                          <div className="border-2 border-gray-700 rounded-lg overflow-hidden mb-3" style={{ height: '300px' }}>
+                                            <ModelViewerUrl fileUrl={attachment.url} />
+                                          </div>
+                                        ) : (
+                                          <div className="border-2 border-red-500/30 rounded-lg p-8 mb-3 text-center bg-red-500/5">
+                                            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                                            <p className="text-red-400 text-sm">Design preview blocked due to rejection</p>
+                                          </div>
+                                        )}
+
+                                        {/* Approval Buttons (only if pending) */}
+                                        {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && (
+                                          <div className="flex gap-3">
+                                            <Button 
+                                              onClick={() => handleApproveDesign(selectedRequest.id)}
+                                              disabled={processingApproval}
+                                              className="flex-1 bg-green-600 hover:bg-green-700"
+                                            >
+                                              {processingApproval ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <Check className="w-4 h-4 mr-2" />
+                                              )}
+                                              Approve & Pay
+                                            </Button>
+                                            <Button 
+                                              onClick={() => setShowRejectDialog(true)}
+                                              disabled={processingApproval}
+                                              variant="outline"
+                                              className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+                                            >
+                                              <X className="w-4 h-4 mr-2" />
+                                              Reject
+                                            </Button>
+                                          </div>
+                                        )}
+
+                                        {/* If approved */}
+                                        {selectedRequest.user_approval_status === 'approved' && (
+                                          <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg">
+                                            <p className="text-green-400 text-sm flex items-center gap-2 mb-2">
+                                              <Check className="w-4 h-4" />
+                                              Design approved! You can proceed to payment.
+                                            </p>
+                                            {selectedRequest.payment_status !== 'paid' && (
+                                              <Button 
+                                                onClick={() => handleProceedToPayment(selectedRequest)}
+                                                className="w-full bg-green-600 hover:bg-green-700"
+                                              >
+                                                Proceed to Payment
+                                              </Button>
+                                            )}
+                                            {selectedRequest.payment_status === 'paid' && (
+                                              <p className="text-green-300 text-xs text-center">✓ Payment completed</p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {/* If rejected */}
+                                        {selectedRequest.user_approval_status === 'rejected' && (
+                                          <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
+                                            <p className="text-red-400 text-sm flex items-center gap-2">
+                                              <AlertCircle className="w-4 h-4" />
+                                              Design rejected.
+                                            </p>
+                                            {selectedRequest.user_rejection_reason && (
+                                              <p className="text-red-300 text-xs mt-2">
+                                                Reason: {selectedRequest.user_rejection_reason}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
                               </div>
                             </div>
                           ))
@@ -515,6 +764,54 @@ const DesignAssistance = () => {
           </div>
         </div>
       </main>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-red-400 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Reject Design
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Please provide a reason for rejecting this design. Your feedback will help the admin create a better design for you.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Explain what you'd like changed or why this design doesn't meet your needs..."
+              className="bg-gray-800 border-gray-700 text-white min-h-24"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setShowRejectDialog(false);
+                setRejectionReason('');
+              }}
+              disabled={processingApproval}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRejectDesign}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={!rejectionReason.trim() || processingApproval}
+            >
+              {processingApproval ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <X className="w-4 h-4 mr-2" />
+              )}
+              Reject Design
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Form Dialog */}
       <DesignFormDialog

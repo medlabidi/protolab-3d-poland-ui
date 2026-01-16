@@ -3,7 +3,8 @@ import { logger } from '../config/logger';
 
 export interface Conversation {
   id: string;
-  order_id: string;
+  order_id?: string;
+  design_request_id?: string;
   user_id: string;
   subject?: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -14,6 +15,11 @@ export interface Conversation {
     id: string;
     file_name: string;
     project_name?: string;
+    status: string;
+  };
+  design_request?: {
+    id: string;
+    project_description: string;
     status: string;
   };
   unread_count?: number;
@@ -48,6 +54,11 @@ export class ConversationsService {
             file_name,
             project_name,
             status
+          ),
+          design_requests (
+            id,
+            project_description,
+            status
           )
         `)
         .eq('user_id', userId)
@@ -76,6 +87,7 @@ export class ConversationsService {
           return {
             ...conv,
             order: conv.orders,
+            design_request: conv.design_requests,
             unread_count: unreadCount,
             last_message: lastMessage
           };

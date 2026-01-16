@@ -1358,7 +1358,7 @@ const NewPrint = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
+    <div className="flex min-h-screen overflow-hidden" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       {isLoggedIn && <DashboardSidebar />}
       
       {!isLoggedIn && (

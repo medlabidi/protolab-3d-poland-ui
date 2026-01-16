@@ -130,6 +130,97 @@ class DesignRequestController {
       });
     }
   }
+
+  /**
+   * Approve design
+   * POST /api/design-requests/:id/approve
+   */
+  async approveDesign(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Check if user owns this design request
+      const designRequest = await designRequestService.getDesignRequestById(id);
+      
+      if (!designRequest) {
+        return res.status(404).json({ error: 'Design request not found' });
+      }
+
+      if (designRequest.user_id !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Check if there's a design file to approve
+      if (!designRequest.admin_design_file) {
+        return res.status(400).json({ error: 'No design file available to approve' });
+      }
+
+      // Approve the design
+      const updatedRequest = await designRequestService.approveDesign(id);
+
+      res.json({
+        message: 'Design approved successfully',
+        request: updatedRequest
+      });
+    } catch (error: any) {
+      console.error('Error approving design:', error);
+      res.status(500).json({
+        error: 'Failed to approve design',
+        details: error.message
+      });
+    }
+  }
+
+  /**
+   * Reject design
+   * POST /api/design-requests/:id/reject
+   */
+  async rejectDesign(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Check if user owns this design request
+      const designRequest = await designRequestService.getDesignRequestById(id);
+      
+      if (!designRequest) {
+        return res.status(404).json({ error: 'Design request not found' });
+      }
+
+      if (designRequest.user_id !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Check if there's a design file to reject
+      if (!designRequest.admin_design_file) {
+        return res.status(400).json({ error: 'No design file available to reject' });
+      }
+
+      // Reject the design
+      const updatedRequest = await designRequestService.rejectDesign(id, reason);
+
+      res.json({
+        message: 'Design rejected successfully',
+        request: updatedRequest
+      });
+    } catch (error: any) {
+      console.error('Error rejecting design:', error);
+      res.status(500).json({
+        error: 'Failed to reject design',
+        details: error.message
+      });
+    }
+  }
 }
 
 export const designRequestController = new DesignRequestController();
