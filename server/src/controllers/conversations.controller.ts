@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { conversationsService } from '../services/conversations.service';
 import { logger } from '../config/logger';
+import { getSupabase } from '../config/database';
 
 export class ConversationsController {
   /**
@@ -41,9 +42,23 @@ export class ConversationsController {
   async getConversationByDesignRequest(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
+      const userRole = req.user!.role;
       const { designRequestId } = req.params;
       
-      const conversation = await conversationsService.getConversationByDesignRequest(designRequestId, userId);
+      // For admins, get conversation regardless of user_id
+      // For regular users, only get their own conversations
+      let conversation;
+      if (userRole === 'admin') {
+        const supabase = getSupabase();
+        const { data } = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('design_request_id', designRequestId)
+          .maybeSingle();
+        conversation = data;
+      } else {
+        conversation = await conversationsService.getConversationByDesignRequest(designRequestId, userId);
+      }
       
       if (!conversation) {
         res.status(404).json({ error: 'Conversation not found', conversation: null, messages: [] });
@@ -142,10 +157,12 @@ export class ConversationsController {
       const userId = req.user!.id;
       const userRole = req.user!.role;
       const { conversationId } = req.params;
-      const { message, attachments } = req.body;
+      const { message } = req.body;
+      const file = req.file;
       
-      if (!message || !message.trim()) {
-        res.status(400).json({ error: 'Message is required' });
+      // Message is optional if file is present
+      if (!message?.trim() && !file) {
+        res.status(400).json({ error: 'Message or file is required' });
         return;
       }
       
@@ -162,14 +179,25 @@ export class ConversationsController {
       // Determine sender type based on role
       const senderType = userRole === 'admin' ? 'engineer' : 'user';
       
+      // Build attachments array if file is uploaded
+      const attachments = [];
+      if (file) {
+        attachments.push({
+          name: file.originalname,
+          url: `/uploads/${file.filename}`,
+          size: file.size,
+          type: file.mimetype
+        });
+      }
+      
       const newMessage = await conversationsService.addMessage(conversationId, {
         sender_type: senderType,
         sender_id: userId,
-        message: message.trim(),
-        attachments: attachments || []
+        message: message?.trim() || `Attached file: ${file?.originalname || 'file'}`,
+        attachments: attachments
       });
       
-      logger.info(`${senderType} ${userId} sent message in conversation ${conversationId}`);
+      logger.info({ userId, conversationId, senderType, hasFile: !!file }, 'Message sent successfully');
       
       res.json({ message: newMessage });
     } catch (error) {

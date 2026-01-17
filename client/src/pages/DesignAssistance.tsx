@@ -146,9 +146,17 @@ const DesignAssistance = () => {
         const data = await response.json();
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
+        console.log('Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
+      } else if (response.status === 404) {
+        // No conversation yet
+        console.log('No conversation found for design request:', request.id);
+        setConversationId(null);
+        setMessages([]);
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
+      setConversationId(null);
+      setMessages([]);
     }
   };
 
@@ -215,12 +223,40 @@ const DesignAssistance = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim()) return;
+
+    if (!selectedRequest) {
+      toast.error("Please select a design request first");
+      return;
+    }
 
     setSendingMessage(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+      
+      // Create conversation if it doesn't exist
+      let currentConversationId = conversationId;
+      if (!currentConversationId) {
+        const convResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequest.id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (convResponse.ok) {
+          const convData = await convResponse.json();
+          currentConversationId = convData.conversation?.id || null;
+          setConversationId(currentConversationId);
+        }
+
+        if (!currentConversationId) {
+          toast.error('Failed to create conversation');
+          return;
+        }
+      }
+
+      const response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -233,6 +269,7 @@ const DesignAssistance = () => {
         const data = await response.json();
         setMessages(prev => [...prev, data.message]);
         setNewMessage("");
+        toast.success("Message sent");
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -568,12 +605,12 @@ const DesignAssistance = () => {
                   Conversation with Admin
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
+              <CardContent className="flex-1 overflow-hidden flex flex-col p-0 gap-4">
                 {selectedRequest ? (
                   <>
                     {/* Messages */}
-                    <ScrollArea className="flex-1 pr-4">
-                      <div className="space-y-4 pb-4">
+                    <ScrollArea className="h-[400px] pr-4 px-4">
+                      <div className="space-y-4 pb-4 pt-4">
                         {messages.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
                             No messages yet. Start the conversation!
@@ -632,102 +669,103 @@ const DesignAssistance = () => {
                                       </span>
                                     </div>
 
-                                {/* 3D File Attachments from Admin */}
-                                {msg.sender_type === 'engineer' && msg.attachments && msg.attachments.length > 0 && (
-                                  <div className="mt-3 space-y-3">
-                                    {msg.attachments.filter((att: any) => att.url && is3DFile(att.name || att.url)).map((attachment: any, idx: number) => (
-                                      <div key={idx} className="p-4 bg-gray-900 rounded-lg border-2 border-cyan-500/30">
-                                        <div className="flex items-center justify-between mb-3">
-                                          <span className="text-cyan-400 font-semibold flex items-center gap-2">
-                                            <Palette className="w-4 h-4" />
-                                            🎨 Design File Ready for Review
-                                          </span>
-                                          <Badge className={`${getApprovalStatusBadge(selectedRequest.user_approval_status)} border`}>
-                                            {selectedRequest.user_approval_status === 'approved' && '✓ Approved'}
-                                            {selectedRequest.user_approval_status === 'rejected' && '✗ Rejected'}
-                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && '⏳ Pending Review'}
-                                          </Badge>
-                                        </div>
-                                        
-                                        {/* ModelViewer - Preview Only */}
-                                        {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending' || selectedRequest.user_approval_status === 'approved') ? (
-                                          <div className="border-2 border-gray-700 rounded-lg overflow-hidden mb-3" style={{ height: '300px' }}>
-                                            <ModelViewerUrl fileUrl={attachment.url} />
-                                          </div>
-                                        ) : (
-                                          <div className="border-2 border-red-500/30 rounded-lg p-8 mb-3 text-center bg-red-500/5">
-                                            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
-                                            <p className="text-red-400 text-sm">Design preview blocked due to rejection</p>
-                                          </div>
-                                        )}
-
-                                        {/* Approval Buttons (only if pending) */}
-                                        {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && (
-                                          <div className="flex gap-3">
-                                            <Button 
-                                              onClick={() => handleApproveDesign(selectedRequest.id)}
-                                              disabled={processingApproval}
-                                              className="flex-1 bg-green-600 hover:bg-green-700"
-                                            >
-                                              {processingApproval ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                              ) : (
-                                                <Check className="w-4 h-4 mr-2" />
-                                              )}
-                                              Approve & Pay
-                                            </Button>
-                                            <Button 
-                                              onClick={() => setShowRejectDialog(true)}
-                                              disabled={processingApproval}
-                                              variant="outline"
-                                              className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
-                                            >
-                                              <X className="w-4 h-4 mr-2" />
-                                              Reject
-                                            </Button>
-                                          </div>
-                                        )}
-
-                                        {/* If approved */}
-                                        {selectedRequest.user_approval_status === 'approved' && (
-                                          <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg">
-                                            <p className="text-green-400 text-sm flex items-center gap-2 mb-2">
-                                              <Check className="w-4 h-4" />
-                                              Design approved! You can proceed to payment.
-                                            </p>
-                                            {selectedRequest.payment_status !== 'paid' && (
-                                              <Button 
-                                                onClick={() => handleProceedToPayment(selectedRequest)}
-                                                className="w-full bg-green-600 hover:bg-green-700"
-                                              >
-                                                Proceed to Payment
-                                              </Button>
+                                    {/* 3D File Attachments from Admin */}
+                                    {msg.sender_type === 'engineer' && msg.attachments && msg.attachments.length > 0 && (
+                                      <div className="mt-3 space-y-3">
+                                            {msg.attachments.filter((att: any) => att.url && is3DFile(att.name || att.url)).map((attachment: any, idx: number) => (
+                                          <div key={idx} className="p-4 bg-gray-900 rounded-lg border-2 border-cyan-500/30">
+                                            <div className="flex items-center justify-between mb-3">
+                                              <span className="text-cyan-400 font-semibold flex items-center gap-2">
+                                                <Palette className="w-4 h-4" />
+                                                🎨 Design File Ready for Review
+                                              </span>
+                                              <Badge className={`${getApprovalStatusBadge(selectedRequest.user_approval_status)} border`}>
+                                                {selectedRequest.user_approval_status === 'approved' && '✓ Approved'}
+                                                {selectedRequest.user_approval_status === 'rejected' && '✗ Rejected'}
+                                                {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && '⏳ Pending Review'}
+                                              </Badge>
+                                            </div>
+                                            
+                                            {/* ModelViewer - Preview Only */}
+                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending' || selectedRequest.user_approval_status === 'approved') ? (
+                                              <div className="border-2 border-gray-700 rounded-lg overflow-hidden mb-3" style={{ height: '300px' }}>
+                                                <ModelViewerUrl url={attachment.url.startsWith('http') ? attachment.url : `${API_URL.replace('/api', '')}${attachment.url}`} fileName={attachment.name || attachment.url} />
+                                              </div>
+                                            ) : (
+                                              <div className="border-2 border-red-500/30 rounded-lg p-8 mb-3 text-center bg-red-500/5">
+                                                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                                                <p className="text-red-400 text-sm">Design preview blocked due to rejection</p>
+                                              </div>
                                             )}
-                                            {selectedRequest.payment_status === 'paid' && (
-                                              <p className="text-green-300 text-xs text-center">✓ Payment completed</p>
-                                            )}
-                                          </div>
-                                        )}
 
-                                        {/* If rejected */}
-                                        {selectedRequest.user_approval_status === 'rejected' && (
-                                          <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
-                                            <p className="text-red-400 text-sm flex items-center gap-2">
-                                              <AlertCircle className="w-4 h-4" />
-                                              Design rejected.
-                                            </p>
-                                            {selectedRequest.user_rejection_reason && (
-                                              <p className="text-red-300 text-xs mt-2">
-                                                Reason: {selectedRequest.user_rejection_reason}
-                                              </p>
+                                            {/* Approval Buttons (only if pending) */}
+                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && (
+                                              <div className="flex gap-3">
+                                                <Button 
+                                                  onClick={() => handleApproveDesign(selectedRequest.id)}
+                                                  disabled={processingApproval}
+                                                  className="flex-1 bg-green-600 hover:bg-green-700"
+                                                >
+                                                  {processingApproval ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                  ) : (
+                                                    <Check className="w-4 h-4 mr-2" />
+                                                  )}
+                                                  Approve & Pay
+                                                </Button>
+                                                <Button 
+                                                  onClick={() => setShowRejectDialog(true)}
+                                                  disabled={processingApproval}
+                                                  variant="outline"
+                                                  className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
+                                                >
+                                                  <X className="w-4 h-4 mr-2" />
+                                                  Reject
+                                                </Button>
+                                              </div>
+                                            )}
+
+                                            {/* If approved */}
+                                            {selectedRequest.user_approval_status === 'approved' && (
+                                              <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg">
+                                                <p className="text-green-400 text-sm flex items-center gap-2 mb-2">
+                                                  <Check className="w-4 h-4" />
+                                                  Design approved! You can proceed to payment.
+                                                </p>
+                                                {selectedRequest.payment_status !== 'paid' && (
+                                                  <Button 
+                                                    onClick={() => handleProceedToPayment(selectedRequest)}
+                                                    className="w-full bg-green-600 hover:bg-green-700"
+                                                  >
+                                                    Proceed to Payment
+                                                  </Button>
+                                                )}
+                                                {selectedRequest.payment_status === 'paid' && (
+                                                  <p className="text-green-300 text-xs text-center">✓ Payment completed</p>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            {/* If rejected */}
+                                            {selectedRequest.user_approval_status === 'rejected' && (
+                                              <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
+                                                <p className="text-red-400 text-sm flex items-center gap-2">
+                                                  <AlertCircle className="w-4 h-4" />
+                                                  Design rejected.
+                                                </p>
+                                                {selectedRequest.user_rejection_reason && (
+                                                  <p className="text-red-300 text-xs mt-2">
+                                                    Reason: {selectedRequest.user_rejection_reason}
+                                                  </p>
+                                                )}
+                                              </div>
                                             )}
                                           </div>
-                                        )}
+                                        ))}
                                       </div>
-                                    ))}
+                                    )}
                                   </div>
-                                )}
-
+                                </div>
                               </div>
                             </div>
                           ))
@@ -736,23 +774,34 @@ const DesignAssistance = () => {
                     </ScrollArea>
 
                     {/* Message Input */}
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Input
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        placeholder="Type your message..."
-                        className="bg-gray-800 border-gray-700 text-white"
-                        disabled={sendingMessage}
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        disabled={sendingMessage || !newMessage.trim()}
-                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                      >
-                        {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                      </Button>
-                    </div>
+                    {selectedRequest.user_approval_status === 'rejected' ? (
+                      <div className="flex gap-2 flex-shrink-0 px-4 pb-4">
+                        <div className="w-full p-3 bg-red-500/20 border border-red-500 rounded-lg text-center">
+                          <p className="text-red-400 text-sm flex items-center justify-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Chat disabled - Design rejected
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 flex-shrink-0 px-4 pb-4">
+                        <Input
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                          placeholder="Type your message..."
+                          className="bg-gray-800 border-gray-700 text-white"
+                          disabled={sendingMessage}
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={sendingMessage || !newMessage.trim()}
+                          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                        >
+                          {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                        </Button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-gray-500">

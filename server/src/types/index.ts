@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
     email: string;
     role: 'user' | 'admin';
   };
+  file?: Express.Multer.File;
 }
 
 export interface JWTPayload {

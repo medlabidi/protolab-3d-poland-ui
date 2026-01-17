@@ -70,6 +70,7 @@ const AdminDesignAssistance = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [proposedPrice, setProposedPrice] = useState<string>('');
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -170,6 +171,8 @@ const AdminDesignAssistance = () => {
     
     try {
       const token = localStorage.getItem('accessToken');
+      console.log('Loading conversation for design request:', request.id);
+      
       const response = await fetch(`${API_URL}/conversations/design-request/${request.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -178,6 +181,7 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Conversation loaded:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
         
@@ -189,6 +193,7 @@ const AdminDesignAssistance = () => {
         }
       } else if (response.status === 404) {
         // Conversation doesn't exist yet, initialize empty
+        console.log('No conversation found for design request:', request.id);
         setConversationId(null);
         setMessages([]);
         
@@ -199,11 +204,16 @@ const AdminDesignAssistance = () => {
           }, 100);
         }
       } else {
-        console.error('Failed to fetch conversation:', response.status);
+        const errorText = await response.text().catch(() => '');
+        console.error('Failed to fetch conversation:', response.status, errorText);
+        setConversationId(null);
+        setMessages([]);
         toast.error('Failed to load conversation');
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
+      setConversationId(null);
+      setMessages([]);
     }
   };
 
@@ -257,7 +267,8 @@ const AdminDesignAssistance = () => {
       let response;
       if (attachedFile) {
         const formData = new FormData();
-        formData.append('message', newMessage);
+        const messageText = proposedPrice ? `${newMessage}\n\n💰 Proposed Price: ${proposedPrice} PLN` : newMessage;
+        formData.append('message', messageText);
         formData.append('file', attachedFile);
         
         response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
@@ -280,6 +291,7 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Message sent successfully, reloading conversation...');
         
         // Reload the conversation to get fresh messages from database
         const conversationResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
@@ -290,14 +302,21 @@ const AdminDesignAssistance = () => {
         
         if (conversationResponse.ok) {
           const conversationData = await conversationResponse.json();
+          console.log('Conversation reloaded, messages:', conversationData.messages?.length || 0);
           setMessages(conversationData.messages || []);
+          // Update conversationId if it was just created
+          if (conversationData.conversation?.id) {
+            setConversationId(conversationData.conversation.id);
+          }
         } else {
+          console.warn('Failed to reload conversation, adding message locally');
           // Fallback to adding the message locally if reload fails
           setMessages([...messages, data.message]);
         }
         
         setNewMessage('');
         setAttachedFile(null);
+        setProposedPrice('');
         toast.success('Message sent');
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -938,7 +957,7 @@ const AdminDesignAssistance = () => {
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 pr-4">
+                  <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-4 pb-4 pt-4">
                       {messages.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
@@ -1037,17 +1056,27 @@ const AdminDesignAssistance = () => {
                   {/* Message Input */}
                   <div className="flex-shrink-0 space-y-2">
                     {attachedFile && (
-                      <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
-                        <Package className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm text-gray-300 flex-1 truncate">{attachedFile.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 hover:bg-red-500/20"
-                          onClick={() => setAttachedFile(null)}
-                        >
-                          <X className="w-4 h-4 text-red-400" />
-                        </Button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
+                          <Package className="w-4 h-4 text-cyan-400" />
+                          <span className="text-sm text-gray-300 flex-1 truncate">{attachedFile.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-red-500/20"
+                            onClick={() => setAttachedFile(null)}
+                          >
+                            <X className="w-4 h-4 text-red-400" />
+                          </Button>
+                        </div>
+                        <Input
+                          type="number"
+                          placeholder="Proposed price (PLN)"
+                          value={proposedPrice}
+                          onChange={(e) => setProposedPrice(e.target.value)}
+                          className="bg-gray-800 border-gray-700 text-white"
+                          disabled={sendingMessage}
+                        />
                       </div>
                     )}
                     <div className="flex gap-2">
