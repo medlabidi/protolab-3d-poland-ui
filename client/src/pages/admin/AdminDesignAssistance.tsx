@@ -266,10 +266,18 @@ const AdminDesignAssistance = () => {
       // Send message with or without file
       let response;
       if (attachedFile) {
+        console.log('[Admin] Sending message with file:', {
+          fileName: attachedFile.name,
+          fileSize: attachedFile.size,
+          fileType: attachedFile.type
+        });
+        
         const formData = new FormData();
         const messageText = proposedPrice ? `${newMessage}\n\n💰 Proposed Price: ${proposedPrice} PLN` : newMessage;
         formData.append('message', messageText);
         formData.append('file', attachedFile);
+        
+        console.log('[Admin] FormData prepared, sending to:', `${API_URL}/conversations/${currentConversationId}/messages`);
         
         response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
           method: 'POST',
@@ -278,6 +286,8 @@ const AdminDesignAssistance = () => {
           },
           body: formData,
         });
+        
+        console.log('[Admin] Response status:', response.status, response.statusText);
       } else {
         response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
           method: 'POST',
@@ -1057,17 +1067,24 @@ const AdminDesignAssistance = () => {
                   <div className="flex-shrink-0 space-y-2">
                     {attachedFile && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
-                          <Package className="w-4 h-4 text-cyan-400" />
-                          <span className="text-sm text-gray-300 flex-1 truncate">{attachedFile.name}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 hover:bg-red-500/20"
-                            onClick={() => setAttachedFile(null)}
-                          >
-                            <X className="w-4 h-4 text-red-400" />
-                          </Button>
+                        <div className="p-3 bg-gray-800 rounded-lg border border-cyan-500/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="w-4 h-4 text-cyan-400" />
+                            <span className="text-sm font-semibold text-cyan-400">File Attached</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-red-500/20 ml-auto"
+                              onClick={() => setAttachedFile(null)}
+                            >
+                              <X className="w-4 h-4 text-red-400" />
+                            </Button>
+                          </div>
+                          <div className="text-xs space-y-1 text-gray-300">
+                            <p className="truncate">📄 <span className="font-medium">{attachedFile.name}</span></p>
+                            <p>📦 Size: {(attachedFile.size / 1024).toFixed(2)} KB</p>
+                            <p>🔧 Type: {attachedFile.type || 'Unknown'}</p>
+                          </div>
                         </div>
                         <Input
                           type="number"
@@ -1092,10 +1109,17 @@ const AdminDesignAssistance = () => {
                         type="file"
                         id="file-upload"
                         className="hidden"
-                        accept=".stl,.obj,.3mf,.step,.stp,.iges,.igs"
+                        accept=".stl,.obj,.3mf,.glb,.gltf,.step,.stp,.iges,.igs"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) setAttachedFile(file);
+                          if (file) {
+                            console.log('[Admin] File selected:', {
+                              name: file.name,
+                              size: file.size,
+                              type: file.type
+                            });
+                            setAttachedFile(file);
+                          }
                         }}
                       />
                       <Button
@@ -1104,7 +1128,7 @@ const AdminDesignAssistance = () => {
                         className="border-gray-700 hover:bg-cyan-500/20"
                         onClick={() => document.getElementById('file-upload')?.click()}
                         disabled={sendingMessage}
-                        title="Attach 3D model file"
+                        title="Attach 3D model file (Recommended: GLB or GLTF for best web preview)"
                       >
                         <Upload className="w-4 h-4" />
                       </Button>

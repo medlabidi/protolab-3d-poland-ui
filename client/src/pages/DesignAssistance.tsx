@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -68,6 +68,11 @@ const DesignAssistance = () => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
+
+  // 3D Viewer Modal state
+  const [show3DModal, setShow3DModal] = useState(false);
+  const [modal3DUrl, setModal3DUrl] = useState<string | null>(null);
+  const [modal3DFileName, setModal3DFileName] = useState<string>("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -146,7 +151,24 @@ const DesignAssistance = () => {
         const data = await response.json();
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
-        console.log('Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
+        console.log('✅ [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
+        
+        // Log messages with attachments for debugging
+        const messagesWithAttachments = data.messages?.filter((msg: any) => msg.attachments && msg.attachments.length > 0);
+        if (messagesWithAttachments && messagesWithAttachments.length > 0) {
+          console.log('📎 [Design Assistance] Messages with attachments:', messagesWithAttachments.length);
+          messagesWithAttachments.forEach((msg: any, idx: number) => {
+            console.log(`  Message ${idx + 1}:`, {
+              id: msg.id,
+              sender: msg.sender_type,
+              attachments: msg.attachments.map((att: any) => ({
+                name: att.name,
+                url: att.url,
+                size: att.size
+              }))
+            });
+          });
+        }
       } else if (response.status === 404) {
         // No conversation yet
         console.log('No conversation found for design request:', request.id);
@@ -399,8 +421,14 @@ const DesignAssistance = () => {
   };
 
   const is3DFile = (filename: string) => {
+    if (!filename) {
+      console.log('⚠️ [is3DFile] No filename provided');
+      return false;
+    }
     const ext = filename.toLowerCase().split('.').pop();
-    return ['stl', 'obj', '3mf', 'step', 'stp', 'iges', 'igs'].includes(ext || '');
+    const is3D = ['stl', 'obj', '3mf', 'glb', 'gltf', 'step', 'stp', 'iges', 'igs'].includes(ext || '');
+    console.log(`🔍 [is3DFile] Testing: "${filename}" | Extension: "${ext}" | Is 3D: ${is3D}`);
+    return is3D;
   };
 
   const removeFile = (index: number) => {
@@ -616,7 +644,13 @@ const DesignAssistance = () => {
                             No messages yet. Start the conversation!
                           </div>
                         ) : (
-                          messages.map((msg) => (
+                          messages.map((msg) => {
+                            // Log message details for debugging
+                            if (msg.attachments && msg.attachments.length > 0) {
+                              console.log(`💬 [Message] ID: ${msg.id}, Sender: ${msg.sender_type}, Attachments: ${msg.attachments.length}`);
+                            }
+                            
+                            return (
                             <div
                               key={msg.id}
                               className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -670,14 +704,55 @@ const DesignAssistance = () => {
                                     </div>
 
                                     {/* 3D File Attachments from Admin */}
-                                    {msg.sender_type === 'engineer' && msg.attachments && msg.attachments.length > 0 && (
+                                    {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (
                                       <div className="mt-3 space-y-3">
-                                            {msg.attachments.filter((att: any) => att.url && is3DFile(att.name || att.url)).map((attachment: any, idx: number) => (
-                                          <div key={idx} className="p-4 bg-gray-900 rounded-lg border-2 border-cyan-500/30">
-                                            <div className="flex items-center justify-between mb-3">
-                                              <span className="text-cyan-400 font-semibold flex items-center gap-2">
+                                            {(() => {
+                                              console.log(`📋 [Message ${msg.id}] All attachments BEFORE filtering:`, msg.attachments.map((a: any) => ({
+                                                name: a.name,
+                                                url: a.url,
+                                                hasName: !!a.name,
+                                                hasUrl: !!a.url
+                                              })));
+                                              
+                                              const filtered3DFiles = msg.attachments.filter((att: any) => {
+                                                const hasUrl = !!att.url;
+                                                const fileName = att.name || att.url;
+                                                const is3D = is3DFile(fileName);
+                                                return hasUrl && is3D;
+                                              });
+                                              
+                                              console.log(`🎨 [Message ${msg.id}] Sender: ${msg.sender_type}, Total attachments:`, msg.attachments.length, '| 3D files:', filtered3DFiles.length);
+                                              
+                                              if (filtered3DFiles.length === 0) {
+                                                console.log('⚠️ No 3D files found. Attachments:', msg.attachments.map((a: any) => ({ name: a.name, url: a.url })));
+                                              }
+                                              
+                                              return filtered3DFiles;
+                                            })().map((attachment: any, idx: number) => {
+                                              // Construct proper file URL
+                                              const fileUrl = (() => {
+                                                if (attachment.url.startsWith('http')) {
+                                                  return attachment.url;
+                                                }
+                                                // Remove /api and construct proper URL
+                                                const baseUrl = API_URL.replace('/api', '');
+                                                // Ensure the path starts with /
+                                                const path = attachment.url.startsWith('/') ? attachment.url : `/${attachment.url}`;
+                                                return `${baseUrl}${path}`;
+                                              })();
+                                              
+                                              console.log('[3D Viewer] Attachment info:', {
+                                                name: attachment.name,
+                                                url: attachment.url,
+                                                constructedUrl: fileUrl
+                                              });
+                                              
+                                              return (
+                                          <div key={idx} className="bg-gray-800 border-gray-700 rounded-lg p-0 mb-6">
+                                            <div className="border-b border-gray-700 px-4 pt-4 pb-2 flex items-center justify-between">
+                                              <span className="text-white font-semibold flex items-center gap-2">
                                                 <Palette className="w-4 h-4" />
-                                                🎨 Design File Ready for Review
+                                                3D Model
                                               </span>
                                               <Badge className={`${getApprovalStatusBadge(selectedRequest.user_approval_status)} border`}>
                                                 {selectedRequest.user_approval_status === 'approved' && '✓ Approved'}
@@ -685,22 +760,38 @@ const DesignAssistance = () => {
                                                 {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && '⏳ Pending Review'}
                                               </Badge>
                                             </div>
-                                            
-                                            {/* ModelViewer - Preview Only */}
-                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending' || selectedRequest.user_approval_status === 'approved') ? (
-                                              <div className="border-2 border-gray-700 rounded-lg overflow-hidden mb-3" style={{ height: '300px' }}>
-                                                <ModelViewerUrl url={attachment.url.startsWith('http') ? attachment.url : `${API_URL.replace('/api', '')}${attachment.url}`} fileName={attachment.name || attachment.url} />
+                                            <div className="px-4 pt-4">
+                                              <div className="mb-3" style={{ height: '250px' }}>
+                                                <ModelViewerUrl url={fileUrl} fileName={attachment.name || attachment.url} height="250px" />
                                               </div>
-                                            ) : (
-                                              <div className="border-2 border-red-500/30 rounded-lg p-8 mb-3 text-center bg-red-500/5">
-                                                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                                              <div className="flex items-center justify-between mt-2">
+                                                <p className="text-sm text-gray-400 truncate max-w-[70%]">{attachment.name || 'Unknown file'}</p>
+                                                <Button
+                                                  onClick={() => {
+                                                    setModal3DUrl(fileUrl);
+                                                    setModal3DFileName(attachment.name || attachment.url);
+                                                    setShow3DModal(true);
+                                                  }}
+                                                  className="border-blue-500 text-blue-300 hover:bg-blue-500/20"
+                                                  size="sm"
+                                                >
+                                                  <Maximize2 className="w-4 h-4 mr-2" />
+                                                  Fullscreen
+                                                </Button>
+                                              </div>
+                                              <p className="text-orange-400 text-[10px] mt-2">💡 If preview fails, the file may not be uploaded correctly by admin. Check console logs.</p>
+                                            </div>
+                                            {/* Si rejeté, afficher bloc d'erreur */}
+                                            {selectedRequest.user_approval_status === 'rejected' && (
+                                              <div className="border-t border-gray-700 p-4 bg-red-500/5 text-center">
+                                                <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
                                                 <p className="text-red-400 text-sm">Design preview blocked due to rejection</p>
                                               </div>
                                             )}
 
                                             {/* Approval Buttons (only if pending) */}
                                             {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && (
-                                              <div className="flex gap-3">
+                                              <div className="flex gap-3 mt-4">
                                                 <Button 
                                                   onClick={() => handleApproveDesign(selectedRequest.id)}
                                                   disabled={processingApproval}
@@ -724,10 +815,9 @@ const DesignAssistance = () => {
                                                 </Button>
                                               </div>
                                             )}
-
                                             {/* If approved */}
                                             {selectedRequest.user_approval_status === 'approved' && (
-                                              <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg">
+                                              <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg mt-4">
                                                 <p className="text-green-400 text-sm flex items-center gap-2 mb-2">
                                                   <Check className="w-4 h-4" />
                                                   Design approved! You can proceed to payment.
@@ -748,7 +838,7 @@ const DesignAssistance = () => {
 
                                             {/* If rejected */}
                                             {selectedRequest.user_approval_status === 'rejected' && (
-                                              <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
+                                              <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg mt-4">
                                                 <p className="text-red-400 text-sm flex items-center gap-2">
                                                   <AlertCircle className="w-4 h-4" />
                                                   Design rejected.
@@ -761,14 +851,16 @@ const DesignAssistance = () => {
                                               </div>
                                             )}
                                           </div>
-                                        ))}
+                                        );
+                                      })}
                                       </div>
                                     )}
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </ScrollArea>
@@ -971,6 +1063,42 @@ const DesignAssistance = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 3D Model Fullscreen Viewer Modal */}
+      <Dialog open={show3DModal} onOpenChange={setShow3DModal}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 bg-gray-900 border-cyan-500/30">
+          <DialogHeader className="px-6 py-4 border-b border-gray-800">
+            <DialogTitle className="text-xl font-bold text-cyan-400 flex items-center gap-2">
+              <Palette className="w-5 h-5" />
+              3D Model Viewer - {modal3DFileName}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Interact with the model: Rotate (left click + drag), Pan (right click + drag), Zoom (scroll)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 p-4" style={{ height: 'calc(95vh - 120px)' }}>
+            {modal3DUrl && (
+              <ModelViewerUrl 
+                url={modal3DUrl} 
+                fileName={modal3DFileName} 
+                height="100%"
+              />
+            )}
+          </div>
+          <div className="px-6 py-4 border-t border-gray-800 flex justify-between items-center">
+            <p className="text-sm text-gray-400">
+              💡 Note: File download will be available after payment completion.
+            </p>
+            <Button 
+              onClick={() => setShow3DModal(false)}
+              variant="outline"
+              className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              Close Viewer
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
