@@ -18,21 +18,35 @@ export class AdminController {
       if (project_name || user_id) {
         let query = supabase
           .from('orders')
-          .select('*, users(name, email)')
+          .select('*')
           .order('created_at', { ascending: false });
-        
+
         if (project_name) {
           query = query.eq('project_name', project_name);
         }
-        
+
         if (user_id) {
           query = query.eq('user_id', user_id);
         }
-        
+
         const { data: orders, error } = await query;
-        
+
         if (error) throw error;
-        res.json({ orders: orders || [], count: orders?.length || 0 });
+        if (!orders || orders.length === 0) {
+          res.json({ orders: [], count: 0 });
+          return;
+        }
+
+        const userIds = [...new Set(orders.map((o: any) => o.user_id).filter(Boolean))];
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, name, first_name, last_name, email')
+          .in('id', userIds);
+        const userMap: Record<string, any> = {};
+        if (users) users.forEach((u: any) => { userMap[u.id] = u; });
+        const enriched = orders.map((o: any) => ({ ...o, users: userMap[o.user_id] || null }));
+
+        res.json({ orders: enriched, count: enriched.length });
         return;
       }
       
@@ -61,22 +75,6 @@ export class AdminController {
     }
   }
   
-  async getOrderById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id } = req.params;
-      const order = await orderService.getOrderById(id);
-      
-      if (!order) {
-        res.status(404).json({ error: 'Order not found' });
-        return;
-      }
-      
-      res.json({ order });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async getOrdersByType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { type } = req.params;

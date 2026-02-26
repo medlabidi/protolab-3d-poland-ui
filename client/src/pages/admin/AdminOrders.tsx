@@ -12,9 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Package,
-  ArrowUpRight,
-  ArrowDownRight,
-  Filter,
   Download,
   Eye,
   Loader2,
@@ -40,7 +37,7 @@ interface Order {
   payment_status?: string;
   created_at: string;
   order_type: 'print' | 'design';
-  users?: { name: string; email: string };
+  users?: { name?: string; first_name?: string; last_name?: string; email: string };
   order_number?: string;
   model_url?: string;
   file_url?: string;
@@ -70,6 +67,8 @@ const AdminOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
     fetchOrders();
@@ -160,11 +159,26 @@ const AdminOrders = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return ['submitted', 'in_queue', 'printing', 'on_hold'].includes(order.status);
-    if (filter === 'completed') return ['finished', 'delivered'].includes(order.status);
-    if (filter === 'suspended') return order.status === 'suspended';
+  const filterByTime = (order: Order) => {
+    if (timeFilter === 'all') return true;
+    const now = new Date();
+    const orderDate = new Date(order.created_at);
+    if (timeFilter === 'today') return orderDate.toDateString() === now.toDateString();
+    if (timeFilter === 'week') {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      return orderDate >= weekAgo;
+    }
+    if (timeFilter === 'month') return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+    return true;
+  };
+
+  const timeFilteredOrders = orders.filter(filterByTime);
+
+  const filteredOrders = timeFilteredOrders.filter(order => {
+    if (filter !== 'all' && order.status !== filter) return false;
+    if (typeFilter === 'print' && order.order_type !== 'print') return false;
+    if (typeFilter === 'design' && order.order_type !== 'design') return false;
     return true;
   });
 
@@ -200,37 +214,37 @@ const AdminOrders = () => {
               <h1 className="text-3xl font-bold text-white mb-2">Orders Management</h1>
               <p className="text-gray-400">Total Orders: {orders.length}</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="border-gray-700 text-gray-300">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
           </div>
 
-          {/* Filters */}
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-4">
-              <div className="flex gap-2">
-                {[
-                  { id: 'all', label: 'All Orders' },
-                  { id: 'pending', label: 'Pending' },
-                  { id: 'completed', label: 'Completed' },
-                  { id: 'suspended', label: 'Suspended' },
-                ].map(f => (
-                  <Button
-                    key={f.id}
-                    onClick={() => setFilter(f.id)}
-                    variant={filter === f.id ? 'default' : 'outline'}
-                    className={filter === f.id ? 'bg-blue-600 hover:bg-blue-700' : 'border-gray-700 text-gray-300'}
-                  >
-                    <Filter className="w-4 h-4 mr-2" />
-                    {f.label}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Total Orders</p>
+                <p className="text-2xl font-bold text-white">{timeFilteredOrders.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Pending</p>
+                <p className="text-2xl font-bold text-yellow-400">{timeFilteredOrders.filter(o => ['submitted', 'in_queue', 'printing', 'on_hold'].includes(o.status)).length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Completed</p>
+                <p className="text-2xl font-bold text-green-400">{timeFilteredOrders.filter(o => ['finished', 'delivered'].includes(o.status)).length}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <p className="text-gray-400 text-sm mb-2">Total Revenue</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  {formatPrice(timeFilteredOrders.filter(o => o.status !== 'suspended').reduce((sum, o) => sum + (parseFloat(o.price?.toString() || '0') || 0), 0))}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Orders Table */}
           <Card className="bg-gray-900 border-gray-800">
@@ -239,18 +253,65 @@ const AdminOrders = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Order</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                        <div className="flex flex-col gap-1">
+                          <span>Order</span>
+                          <select
+                            value={typeFilter}
+                            onChange={e => setTypeFilter(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                          >
+                            <option value="all">All Types</option>
+                            <option value="print">Print Jobs</option>
+                            <option value="design">Design Jobs</option>
+                          </select>
+                        </div>
+                      </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Customer</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                        <div className="flex flex-col gap-1">
+                          <span>Status</span>
+                          <select
+                            value={filter}
+                            onChange={e => setFilter(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                          >
+                            <option value="all">All</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="in_queue">In Queue</option>
+                            <option value="printing">Printing</option>
+                            <option value="on_hold">On Hold</option>
+                            <option value="finished">Finished</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="suspended">Suspended</option>
+                          </select>
+                        </div>
+                      </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Date</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                        <div className="flex flex-col gap-1">
+                          <span>Date</span>
+                          <select
+                            value={timeFilter}
+                            onChange={e => setTimeFilter(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                          >
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                          </select>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
                     {filteredOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                           <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
                           <p>No orders found</p>
                         </td>
@@ -270,7 +331,13 @@ const AdminOrders = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div>
-                              <p className="text-white">{order.users?.name || 'Unknown'}</p>
+                              <p className="text-white">{
+                                order.users
+                                  ? (order.users.first_name || order.users.last_name)
+                                    ? `${order.users.first_name ?? ''} ${order.users.last_name ?? ''}`.trim()
+                                    : order.users.name || order.users.email
+                                  : 'Unknown'
+                              }</p>
                               <p className="text-xs text-gray-500">{order.users?.email}</p>
                             </div>
                           </td>
@@ -286,18 +353,6 @@ const AdminOrders = () => {
                           <td className="px-6 py-4 text-sm text-gray-500">
                             {formatDate(order.created_at)}
                           </td>
-                          <td className="px-6 py-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-gray-500 hover:text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                              }}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </td>
                         </tr>
                       ))
                     )}
@@ -307,35 +362,6 @@ const AdminOrders = () => {
             </CardContent>
           </Card>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Total Orders</p>
-                <p className="text-2xl font-bold text-white">{orders.length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Pending</p>
-                <p className="text-2xl font-bold text-yellow-400">{orders.filter(o => ['submitted', 'in_queue', 'printing', 'on_hold'].includes(o.status)).length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Completed</p>
-                <p className="text-2xl font-bold text-green-400">{orders.filter(o => ['finished', 'delivered'].includes(o.status)).length}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-4">
-                <p className="text-gray-400 text-sm mb-2">Total Revenue</p>
-                <p className="text-2xl font-bold text-purple-400">
-                  {formatPrice(orders.filter(o => o.status !== 'suspended').reduce((sum, o) => sum + (parseFloat(o.price?.toString() || '0') || 0), 0))}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </main>
 

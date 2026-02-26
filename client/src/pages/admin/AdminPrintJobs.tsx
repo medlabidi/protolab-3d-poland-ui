@@ -48,13 +48,6 @@ interface Message {
 }
 
 const statusConfig = {
-  all: { 
-    label: "All Jobs", 
-    icon: Package, 
-    color: "bg-gray-700 hover:bg-gray-600",
-    activeColor: "bg-gray-600",
-    iconColor: "text-gray-300"
-  },
   submitted: { 
     label: "Submitted", 
     icon: FileText, 
@@ -93,7 +86,7 @@ const AdminPrintJobs = () => {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [conversation, setConversation] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('submitted');
 
   useEffect(() => {
     fetchOrders();
@@ -200,12 +193,9 @@ const AdminPrintJobs = () => {
     return `${price.toFixed(2)} PLN`;
   };
 
-  const filteredOrders = selectedStatus === 'all' 
-    ? orders 
-    : orders.filter(o => o.status === selectedStatus);
+  const filteredOrders = orders.filter(o => o.status === selectedStatus);
 
   const statusCounts = {
-    all: orders.length,
     submitted: orders.filter(o => o.status === 'submitted').length,
     in_queue: orders.filter(o => o.status === 'in_queue').length,
     printing: orders.filter(o => o.status === 'printing').length,

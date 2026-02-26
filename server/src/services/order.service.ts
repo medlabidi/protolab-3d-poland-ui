@@ -26,6 +26,7 @@ export class OrderService {
       paid_amount: orderPrice,
       status: 'submitted',
       payment_status: 'paid',
+      order_type: 'print',
       project_name: data.projectName,
       material_weight: data.materialWeight,  // Store weight in grams
       print_time: data.printTime,            // Store time in minutes
@@ -172,14 +173,72 @@ export class OrderService {
   
   async getAllOrders(): Promise<IOrder[]> {
     const supabase = getSupabase();
-    
+
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Failed to get all orders: ${error.message}`);
+    if (!orders || orders.length === 0) return [];
+
+    // Fetch users separately to avoid relying on FK join
+    const userIds = [...new Set(orders.map((o: any) => o.user_id).filter(Boolean))];
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, first_name, last_name, email')
+      .in('id', userIds);
+
+    const userMap: Record<string, any> = {};
+    if (users) users.forEach((u: any) => { userMap[u.id] = u; });
+
+    return orders.map((o: any) => ({ ...o, users: userMap[o.user_id] || null }));
+  }
+
+  async getOrdersByType(type: 'print' | 'design'): Promise<IOrder[]> {
+    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('orders')
-      .select('*, users(name, email)')
+      .select('*, users(name, first_name, last_name, email)')
+      .eq('order_type', type)
       .order('created_at', { ascending: false });
-    
-    if (error) throw new Error(`Failed to get all orders: ${error.message}`);
+    if (error) throw new Error(`Failed to get orders by type: ${error.message}`);
     return data || [];
+  }
+
+  async createPrintFromDesign(designOrderId: string, params: {
+    material: string; color: string; layerHeight: number;
+    infill: number; quantity: number; price: number;
+  }): Promise<IOrder> {
+    const designOrder = await Order.findById(designOrderId);
+    if (!designOrder) throw new Error('Design order not found');
+    if (designOrder.order_type !== 'design') throw new Error('Parent order must be a design order');
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('orders')
+      .insert([{
+        user_id: designOrder.user_id,
+        order_type: 'print',
+        file_name: designOrder.file_name,
+        file_url: designOrder.file_url || '',
+        material: params.material,
+        color: params.color,
+        layer_height: params.layerHeight,
+        infill: params.infill,
+        quantity: params.quantity,
+        price: params.price,
+        paid_amount: params.price,
+        shipping_method: designOrder.shipping_method,
+        shipping_address: designOrder.shipping_address,
+        status: 'submitted',
+        payment_status: 'paid',
+        parent_order_id: designOrderId,
+      }])
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to create print from design: ${error.message}`);
+    return data;
   }
   
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<IOrder> {

@@ -42,6 +42,11 @@ const menuItems = [
     path: "/admin/orders",
     subItems: [
       {
+        title: "All Orders",
+        icon: Package,
+        path: "/admin/orders",
+      },
+      {
         title: "Print Jobs",
         icon: PackageCheck,
         path: "/admin/orders/print-jobs",
