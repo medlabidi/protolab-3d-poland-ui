@@ -121,19 +121,34 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false });
-  
+
   // Filter by order_type if specified
   if (orderType === 'print' || orderType === 'design') {
     query = query.eq('order_type', orderType);
   }
-  
+
   const { data: orders, error } = await query;
-  
+
   if (error) {
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
-  
-  return res.status(200).json({ orders: orders || [] });
+
+  // Fetch user data separately (no FK join dependency)
+  const orderList = orders || [];
+  const userIds = [...new Set(orderList.map((o: any) => o.user_id).filter(Boolean))];
+  let userMap: Record<string, any> = {};
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, first_name, last_name, email')
+      .in('id', userIds);
+    if (users) {
+      users.forEach((u: any) => { userMap[u.id] = u; });
+    }
+  }
+  const enrichedOrders = orderList.map((o: any) => ({ ...o, users: userMap[o.user_id] || null }));
+
+  return res.status(200).json({ orders: enrichedOrders });
 }
 
 async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
