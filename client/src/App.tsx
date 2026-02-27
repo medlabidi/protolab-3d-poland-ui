@@ -32,6 +32,7 @@ import Refund from "./pages/Refund";
 import Credits from "./pages/Credits";
 import Conversations from "./pages/Conversations";
 import Business from "./pages/Business";
+import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -92,6 +93,7 @@ const App = () => {
                 <Route path="/projects/:projectName/edit" element={<ProtectedRoute><EditProject /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/refund" element={<ProtectedRoute><Refund /></ProtectedRoute>} />
                 <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
                 <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
