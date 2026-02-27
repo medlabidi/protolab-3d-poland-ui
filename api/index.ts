@@ -3560,21 +3560,27 @@ async function handleGetPresignedUrl(req: AuthenticatedRequest, res: VercelRespo
   }
   
   const supabase = getSupabase();
-  const bucket = process.env.SUPABASE_BUCKET_TEMP || 'temp-files';
+  const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
   const filePath = `${user.userId}/${Date.now()}-${fileName}`;
-  
+
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUploadUrl(filePath);
-  
+
   if (error) {
+    console.error('Presigned URL error:', error);
     return res.status(500).json({ error: 'Failed to create upload URL' });
   }
-  
+
+  // Build the public URL for the file
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${filePath}`;
+
   return res.status(200).json({
     uploadUrl: data.signedUrl,
     filePath,
     bucket,
+    publicUrl,
   });
 }
 

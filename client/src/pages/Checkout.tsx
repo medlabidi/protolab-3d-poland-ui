@@ -283,15 +283,33 @@ export function Checkout() {
             throw new Error(`File ${fileData.fileName} not found`);
           }
 
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('material', fileData.material.split('-')[0]);
-          formData.append('color', fileData.material.split('-')[1] || 'white');
-          
-          // Use custom values if advanced mode, otherwise quality preset
+          // Step 1: Get presigned upload URL
+          const presignedRes = await apiFetch('/upload/presigned-url', {
+            method: 'POST',
+            body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' }),
+          });
+
+          if (!presignedRes.ok) {
+            throw new Error(`Failed to get upload URL for ${fileData.fileName}`);
+          }
+
+          const { uploadUrl, publicUrl } = await presignedRes.json();
+
+          // Step 2: Upload file directly to Supabase Storage
+          const uploadRes = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type || 'application/octet-stream' },
+            body: file,
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error(`Failed to upload file ${fileData.fileName}`);
+          }
+
+          // Step 3: Create order with JSON (file already in storage)
           let layerHeight: string;
           let infill: string;
-          
+
           if (fileData.advancedMode) {
             layerHeight = fileData.customLayerHeight || '0.2';
             infill = fileData.customInfill || '20';
@@ -299,40 +317,39 @@ export function Checkout() {
             layerHeight = fileData.quality === 'draft' ? '0.3' : fileData.quality === 'standard' ? '0.2' : fileData.quality === 'high' ? '0.15' : '0.1';
             infill = fileData.quality === 'draft' ? '10' : fileData.quality === 'standard' ? '20' : fileData.quality === 'high' ? '30' : '40';
           }
-          
-          formData.append('layerHeight', layerHeight);
-          formData.append('infill', infill);
-          formData.append('quantity', fileData.quantity.toString());
-          formData.append('shippingMethod', projectData.deliveryOption);
-          formData.append('paymentMethod', 'pending');
-          formData.append('price', fileData.estimatedPrice.toString());
-          formData.append('projectName', projectData.projectName);
-          formData.append('advancedMode', (fileData.advancedMode || false).toString());
-          
+
+          const orderBody: any = {
+            fileName: file.name,
+            fileUrl: publicUrl,
+            material: fileData.material.split('-')[0],
+            color: fileData.material.split('-')[1] || 'white',
+            layerHeight,
+            infill,
+            quantity: fileData.quantity,
+            shippingMethod: projectData.deliveryOption,
+            paymentMethod: 'pending',
+            price: fileData.estimatedPrice,
+            projectName: projectData.projectName,
+            advancedMode: fileData.advancedMode || false,
+          };
+
           if (!fileData.advancedMode) {
-            formData.append('quality', fileData.quality);
+            orderBody.quality = fileData.quality;
           }
-          
+
           if (fileData.advancedMode) {
-            formData.append('infillPattern', fileData.infillPattern || 'grid');
-            if (fileData.customLayerHeight) {
-              formData.append('customLayerHeight', fileData.customLayerHeight);
-            }
-            if (fileData.customInfill) {
-              formData.append('customInfill', fileData.customInfill);
-            }
+            orderBody.infillPattern = fileData.infillPattern || 'grid';
+            if (fileData.customLayerHeight) orderBody.customLayerHeight = fileData.customLayerHeight;
+            if (fileData.customInfill) orderBody.customInfill = fileData.customInfill;
           }
 
           if (projectData.shippingAddress) {
-            formData.append('shippingAddress', JSON.stringify(projectData.shippingAddress));
+            orderBody.shippingAddress = projectData.shippingAddress;
           }
 
-          const response = await fetch(`${API_URL}/orders`, {
+          const response = await apiFetch('/orders', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            body: formData,
+            body: JSON.stringify(orderBody),
           });
 
           if (!response.ok) {

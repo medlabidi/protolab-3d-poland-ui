@@ -15,7 +15,7 @@ import { LockerPickerModal } from "@/components/LockerPickerModal";
 import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DPDAddressForm";
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
-import { apiFormData } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_URL } from "@/config/api";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1112,76 +1112,94 @@ const NewPrint = () => {
       }
       
       // Create order first
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('material', material.split('-')[0]);
-      formData.append('color', material.split('-')[1] || 'white');
-      
+      // Step 1: Get a presigned upload URL from the server
+      const presignedRes = await apiFetch('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+
+      if (!presignedRes.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl, filePath: storedFilePath } = await presignedRes.json();
+
+      // Step 2: Upload the file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      // Step 3: Create the order with JSON (file already in storage)
       // Use custom layer height if advanced settings enabled, otherwise quality preset
-      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight :
                          (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('layerHeight', layerHeight);
-      
+
       // Use custom infill if advanced settings enabled, otherwise quality preset
       const infill = advancedMode && customInfill ? customInfill :
                     (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
-      formData.append('infill', infill);
-      
-      formData.append('quantity', quantity.toString());
-      formData.append('shippingMethod', selectedDeliveryOption);
-      formData.append('paymentMethod', 'pending');
-      formData.append('price', totalAmount.toString());
-      
-      // Add advanced mode flag
-      formData.append('advancedMode', advancedMode.toString());
-      
+
+      const orderBody: any = {
+        fileName: file.name,
+        fileUrl: publicUrl,
+        material: material.split('-')[0],
+        color: material.split('-')[1] || 'white',
+        layerHeight,
+        infill,
+        quantity,
+        shippingMethod: selectedDeliveryOption,
+        paymentMethod: 'pending',
+        price: totalAmount,
+        advancedMode,
+      };
+
       // Add quality preset if not in advanced mode
       if (!advancedMode) {
-        formData.append('quality', quality);
+        orderBody.quality = quality;
       }
-      
+
       // Add advanced settings only if advanced mode is enabled
       if (advancedMode) {
-        formData.append('infillPattern', infillPattern);
+        orderBody.infillPattern = infillPattern;
+        if (customLayerHeight) orderBody.customLayerHeight = customLayerHeight;
+        if (customInfill) orderBody.customInfill = customInfill;
       }
-      
-      // Add custom values if advanced mode was used
-      if (advancedMode) {
-        if (customLayerHeight) {
-          formData.append('customLayerHeight', customLayerHeight);
-        }
-        if (customInfill) {
-          formData.append('customInfill', customInfill);
-        }
-      }
-      
+
       // Add material weight and print time for accurate price recalculation later
       if (estimatedWeight && estimatedPrintTime) {
-        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
-        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+        orderBody.materialWeight = Math.round(estimatedWeight); // in grams
+        orderBody.printTime = Math.round(estimatedPrintTime * 60); // convert hours to minutes
       }
-      
+
       // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
       if (modelAnalysis) {
-        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+        orderBody.modelVolume = modelAnalysis.volumeCm3; // in cm³
       }
 
       // Add delivery details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {
-        formData.append('shippingAddress', JSON.stringify({
+        orderBody.shippingAddress = {
           lockerCode: selectedLocker.name,
           lockerAddress: selectedLocker.address
-        }));
+        };
       } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
-        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+        orderBody.shippingAddress = shippingAddress;
       } else if (selectedDeliveryOption === 'pickup') {
-        formData.append('shippingAddress', JSON.stringify({
+        orderBody.shippingAddress = {
           type: 'pickup',
           address: 'Zielonogórska 13, 30-406 Kraków'
-        }));
+        };
       }
 
-      const response = await apiFormData('/orders', formData);
+      const response = await apiFetch('/orders', {
+        method: 'POST',
+        body: JSON.stringify(orderBody),
+      });
 
       if (!response.ok) {
         let errorMessage = 'Failed to create order';
@@ -1276,66 +1294,84 @@ const NewPrint = () => {
     }
 
     try {
-      // Create FormData to send file and order details
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('material', material.split('-')[0]); // e.g., 'pla-white' -> 'pla'
-      formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
-      
+      // Step 1: Get a presigned upload URL from the server
+      const presignedRes = await apiFetch('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+
+      if (!presignedRes.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl } = await presignedRes.json();
+
+      // Step 2: Upload the file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      // Step 3: Create the order with JSON (file already in storage)
       // Use custom layer height if advanced settings enabled, otherwise quality preset
-      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight :
                          (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('layerHeight', layerHeight);
-      
+
       // Use custom infill if advanced settings enabled, otherwise quality preset
       const infill = advancedMode && customInfill ? customInfill :
                     (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
-      formData.append('infill', infill);
-      
-      formData.append('quantity', quantity.toString());
-      formData.append('shippingMethod', selectedDeliveryOption);
-      formData.append('price', estimatedPrice.toString());
-      
-      // Add advanced mode flag
-      formData.append('advancedMode', advancedMode.toString());
-      
-      // Add advanced settings
-      formData.append('supportType', supportType);
-      formData.append('infillPattern', infillPattern);
-      
+
+      const orderBody: any = {
+        fileName: file.name,
+        fileUrl: publicUrl,
+        material: material.split('-')[0],
+        color: material.split('-')[1] || 'white',
+        layerHeight,
+        infill,
+        quantity,
+        shippingMethod: selectedDeliveryOption,
+        price: estimatedPrice,
+        advancedMode,
+        supportType,
+        infillPattern,
+      };
+
       // Add custom values if advanced mode was used
       if (advancedMode) {
-        if (customLayerHeight) {
-          formData.append('customLayerHeight', customLayerHeight);
-        }
-        if (customInfill) {
-          formData.append('customInfill', customInfill);
-        }
-      }
-      
-      // Add material weight and print time for accurate price recalculation later
-      // These values are calculated based on actual model analysis
-      if (estimatedWeight && estimatedPrintTime) {
-        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
-        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
-      }
-      
-      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
-      if (modelAnalysis) {
-        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
-      }
-      
-      // Add delivery-specific details
-      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
-        formData.append('shippingAddress', JSON.stringify({
-          lockerCode: selectedLocker.name,
-          lockerAddress: selectedLocker.address
-        }));
-      } else if (selectedDeliveryOption === 'dpd') {
-        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+        if (customLayerHeight) orderBody.customLayerHeight = customLayerHeight;
+        if (customInfill) orderBody.customInfill = customInfill;
       }
 
-      const response = await apiFormData('/orders', formData);
+      // Add material weight and print time for accurate price recalculation later
+      if (estimatedWeight && estimatedPrintTime) {
+        orderBody.materialWeight = Math.round(estimatedWeight);
+        orderBody.printTime = Math.round(estimatedPrintTime * 60);
+      }
+
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        orderBody.modelVolume = modelAnalysis.volumeCm3;
+      }
+
+      // Add delivery-specific details
+      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+        orderBody.shippingAddress = {
+          lockerCode: selectedLocker.name,
+          lockerAddress: selectedLocker.address
+        };
+      } else if (selectedDeliveryOption === 'dpd') {
+        orderBody.shippingAddress = shippingAddress;
+      }
+
+      const response = await apiFetch('/orders', {
+        method: 'POST',
+        body: JSON.stringify(orderBody),
+      });
 
       if (!response.ok) {
         const error = await response.json();
