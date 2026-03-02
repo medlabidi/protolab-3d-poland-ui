@@ -182,12 +182,69 @@ export class ConversationsController {
       // Build attachments array if file is uploaded
       const attachments = [];
       if (file) {
+        logger.info({ 
+          filename: file.originalname, 
+          size: file.size, 
+          mimetype: file.mimetype,
+          path: file.path,
+          destination: file.destination 
+        }, 'Processing uploaded file');
+        
+        // Verify file exists and has content
+        const fs = await import('fs/promises');
+        try {
+          const stats = await fs.stat(file.path);
+          logger.info({ filename: file.originalname, actualSize: stats.size }, 'File saved to disk successfully');
+          
+          if (stats.size === 0) {
+            logger.error({ filename: file.originalname }, 'File is empty (0 bytes)');
+            res.status(400).json({ error: 'Uploaded file is empty' });
+            return;
+          }
+          
+          // Check if file is actually HTML (error page)
+          const buffer = await fs.readFile(file.path);
+          const header = buffer.toString('utf-8', 0, Math.min(100, buffer.length));
+          if (header.toLowerCase().includes('<!doctype') || header.toLowerCase().includes('<html')) {
+            logger.error({ filename: file.originalname, header: header.substring(0, 50) }, 'File appears to be HTML, not a binary 3D file');
+            res.status(400).json({ error: 'Invalid file format: Expected binary 3D file, received HTML' });
+            return;
+          }
+        } catch (statError) {
+          logger.error({ error: statError, filename: file.originalname }, 'Failed to verify uploaded file');
+        }
+        
+        // Check if it's a 3D file and admin is sending
+        const is3DFile = /\.(stl|obj|3mf|step|stp|iges|igs|gltf|glb)$/i.test(file.originalname);
+        
+        let fileUrl = `/uploads/${file.filename}`;
+        
+        // If admin sends a 3D file, upload to S3 for better accessibility
+        if (userRole === 'admin' && is3DFile) {
+          try {
+            const { s3Service } = await import('../services/s3.service');
+            const s3Key = await s3Service.upload3DDesignFile(file);
+            fileUrl = `s3://${s3Key}`; // Store S3 key with s3:// prefix
+            logger.info({ s3Key, filename: file.originalname, fileSize: file.size }, 'Uploaded 3D file to S3');
+          } catch (s3Error) {
+            logger.error({ error: s3Error, filename: file.originalname }, 'Failed to upload to S3, using local storage');
+            // Fallback to local storage if S3 fails
+          }
+        }
+        
         attachments.push({
           name: file.originalname,
-          url: `/uploads/${file.filename}`,
+          url: fileUrl,
           size: file.size,
           type: file.mimetype
         });
+        
+        logger.info({ 
+          filename: file.originalname, 
+          url: fileUrl, 
+          is3DFile, 
+          isS3: fileUrl.startsWith('s3://') 
+        }, 'File attachment prepared');
       }
       
       const newMessage = await conversationsService.addMessage(conversationId, {

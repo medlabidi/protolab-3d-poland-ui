@@ -301,7 +301,14 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Message sent successfully, reloading conversation...');
+        console.log('[Admin] Message sent successfully:', data);
+        
+        if (attachedFile) {
+          console.log('[Admin] ✅ File uploaded successfully:', {
+            fileName: attachedFile.name,
+            messageId: data.message?.id
+          });
+        }
         
         // Reload the conversation to get fresh messages from database
         const conversationResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
@@ -327,11 +334,20 @@ const AdminDesignAssistance = () => {
         setNewMessage('');
         setAttachedFile(null);
         setProposedPrice('');
-        toast.success('Message sent');
+        toast.success(attachedFile ? 'Message and file sent successfully' : 'Message sent');
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Failed to send message:', errorData);
-        toast.error(errorData.error || 'Failed to send message');
+        console.error('[Admin] ❌ Failed to send message:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        
+        if (attachedFile) {
+          toast.error(`Failed to upload file: ${errorData.error || 'Unknown error'}. Please check file format and size.`);
+        } else {
+          toast.error(errorData.error || 'Failed to send message');
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);

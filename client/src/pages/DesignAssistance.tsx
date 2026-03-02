@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { S3FileViewer } from "@/components/S3FileViewer";
 
 interface DesignRequest {
   id: string;
@@ -69,11 +70,6 @@ const DesignAssistance = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
 
-  // 3D Viewer Modal state
-  const [show3DModal, setShow3DModal] = useState(false);
-  const [modal3DUrl, setModal3DUrl] = useState<string | null>(null);
-  const [modal3DFileName, setModal3DFileName] = useState<string>("");
-
   // Form state
   const [formData, setFormData] = useState({
     ideaDescription: "",
@@ -108,7 +104,13 @@ const DesignAssistance = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        let data;
+        try {
+          const text = await response.text();
+          data = text ? JSON.parse(text) : {};
+        } catch (e) {
+          data = {};
+        }
         setDesignRequests(data.requests || []);
         
         // Check if there's a request ID in URL parameters
@@ -148,7 +150,13 @@ const DesignAssistance = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        let data;
+        try {
+          const text = await response.text();
+          data = text ? JSON.parse(text) : {};
+        } catch (e) {
+          data = {};
+        }
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
         console.log('✅ [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
@@ -193,8 +201,7 @@ const DesignAssistance = () => {
     setSubmitting(true);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      
+      const token = localStorage.getItem('accessToken');    
       const submitData = new FormData();
       submitData.append('projectName', `Design Request - ${formData.usage}`);
       submitData.append('ideaDescription', formData.ideaDescription);
@@ -216,7 +223,13 @@ const DesignAssistance = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        let error;
+        try {
+          const text = await response.text();
+          error = text ? JSON.parse(text) : {};
+        } catch (e) {
+          error = {};
+        }
         throw new Error(error.error || 'Failed to submit design request');
       }
 
@@ -267,7 +280,13 @@ const DesignAssistance = () => {
         });
 
         if (convResponse.ok) {
-          const convData = await convResponse.json();
+          let convData;
+          try {
+            const text = await convResponse.text();
+            convData = text ? JSON.parse(text) : {};
+          } catch (e) {
+            convData = {};
+          }
           currentConversationId = convData.conversation?.id || null;
           setConversationId(currentConversationId);
         }
@@ -288,7 +307,13 @@ const DesignAssistance = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        let data;
+        try {
+          const text = await response.text();
+          data = text ? JSON.parse(text) : {};
+        } catch (e) {
+          data = {};
+        }
         setMessages(prev => [...prev, data.message]);
         setNewMessage("");
         toast.success("Message sent");
@@ -344,7 +369,13 @@ const DesignAssistance = () => {
           handleProceedToPayment(selectedRequest!);
         }, 1500);
       } else {
-        const error = await response.json();
+        let error;
+        try {
+          const text = await response.text();
+          error = text ? JSON.parse(text) : {};
+        } catch (e) {
+          error = {};
+        }
         throw new Error(error.error || 'Failed to approve design');
       }
     } catch (error: any) {
@@ -384,7 +415,13 @@ const DesignAssistance = () => {
         setRejectionReason('');
         await fetchDesignRequests();
       } else {
-        const error = await response.json();
+        let error;
+        try {
+          const text = await response.text();
+          error = text ? JSON.parse(text) : {};
+        } catch (e) {
+          error = {};
+        }
         throw new Error(error.error || 'Failed to reject design');
       }
     } catch (error: any) {
@@ -729,8 +766,29 @@ const DesignAssistance = () => {
                                               
                                               return filtered3DFiles;
                                             })().map((attachment: any, idx: number) => {
-                                              // Construct proper file URL
-                                              const fileUrl = (() => {
+                                              // Construct proper file URL promise
+                                              const fileUrlPromise = (async () => {
+                                                // Check if it's an S3 URL
+                                                if (attachment.url.startsWith('s3://')) {
+                                                  try {
+                                                    // Get signed URL from backend
+                                                    const token = localStorage.getItem('accessToken');
+                                                    const response = await fetch(`${API_URL}/files/signed-url?fileUrl=${encodeURIComponent(attachment.url)}`, {
+                                                      headers: {
+                                                        'Authorization': `Bearer ${token}`
+                                                      }
+                                                    });
+                                                    
+                                                    if (response.ok) {
+                                                      const data = await response.json();
+                                                      return data.signedUrl;
+                                                    }
+                                                  } catch (error) {
+                                                    console.error('Failed to get signed URL:', error);
+                                                  }
+                                                }
+                                                
+                                                // For non-S3 URLs, construct local URL
                                                 if (attachment.url.startsWith('http')) {
                                                   return attachment.url;
                                                 }
@@ -741,118 +799,18 @@ const DesignAssistance = () => {
                                                 return `${baseUrl}${path}`;
                                               })();
                                               
-                                              console.log('[3D Viewer] Attachment info:', {
-                                                name: attachment.name,
-                                                url: attachment.url,
-                                                constructedUrl: fileUrl
-                                              });
-                                              
                                               return (
-                                          <div key={idx} className="bg-gray-800 border-gray-700 rounded-lg p-0 mb-6">
-                                            <div className="border-b border-gray-700 px-4 pt-4 pb-2 flex items-center justify-between">
-                                              <span className="text-white font-semibold flex items-center gap-2">
-                                                <Palette className="w-4 h-4" />
-                                                3D Model
-                                              </span>
-                                              <Badge className={`${getApprovalStatusBadge(selectedRequest.user_approval_status)} border`}>
-                                                {selectedRequest.user_approval_status === 'approved' && '✓ Approved'}
-                                                {selectedRequest.user_approval_status === 'rejected' && '✗ Rejected'}
-                                                {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && '⏳ Pending Review'}
-                                              </Badge>
-                                            </div>
-                                            <div className="px-4 pt-4">
-                                              <div className="mb-3" style={{ height: '250px' }}>
-                                                <ModelViewerUrl url={fileUrl} fileName={attachment.name || attachment.url} height="250px" />
-                                              </div>
-                                              <div className="flex items-center justify-between mt-2">
-                                                <p className="text-sm text-gray-400 truncate max-w-[70%]">{attachment.name || 'Unknown file'}</p>
-                                                <Button
-                                                  onClick={() => {
-                                                    setModal3DUrl(fileUrl);
-                                                    setModal3DFileName(attachment.name || attachment.url);
-                                                    setShow3DModal(true);
-                                                  }}
-                                                  className="border-blue-500 text-blue-300 hover:bg-blue-500/20"
-                                                  size="sm"
-                                                >
-                                                  <Maximize2 className="w-4 h-4 mr-2" />
-                                                  Fullscreen
-                                                </Button>
-                                              </div>
-                                              <p className="text-orange-400 text-[10px] mt-2">💡 If preview fails, the file may not be uploaded correctly by admin. Check console logs.</p>
-                                            </div>
-                                            {/* Si rejeté, afficher bloc d'erreur */}
-                                            {selectedRequest.user_approval_status === 'rejected' && (
-                                              <div className="border-t border-gray-700 p-4 bg-red-500/5 text-center">
-                                                <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                                                <p className="text-red-400 text-sm">Design preview blocked due to rejection</p>
-                                              </div>
-                                            )}
-
-                                            {/* Approval Buttons (only if pending) */}
-                                            {(!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending') && (
-                                              <div className="flex gap-3 mt-4">
-                                                <Button 
-                                                  onClick={() => handleApproveDesign(selectedRequest.id)}
-                                                  disabled={processingApproval}
-                                                  className="flex-1 bg-green-600 hover:bg-green-700"
-                                                >
-                                                  {processingApproval ? (
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                  ) : (
-                                                    <Check className="w-4 h-4 mr-2" />
-                                                  )}
-                                                  Approve & Pay
-                                                </Button>
-                                                <Button 
-                                                  onClick={() => setShowRejectDialog(true)}
-                                                  disabled={processingApproval}
-                                                  variant="outline"
-                                                  className="flex-1 border-red-500 text-red-500 hover:bg-red-500/10"
-                                                >
-                                                  <X className="w-4 h-4 mr-2" />
-                                                  Reject
-                                                </Button>
-                                              </div>
-                                            )}
-                                            {/* If approved */}
-                                            {selectedRequest.user_approval_status === 'approved' && (
-                                              <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg mt-4">
-                                                <p className="text-green-400 text-sm flex items-center gap-2 mb-2">
-                                                  <Check className="w-4 h-4" />
-                                                  Design approved! You can proceed to payment.
-                                                </p>
-                                                {selectedRequest.payment_status !== 'paid' && (
-                                                  <Button 
-                                                    onClick={() => handleProceedToPayment(selectedRequest)}
-                                                    className="w-full bg-green-600 hover:bg-green-700"
-                                                  >
-                                                    Proceed to Payment
-                                                  </Button>
-                                                )}
-                                                {selectedRequest.payment_status === 'paid' && (
-                                                  <p className="text-green-300 text-xs text-center">✓ Payment completed</p>
-                                                )}
-                                              </div>
-                                            )}
-
-                                            {/* If rejected */}
-                                            {selectedRequest.user_approval_status === 'rejected' && (
-                                              <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg mt-4">
-                                                <p className="text-red-400 text-sm flex items-center gap-2">
-                                                  <AlertCircle className="w-4 h-4" />
-                                                  Design rejected.
-                                                </p>
-                                                {selectedRequest.user_rejection_reason && (
-                                                  <p className="text-red-300 text-xs mt-2">
-                                                    Reason: {selectedRequest.user_rejection_reason}
-                                                  </p>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
+                                          <S3FileViewer 
+                                            key={idx} 
+                                            attachment={attachment} 
+                                            fileUrlPromise={fileUrlPromise}
+                                            selectedRequest={selectedRequest}
+                                            onApprove={() => handleApproveDesign(selectedRequest.id)}
+                                            onReject={() => setShowRejectDialog(true)}
+                                            processingApproval={processingApproval}
+                                          />
+                                              );
+                                            })}
                                       </div>
                                     )}
                                   </div>
@@ -1063,42 +1021,6 @@ const DesignAssistance = () => {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* 3D Model Fullscreen Viewer Modal */}
-      <Dialog open={show3DModal} onOpenChange={setShow3DModal}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] p-0 bg-gray-900 border-cyan-500/30">
-          <DialogHeader className="px-6 py-4 border-b border-gray-800">
-            <DialogTitle className="text-xl font-bold text-cyan-400 flex items-center gap-2">
-              <Palette className="w-5 h-5" />
-              3D Model Viewer - {modal3DFileName}
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Interact with the model: Rotate (left click + drag), Pan (right click + drag), Zoom (scroll)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 p-4" style={{ height: 'calc(95vh - 120px)' }}>
-            {modal3DUrl && (
-              <ModelViewerUrl 
-                url={modal3DUrl} 
-                fileName={modal3DFileName} 
-                height="100%"
-              />
-            )}
-          </div>
-          <div className="px-6 py-4 border-t border-gray-800 flex justify-between items-center">
-            <p className="text-sm text-gray-400">
-              💡 Note: File download will be available after payment completion.
-            </p>
-            <Button 
-              onClick={() => setShow3DModal(false)}
-              variant="outline"
-              className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
-            >
-              Close Viewer
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
     </div>
