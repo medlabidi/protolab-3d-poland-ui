@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,10 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
-import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
-import { S3FileViewer } from "@/components/S3FileViewer";
+import { ModelPreviewCard } from "@/components/ModelPreviewCard";
+import { ModelViewerModal } from "@/components/ModelViewerModal";
+import { is3DFile } from "@/utils/fileHelpers";
+import { Attachment } from "@/types/attachment";
 
 interface DesignRequest {
   id: string;
@@ -69,6 +71,12 @@ const DesignAssistance = () => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
+
+  // 3D Model Viewer state
+  const [modelViewerModal, setModelViewerModal] = useState<{
+    open: boolean;
+    attachment: Attachment | null;
+  }>({ open: false, attachment: null });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -386,6 +394,53 @@ const DesignAssistance = () => {
     }
   };
 
+  const handleDownload = async () => {
+    if (!modelViewerModal.attachment) return;
+    
+    try {
+      const attachment = modelViewerModal.attachment;
+      let downloadUrl = attachment.url;
+
+      // If it's an S3 URL, get signed URL first
+      if (attachment.url.startsWith('s3://')) {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(
+          `${API_URL}/files/signed-url?fileUrl=${encodeURIComponent(attachment.url)}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          downloadUrl = data.signedUrl;
+        } else {
+          throw new Error('Failed to get download URL');
+        }
+      } else if (!attachment.url.startsWith('http')) {
+        // For local paths, construct proper URL
+        const baseUrl = API_URL.replace('/api', '');
+        const path = attachment.url.startsWith('/') ? attachment.url : `/${attachment.url}`;
+        downloadUrl = `${baseUrl}${path}`;
+      }
+
+      // Create temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = attachment.name || 'model.stl';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Downloading ${attachment.name}`);
+    } catch (error: any) {
+      console.error('Error downloading file:', error);
+      toast.error(error.message || 'Failed to download file');
+    }
+  };
+
   const handleRejectDesign = async () => {
     if (!rejectionReason.trim()) {
       toast.error('Please provide a reason for rejection');
@@ -455,17 +510,6 @@ const DesignAssistance = () => {
       default:
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500';
     }
-  };
-
-  const is3DFile = (filename: string) => {
-    if (!filename) {
-      console.log('⚠️ [is3DFile] No filename provided');
-      return false;
-    }
-    const ext = filename.toLowerCase().split('.').pop();
-    const is3D = ['stl', 'obj', '3mf', 'glb', 'gltf', 'step', 'stp', 'iges', 'igs'].includes(ext || '');
-    console.log(`🔍 [is3DFile] Testing: "${filename}" | Extension: "${ext}" | Is 3D: ${is3D}`);
-    return is3D;
   };
 
   const removeFile = (index: number) => {
@@ -741,78 +785,29 @@ const DesignAssistance = () => {
                                     </div>
 
                                     {/* 3D File Attachments from Admin */}
-                                    {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (
-                                      <div className="mt-3 space-y-3">
-                                            {(() => {
-                                              console.log(`📋 [Message ${msg.id}] All attachments BEFORE filtering:`, msg.attachments.map((a: any) => ({
-                                                name: a.name,
-                                                url: a.url,
-                                                hasName: !!a.name,
-                                                hasUrl: !!a.url
-                                              })));
-                                              
-                                              const filtered3DFiles = msg.attachments.filter((att: any) => {
-                                                const hasUrl = !!att.url;
-                                                const fileName = att.name || att.url;
-                                                const is3D = is3DFile(fileName);
-                                                return hasUrl && is3D;
-                                              });
-                                              
-                                              console.log(`🎨 [Message ${msg.id}] Sender: ${msg.sender_type}, Total attachments:`, msg.attachments.length, '| 3D files:', filtered3DFiles.length);
-                                              
-                                              if (filtered3DFiles.length === 0) {
-                                                console.log('⚠️ No 3D files found. Attachments:', msg.attachments.map((a: any) => ({ name: a.name, url: a.url })));
-                                              }
-                                              
-                                              return filtered3DFiles;
-                                            })().map((attachment: any, idx: number) => {
-                                              // Construct proper file URL promise
-                                              const fileUrlPromise = (async () => {
-                                                // Check if it's an S3 URL
-                                                if (attachment.url.startsWith('s3://')) {
-                                                  try {
-                                                    // Get signed URL from backend
-                                                    const token = localStorage.getItem('accessToken');
-                                                    const response = await fetch(`${API_URL}/files/signed-url?fileUrl=${encodeURIComponent(attachment.url)}`, {
-                                                      headers: {
-                                                        'Authorization': `Bearer ${token}`
-                                                      }
-                                                    });
-                                                    
-                                                    if (response.ok) {
-                                                      const data = await response.json();
-                                                      return data.signedUrl;
-                                                    }
-                                                  } catch (error) {
-                                                    console.error('Failed to get signed URL:', error);
-                                                  }
-                                                }
-                                                
-                                                // For non-S3 URLs, construct local URL
-                                                if (attachment.url.startsWith('http')) {
-                                                  return attachment.url;
-                                                }
-                                                // Remove /api and construct proper URL
-                                                const baseUrl = API_URL.replace('/api', '');
-                                                // Ensure the path starts with /
-                                                const path = attachment.url.startsWith('/') ? attachment.url : `/${attachment.url}`;
-                                                return `${baseUrl}${path}`;
-                                              })();
-                                              
-                                              return (
-                                          <S3FileViewer 
-                                            key={idx} 
-                                            attachment={attachment} 
-                                            fileUrlPromise={fileUrlPromise}
-                                            selectedRequest={selectedRequest}
-                                            onApprove={() => handleApproveDesign(selectedRequest.id)}
-                                            onReject={() => setShowRejectDialog(true)}
-                                            processingApproval={processingApproval}
-                                          />
-                                              );
-                                            })}
-                                      </div>
-                                    )}
+                                    {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (() => {
+                                      const filtered3DFiles = msg.attachments.filter((att: any) => {
+                                        const hasUrl = !!att.url;
+                                        const fileName = att.name || att.url;
+                                        return hasUrl && is3DFile(fileName);
+                                      });
+
+                                      if (filtered3DFiles.length === 0) return null;
+
+                                      return (
+                                        <div className="mt-3 space-y-3">
+                                          {filtered3DFiles.map((attachment: any, idx: number) => (
+                                            <ModelPreviewCard
+                                              key={idx}
+                                              attachment={attachment}
+                                              approvalStatus={selectedRequest.user_approval_status as any}
+                                              onOpenFullscreen={() => setModelViewerModal({ open: true, attachment })}
+                                              showApprovalButtons={true}
+                                            />
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -911,6 +906,22 @@ const DesignAssistance = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 3D Model Viewer Modal */}
+      <ModelViewerModal
+        open={modelViewerModal.open}
+        onClose={() => setModelViewerModal({ open: false, attachment: null })}
+        modelUrl={modelViewerModal.attachment?.url || null}
+        fileName={modelViewerModal.attachment?.name || 'model'}
+        approvalStatus={selectedRequest?.user_approval_status as any}
+        onApprove={selectedRequest ? () => handleApproveDesign(selectedRequest.id) : undefined}
+        onReject={() => {
+          setModelViewerModal({ open: false, attachment: null });
+          setShowRejectDialog(true);
+        }}
+        onDownload={handleDownload}
+        processingApproval={processingApproval}
+      />
 
       {/* Form Dialog */}
       <DesignFormDialog
