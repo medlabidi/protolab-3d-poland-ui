@@ -1469,13 +1469,30 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path === '/payments/payu/notify' && req.method === 'POST') {
       return await handlePayUNotify(req, res);
     }
-    
+
+    // Design requests routes
+    if (path === '/design-requests' && req.method === 'POST') {
+      return await handleCreateDesignRequest(req as AuthenticatedRequest, res);
+    }
+    if (path === '/design-requests/my' && req.method === 'GET') {
+      return await handleGetMyDesignRequests(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/design-requests\/[^/]+\/approve$/) && req.method === 'POST') {
+      return await handleApproveDesignRequest(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/design-requests\/[^/]+\/reject$/) && req.method === 'POST') {
+      return await handleRejectDesignRequest(req as AuthenticatedRequest, res);
+    }
+
     // Conversations routes
     if (path === '/conversations' && req.method === 'GET') {
       return await handleGetConversations(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/conversations\/order\/[^/]+$/) && req.method === 'POST') {
       return await handleCreateOrderConversation(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/conversations\/design-request\/[^/]+$/) && req.method === 'GET') {
+      return await handleGetDesignRequestConversation(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/conversations\/[^/]+\/messages$/) && req.method === 'GET') {
       return await handleGetMessages(req as AuthenticatedRequest, res);
@@ -1504,6 +1521,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path === '/admin/users' && req.method === 'GET') {
       return await handleAdminGetUsers(req as AuthenticatedRequest, res);
+    }
+
+    // Admin design requests routes
+    if (path === '/admin/design-requests' && req.method === 'GET') {
+      return await handleAdminGetDesignRequests(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/design-requests\/[^/]+\/status$/) && req.method === 'PATCH') {
+      return await handleAdminUpdateDesignStatus(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/design-requests\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminGetDesignRequestById(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/admin\/users\/[^/]+\/role$/) && req.method === 'PATCH') {
       return await handleAdminUpdateUserRole(req as AuthenticatedRequest, res);
@@ -3034,6 +3062,401 @@ async function handleAddCredits(req: AuthenticatedRequest, res: VercelResponse) 
     console.error('Add credits error:', error);
     return res.status(500).json({ error: 'Failed to add credits' });
   }
+}
+
+// ==================== DESIGN REQUESTS HANDLERS ====================
+// Design requests are stored in the orders table with order_type = 'design'
+
+function mapOrderToDesignRequest(order: any) {
+  return {
+    id: order.id,
+    project_name: order.file_name || 'Design Request',
+    idea_description: order.idea_description || order.notes || '',
+    usage_type: order.usage_type || null,
+    usage_details: order.usage_details || null,
+    approximate_dimensions: order.approximate_dimensions || null,
+    desired_material: order.desired_material || order.material || null,
+    attached_files: order.attached_files || [],
+    reference_images: [],
+    design_status: order.design_status || order.status || 'pending',
+    estimated_price: order.price || null,
+    final_price: order.price || null,
+    payment_status: order.payment_status || 'pending',
+    admin_notes: order.notes || null,
+    admin_design_file: order.admin_design_file || null,
+    user_approval_status: 'pending',
+    user_approval_at: null,
+    user_rejection_reason: null,
+    created_at: order.created_at,
+    updated_at: order.updated_at || order.created_at,
+  };
+}
+
+async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  try {
+    let projectName: string = '';
+    let ideaDescription: string = '';
+    let usage: string = 'functional';
+    let usageDetails: string = '';
+    let approximateDimensions: string = '';
+    let desiredMaterial: string = '';
+    let attachedFiles: any[] = [];
+
+    const contentType = req.headers['content-type'] || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const { fields, files } = await parseFormData(req);
+      const getField = (name: string): string | undefined => {
+        const value = fields[name];
+        return Array.isArray(value) ? value[0] : value;
+      };
+
+      projectName = getField('projectName') || 'Design Request';
+      ideaDescription = getField('ideaDescription') || '';
+      usage = getField('usage') || 'functional';
+      usageDetails = getField('usageDetails') || '';
+      approximateDimensions = getField('approximateDimensions') || '';
+      desiredMaterial = getField('desiredMaterial') || '';
+
+      // Handle reference file uploads
+      const refFiles = files.referenceFiles;
+      const fileList = Array.isArray(refFiles) ? refFiles : refFiles ? [refFiles] : [];
+
+      for (const fileData of fileList) {
+        const fs = await import('fs');
+        const fileBuffer = fs.readFileSync(fileData.filepath);
+        const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+        const fileName = fileData.originalFilename || 'reference-file';
+        const filePath = `${user.userId}/${Date.now()}-${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, fileBuffer, {
+            contentType: fileData.mimetype || 'application/octet-stream',
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+          attachedFiles.push({
+            name: fileName,
+            url: urlData.publicUrl,
+            size: fileData.size,
+            type: fileData.mimetype,
+          });
+        }
+
+        fs.unlinkSync(fileData.filepath);
+      }
+    } else {
+      const body = req.body || {};
+      projectName = body.projectName || 'Design Request';
+      ideaDescription = body.ideaDescription || '';
+      usage = body.usage || 'functional';
+      usageDetails = body.usageDetails || '';
+      approximateDimensions = body.approximateDimensions || '';
+      desiredMaterial = body.desiredMaterial || '';
+    }
+
+    if (!ideaDescription) {
+      return res.status(400).json({ error: 'Idea description is required' });
+    }
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.userId,
+        order_type: 'design',
+        file_name: projectName,
+        file_url: 'n/a',
+        idea_description: ideaDescription,
+        usage_type: usage,
+        usage_details: usageDetails,
+        approximate_dimensions: approximateDimensions,
+        desired_material: desiredMaterial,
+        material: desiredMaterial || 'PLA',
+        color: 'white',
+        quantity: 1,
+        price: 0,
+        layer_height: 0.2,
+        infill: 20,
+        attached_files: attachedFiles,
+        design_status: 'pending',
+        status: 'submitted',
+        payment_status: 'on_hold',
+        shipping_method: 'pickup',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Design request creation error:', error);
+      return res.status(500).json({ error: 'Failed to create design request' });
+    }
+
+    return res.status(201).json(mapOrderToDesignRequest(order));
+  } catch (error) {
+    console.error('Design request error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleGetMyDesignRequests(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id', user.userId)
+    .eq('order_type', 'design')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Fetch design requests error:', error);
+    return res.status(500).json({ error: 'Failed to fetch design requests' });
+  }
+
+  return res.status(200).json({ requests: (orders || []).map(mapOrderToDesignRequest) });
+}
+
+async function handleApproveDesignRequest(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const parts = path.split('/');
+  const requestId = parts[2]; // /design-requests/:id/approve
+
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ design_status: 'completed' })
+    .eq('id', requestId)
+    .eq('user_id', user.userId)
+    .eq('order_type', 'design')
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Approve design request error:', error);
+    return res.status(500).json({ error: 'Failed to approve design request' });
+  }
+
+  return res.status(200).json(mapOrderToDesignRequest(data));
+}
+
+async function handleRejectDesignRequest(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const parts = path.split('/');
+  const requestId = parts[2]; // /design-requests/:id/reject
+
+  const { reason } = req.body || {};
+
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({
+      notes: reason || 'Rejected by user',
+    })
+    .eq('id', requestId)
+    .eq('user_id', user.userId)
+    .eq('order_type', 'design')
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Reject design request error:', error);
+    return res.status(500).json({ error: 'Failed to reject design request' });
+  }
+
+  return res.status(200).json(mapOrderToDesignRequest(data));
+}
+
+async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const designRequestId = url.split('/').pop()?.split('?')[0];
+
+  if (!designRequestId) {
+    return res.status(400).json({ error: 'Design request ID required' });
+  }
+
+  const supabase = getSupabase();
+
+  // Verify ownership (it's an order with order_type='design')
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, user_id')
+    .eq('id', designRequestId)
+    .eq('user_id', user.userId)
+    .eq('order_type', 'design')
+    .single();
+
+  if (!order) {
+    return res.status(404).json({ error: 'Design request not found' });
+  }
+
+  // Find existing conversation by order_id
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('order_id', designRequestId)
+    .single();
+
+  if (!conversation) {
+    return res.status(200).json({ conversation: null, messages: [] });
+  }
+
+  // Fetch messages
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversation.id)
+    .order('created_at', { ascending: true });
+
+  return res.status(200).json({
+    conversation,
+    messages: messages || [],
+  });
+}
+
+// ==================== ADMIN DESIGN REQUESTS HANDLERS ====================
+
+async function handleAdminGetDesignRequests(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  // Verify admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { data: orders, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('order_type', 'design')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Admin fetch design requests error:', error);
+    return res.status(500).json({ error: 'Failed to fetch design requests' });
+  }
+
+  // Enrich with user data
+  const orderList = orders || [];
+  const userIds = [...new Set(orderList.map((o: any) => o.user_id).filter(Boolean))];
+  let userMap: Record<string, any> = {};
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, first_name, last_name, email')
+      .in('id', userIds);
+    if (users) {
+      users.forEach((u: any) => { userMap[u.id] = u; });
+    }
+  }
+
+  const designRequests = orderList.map((o: any) => ({
+    ...mapOrderToDesignRequest(o),
+    users: userMap[o.user_id] || null,
+  }));
+
+  return res.status(200).json({ designRequests });
+}
+
+async function handleAdminGetDesignRequestById(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  // Verify admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const orderId = path.split('/')[3]; // /admin/design-requests/:id
+
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .eq('order_type', 'design')
+    .single();
+
+  if (error || !order) {
+    return res.status(404).json({ error: 'Design request not found' });
+  }
+
+  // Get user info
+  const { data: orderUser } = await supabase
+    .from('users')
+    .select('id, name, first_name, last_name, email')
+    .eq('id', order.user_id)
+    .single();
+
+  return res.status(200).json({
+    request: {
+      ...mapOrderToDesignRequest(order),
+      users: orderUser || null,
+    },
+  });
+}
+
+async function handleAdminUpdateDesignStatus(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  // Verify admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const orderId = path.split('/')[3]; // /admin/design-requests/:id/status
+
+  const { status } = req.body || {};
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ design_status: status })
+    .eq('id', orderId)
+    .eq('order_type', 'design')
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Admin update design status error:', error);
+    return res.status(500).json({ error: 'Failed to update design status' });
+  }
+
+  return res.status(200).json(mapOrderToDesignRequest(data));
 }
 
 // ==================== CONVERSATIONS HANDLERS ====================
