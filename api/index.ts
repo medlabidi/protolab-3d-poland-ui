@@ -123,8 +123,11 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     .order('created_at', { ascending: false });
 
   // Filter by order_type if specified
-  if (orderType === 'print' || orderType === 'design') {
-    query = query.eq('order_type', orderType);
+  if (orderType === 'print') {
+    // Include orders where order_type is 'print' OR NULL (legacy orders before order_type was added)
+    query = query.or('order_type.eq.print,order_type.is.null');
+  } else if (orderType === 'design') {
+    query = query.eq('order_type', 'design');
   }
 
   const { data: orders, error } = await query;
@@ -3121,10 +3124,8 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     status: orderType === 'credits_purchase' ? 'pending_payment' : 'submitted',
   };
 
-  // Add order type and description if provided
-  if (orderType) {
-    orderData.order_type = orderType;
-  }
+  // Set order type (default to 'print' if not specified)
+  orderData.order_type = orderType || 'print';
   if (description) {
     orderData.notes = description;
   }
@@ -4312,7 +4313,7 @@ async function handlePayUNotify(req: VercelRequest, res: VercelResponse) {
 
     switch (order.status) {
       case 'COMPLETED':
-        orderStatus = 'in_queue';
+        orderStatus = 'submitted';
         paymentStatus = 'paid';
         break;
       case 'CANCELED':

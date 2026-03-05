@@ -197,11 +197,19 @@ export class OrderService {
 
   async getOrdersByType(type: 'print' | 'design'): Promise<IOrder[]> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('*, users(name, first_name, last_name, email)')
-      .eq('order_type', type)
       .order('created_at', { ascending: false });
+
+    if (type === 'print') {
+      // Include orders where order_type is 'print' OR NULL (legacy orders)
+      query = query.or('order_type.eq.print,order_type.is.null');
+    } else {
+      query = query.eq('order_type', type);
+    }
+
+    const { data, error } = await query;
     if (error) throw new Error(`Failed to get orders by type: ${error.message}`);
     return data || [];
   }

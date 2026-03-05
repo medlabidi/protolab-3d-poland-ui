@@ -176,6 +176,9 @@ const NewPrint = () => {
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   
+  // Purpose / notes
+  const [purpose, setPurpose] = useState("");
+
   // Drag and drop state
   const [isDragging, setIsDragging] = useState(false);
 
@@ -1156,6 +1159,7 @@ const NewPrint = () => {
         paymentMethod: 'pending',
         price: totalAmount,
         advancedMode,
+        notes: purpose || undefined,
       };
 
       // Add quality preset if not in advanced mode
@@ -1339,6 +1343,7 @@ const NewPrint = () => {
         advancedMode,
         supportType,
         infillPattern,
+        notes: purpose || undefined,
       };
 
       // Add custom values if advanced mode was used
@@ -1955,6 +1960,8 @@ const NewPrint = () => {
                   id="purpose"
                   placeholder={t('newPrint.notesPlaceholder')}
                   rows={3}
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
                 />
               </div>
 

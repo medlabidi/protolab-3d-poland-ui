@@ -38,6 +38,7 @@ interface Order {
   infill?: string;
   users?: { name: string; email: string };
   has_unread_messages?: boolean;
+  notes?: string;
 }
 
 interface Message {
@@ -448,8 +449,17 @@ const AdminPrintJobs = () => {
                 </div>
               </div>
 
-              {/* Right: Conversation */}
+              {/* Right: Notes & Conversation */}
               <div className="space-y-4">
+                {selectedOrder.notes && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-200">Purpose of the Part</h3>
+                    <div className="bg-gray-800 rounded-lg p-4 border-l-4 border-yellow-500">
+                      <p className="text-gray-300 whitespace-pre-wrap">{selectedOrder.notes}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-200">Conversation</h3>
                   {conversation && (
