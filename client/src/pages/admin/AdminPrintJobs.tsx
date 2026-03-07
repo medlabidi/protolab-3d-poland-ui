@@ -1,11 +1,12 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageCircle, X, FileText, Clock, Printer, CheckCircle2, Package } from "lucide-react";
+import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
+import { Eye, PackageCheck, Download, Printer, Search, Loader2, Pencil, Package, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -16,78 +17,53 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { OrderTimeline } from "@/components/OrderTimeline";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface Order {
   id: string;
-  status: string;
-  payment_status?: string;
+  status: OrderStatus;
+  payment_status?: PaymentStatus;
+  paid_amount?: number;
   created_at: string;
+  order_type: 'print' | 'design';
   material: string;
   color: string;
   price: number;
   file_name: string;
   file_url?: string;
+  user_email?: string;
   quantity: number;
-  layer_height?: string;
-  infill?: string;
-  users?: { name: string; email: string };
-  has_unread_messages?: boolean;
+  layer_height: string;
+  infill: string;
+  shipping_method?: string;
+  shipping_address?: string;
+  material_weight?: number;
+  print_time?: number;
+  tracking_code?: string;
   notes?: string;
+  design_description?: string;
+  design_requirements?: string;
+  reference_images?: string[];
+  parent_order_id?: string;
+  users?: { name: string; email: string };
 }
-
-interface Message {
-  id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  message: string;
-  created_at: string;
-}
-
-const statusConfig = {
-  submitted: { 
-    label: "Submitted", 
-    icon: FileText, 
-    color: "bg-yellow-900/50 hover:bg-yellow-900/70",
-    activeColor: "bg-yellow-900/90",
-    iconColor: "text-yellow-400"
-  },
-  in_queue: { 
-    label: "In Queue", 
-    icon: Clock, 
-    color: "bg-blue-900/50 hover:bg-blue-900/70",
-    activeColor: "bg-blue-900/90",
-    iconColor: "text-blue-400"
-  },
-  printing: { 
-    label: "Printing", 
-    icon: Printer, 
-    color: "bg-purple-900/50 hover:bg-purple-900/70",
-    activeColor: "bg-purple-900/90",
-    iconColor: "text-purple-400"
-  },
-  finished: { 
-    label: "Finished", 
-    icon: CheckCircle2, 
-    color: "bg-green-900/50 hover:bg-green-900/70",
-    activeColor: "bg-green-900/90",
-    iconColor: "text-green-400"
-  },
-} as const;
 
 const AdminPrintJobs = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
-  const [conversation, setConversation] = useState<any>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>('submitted');
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -96,7 +72,7 @@ const AdminPrintJobs = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders?type=print`, {
+      const response = await fetch(`${API_URL}/admin/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -104,9 +80,8 @@ const AdminPrintJobs = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.orders?.filter((o: Order) => 
-          ['submitted', 'in_queue', 'printing', 'finished'].includes(o.status)
-        ) || []);
+        // Filter only print jobs (orders with files for printing)
+        setOrders(data.orders || []);
       } else {
         toast.error('Failed to fetch print jobs');
       }
@@ -131,62 +106,60 @@ const AdminPrintJobs = () => {
       });
 
       if (response.ok) {
-        setOrders(prev => prev.map(order =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        ));
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
-        }
-        toast.success('Status updated');
+        toast.success('Status updated successfully');
+        fetchOrders();
       } else {
-        toast.error('Failed to update status');
+        throw new Error('Failed to update status');
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Error updating status');
+      toast.error('Failed to update status');
     }
   };
 
-  const openOrderDetails = async (order: Order) => {
-    setSelectedOrder(order);
-    setShowOrderDetails(true);
-
-    // Fetch conversation
+  const fetchOrderDetails = async (orderId: string) => {
+    setLoadingOrderDetails(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/conversations/order/${order.id}`, {
+      const response = await fetch(`${API_URL}/admin/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setConversation(data.conversation);
-        if (data.conversation?.id) {
-          // Fetch messages
-          const messagesResponse = await fetch(`${API_URL}/conversations/${data.conversation.id}/messages`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          if (messagesResponse.ok) {
-            const messagesData = await messagesResponse.json();
-            setMessages(messagesData.messages || []);
-          }
-        }
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
       }
-    } catch (error) {
-      console.error('Error fetching conversation:', error);
+
+      const data = await response.json();
+      setSelectedOrder(data.order);
+      setShowOrderDetails(true);
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+      toast.error('Failed to load order details');
+    } finally {
+      setLoadingOrderDetails(false);
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
+  const capitalizeFirst = (str: string) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const filteredOrders = orders.filter((order) =>
+    order.file_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.user_email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -194,21 +167,14 @@ const AdminPrintJobs = () => {
     return `${price.toFixed(2)} PLN`;
   };
 
-  const filteredOrders = orders.filter(o => o.status === selectedStatus);
-
-  const statusCounts = {
-    submitted: orders.filter(o => o.status === 'submitted').length,
-    in_queue: orders.filter(o => o.status === 'in_queue').length,
-    printing: orders.filter(o => o.status === 'printing').length,
-    finished: orders.filter(o => o.status === 'finished').length,
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <main className="flex-1 p-8">
+          <div className="flex items-center justify-center h-full">
+            <div className="text-white text-xl">Loading print jobs...</div>
+          </div>
         </main>
       </div>
     );
@@ -218,296 +184,726 @@ const AdminPrintJobs = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      {/* Status Icons Sidebar */}
-      <div className="w-20 bg-gray-900 border-r border-gray-800 flex flex-col items-center py-6 space-y-4">
-        {Object.entries(statusConfig).map(([status, config]) => {
-          const Icon = config.icon;
-          const count = statusCounts[status as keyof typeof statusCounts];
-          const isActive = selectedStatus === status;
-          
-          return (
-            <button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              className={`relative group flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all ${
-                isActive ? config.activeColor : config.color
-              }`}
-              title={config.label}
-            >
-              <Icon className={`w-6 h-6 ${config.iconColor}`} />
-              <Badge 
-                variant="secondary" 
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-              >
-                {count}
-              </Badge>
-              
-              {/* Tooltip */}
-              <div className="absolute left-full ml-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">
-                {config.label}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white">Print Jobs</h1>
-              <p className="text-gray-400 mt-1">
-                {selectedStatus === 'all' 
-                  ? 'Showing all print orders' 
-                  : `Showing ${statusConfig[selectedStatus as keyof typeof statusConfig].label.toLowerCase()} orders`}
-              </p>
+              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <PackageCheck className="w-8 h-8 text-blue-500" />
+                Print Jobs
+              </h1>
+              <p className="text-gray-400 mt-1">Manage all 3D printing orders</p>
             </div>
-            <Badge variant="outline" className="text-lg px-4 py-2">
-              {filteredOrders.length} {filteredOrders.length === 1 ? 'Job' : 'Jobs'}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Input
+                  type="text"
+                  placeholder="Search orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Orders Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredOrders.length === 0 ? (
-              <div className="col-span-full text-center py-16 text-gray-500">
-                <Package className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                <p className="text-lg">No print jobs found</p>
-                <p className="text-sm mt-2">
-                  {selectedStatus === 'all' 
-                    ? 'There are no print jobs yet' 
-                    : `No jobs with status "${statusConfig[selectedStatus as keyof typeof statusConfig].label}"`}
-                </p>
-              </div>
-            ) : (
-              filteredOrders.map((order) => (
-                <Card
-                  key={order.id}
-                  className="bg-gray-800/50 border-gray-700 cursor-pointer hover:bg-gray-800 hover:border-gray-600 transition-all"
-                  onClick={() => openOrderDetails(order)}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-white truncate text-sm">
-                            {order.file_name}
-                          </p>
-                          {order.has_unread_messages && (
-                            <MessageCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                          )}
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white">{orders.length}</div>
+                  <p className="text-sm text-gray-400 mt-1">Total Print Jobs</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-500">
+                    {orders.filter(o => o.status === 'printing').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Printing Now</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-500">
+                    {orders.filter(o => o.status === 'in_queue').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">In Queue</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-500">
+                    {orders.filter(o => o.status === 'finished').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Completed</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Kanban Board - Orders by Status */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Submitted Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-gray-400 text-sm font-semibold flex items-center justify-between">
+                  <span>Submitted</span>
+                  <span className="bg-gray-500/20 text-gray-400 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'submitted').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'submitted').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No submitted orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'submitted').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
                         </div>
-                        <p className="text-xs text-gray-400">
-                          {order.users?.name || 'Unknown'}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className={`${
-                          order.status === 'submitted' ? 'border-yellow-500 text-yellow-400' :
-                          order.status === 'in_queue' ? 'border-blue-500 text-blue-400' :
-                          order.status === 'printing' ? 'border-purple-500 text-purple-400' :
-                          order.status === 'finished' ? 'border-green-500 text-green-400' :
-                          'border-gray-500 text-gray-400'
-                        } text-xs`}
-                      >
-                        {order.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between text-gray-400">
-                        <span>Material:</span>
-                        <span className="text-white font-medium">{order.material}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Color:</span>
-                        <span className="text-white">{order.color}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Quantity:</span>
-                        <span className="text-white">{order.quantity}</span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                        <span className="text-gray-400">Price:</span>
-                        <span className="text-blue-400 font-semibold text-sm">
-                          {formatPrice(order.price)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-gray-500 pt-1">
-                        <span>{formatDate(order.created_at)}</span>
-                      </div>
-                    </div>
-
-                    <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="mt-4">
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => {
-                          updateOrderStatus(order.id, value);
-                        }}
-                      >
-                        <SelectTrigger className="w-full h-8 bg-gray-900 border-gray-600 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent 
-                          onClick={(e) => e.stopPropagation()}
-                          onPointerDown={(e) => e.stopPropagation()}
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
                         >
-                          <SelectItem value="submitted">Submitted</SelectItem>
-                          <SelectItem value="in_queue">In Queue</SelectItem>
-                          <SelectItem value="printing">Printing</SelectItem>
-                          <SelectItem value="finished">Finished</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Queue Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-blue-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Queue</span>
+                  <span className="bg-blue-500/20 text-blue-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'in_queue').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'in_queue').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No orders in queue</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'in_queue').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Printing Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-orange-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Printing</span>
+                  <span className="bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'printing').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'printing').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No orders printing</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'printing').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Finished Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-green-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Finished</span>
+                  <span className="bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'finished').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'finished').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No finished orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'finished').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Delivered / On Hold Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-purple-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Delivered</span>
+                  <span className="bg-purple-500/20 text-purple-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No delivered orders</p>
+                ) : (
+                  filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20"
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            <Eye className="w-3 h-3 text-blue-400" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                          <span className="ml-1">({order.color})</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.price)}</span>
+                        </div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      </main>
 
-      {/* Order Details Dialog with Conversation */}
-      <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-6xl max-h-[90vh] bg-gray-900 border-gray-800 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center justify-between">
-              <span>Print Job Details</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowOrderDetails(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {/* Left: Order Details */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-gray-200">Order Information</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">File:</span>
-                      <span className="text-white font-medium">{selectedOrder.file_name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Customer:</span>
-                      <span className="text-white">{selectedOrder.users?.name || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Material:</span>
-                      <span className="text-white">{selectedOrder.material}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Color:</span>
-                      <span className="text-white">{selectedOrder.color}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Quantity:</span>
-                      <span className="text-white">{selectedOrder.quantity}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Price:</span>
-                      <span className="text-white font-semibold">{formatPrice(selectedOrder.price)}</span>
-                    </div>
-                  </div>
+          {/* Orders Table - Hidden by default */}
+          <Card className="bg-gray-900 border-gray-800 hidden">
+            <CardHeader>
+              <CardTitle className="text-white">All Print Jobs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
+                  <div>Order ID</div>
+                  <div>File Name</div>
+                  <div>User</div>
+                  <div>Material</div>
+                  <div>Status</div>
+                  <div>Payment</div>
+                  <div>Price</div>
+                  <div className="text-right">Actions</div>
                 </div>
 
-                {selectedOrder.file_url && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-200">3D Model Preview</h3>
-                    <div className="bg-gray-800 rounded-lg p-4">
-                      <ModelViewerUrl url={selectedOrder.file_url} fileName={selectedOrder.file_name} />
-                    </div>
+                {filteredOrders.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <PackageCheck className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No print jobs found</p>
                   </div>
-                )}
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-gray-200">Status</h3>
-                  <Select
-                    value={selectedOrder.status}
-                    onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
-                  >
-                    <SelectTrigger className="w-full bg-gray-800 border-gray-700">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="submitted">Submitted</SelectItem>
-                      <SelectItem value="in_queue">In Queue</SelectItem>
-                      <SelectItem value="printing">Printing</SelectItem>
-                      <SelectItem value="finished">Finished</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Right: Notes & Conversation */}
-              <div className="space-y-4">
-                {selectedOrder.notes && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-200">Purpose of the Part</h3>
-                    <div className="bg-gray-800 rounded-lg p-4 border-l-4 border-yellow-500">
-                      <p className="text-gray-300 whitespace-pre-wrap">{selectedOrder.notes}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-200">Conversation</h3>
-                  {conversation && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setShowOrderDetails(false);
-                        navigate(`/admin/conversations?open=${conversation.id}`);
-                      }}
-                      className="text-xs"
+                ) : (
+                  filteredOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="grid grid-cols-8 gap-4 items-center py-4 px-4 rounded-lg hover:bg-gray-800/50 transition-colors border-b border-gray-800/50"
                     >
-                      Open Full Chat
-                    </Button>
+                      <div className="font-mono text-sm text-gray-300">
+                        #{order.id.slice(0, 8)}
+                      </div>
+                      <div className="text-sm text-white truncate" title={order.file_name}>
+                        {order.file_name}
+                      </div>
+                      <div className="text-sm text-gray-400 truncate">
+                        {order.user_email || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        <span className="font-semibold">{order.material?.toUpperCase()}</span>
+                        <span className="text-gray-500 ml-1">({order.color})</span>
+                      </div>
+                      <div>
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="in_queue">In Queue</SelectItem>
+                            <SelectItem value="printing">Printing</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                            <SelectItem value="delivered">Delivered</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                            <SelectItem value="suspended">Suspended</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        {order.payment_status && (
+                          <PaymentStatusBadge status={order.payment_status} />
+                        )}
+                      </div>
+                      <div className="font-bold text-green-400">
+                        {formatPrice(order.price)}
+                      </div>
+                      <div className="text-right flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchOrderDetails(order.id)}
+                          disabled={loadingOrderDetails}
+                          className="hover:bg-blue-500/20 text-blue-400"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-orange-500/20 text-orange-400"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-green-500/20 text-green-400"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Order Details Dialog */}
+        <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+            {loadingOrderDetails ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <span className="ml-3 text-gray-300">Chargement...</span>
+              </div>
+            ) : selectedOrder ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl flex items-center gap-3 text-white">
+                    Commande #{selectedOrder.id.slice(0, 8).toUpperCase()}
+                    <StatusBadge status={selectedOrder.status} />
+                    {selectedOrder.payment_status && (
+                      <PaymentStatusBadge 
+                        status={selectedOrder.payment_status} 
+                        amount={selectedOrder.paid_amount}
+                      />
+                    )}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    {selectedOrder.order_type === 'design' ? '🎨 Design Assistance' : '📦 Print Job'} • 📅 {new Date(selectedOrder.created_at).toLocaleDateString('fr-FR')} • 💰 {selectedOrder.price.toFixed(2)} PLN
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                  {/* Parent Order Link */}
+                  {selectedOrder.parent_order_id && (
+                    <Card className="bg-purple-900/20 border-purple-700">
+                      <CardContent className="py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-purple-300">Created from design request</p>
+                            <p className="text-white font-medium">Parent Order: #{selectedOrder.parent_order_id.slice(0, 8).toUpperCase()}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowOrderDetails(false);
+                            navigate(`/admin/orders/${selectedOrder.parent_order_id}`);
+                          }}
+                          className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Design
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white">Progress</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <OrderTimeline currentStatus={selectedOrder.status} />
+                    </CardContent>
+                  </Card>
+
+                  {/* Design Details Section (only for design orders) */}
+                  {selectedOrder.order_type === 'design' && (
+                    <Card className="bg-gradient-to-br from-purple-900/30 to-purple-800/30 border-purple-700/50">
+                      <CardHeader>
+                        <CardTitle className="text-white flex items-center gap-2">
+                          <Palette className="w-5 h-5 text-purple-400" />
+                          Détails du projet de design
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedOrder.design_description && (
+                          <div className="p-4 bg-gray-800/50 rounded-lg">
+                            <p className="text-xs text-purple-300 uppercase tracking-wide mb-2">Description</p>
+                            <p className="text-white leading-relaxed">{selectedOrder.design_description}</p>
+                          </div>
+                        )}
+                        
+                        {selectedOrder.design_requirements && (
+                          <div className="p-4 bg-gray-800/50 rounded-lg">
+                            <p className="text-xs text-purple-300 uppercase tracking-wide mb-2">Requirements</p>
+                            <p className="text-white leading-relaxed whitespace-pre-wrap">{selectedOrder.design_requirements}</p>
+                          </div>
+                        )}
+
+                        {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
+                          <div className="p-4 bg-gray-800/50 rounded-lg">
+                            <p className="text-xs text-purple-300 uppercase tracking-wide mb-3">Reference Images</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {selectedOrder.reference_images.map((img, idx) => (
+                                <img 
+                                  key={idx}
+                                  src={img}
+                                  alt={`Reference ${idx + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-gray-700"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {selectedOrder.file_url && (
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardHeader>
+                          <CardTitle className="text-white">
+                            {selectedOrder.order_type === 'design' ? '📄 Reference File' : '🎨 3D Model'}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ModelViewerUrl 
+                            url={selectedOrder.file_url} 
+                            fileName={selectedOrder.file_name}
+                            height="250px"
+                          />
+                          <div className="flex items-center justify-between mt-3">
+                            <p className="text-sm text-gray-400">{selectedOrder.file_name}</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (!selectedOrder.file_url) return;
+                                const link = document.createElement('a');
+                                link.href = selectedOrder.file_url;
+                                link.download = selectedOrder.file_name;
+                                link.target = '_blank';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="border-blue-500 text-blue-300 hover:bg-blue-500/20"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-white">⚙️ Parameters</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Material</p>
+                            <p className="font-semibold text-white">{selectedOrder.material?.toUpperCase()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Color</p>
+                            <p className="font-semibold text-white">{capitalizeFirst(selectedOrder.color)}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Quality</p>
+                            <p className="font-semibold text-white">{selectedOrder.layer_height}mm</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Infill</p>
+                            <p className="font-semibold text-white">{selectedOrder.infill}%</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-700">
+                          <span className="text-gray-400">📦 Quantity</span>
+                          <span className="font-bold text-xl text-blue-400">{selectedOrder.quantity}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {selectedOrder.material_weight && (
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardContent className="pt-6 text-center">
+                          <div className="text-3xl mb-1">⚖️</div>
+                          <div className="text-2xl font-bold text-blue-400">
+                            {(selectedOrder.material_weight * 1000).toFixed(1)}g
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Weight</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {selectedOrder.print_time && (
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardContent className="pt-6 text-center">
+                          <div className="text-3xl mb-1">⏱️</div>
+                          <div className="text-2xl font-bold text-blue-400">
+                            {Math.floor(selectedOrder.print_time / 60)}h {selectedOrder.print_time % 60}m
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Duration</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    <Card className="bg-gradient-to-br from-blue-900/30 to-blue-800/30 border-blue-700/50">
+                      <CardContent className="pt-6 text-center">
+                        <div className="text-3xl mb-1">💰</div>
+                        <div className="text-2xl font-bold text-green-400">
+                          {selectedOrder.price.toFixed(2)} PLN
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Prix</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {selectedOrder.tracking_code && (
+                    <Card className="bg-gray-800 border-blue-700/50">
+                      <CardHeader>
+                        <CardTitle className="text-white">📦 Tracking</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="bg-gray-900 rounded-lg p-4 text-center">
+                          <p className="font-mono text-xl font-bold text-blue-400">{selectedOrder.tracking_code}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {selectedOrder.notes && (
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-white">📝 Notes</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-300 whitespace-pre-wrap">{selectedOrder.notes}</p>
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
 
-                <div className="bg-gray-800 rounded-lg p-4 h-[400px] overflow-y-auto space-y-3">
-                  {messages.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
-                      <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No messages yet</p>
-                    </div>
-                  ) : (
-                    messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`p-3 rounded-lg ${
-                          message.sender_type === 'engineer'
-                            ? 'bg-blue-900/30 border-l-2 border-blue-500'
-                            : message.sender_type === 'user'
-                            ? 'bg-gray-700/50'
-                            : 'bg-gray-600/30 text-center text-xs'
-                        }`}
-                      >
-                        <p className="text-sm text-white">{message.message}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatDate(message.created_at)}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowOrderDetails(false)} className="bg-gray-800 border-gray-700">
+                    Fermer
+                  </Button>
+                  <Button onClick={() => navigate(`/admin/orders/${selectedOrder.id}`)} className="bg-blue-600 hover:bg-blue-700">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Voir détails complets
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      </main>
     </div>
   );
 };

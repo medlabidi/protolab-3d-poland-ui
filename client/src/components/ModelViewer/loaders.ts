@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { STLLoader } from 'three-stdlib';
 import { OBJLoader } from 'three-stdlib';
+import { GLTFLoader } from 'three-stdlib';
 
 // File validation constants
 const MAX_FILE_SIZE_MB = 50;
@@ -42,9 +43,9 @@ export const validateFile = (file: File): ValidationResult => {
 
   // Check file extension
   const extension = file.name.split('.').pop()?.toLowerCase();
-  const supportedFormats = ['stl', 'obj', '3mf'];
+  const supportedFormats = ['stl', 'obj', '3mf', 'glb', 'gltf'];
   if (!extension || !supportedFormats.includes(extension)) {
-    return { isValid: false, error: `Unsupported file format: .${extension}. Supported formats: STL, OBJ, 3MF` };
+    return { isValid: false, error: `Unsupported file format: .${extension}. Supported formats: STL, OBJ, GLB, GLTF, 3MF` };
   }
 
   return { isValid: true };
@@ -195,20 +196,77 @@ export const loadSTL = (file: File): Promise<THREE.BufferGeometry> => {
 
 export const loadSTLFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
   return new Promise((resolve, reject) => {
-    const loader = new STLLoader();
-    loader.load(
-      url,
-      (geometry) => {
+    console.log('[STL Loader] Attempting to load from URL:', url);
+    
+    // First, fetch the file to validate it before parsing
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream, model/stl, */*'
+      },
+      credentials: 'include' // Include credentials for authenticated requests
+    })
+      .then(response => {
+        console.log('[STL Loader] Response status:', response.status, response.statusText);
+        console.log('[STL Loader] Content-Type:', response.headers.get('content-type'));
+        console.log('[STL Loader] Content-Length:', response.headers.get('content-length'));
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: HTTP ${response.status} ${response.statusText}`);
+        }
+        
+        // Note: We're removing the content-type check because many servers don't set it correctly
+        // The important thing is that we got a 200 response and will attempt to parse as binary
+        
+        return response.arrayBuffer();
+      })
+      .then(arrayBuffer => {
+        console.log('[STL Loader] Received buffer size:', arrayBuffer.byteLength, 'bytes');
+        
+        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+          throw new Error('File is empty or corrupted');
+        }
+
+        if (arrayBuffer.byteLength < MIN_FILE_SIZE_BYTES) {
+          throw new Error('File is too small to be a valid 3D model');
+        }
+
+        const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024);
+        if (fileSizeMB > MAX_FILE_SIZE_MB) {
+          throw new Error(`File is too large (${fileSizeMB.toFixed(1)} MB). Maximum allowed size is ${MAX_FILE_SIZE_MB} MB`);
+        }
+
+        // Parse the STL file
+        const loader = new STLLoader();
+        let geometry: THREE.BufferGeometry;
+        
+        try {
+          console.log('[STL Loader] Parsing STL file...');
+          geometry = loader.parse(arrayBuffer);
+          console.log('[STL Loader] Successfully parsed STL file');
+        } catch (parseError) {
+          console.error('[STL Loader] Parse error:', parseError);
+          throw new Error('Failed to parse STL file. The file may be corrupted or in an unsupported format');
+        }
+
+        // Validate the parsed geometry
         const validationResult = validateGeometry(geometry);
         if (!validationResult.isValid) {
-          reject(new Error(validationResult.error));
-          return;
+          console.error('[STL Loader] Validation failed:', validationResult.error);
+          throw new Error(validationResult.error || 'Invalid geometry');
         }
+
+        console.log('[STL Loader] Successfully loaded and validated STL file');
         resolve(geometry);
-      },
-      undefined,
-      (error) => reject(new Error(`Failed to load STL from URL: ${error}`))
-    );
+      })
+      .catch(error => {
+        console.error('[STL Loader] Error loading STL from URL:', url, error);
+        if (error instanceof Error) {
+          reject(new Error(`Failed to load STL from URL: ${error.message}`));
+        } else {
+          reject(new Error('Failed to load STL from URL: Unknown error'));
+        }
+      });
   });
 };
 
@@ -272,10 +330,41 @@ export const loadOBJ = (file: File): Promise<THREE.BufferGeometry> => {
 
 export const loadOBJFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
   return new Promise((resolve, reject) => {
-    const loader = new OBJLoader();
-    loader.load(
-      url,
-      (object) => {
+    // First, fetch the file to validate it before parsing
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: HTTP ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(text => {
+        if (!text || text.trim().length === 0) {
+          throw new Error('File is empty');
+        }
+
+        const textSizeBytes = new Blob([text]).size;
+        if (textSizeBytes < MIN_FILE_SIZE_BYTES) {
+          throw new Error('File is too small to be a valid 3D model');
+        }
+
+        const textSizeMB = textSizeBytes / (1024 * 1024);
+        if (textSizeMB > MAX_FILE_SIZE_MB) {
+          throw new Error(`File is too large (${textSizeMB.toFixed(1)} MB). Maximum allowed size is ${MAX_FILE_SIZE_MB} MB`);
+        }
+
+        // Parse the OBJ file
+        const loader = new OBJLoader();
+        let object;
+        
+        try {
+          object = loader.parse(text);
+        } catch (parseError) {
+          console.error('OBJ parse error:', parseError);
+          throw new Error('Failed to parse OBJ file. The file may be corrupted or in an unsupported format');
+        }
+
+        // Extract geometry from the first mesh found
         let geometry: THREE.BufferGeometry | null = null;
         object.traverse((child) => {
           if (child instanceof THREE.Mesh && child.geometry) {
@@ -284,20 +373,68 @@ export const loadOBJFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
         });
         
         if (!geometry) {
-          reject(new Error('No valid 3D geometry found in OBJ file.'));
-          return;
+          throw new Error('No valid 3D geometry found in OBJ file');
         }
 
+        // Validate the parsed geometry
         const validationResult = validateGeometry(geometry);
         if (!validationResult.isValid) {
-          reject(new Error(validationResult.error));
-          return;
+          throw new Error(validationResult.error || 'Invalid geometry');
         }
 
         resolve(geometry);
+      })
+      .catch(error => {
+        console.error('Error loading OBJ from URL:', error);
+        if (error instanceof Error) {
+          reject(new Error(`Failed to load OBJ from URL: ${error.message}`));
+        } else {
+          reject(new Error('Failed to load OBJ from URL: Unknown error'));
+        }
+      });
+  });
+};
+
+export const loadGLBFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
+  return new Promise((resolve, reject) => {
+    console.log('[GLB Loader] Attempting to load from URL:', url);
+    
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => {
+        console.log('[GLB Loader] Successfully loaded GLTF/GLB file');
+        
+        // Extract geometry from the first mesh found
+        let geometry: THREE.BufferGeometry | null = null;
+        gltf.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.geometry) {
+            geometry = child.geometry;
+          }
+        });
+        
+        if (!geometry) {
+          reject(new Error('No valid 3D geometry found in GLB/GLTF file'));
+          return;
+        }
+
+        // Validate the parsed geometry
+        const validationResult = validateGeometry(geometry);
+        if (!validationResult.isValid) {
+          reject(new Error(validationResult.error || 'Invalid geometry'));
+          return;
+        }
+
+        console.log('[GLB Loader] Successfully validated GLB/GLTF geometry');
+        resolve(geometry);
       },
-      undefined,
-      (error) => reject(new Error(`Failed to load OBJ from URL: ${error}`))
+      (progress) => {
+        console.log('[GLB Loader] Loading progress:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+      },
+      (error) => {
+        console.error('[GLB Loader] Error loading GLB/GLTF from URL:', url, error);
+        reject(new Error(`Failed to load GLB/GLTF from URL: ${error.message || 'Unknown error'}`));
+      }
     );
   });
 };
@@ -329,14 +466,19 @@ export const loadModel = async (file: File): Promise<THREE.BufferGeometry | null
 export const loadModelFromUrl = async (url: string, fileName: string): Promise<THREE.BufferGeometry> => {
   const extension = fileName.split('.').pop()?.toLowerCase();
   
+  console.log('[Model Loader] Loading file with extension:', extension, 'from URL:', url);
+  
   switch (extension) {
     case 'stl':
       return loadSTLFromUrl(url);
     case 'obj':
       return loadOBJFromUrl(url);
+    case 'glb':
+    case 'gltf':
+      return loadGLBFromUrl(url);
     case '3mf':
       throw new Error('3MF files are accepted for printing but cannot be previewed in 3D.');
     default:
-      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ, 3MF`);
+      throw new Error(`Unsupported file format: .${extension}. Supported formats: STL, OBJ, GLB, GLTF, 3MF`);
   }
 };

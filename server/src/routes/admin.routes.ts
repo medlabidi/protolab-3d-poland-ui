@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { adminController } from '../controllers/admin.controller';
 import { adminBusinessController } from '../controllers/admin-business.controller';
+import { supplierController } from '../controllers/supplier.controller';
 import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roleGuard';
 import { validate } from '../middleware/validate';
@@ -55,5 +56,22 @@ router.post('/printers', adminController.createPrinter);
 router.patch('/printers/:id', adminController.updatePrinter);
 router.patch('/printers/:id/set-default', adminController.setDefaultPrinter);
 router.delete('/printers/:id', adminController.deletePrinter);
+
+// Design requests routes
+router.get('/design-requests', adminController.getAllDesignRequests);
+router.get('/design-requests/:id', adminController.getDesignRequestById);
+router.patch('/design-requests/:id/status', adminController.updateDesignRequestStatus);
+
+// Suppliers routes
+router.get('/suppliers', supplierController.getAllSuppliers);
+router.get('/suppliers/active', supplierController.getActiveSuppliers);
+router.get('/suppliers/preferred', supplierController.getPreferredSuppliers);
+router.get('/suppliers/stats', supplierController.getSupplierStats);
+router.get('/suppliers/material/:materialType', supplierController.getSuppliersByMaterial);
+router.get('/suppliers/:id', supplierController.getSupplierById);
+router.post('/suppliers', supplierController.createSupplier);
+router.patch('/suppliers/:id', supplierController.updateSupplier);
+router.patch('/suppliers/:id/stats', supplierController.updateSupplierStats);
+router.delete('/suppliers/:id', supplierController.deleteSupplier);
 
 export default router;

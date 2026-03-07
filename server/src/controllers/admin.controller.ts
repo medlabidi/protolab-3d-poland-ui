@@ -61,30 +61,31 @@ export class AdminController {
   async getOrderById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
       const order = await orderService.getOrderById(id);
-      
+
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
         return;
       }
-      
+
       res.json({ order });
     } catch (error) {
       next(error);
     }
   }
-  
+
   async getOrdersByType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { type } = req.params;
-      
+
       if (type !== 'print' && type !== 'design') {
         res.status(400).json({ error: 'Invalid order type. Must be "print" or "design"' });
         return;
       }
-      
-      const orders = await orderService.getOrdersByType(type);
+
+      // Filter orders by type from all orders
+      const allOrders = await orderService.getAllOrders();
+      const orders = allOrders.filter(order => order.order_type === type);
       
       res.json({ orders, count: orders.length, type });
     } catch (error) {
@@ -102,21 +103,37 @@ export class AdminController {
         return;
       }
       
-      const printOrder = await orderService.createPrintFromDesign(designOrderId, {
-        material,
-        color,
-        layerHeight,
-        infill,
-        quantity,
-        price
-      });
+      // Get the design order first
+      const designOrder = await orderService.getOrderById(designOrderId);
+      if (!designOrder) {
+        res.status(404).json({ error: 'Design order not found' });
+        return;
+      }
+      
+      if (designOrder.order_type !== 'design') {
+        res.status(400).json({ error: 'Parent order must be a design order' });
+        return;
+      }
+      
+      // Create a print order linked to the design
+      const printOrder = await orderService.createOrder(
+        designOrder.user_id,
+        {
+          fileName: designOrder.file_name || 'design-converted.stl',
+          fileUrl: designOrder.file_url || '',
+          material,
+          color,
+          layerHeight,
+          infill,
+          quantity,
+          shippingMethod: designOrder.shipping_method || 'pickup',
+          price,
+          projectName: designOrder.project_name,
+        }
+      );
       
       res.status(201).json({ order: printOrder });
     } catch (error: any) {
-      if (error.message === 'Design order not found' || error.message === 'Parent order must be a design order') {
-        res.status(404).json({ error: error.message });
-        return;
-      }
       next(error);
     }
   }
@@ -604,6 +621,112 @@ export class AdminController {
       logger.info({ printerId: printer.id }, 'Default printer set');
       
       res.json({ message: 'Default printer set successfully', printer });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Design Requests methods
+  async getAllDesignRequests(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: designRequests, error } = await supabase
+        .from('design_requests')
+        .select('*, users(id, first_name, last_name, email)')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Format user data with combined name
+      const formattedRequests = (designRequests || []).map((request: any) => ({
+        ...request,
+        users: request.users ? {
+          ...request.users,
+          name: `${request.users.first_name || ''} ${request.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      }));
+      
+      res.json({ designRequests: formattedRequests, count: formattedRequests.length });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDesignRequestById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const supabase = getSupabase();
+      
+      const { data: designRequest, error } = await supabase
+        .from('design_requests')
+        .select('*, users(id, first_name, last_name, email)')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single();
+      
+      if (error || !designRequest) {
+        res.status(404).json({ error: 'Design request not found' });
+        return;
+      }
+      
+      // Format user data with combined name
+      const formattedRequest = {
+        ...designRequest,
+        users: designRequest.users ? {
+          ...designRequest.users,
+          name: `${designRequest.users.first_name || ''} ${designRequest.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      };
+      
+      res.json({ request: formattedRequest });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateDesignRequestStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status) {
+        res.status(400).json({ error: 'Status is required' });
+        return;
+      }
+      
+      const supabase = getSupabase();
+      
+      const { data: designRequest, error } = await supabase
+        .from('design_requests')
+        .update({ 
+          design_status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select('*, users(id, email, first_name, last_name)')
+        .single();
+      
+      if (error) throw error;
+      if (!designRequest) {
+        res.status(404).json({ error: 'Design request not found' });
+        return;
+      }
+      
+      // Format user data with combined name
+      const formattedRequest = {
+        ...designRequest,
+        users: designRequest.users ? {
+          ...designRequest.users,
+          name: `${designRequest.users.first_name || ''} ${designRequest.users.last_name || ''}`.trim() || 'N/A'
+        } : null
+      };
+      
+      logger.info(`Design request ${id} status updated to ${status}`);
+      
+      res.json({ message: 'Design request updated successfully', designRequest: formattedRequest });
     } catch (error) {
       next(error);
     }

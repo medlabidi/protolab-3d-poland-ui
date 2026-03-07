@@ -28,6 +28,7 @@ export class OrderService {
       payment_status: 'paid',
       order_type: 'print',
       project_name: data.projectName,
+      order_type: data.orderType || 'print',  // Default to 'print' if not specified
       material_weight: data.materialWeight,  // Store weight in grams
       print_time: data.printTime,            // Store time in minutes
       model_volume_cm3: data.modelVolume,    // Store base volume in cm³

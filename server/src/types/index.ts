@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
     email: string;
     role: 'user' | 'admin';
   };
+  file?: Express.Multer.File;
 }
 
 export interface JWTPayload {
@@ -28,7 +29,23 @@ export type OrderStatus =
   | 'on_hold'
   | 'suspended';
 
-export type ShippingMethod = 'pickup' | 'inpost' | 'courier';
+export type OrderType = 'print' | 'design';
+
+export type DesignStatus = 
+  | 'pending'
+  | 'in_review'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export type UsageType = 
+  | 'mechanical'
+  | 'decorative'
+  | 'functional'
+  | 'prototype'
+  | 'other';
+
+export type ShippingMethod = 'pickup' | 'inpost' | 'courier' | 'dpd';
 
 export interface PricingParams {
   materialWeight: number;
@@ -49,6 +66,39 @@ export interface PricingBreakdown {
   total: number;
 }
 
+// Print Job Input
+export interface PrintJobCreateInput {
+  fileName: string;
+  fileUrl: string;
+  filePath?: string;
+  material: string;
+  color: string;
+  layerHeight: number;
+  infill: number;
+  quantity: number;
+  shippingMethod: ShippingMethod;
+  shippingAddress?: string;
+  price?: number;
+  projectName?: string;
+  materialWeight?: number;
+  printTime?: number;
+}
+
+// Design Request Input
+export interface DesignRequestCreateInput {
+  projectName: string;
+  ideaDescription: string;
+  usageType?: UsageType;
+  usageDetails?: string;
+  approximateDimensions?: string;
+  desiredMaterial?: string;
+  attachedFiles?: string[];
+  referenceImages?: string[];
+  requestChat?: boolean;
+  estimatedPrice?: number;
+}
+
+// Legacy unified order input (backward compatibility)
 export interface OrderCreateInput {
   fileName: string;
   fileUrl: string;
@@ -62,6 +112,23 @@ export interface OrderCreateInput {
   shippingAddress?: string;
   price?: number;
   projectName?: string;
+  orderType?: OrderType;
+  
+  // Design fields
+  ideaDescription?: string;
+  usageType?: UsageType;
+  usageDetails?: string;
+  approximateDimensions?: string;
+  desiredMaterial?: string;
+  attachedFiles?: string[];
+  requestChat?: boolean;
+  
+  // Legacy design fields
+  designDescription?: string;
+  designRequirements?: string;
+  referenceImages?: string[];
+  
+  // Print configuration fields from mahmoud
   materialWeight?: number;  // Weight in grams
   printTime?: number;       // Print time in minutes
   modelVolume?: number;     // Base model volume in cm³ (for exact recalculation)

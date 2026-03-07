@@ -25,7 +25,8 @@ import {
   Paperclip,
   X,
   FileIcon,
-  Download
+  Download,
+  Palette
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
@@ -35,6 +36,12 @@ interface Order {
   id: string;
   file_name: string;
   project_name?: string;
+  status: string;
+}
+
+interface DesignRequest {
+  id: string;
+  project_description: string;
   status: string;
 }
 
@@ -51,7 +58,8 @@ interface Message {
 
 interface Conversation {
   id: string;
-  order_id: string;
+  order_id?: string;
+  design_request_id?: string;
   user_id: string;
   subject?: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -61,6 +69,7 @@ interface Conversation {
   admin_typing?: boolean;
   admin_typing_at?: string;
   order?: Order;
+  design_request?: DesignRequest;
   unread_count?: number;
   last_message?: Message;
 }
@@ -379,9 +388,9 @@ const Conversations = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+      <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
       </div>
@@ -389,13 +398,13 @@ const Conversations = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
+    <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
 
-      <main className="flex-1 p-4 md:p-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
         <div className="max-w-[1600px] mx-auto h-full">
           {/* Header */}
-          <div className="mb-6 animate-slide-up">
+          <div className="mb-4 sm:mb-6 animate-slide-up">
             <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text flex items-center gap-3">
               <MessageSquare className="w-8 h-8 text-primary" />
               {t('conversations.title')}
@@ -476,7 +485,11 @@ const Conversations = () => {
                                   ? "bg-primary text-primary-foreground" 
                                   : "bg-primary/10 group-hover:bg-primary/20"
                               )}>
-                                <Package className="w-5 h-5" />
+                                {conversation.design_request_id ? (
+                                  <Palette className="w-5 h-5" />
+                                ) : (
+                                  <Package className="w-5 h-5" />
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
@@ -487,7 +500,7 @@ const Conversations = () => {
                                     "font-semibold text-sm truncate",
                                     conversation.user_read === false && "text-orange-600 dark:text-orange-400"
                                   )}>
-                                    {conversation.order?.project_name || conversation.order?.file_name || t('conversations.unknownOrder')}
+                                    {conversation.order?.project_name || conversation.order?.file_name || conversation.design_request?.project_description || t('conversations.unknownOrder')}
                                   </span>
                                 </div>
                                 <span className="text-xs text-muted-foreground">
@@ -549,17 +562,21 @@ const Conversations = () => {
                         </Button>
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Package className="w-6 h-6 text-primary" />
+                            {selectedConversation.design_request_id ? (
+                              <Palette className="w-6 h-6 text-primary" />
+                            ) : (
+                              <Package className="w-6 h-6 text-primary" />
+                            )}
                           </div>
                           <div>
                             <CardTitle className="text-lg flex items-center gap-2 font-bold">
-                              {selectedConversation.order?.project_name || selectedConversation.order?.file_name}
+                              {selectedConversation.order?.project_name || selectedConversation.order?.file_name || selectedConversation.design_request?.project_description || 'Conversation'}
                               {selectedConversation.user_read === false && (
                                 <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
                               )}
                             </CardTitle>
                             <p className="text-xs text-muted-foreground font-mono">
-                              {t('conversations.orderId')}: {selectedConversation.order_id.slice(0, 8)}...
+                              {selectedConversation.order_id ? `${t('conversations.orderId')}: ${selectedConversation.order_id.slice(0, 8)}...` : selectedConversation.design_request_id ? `Design Request: ${selectedConversation.design_request_id.slice(0, 8)}...` : ''}
                             </p>
                           </div>
                         </div>

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 import { loadModelFromUrl } from './loaders';
-import { Loader2, Box as BoxIcon } from 'lucide-react';
+import { Loader2, Box as BoxIcon, Download, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ModelViewerUrlProps {
   url: string | null;
@@ -110,11 +111,21 @@ export const ModelViewerUrl = ({ url, fileName, height = '300px' }: ModelViewerU
       return;
     }
 
+    console.log('[ModelViewer] Loading model:', { url, fileName });
+
     setLoading(true);
     setError(null);
 
+    // Add timeout to prevent indefinite loading
+    const timeoutId = setTimeout(() => {
+      setError('Loading timeout: The file is taking too long to load. Please check your connection or try again.');
+      setLoading(false);
+    }, 30000); // 30 second timeout
+
     loadModelFromUrl(url, fileName)
       .then((loadedGeometry) => {
+        clearTimeout(timeoutId);
+        
         // Remove old mesh
         if (meshRef.current && sceneRef.current) {
           sceneRef.current.remove(meshRef.current);
@@ -152,10 +163,33 @@ export const ModelViewerUrl = ({ url, fileName, height = '300px' }: ModelViewerU
         setLoading(false);
       })
       .catch((err) => {
+        clearTimeout(timeoutId);
         console.error('Error loading model:', err);
-        setError(err.message || 'Failed to load model');
+        
+        // Provide more user-friendly error messages
+        let errorMessage = 'Failed to load model';
+        if (err.message) {
+          if (err.message.includes('Failed to fetch') || err.message.includes('HTTP')) {
+            errorMessage = 'Unable to download the file. Please check your internet connection.';
+          } else if (err.message.includes('empty') || err.message.includes('corrupted')) {
+            errorMessage = 'The file appears to be empty or corrupted. Please contact support.';
+          } else if (err.message.includes('too large')) {
+            errorMessage = 'The file is too large to preview.';
+          } else if (err.message.includes('Invalid') || err.message.includes('parse')) {
+            errorMessage = 'Invalid or corrupted 3D model file.';
+          } else {
+            errorMessage = err.message;
+          }
+        }
+        
+        setError(errorMessage);
         setLoading(false);
       });
+
+    // Cleanup timeout on unmount or when dependencies change
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [url, fileName]);
 
   return (
@@ -172,11 +206,35 @@ export const ModelViewerUrl = ({ url, fileName, height = '300px' }: ModelViewerU
       )}
 
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-          <div className="text-center max-w-md p-4">
-            <BoxIcon className="w-10 h-10 text-destructive mx-auto mb-2" />
-            <p className="text-sm font-bold text-destructive mb-1">Failed to load model</p>
-            <p className="text-xs text-muted-foreground">{error}</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="text-center max-w-md p-6 bg-background/95 rounded-lg border border-destructive/20">
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-3" />
+            <p className="text-sm font-bold text-destructive mb-2">Failed to load 3D preview</p>
+            <p className="text-xs text-muted-foreground mb-4">{error}</p>
+            {url && (
+              <div className="space-y-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = fileName;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download File Anyway
+                </Button>
+                <p className="text-xs text-muted-foreground/70">
+                  You can download the file and open it in external software
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

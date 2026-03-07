@@ -2,11 +2,13 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Palette, Loader2, MessageCircle, X, FileIcon, Download, Send, Image as ImageIcon, User, Calendar, DollarSign } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,53 +19,64 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { OrderTimeline } from "@/components/OrderTimeline";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface Order {
   id: string;
-  order_number?: string;
-  status: string;
-  payment_status?: string;
+  user_id: string;
+  project_name: string;
+  idea_description: string;
+  usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
+  usage_details?: string;
+  approximate_dimensions?: string;
+  desired_material?: string;
+  attached_files?: any[];
+  reference_images?: any[];
+  request_chat?: boolean;
+  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
+  admin_design_file?: string;
+  admin_notes?: string;
+  user_approval_status?: 'pending' | 'approved' | 'rejected';
+  user_approval_at?: string;
+  user_rejection_reason?: string;
+  estimated_price?: number;
+  final_price?: number;
+  paid_amount?: number;
+  payment_status?: 'pending' | 'paid' | 'on_hold' | 'refunded';
   created_at: string;
-  price: number;
-  design_description?: string;
-  design_requirements?: string;
-  reference_images?: string[];
+  updated_at?: string;
+  completed_at?: string;
+  user_email?: string;
   users?: { name: string; email: string };
-  has_unread_messages?: boolean;
 }
-
-interface Message {
-  id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  message: string;
-  attachments?: any[];
-  created_at: string;
-}
-
-const statusConfig = {
-  submitted: { label: "New Request", color: "bg-yellow-500", borderColor: "border-yellow-500" },
-  in_review: { label: "Reviewing", color: "bg-blue-500", borderColor: "border-blue-500" },
-  in_progress: { label: "Working On It", color: "bg-purple-500", borderColor: "border-purple-500" },
-  completed: { label: "Done", color: "bg-green-500", borderColor: "border-green-500" },
-  cancelled: { label: "Cancelled", color: "bg-red-500", borderColor: "border-red-500" },
-} as const;
 
 const AdminDesignAssistance = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showOrderDetails, setShowOrderDetails] = useState(false);
-  const [conversation, setConversation] = useState<any>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedRequestForConversation, setSelectedRequestForConversation] = useState<Order | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [proposedPrice, setProposedPrice] = useState<string>('');
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
+  
+  const conversationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -72,21 +85,30 @@ const AdminDesignAssistance = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders?type=design`, {
+      console.log('Fetching design requests from:', `${API_URL}/admin/design-requests`);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      
+      const response = await fetch(`${API_URL}/admin/design-requests`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.orders || []);
+        console.log('Design requests data:', data);
+        // The new endpoint returns design requests directly
+        setOrders(data.designRequests || []);
       } else {
-        toast.error('Failed to fetch design assistance requests');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error response:', errorData);
+        toast.error(`Failed to fetch design assistance orders: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
-      console.error('Error fetching design requests:', error);
-      toast.error('Error loading design assistance requests');
+      console.error('Error fetching design assistance orders:', error);
+      toast.error('Error loading design assistance orders');
     } finally {
       setLoading(false);
     }
@@ -95,7 +117,7 @@ const AdminDesignAssistance = () => {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders/${orderId}/status`, {
+      const response = await fetch(`${API_URL}/admin/design-requests/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,32 +127,53 @@ const AdminDesignAssistance = () => {
       });
 
       if (response.ok) {
-        setOrders(prev => prev.map(order =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        ));
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
-        }
         toast.success('Status updated successfully');
+        fetchOrders();
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, design_status: newStatus as any });
+        }
       } else {
-        toast.error('Failed to update status');
+        throw new Error('Failed to update status');
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Error updating status');
+      toast.error('Failed to update status');
     }
   };
 
-  const openOrderDetails = async (order: Order) => {
-    setSelectedOrder(order);
-    setShowOrderDetails(true);
-    setMessages([]);
-    setConversation(null);
-
-    // Fetch conversation
+  const fetchOrderDetails = async (orderId: string) => {
+    setLoadingOrderDetails(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/conversations/order/${order.id}`, {
+      const response = await fetch(`${API_URL}/admin/design-requests/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch design request details');
+      }
+
+      const data = await response.json();
+      setSelectedOrder(data.request);
+      setShowOrderDetails(true);
+    } catch (err) {
+      console.error('Error fetching design request details:', err);
+      toast.error('Failed to load design request details');
+    } finally {
+      setLoadingOrderDetails(false);
+    }
+  };
+
+  const handleSelectRequestForConversation = async (request: Order, shouldScroll: boolean = false) => {
+    setSelectedRequestForConversation(request);
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      console.log('Loading conversation for design request:', request.id);
+      
+      const response = await fetch(`${API_URL}/conversations/design-request/${request.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -138,76 +181,231 @@ const AdminDesignAssistance = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setConversation(data.conversation);
-        if (data.conversation?.id) {
-          // Fetch messages
-          const messagesResponse = await fetch(`${API_URL}/conversations/${data.conversation.id}/messages`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          if (messagesResponse.ok) {
-            const messagesData = await messagesResponse.json();
-            setMessages(messagesData.messages || []);
-          }
+        console.log('Conversation loaded:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
+        setConversationId(data.conversation?.id || null);
+        setMessages(data.messages || []);
+        
+        // Scroll to conversation if requested (for Eye button clicks)
+        if (shouldScroll) {
+          setTimeout(() => {
+            conversationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
         }
+      } else if (response.status === 404) {
+        // Conversation doesn't exist yet, initialize empty
+        console.log('No conversation found for design request:', request.id);
+        setConversationId(null);
+        setMessages([]);
+        
+        // Scroll to conversation if requested (for Eye button clicks)
+        if (shouldScroll) {
+          setTimeout(() => {
+            conversationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      } else {
+        const errorText = await response.text().catch(() => '');
+        console.error('Failed to fetch conversation:', response.status, errorText);
+        setConversationId(null);
+        setMessages([]);
+        toast.error('Failed to load conversation');
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
+      setConversationId(null);
+      setMessages([]);
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !conversation?.id) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() && !attachedFile) {
+      toast.error('Please enter a message or attach a file');
+      return;
+    }
+    
+    if (!selectedRequestForConversation) {
+      toast.error('Please select a design request first');
+      return;
+    }
 
     setSendingMessage(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/conversations/${conversation.id}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: newMessage,
-          sender_type: 'engineer',
-        }),
-      });
+      
+      // Create conversation if it doesn't exist
+      let currentConversationId = conversationId;
+      if (!currentConversationId) {
+        console.log('Creating conversation for design request:', selectedRequestForConversation.id);
+        const convResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        console.log('Conversation creation response status:', convResponse.status);
+        
+        if (convResponse.ok) {
+          const convData = await convResponse.json();
+          console.log('Conversation created:', convData);
+          currentConversationId = convData.conversation?.id || null;
+          setConversationId(currentConversationId);
+        } else {
+          const errorData = await convResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to create conversation:', errorData);
+          toast.error(errorData.error || 'Failed to create conversation');
+          return;
+        }
+        
+        if (!currentConversationId) {
+          toast.error('Failed to create conversation');
+          return;
+        }
+      }
+
+      // Send message with or without file
+      let response;
+      if (attachedFile) {
+        console.log('[Admin] Sending message with file:', {
+          fileName: attachedFile.name,
+          fileSize: attachedFile.size,
+          fileType: attachedFile.type
+        });
+        
+        const formData = new FormData();
+        const messageText = proposedPrice ? `${newMessage}\n\n💰 Proposed Price: ${proposedPrice} PLN` : newMessage;
+        formData.append('message', messageText);
+        formData.append('file', attachedFile);
+        
+        console.log('[Admin] FormData prepared, sending to:', `${API_URL}/admin/conversations/${currentConversationId}/messages`);
+
+        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        console.log('[Admin] Response status:', response.status, response.statusText);
+      } else {
+        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: newMessage }),
+        });
+      }
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(prev => [...prev, data.message]);
+        console.log('[Admin] Message sent successfully:', data);
+        
+        if (attachedFile) {
+          console.log('[Admin] ✅ File uploaded successfully:', {
+            fileName: attachedFile.name,
+            messageId: data.message?.id
+          });
+        }
+        
+        // Reload the conversation to get fresh messages from database
+        const conversationResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (conversationResponse.ok) {
+          const conversationData = await conversationResponse.json();
+          console.log('Conversation reloaded, messages:', conversationData.messages?.length || 0);
+          setMessages(conversationData.messages || []);
+          // Update conversationId if it was just created
+          if (conversationData.conversation?.id) {
+            setConversationId(conversationData.conversation.id);
+          }
+        } else {
+          console.warn('Failed to reload conversation, adding message locally');
+          // Fallback to adding the message locally if reload fails
+          setMessages([...messages, data.message]);
+        }
+        
         setNewMessage('');
-        toast.success('Message sent');
+        setAttachedFile(null);
+        setProposedPrice('');
+        toast.success(attachedFile ? 'Message and file sent successfully' : 'Message sent');
       } else {
-        toast.error('Failed to send message');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[Admin] ❌ Failed to send message:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        
+        if (attachedFile) {
+          toast.error(`Failed to upload file: ${errorData.error || 'Unknown error'}. Please check file format and size.`);
+        } else {
+          toast.error(errorData.error || 'Failed to send message');
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Error sending message');
+      toast.error('Failed to send message');
     } finally {
       setSendingMessage(false);
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleDownload3DFile = (order: Order) => {
+    if (!order.admin_design_file) {
+      toast.error('No design file available for download');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = order.admin_design_file;
+    link.download = order.project_name || 'design-file';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Download started');
   };
 
-  const formatPrice = (price: number) => {
+  const filteredOrders = orders.filter((order) =>
+    order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.idea_description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatPrice = (price: number | undefined) => {
+    if (!price) return 'N/A';
     return `${price.toFixed(2)} PLN`;
   };
 
-  const filteredOrders = statusFilter === 'all' 
-    ? orders 
-    : orders.filter(o => o.status === statusFilter);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getApprovalStatusBadge = (status?: string) => {
+    if (!status || status === 'pending') {
+      return { className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500', text: '⏳ Pending' };
+    }
+    if (status === 'approved') {
+      return { className: 'bg-green-500/20 text-green-400 border-green-500', text: '✓ Approved' };
+    }
+    if (status === 'rejected') {
+      return { className: 'bg-red-500/20 text-red-400 border-red-500', text: '✗ Rejected' };
+    }
+    return { className: 'bg-gray-500/20 text-gray-400 border-gray-500', text: 'N/A' };
+  };
 
   if (loading) {
     return (
@@ -224,375 +422,1112 @@ const AdminDesignAssistance = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                 <Palette className="w-8 h-8 text-purple-500" />
-                Design Assistance Requests
+                Design Assistance Orders
               </h1>
-              <p className="text-gray-400 mt-2">Manage and respond to custom design requests</p>
+              <p className="text-gray-400 mt-1">Manage custom design requests and assistance orders</p>
             </div>
             <div className="flex items-center gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px] bg-gray-800 border-gray-700 text-white">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Requests ({orders.length})</SelectItem>
-                  <SelectItem value="submitted">New ({orders.filter(o => o.status === 'submitted').length})</SelectItem>
-                  <SelectItem value="in_review">Reviewing ({orders.filter(o => o.status === 'in_review').length})</SelectItem>
-                  <SelectItem value="in_progress">In Progress ({orders.filter(o => o.status === 'in_progress').length})</SelectItem>
-                  <SelectItem value="completed">Completed ({orders.filter(o => o.status === 'completed').length})</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Input
+                  type="text"
+                  placeholder="Search orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Orders Grid */}
-          {filteredOrders.length === 0 ? (
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4">
             <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="py-16 text-center">
-                <Palette className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-400 mb-2">No Design Requests</h3>
-                <p className="text-gray-500">
-                  {statusFilter === 'all' 
-                    ? 'There are no design assistance requests yet.' 
-                    : `No requests with status "${statusConfig[statusFilter as keyof typeof statusConfig]?.label || statusFilter}".`
-                  }
-                </p>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white">{orders.length}</div>
+                  <p className="text-sm text-gray-400 mt-1">Total Requests</p>
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredOrders.map((order) => (
-                <Card
-                  key={order.id}
-                  className="bg-gray-900 border-gray-800 hover:border-purple-600 transition-all cursor-pointer group"
-                  onClick={() => openOrderDetails(order)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className={`${statusConfig[order.status as keyof typeof statusConfig]?.color || 'bg-gray-500'} text-white`}>
-                            {statusConfig[order.status as keyof typeof statusConfig]?.label || order.status}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-yellow-500">
+                    {orders.filter(o => o.design_status === 'pending' || o.design_status === 'in_review').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Pending</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-500">
+                    {orders.filter(o => o.design_status === 'in_progress').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">In Progress</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-500">
+                    {orders.filter(o => o.design_status === 'completed').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Completed</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Kanban Board - Orders by Status */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Pending Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-yellow-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Pending</span>
+                  <span className="bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'pending').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'pending').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No pending requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'pending').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-yellow-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Review Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-orange-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Review</span>
+                  <span className="bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'in_review').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'in_review').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No requests in review</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'in_review').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* In Progress Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-blue-500 text-sm font-semibold flex items-center justify-between">
+                  <span>In Progress</span>
+                  <span className="bg-blue-500/20 text-blue-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'in_progress').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'in_progress').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No requests in progress</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'in_progress').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Completed Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-green-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Completed</span>
+                  <span className="bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'completed').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'completed').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No completed requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'completed').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.final_price || order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Cancelled Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-red-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Cancelled</span>
+                  <span className="bg-red-500/20 text-red-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'cancelled').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'cancelled').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No cancelled requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'cancelled').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-red-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.estimated_price)}</span>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orders Table - Hidden by default, can be toggled */}
+          <Card className="bg-gray-900 border-gray-800 hidden">
+            <CardHeader>
+              <CardTitle className="text-white">All Design Assistance Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
+                  <div>Order ID</div>
+                  <div>Project Name</div>
+                  <div>User</div>
+                  <div>Description</div>
+                  <div>Status</div>
+                  <div>Payment</div>
+                  <div>Price</div>
+                  <div className="text-right">Actions</div>
+                </div>
+                
+                {filteredOrders.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Palette className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No design assistance orders found</p>
+                  </div>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="grid grid-cols-8 gap-4 items-center py-4 px-4 rounded-lg hover:bg-gray-800/50 transition-colors border-b border-gray-800/50"
+                    >
+                      <div className="font-mono text-sm text-gray-300">
+                        #{order.id.slice(0, 8)}
+                      </div>
+                      <div className="text-sm text-white truncate" title={order.project_name}>
+                        {order.project_name}
+                      </div>
+                      <div className="text-sm text-gray-400 truncate">
+                        {order.users?.email || order.user_email || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-400 truncate" title={order.idea_description}>
+                        {order.idea_description?.slice(0, 50)}...
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-gray-700 text-white">
+                          {order.design_status}
+                        </span>
+                      </div>
+                      <div>
+                        <PaymentStatusBadge status={order.payment_status as any} />
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        {formatPrice(order.final_price || order.estimated_price)}
+                      </div>
+                      <div className="text-right flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-purple-500/20 text-purple-400"
+                          onClick={() => handleSelectRequestForConversation(order, true)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Design Requests List with Conversations */}
+        <div className="grid grid-cols-2 gap-6 mt-8">
+          {/* Left Column - Design Requests List */}
+          <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
+            <CardHeader className="border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                  <Palette className="w-5 h-5 text-cyan-500" />
+                  Design Requests
+                  <span className="text-sm font-normal text-gray-400">({orders.length})</span>
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 px-4">
+                  <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">No design requests yet</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px] px-4">
+                  <div className="space-y-2 pt-4 pb-1">
+                    {filteredOrders.map((request) => (
+                      <div
+                        key={request.id}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer border ${
+                          selectedRequestForConversation?.id === request.id
+                            ? 'bg-cyan-900/30 border-cyan-500'
+                            : 'bg-gray-800 border-transparent hover:bg-cyan-500/5 hover:border-cyan-500/20'
+                        }`}
+                        onClick={() => handleSelectRequestForConversation(request)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate text-white">{request.project_name}</p>
+                            <p className="text-xs text-gray-400 truncate">
+                              {request.idea_description ? request.idea_description.substring(0, 50) + '...' : 'No description'}
+                            </p>
+                            <p className="text-xs text-cyan-600 mt-1">
+                              {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {request.estimated_price && ` • ${request.estimated_price.toFixed(2)} PLN`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${
+                            request.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                            request.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                            request.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                            request.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                            'bg-gray-500/20 text-gray-500'
+                          }`}>
+                            {request.design_status}
                           </Badge>
-                          {order.has_unread_messages && (
-                            <Badge variant="outline" className="border-blue-500 text-blue-400">
-                              <MessageCircle className="w-3 h-3 mr-1" />
-                              New
+                          {request.admin_design_file && (
+                            <Badge className={`${getApprovalStatusBadge(request.user_approval_status).className} border text-xs`}>
+                              {getApprovalStatusBadge(request.user_approval_status).text}
                             </Badge>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-cyan-500/20 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailsRequest(request);
+                              setShowDetailsDialog(true);
+                            }}
+                          >
+                            <Info className="w-4 h-4 text-cyan-400" />
+                          </Button>
                         </div>
-                        <CardTitle className="text-white text-sm font-mono">
-                          #{order.order_number || order.id.substring(0, 8)}
-                        </CardTitle>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Description Preview */}
-                    <div className="bg-gray-800/50 rounded-lg p-3">
-                      <p className="text-sm text-gray-300 line-clamp-2">
-                        {order.design_description || 'No description provided'}
-                      </p>
-                    </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
 
-                    {/* Reference Images Preview */}
-                    {order.reference_images && order.reference_images.length > 0 && (
-                      <div className="flex gap-1">
-                        {order.reference_images.slice(0, 3).map((url, idx) => (
-                          <div key={idx} className="w-16 h-16 rounded overflow-hidden bg-gray-800">
-                            <img src={url} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
-                        {order.reference_images.length > 3 && (
-                          <div className="w-16 h-16 rounded bg-gray-800 flex items-center justify-center">
-                            <span className="text-xs text-gray-400">+{order.reference_images.length - 3}</span>
-                          </div>
+          {/* Right Column - Conversation */}
+          <Card ref={conversationRef} className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
+            <CardHeader className="border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                  <MessageSquare className="w-5 h-5 text-cyan-500" />
+                  Conversation
+                  {messages.length > 0 && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 text-xs">
+                      {messages.length} messages
+                    </Badge>
+                  )}
+                  {messages.filter(m => m.sender_type === 'user' && m.is_read === false).length > 0 && (
+                    <Badge className="bg-orange-500 text-white text-xs animate-pulse">
+                      {messages.filter(m => m.sender_type === 'user' && m.is_read === false).length} new
+                    </Badge>
+                  )}
+                </CardTitle>
+                {selectedRequestForConversation && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSelectRequestForConversation(selectedRequestForConversation)}
+                    className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                  >
+                    <Loader2 className="w-4 h-4 mr-1" />
+                    Refresh
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
+              {selectedRequestForConversation ? (
+                <>
+                  {/* Project Info Bar */}
+                  <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold truncate">{selectedRequestForConversation.project_name}</h3>
+                        <p className="text-gray-400 text-xs truncate">{selectedRequestForConversation.idea_description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3">
+                        <Badge className={`${
+                          selectedRequestForConversation.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                          selectedRequestForConversation.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                          selectedRequestForConversation.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                          selectedRequestForConversation.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                          'bg-gray-500/20 text-gray-500'
+                        }`}>
+                          {selectedRequestForConversation.design_status}
+                        </Badge>
+                        {selectedRequestForConversation.admin_design_file && (
+                          <Badge className={`${getApprovalStatusBadge(selectedRequestForConversation.user_approval_status).className} border text-xs`}>
+                            {getApprovalStatusBadge(selectedRequestForConversation.user_approval_status).text}
+                          </Badge>
                         )}
                       </div>
-                    )}
-
-                    {/* Customer Info */}
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <User className="w-3 h-3" />
-                      <span className="truncate">{order.users?.name || 'Unknown'}</span>
                     </div>
+                  </div>
 
-                    {/* Date and Price */}
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1 text-gray-400">
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(order.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-purple-400 font-semibold">
-                        <DollarSign className="w-3 h-3" />
-                        <span>{formatPrice(order.price)}</span>
-                      </div>
-                    </div>
-
-                    {/* Click hint */}
-                    <div className="text-center text-xs text-gray-500 group-hover:text-purple-400 transition-colors">
-                      Click to view details →
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Order Details Dialog */}
-      <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-7xl max-h-[95vh] bg-gray-900 border-gray-800 text-white overflow-hidden">
-          <DialogHeader className="border-b border-gray-800 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Palette className="w-6 h-6 text-purple-500" />
-                <div>
-                  <DialogTitle className="text-2xl font-bold">
-                    Design Request #{selectedOrder?.order_number || selectedOrder?.id.substring(0, 8)}
-                  </DialogTitle>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Customer: {selectedOrder?.users?.name || 'Unknown'} • {selectedOrder?.users?.email}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowOrderDetails(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 overflow-y-auto p-6 max-h-[calc(95vh-140px)]">
-              {/* Left: Design Details (2 columns) */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Status and Info */}
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Request Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Select
-                      value={selectedOrder.status}
-                      onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
-                    >
-                      <SelectTrigger className="w-full bg-gray-900 border-gray-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="submitted">New Request</SelectItem>
-                        <SelectItem value="in_review">Reviewing</SelectItem>
-                        <SelectItem value="in_progress">Working On It</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="bg-gray-900 p-3 rounded-lg">
-                        <p className="text-gray-400 text-xs mb-1">Created</p>
-                        <p className="text-white font-medium">{formatDate(selectedOrder.created_at)}</p>
-                      </div>
-                      <div className="bg-gray-900 p-3 rounded-lg">
-                        <p className="text-gray-400 text-xs mb-1">Price</p>
-                        <p className="text-purple-400 font-bold">{formatPrice(selectedOrder.price)}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Description */}
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Project Description</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-gray-900 rounded-lg p-4">
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                        {selectedOrder.design_description || 'No description provided'}
+                  {/* Attached Reference Files from User */}
+                  {selectedRequestForConversation.attached_files && selectedRequestForConversation.attached_files.length > 0 && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
+                        <Package className="w-3 h-3" />
+                        User's Reference Files ({selectedRequestForConversation.attached_files.length})
                       </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Requirements */}
-                {selectedOrder.design_requirements && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Requirements</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-gray-900 rounded-lg p-4">
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                          {selectedOrder.design_requirements}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Reference Images */}
-                {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
-                  <Card className="bg-gray-800 border-gray-700">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <ImageIcon className="w-5 h-5" />
-                        Reference Images ({selectedOrder.reference_images.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedOrder.reference_images.map((url, index) => (
+                      <div className="space-y-1">
+                        {selectedRequestForConversation.attached_files.map((file: any, idx: number) => (
                           <a
-                            key={index}
-                            href={url}
+                            key={idx}
+                            href={file.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="relative aspect-square bg-gray-900 rounded-lg overflow-hidden group"
+                            className="flex items-center gap-2 p-2 rounded bg-gray-800 hover:bg-gray-700 transition-colors group"
                           >
-                            <img 
-                              src={url} 
-                              alt={`Reference ${index + 1}`}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Download className="w-6 h-6 text-white" />
-                            </div>
+                            <Upload className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                            <span className="text-gray-300 text-xs truncate flex-1 group-hover:text-white">
+                              {file.name || `File ${idx + 1}`}
+                            </span>
+                            {file.size && (
+                              <span className="text-gray-500 text-xs flex-shrink-0">
+                                {(file.size / 1024).toFixed(0)} KB
+                              </span>
+                            )}
+                            <Download className="w-3 h-3 text-gray-500 group-hover:text-cyan-400 flex-shrink-0" />
                           </a>
                         ))}
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                    </div>
+                  )}
 
-              {/* Right: Conversation (3 columns) */}
-              <div className="lg:col-span-3">
-                <Card className="bg-gray-800 border-gray-700 h-full flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <MessageCircle className="w-5 h-5 text-purple-500" />
-                        Conversation
-                      </span>
-                      {conversation && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setShowOrderDetails(false);
-                            navigate(`/admin/conversations?open=${conversation.id}`);
-                          }}
-                          className="text-xs"
-                        >
-                          Open Full Chat
-                        </Button>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col min-h-0">
-                    {/* Messages Area */}
-                    <div className="flex-1 bg-gray-900 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
+                  {/* Messages */}
+                  <ScrollArea className="h-[350px] pr-4">
+                    <div className="space-y-4 pb-4 pt-4">
                       {messages.length === 0 ? (
-                        <div className="text-center text-gray-500 py-12">
-                          <MessageCircle className="w-16 h-16 mx-auto mb-3 opacity-30" />
-                          <p className="text-sm font-medium mb-1">No messages yet</p>
-                          <p className="text-xs">Start the conversation to discuss design details</p>
+                        <div className="text-center py-8 text-gray-500">
+                          No messages yet. Start the conversation!
                         </div>
                       ) : (
-                        messages.map((message) => (
-                          <div key={message.id} className="space-y-2">
-                            <div
-                              className={`p-4 rounded-lg ${
-                                message.sender_type === 'engineer'
-                                  ? 'bg-purple-900/30 border-l-4 border-purple-500 ml-8'
-                                  : message.sender_type === 'user'
-                                  ? 'bg-gray-800 border-l-4 border-blue-500 mr-8'
-                                  : 'bg-gray-700/30 text-center text-xs'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {message.sender_type === 'engineer' ? '🔧 Engineer' : message.sender_type === 'user' ? '👤 Customer' : 'System'}
-                                </Badge>
-                                <span className="text-xs text-gray-400">
-                                  {formatDate(message.created_at)}
+                        messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={`flex items-start gap-2 max-w-[85%] ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {/* Avatar/Badge */}
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                msg.sender_type === 'engineer' || msg.sender_type === 'admin'
+                                  ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                                  : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+                              }`}>
+                                {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'A' : 'U'}
+                              </div>
+                              
+                              {/* Message Bubble */}
+                              <div className="flex flex-col gap-1 flex-1">
+                                {/* Sender Label */}
+                                <span className={`text-xs font-semibold ${
+                                  msg.sender_type === 'engineer' || msg.sender_type === 'admin' 
+                                    ? 'text-cyan-400 text-right' 
+                                    : 'text-purple-400 text-left'
+                                }`}>
+                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : 'User'}
                                 </span>
+                                
+                                <div
+                                  className={`rounded-lg p-3 ${
+                                    msg.sender_type === 'engineer' || msg.sender_type === 'admin'
+                                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                      : 'bg-gray-800 text-gray-200 border border-gray-700'
+                                  }`}
+                                >
+                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                  
+                                  {/* Attachments */}
+                                  {msg.attachments && msg.attachments.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
+                                      {msg.attachments.map((att: any, idx: number) => (
+                                        <div key={idx} className="flex items-center gap-2 text-xs opacity-90">
+                                          <Package className="w-3 h-3" />
+                                          <span className="truncate">{att.name || 'Attachment'}</span>
+                                          {att.url && (
+                                            <a 
+                                              href={att.url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-cyan-200 hover:text-cyan-100 underline"
+                                            >
+                                              View
+                                            </a>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Timestamp */}
+                                  <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
+                                    <span>
+                                      {new Date(msg.created_at).toLocaleDateString('en-US', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                    {msg.is_read === false && msg.sender_type === 'user' && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="text-orange-400 font-semibold">New</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-sm text-white whitespace-pre-wrap leading-relaxed">
-                                {message.message}
-                              </p>
                             </div>
-                            
-                            {/* Attachments */}
-                            {message.attachments && message.attachments.length > 0 && (
-                              <div className="flex flex-wrap gap-2 pl-4">
-                                {message.attachments.map((attachment: any, idx: number) => (
-                                  <a
-                                    key={idx}
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-2 text-xs bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors border border-gray-700"
-                                  >
-                                    <FileIcon className="w-4 h-4 text-purple-400" />
-                                    <span className="text-gray-300">{attachment.name}</span>
-                                    <Download className="w-3 h-3 text-gray-500" />
-                                  </a>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         ))
                       )}
                     </div>
+                  </ScrollArea>
 
-                    {/* Message Input */}
-                    {conversation && (
-                      <div className="flex gap-2">
-                        <Textarea
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Type your message to the customer..."
-                          className="flex-1 bg-gray-900 border-gray-700 text-white resize-none"
-                          rows={3}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              sendMessage();
-                            }
-                          }}
+                  {/* Message Input */}
+                  <div className="flex-shrink-0 space-y-2">
+                    {attachedFile && (
+                      <div className="space-y-2">
+                        <div className="p-3 bg-gray-800 rounded-lg border border-cyan-500/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="w-4 h-4 text-cyan-400" />
+                            <span className="text-sm font-semibold text-cyan-400">File Attached</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-red-500/20 ml-auto"
+                              onClick={() => setAttachedFile(null)}
+                            >
+                              <X className="w-4 h-4 text-red-400" />
+                            </Button>
+                          </div>
+                          <div className="text-xs space-y-1 text-gray-300">
+                            <p className="truncate">📄 <span className="font-medium">{attachedFile.name}</span></p>
+                            <p>📦 Size: {(attachedFile.size / 1024).toFixed(2)} KB</p>
+                            <p>🔧 Type: {attachedFile.type || 'Unknown'}</p>
+                          </div>
+                        </div>
+                        <Input
+                          type="number"
+                          placeholder="Proposed price (PLN)"
+                          value={proposedPrice}
+                          onChange={(e) => setProposedPrice(e.target.value)}
+                          className="bg-gray-800 border-gray-700 text-white"
+                          disabled={sendingMessage}
                         />
-                        <Button
-                          onClick={sendMessage}
-                          disabled={!newMessage.trim() || sendingMessage}
-                          className="bg-purple-600 hover:bg-purple-700 self-end"
-                        >
-                          {sendingMessage ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
-                          )}
-                        </Button>
                       </div>
                     )}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        placeholder="Type your message..."
+                        className="bg-gray-800 border-gray-700 text-white"
+                        disabled={sendingMessage}
+                      />
+                      <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        accept=".stl,.obj,.3mf,.glb,.gltf,.step,.stp,.iges,.igs"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            console.log('[Admin] File selected:', {
+                              name: file.name,
+                              size: file.size,
+                              type: file.type
+                            });
+                            setAttachedFile(file);
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-gray-700 hover:bg-cyan-500/20"
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                        disabled={sendingMessage}
+                        title="Attach 3D model file (Recommended: GLB or GLTF for best web preview)"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage || (!newMessage.trim() && !attachedFile)}
+                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                      >
+                        {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  Select a design request to view conversation
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>      </main>
+      {/* Order Details Dialog */}
+      <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl text-white">Design Assistance Order Details</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Order ID: {selectedOrder?.id}
+                </DialogDescription>
+              </div>
+              {selectedOrder?.admin_design_file && (
+                <Button
+                  onClick={() => selectedOrder && handleDownload3DFile(selectedOrder)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download File
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+
+          {loadingOrderDetails ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          ) : selectedOrder ? (
+            <div className="space-y-6">
+              {/* Reference Files */}
+              {selectedOrder.attached_files && selectedOrder.attached_files.length > 0 && (
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Attached Reference Files</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {selectedOrder.attached_files.map((file: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-900 rounded">
+                          <span className="text-white">{file.name || `File ${idx + 1}`}</span>
+                          <Button size="sm" onClick={() => window.open(file.url, '_blank')}>
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Design Details */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Design Project Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-400">Project Name</label>
+                      <p className="text-white font-medium">{selectedOrder.project_name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Status</label>
+                      <p className="text-white font-medium capitalize">{selectedOrder.design_status}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-400">Idea Description</label>
+                    <p className="text-white">{selectedOrder.idea_description}</p>
+                  </div>
+
+                  {selectedOrder.usage_type && (
+                    <div>
+                      <label className="text-sm text-gray-400">Usage Type</label>
+                      <p className="text-white capitalize">{selectedOrder.usage_type}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.usage_details && (
+                    <div>
+                      <label className="text-sm text-gray-400">Usage Details</label>
+                      <p className="text-white whitespace-pre-wrap">{selectedOrder.usage_details}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.approximate_dimensions && (
+                    <div>
+                      <label className="text-sm text-gray-400">Approximate Dimensions</label>
+                      <p className="text-white">{selectedOrder.approximate_dimensions}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.desired_material && (
+                    <div>
+                      <label className="text-sm text-gray-400">Desired Material</label>
+                      <p className="text-white">{selectedOrder.desired_material}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.admin_notes && (
+                    <div>
+                      <label className="text-sm text-gray-400">Admin Notes</label>
+                      <p className="text-white whitespace-pre-wrap">{selectedOrder.admin_notes}</p>
+                    </div>
+                  )}
+
+                  {selectedOrder.admin_design_file && (
+                    <div>
+                      <label className="text-sm text-gray-400">Admin Design File</label>
+                      <Button 
+                        onClick={() => window.open(selectedOrder.admin_design_file, '_blank')}
+                        className="mt-2"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Design File
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Customer & Payment Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Customer Info</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">Email</label>
+                      <p className="text-white">{selectedOrder.user_email || selectedOrder.users?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Name</label>
+                      <p className="text-white">{selectedOrder.users?.name || 'N/A'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white">Payment Info</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">Estimated Price</label>
+                      <p className="text-white font-bold text-xl">
+                        {selectedOrder.estimated_price ? formatPrice(selectedOrder.estimated_price) : 'Not set'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Final Price</label>
+                      <p className="text-white font-bold text-xl">
+                        {selectedOrder.final_price ? formatPrice(selectedOrder.final_price) : 'Not set'}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Design Timeline */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Design Request Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <OrderTimeline currentStatus={selectedOrder.design_status as OrderStatus} />
+                </CardContent>
+              </Card>
+
+              {/* Admin Actions Section */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Admin Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-2 block">Update Status</label>
+                    <select 
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-md px-3 py-2"
+                      value={selectedOrder.design_status}
+                      onChange={(e) => {
+                        if (selectedOrder?.id) {
+                          updateOrderStatus(selectedOrder.id, e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_review">In Review</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm text-gray-400 mb-2 block">Set Estimated Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter price"
+                      className="w-full bg-gray-700 border-gray-600 text-white rounded-md px-3 py-2"
+                      defaultValue={selectedOrder.estimated_price || ''}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              No order details available
             </div>
           )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrderDetails(false)} className="border-gray-700 text-white hover:bg-gray-800">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
+              <Info className="w-6 h-6" />
+              Order Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              View detailed information about this design request
+            </DialogDescription>
+          </DialogHeader>
+          
+          {detailsRequest && (
+            <div className="space-y-6 py-4">
+              {/* Project Name & Status */}
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
+                  <p className="text-gray-400 text-sm">Created: {new Date(detailsRequest.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <Badge className={`${
+                  detailsRequest.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                  detailsRequest.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                  detailsRequest.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                  detailsRequest.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                  'bg-gray-500/20 text-gray-500'
+                }`}>
+                  {detailsRequest.design_status}
+                </Badge>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-gray-400 text-sm">Description</label>
+                <p className="text-white mt-1">{detailsRequest.idea_description}</p>
+              </div>
+
+              {/* Specifications Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-400 text-sm">Usage Type</label>
+                  <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm">Material</label>
+                  <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-gray-400 text-sm">Dimensions</label>
+                  <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
+                </div>
+              </div>
+
+              {/* Usage Details */}
+              {detailsRequest.usage_details && (
+                <div>
+                  <label className="text-gray-400 text-sm">Usage Details</label>
+                  <p className="text-white mt-1">{detailsRequest.usage_details}</p>
+                </div>
+              )}
+
+              {/* Pricing */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                {detailsRequest.estimated_price && (
+                  <div>
+                    <label className="text-gray-400 text-sm">Estimated Price</label>
+                    <p className="text-cyan-400 font-bold text-lg mt-1">{detailsRequest.estimated_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+                {detailsRequest.final_price && (
+                  <div>
+                    <label className="text-gray-400 text-sm">Final Price</label>
+                    <p className="text-green-400 font-bold text-lg mt-1">{detailsRequest.final_price.toFixed(2)} PLN</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Status */}
+              {detailsRequest.payment_status && (
+                <div>
+                  <label className="text-gray-400 text-sm">Payment Status</label>
+                  <Badge className={`mt-1 ${
+                    detailsRequest.payment_status === 'paid' ? 'bg-green-500/20 text-green-500' :
+                    detailsRequest.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                    'bg-gray-500/20 text-gray-500'
+                  }`}>
+                    {detailsRequest.payment_status}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Admin Notes */}
+              {detailsRequest.admin_notes && (
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <label className="text-gray-400 text-sm">Admin Notes</label>
+                  <p className="text-white mt-2">{detailsRequest.admin_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDetailsDialog(false)} className="border-gray-700 text-white hover:bg-gray-800">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

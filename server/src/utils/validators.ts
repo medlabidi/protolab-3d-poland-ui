@@ -84,7 +84,17 @@ export const isValidFileType = (mimetype: string): boolean => {
  * Validate file extension against allowed 3D file types
  */
 export function isValidFileExtension(filename: string): boolean {
-  const allowedExtensions = ['.stl', '.obj', '.3mf'];
+  const allowedExtensions = [
+    '.stl',   // STereoLithography
+    '.obj',   // Wavefront OBJ
+    '.3mf',   // 3D Manufacturing Format
+    '.gltf',  // GL Transmission Format (JSON)
+    '.glb',   // GL Transmission Format (Binary)
+    '.step',  // STEP format
+    '.stp',   // STEP format (short)
+    '.iges',  // IGES format
+    '.igs',   // IGES format (short)
+  ];
   const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
   return allowedExtensions.includes(ext);
 }

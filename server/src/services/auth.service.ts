@@ -220,7 +220,7 @@ export class AuthService {
       
       // Send welcome/congratulations email
       try {
-        await emailService.sendWelcomeEmail(verifiedUser.email, verifiedUser.name ?? `${verifiedUser.first_name} ${verifiedUser.last_name}`.trim());
+        await emailService.sendWelcomeEmail(verifiedUser.email, verifiedUser.name || verifiedUser.first_name || 'User');
       } catch (error) {
         console.error('Failed to send welcome email:', error);
         // Don't throw - email verified, user can proceed
@@ -248,9 +248,11 @@ export class AuthService {
       if (!user) {
         // Create new user from Google profile
         isNewUser = true;
+        const [firstName, ...lastNameParts] = googleUser.name.split(' ');
         user = await User.create({
-          first_name: googleUser.name.split(' ')[0] || googleUser.name,
-          last_name: googleUser.name.split(' ').slice(1).join(' ') || '',
+          first_name: firstName || 'User',
+          last_name: lastNameParts.join(' ') || '',
+          name: googleUser.name,
           email: normalizedEmail,
           password_hash: 'google_' + crypto.randomBytes(16).toString('hex'), // Dummy password
           email_verified: true, // Trust Google's verification
@@ -260,7 +262,7 @@ export class AuthService {
 
         // Send welcome email for new users
         try {
-          await emailService.sendWelcomeEmail(user.email, user.name ?? `${user.first_name} ${user.last_name}`.trim());
+          await emailService.sendWelcomeEmail(user.email, user.name || user.first_name || 'User');
         } catch (error) {
           console.error('Failed to send welcome email:', error);
         }
@@ -489,7 +491,7 @@ export class AuthService {
     });
 
     // Send password reset email
-    await emailService.sendPasswordResetEmail(user.email, user.name ?? `${user.first_name} ${user.last_name}`.trim(), resetToken);
+    await emailService.sendPasswordResetEmail(user.email, user.name || user.first_name || 'User', resetToken);
 
     return { message: 'If an account with that email exists, we have sent a password reset link.' };
   }

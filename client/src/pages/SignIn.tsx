@@ -44,7 +44,13 @@ const SignIn = () => {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = {};
+      }
 
       if (!response.ok) {
         // Show specific error message from server
@@ -86,7 +92,13 @@ const SignIn = () => {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = {};
+      }
 
       if (!response.ok) {
         toast.error(data.error || data.message || "Google login failed");
@@ -129,7 +141,13 @@ const SignIn = () => {
         body: JSON.stringify({ email: forgotEmail }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = {};
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to send reset email");

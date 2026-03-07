@@ -201,23 +201,23 @@ const Credits = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
+    <div className="flex min-h-screen overflow-hidden" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
       <DashboardSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto max-h-screen">
+        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header */}
           <div className="animate-slide-up">
             <Button 
               variant="ghost" 
               onClick={() => navigate("/dashboard")}
-              className="mb-4"
+              className="mb-3 sm:mb-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('credits.backToDashboard')}
             </Button>
-            <h1 className="text-4xl font-bold mb-3 gradient-text">{t('credits.title')}</h1>
-            <p className="text-muted-foreground text-lg">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 gradient-text">{t('credits.title')}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
               {t('credits.subtitle')}
             </p>
           </div>

@@ -3,7 +3,8 @@ import { logger } from '../config/logger';
 
 export interface Conversation {
   id: string;
-  order_id: string;
+  order_id?: string;
+  design_request_id?: string;
   user_id: string;
   subject?: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -14,6 +15,11 @@ export interface Conversation {
     id: string;
     file_name: string;
     project_name?: string;
+    status: string;
+  };
+  design_request?: {
+    id: string;
+    project_description: string;
     status: string;
   };
   unread_count?: number;
@@ -48,6 +54,11 @@ export class ConversationsService {
             file_name,
             project_name,
             status
+          ),
+          design_requests (
+            id,
+            project_description,
+            status
           )
         `)
         .eq('user_id', userId)
@@ -76,6 +87,7 @@ export class ConversationsService {
           return {
             ...conv,
             order: conv.orders,
+            design_request: conv.design_requests,
             unread_count: unreadCount,
             last_message: lastMessage
           };
@@ -153,6 +165,111 @@ export class ConversationsService {
   }
 
   /**
+   * Get conversation by design request ID
+   */
+  async getConversationByDesignRequest(designRequestId: string, userId: string): Promise<Conversation | null> {
+    const supabase = getSupabase();
+    
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('design_request_id', designRequestId)
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No conversation found
+          return null;
+        }
+        logger.error({ err: error }, `Failed to get conversation for design request ${designRequestId}`);
+        return null;
+      }
+      
+      return data;
+    } catch (err) {
+      logger.error({ err }, `Error getting conversation for design request ${designRequestId}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get or create a conversation for a design request
+   */
+  async getOrCreateDesignRequestConversation(designRequestId: string, adminId?: string): Promise<Conversation> {
+    const supabase = getSupabase();
+    
+    logger.info({ designRequestId, adminId }, 'Starting getOrCreateDesignRequestConversation');
+    
+    // First get the design request to find the user_id
+    const { data: designRequest, error: fetchDesignError } = await supabase
+      .from('design_requests')
+      .select('user_id')
+      .eq('id', designRequestId)
+      .single();
+    
+    if (fetchDesignError) {
+      logger.error({ err: fetchDesignError, designRequestId }, `Error fetching design request`);
+      throw new Error(`Design request not found: ${fetchDesignError.message}`);
+    }
+    
+    if (!designRequest) {
+      logger.error({ designRequestId }, `Design request not found - no data returned`);
+      throw new Error('Design request not found');
+    }
+    
+    const userId = designRequest.user_id;
+    
+    logger.info({ userId, designRequestId, adminId }, 'Checking for existing conversation');
+    
+    // Check if conversation already exists for this user and design request
+    const { data: existing, error: fetchError } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('design_request_id', designRequestId)
+      .single();
+    
+    if (existing) {
+      logger.info({ conversationId: existing.id }, 'Found existing conversation');
+      return existing;
+    }
+    
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      logger.error({ err: fetchError }, 'Error fetching conversation');
+    }
+    
+    logger.info({ userId, designRequestId }, 'Creating new conversation');
+    
+    // Create new conversation with the user_id from design request
+    const { data: newConv, error: createError } = await supabase
+      .from('conversations')
+      .insert([{
+        user_id: userId,
+        design_request_id: designRequestId,
+        subject: 'Design Assistance Request',
+        status: 'open'
+      }])
+      .select('*')
+      .single();
+    
+    if (createError) {
+      logger.error({ err: createError, userId, designRequestId }, `Failed to create conversation - Details: ${JSON.stringify(createError)}`);
+      throw new Error(`Failed to create conversation: ${createError.message}`);
+    }
+    
+    if (!newConv) {
+      logger.error({ userId, designRequestId }, 'No conversation data returned after insert');
+      throw new Error('Failed to create conversation - no data returned');
+    }
+    
+    logger.info({ conversationId: newConv.id, userId, designRequestId }, `Successfully created conversation`);
+    
+    return newConv;
+  }
+
+  /**
    * Get a conversation by ID
    */
   async getConversation(conversationId: string, userId: string): Promise<Conversation | null> {
@@ -187,7 +304,7 @@ export class ConversationsService {
   /**
    * Get messages for a conversation
    */
-  async getMessages(conversationId: string, limit: number = 100): Promise<ConversationMessage[]> {
+  async getMessages(conversationId: string, limit: number = 10000): Promise<ConversationMessage[]> {
     const supabase = getSupabase();
     
     const { data, error } = await supabase

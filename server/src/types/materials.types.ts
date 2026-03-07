@@ -103,3 +103,119 @@ export interface MaterialAvailability {
   lead_time_days: number;
   message?: string;
 }
+
+// Supplier types
+export interface Supplier {
+  id: string;
+  // Basic Information
+  name: string;
+  company_name?: string;
+  contact_person?: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  
+  // Address Information
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  
+  // Business Details
+  tax_id?: string;
+  registration_number?: string;
+  
+  // Supply Information
+  materials_supplied?: string[];
+  lead_time_days: number;
+  minimum_order_value: number;
+  currency: string;
+  
+  // Quality & Ratings
+  quality_rating?: number;
+  reliability_rating?: number;
+  price_rating?: number;
+  
+  // Financial
+  payment_terms?: string;
+  discount_percentage: number;
+  
+  // Status & Tracking
+  status: 'active' | 'inactive' | 'suspended' | 'pending';
+  is_preferred: boolean;
+  total_orders: number;
+  total_spent: number;
+  
+  // Notes & Documents
+  notes?: string;
+  contract_url?: string;
+  documents?: any[];
+  
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+  last_order_date?: string;
+  
+  // Metadata
+  created_by?: string;
+  updated_by?: string;
+}
+
+export interface CreateSupplierDto {
+  name: string;
+  company_name?: string;
+  contact_person?: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  tax_id?: string;
+  registration_number?: string;
+  materials_supplied?: string[];
+  lead_time_days?: number;
+  minimum_order_value?: number;
+  currency?: string;
+  quality_rating?: number;
+  reliability_rating?: number;
+  price_rating?: number;
+  payment_terms?: string;
+  discount_percentage?: number;
+  status?: 'active' | 'inactive' | 'suspended' | 'pending';
+  is_preferred?: boolean;
+  notes?: string;
+  contract_url?: string;
+}
+
+export interface UpdateSupplierDto {
+  name?: string;
+  company_name?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  tax_id?: string;
+  registration_number?: string;
+  materials_supplied?: string[];
+  lead_time_days?: number;
+  minimum_order_value?: number;
+  currency?: string;
+  quality_rating?: number;
+  reliability_rating?: number;
+  price_rating?: number;
+  payment_terms?: string;
+  discount_percentage?: number;
+  status?: 'active' | 'inactive' | 'suspended' | 'pending';
+  is_preferred?: boolean;
+  notes?: string;
+  contract_url?: string;
+  total_orders?: number;
+  total_spent?: number;
+  last_order_date?: string;
+}

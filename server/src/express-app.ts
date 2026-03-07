@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
+import path from 'path';
 import { logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -18,6 +19,8 @@ import materialsRoutes from './routes/materials.routes';
 import printersRoutes from './routes/printers.routes';
 import shippingRoutes from './routes/shipping.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import designRequestRoutes from './routes/designRequest.routes';
+import filesRoutes from './routes/files.routes';
 
 const createApp = (): Application => {
   const app = express();
@@ -65,6 +68,9 @@ const createApp = (): Application => {
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
   app.use(cookieParser());
   
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  
   // Health check
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -82,6 +88,8 @@ const createApp = (): Application => {
   app.use('/api/printers', printersRoutes);
   app.use('/api/admin/shipping', shippingRoutes);
   app.use('/api/admin/analytics', analyticsRoutes);
+  app.use('/api/design-requests', designRequestRoutes);
+  app.use('/api/files', filesRoutes);
   
   // Error handling
   app.use(notFoundHandler);

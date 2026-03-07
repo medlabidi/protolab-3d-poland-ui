@@ -38,6 +38,8 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Package, 
   Users, 
@@ -53,6 +55,7 @@ import {
   Boxes,
   Pencil,
   Download,
+  MessageSquare,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -134,12 +137,14 @@ const AdminDashboard = () => {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [printJobs, setPrintJobs] = useState<RecentOrder[]>([]);
   const [designJobs, setDesignJobs] = useState<RecentOrder[]>([]);
+  const [designRequests, setDesignRequests] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchDesignRequests();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -244,6 +249,22 @@ const AdminDashboard = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDesignRequests = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/design-requests`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDesignRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch design requests:', error);
     }
   };
 
@@ -410,6 +431,75 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Design Requests Section */}
+          {designRequests.length > 0 && (
+            <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-card to-cyan-500/5">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-cyan-500" />
+                    Design Requests
+                    <span className="text-sm font-normal text-muted-foreground">({designRequests.length})</span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/admin/orders/design-assistance')}
+                    className="hover:bg-cyan-500/10 hover:border-cyan-500"
+                  >
+                    View All
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[400px] px-4">
+                  <div className="space-y-2 pt-4 pb-1">
+                    {designRequests.slice(0, 5).map((request) => (
+                      <div
+                        key={request.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-cyan-500/5 transition-colors border border-transparent hover:border-cyan-500/20"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate text-white">{request.project_name}</p>
+                            <p className="text-xs text-gray-400 truncate">
+                              {request.idea_description ? request.idea_description.substring(0, 50) + '...' : 'No description'}
+                            </p>
+                            <p className="text-xs text-cyan-600 mt-1">
+                              {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {request.estimated_price && ` • ${request.estimated_price.toFixed(2)} PLN`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={`${
+                            request.design_status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                            request.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
+                            request.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                            request.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                            'bg-gray-500/20 text-gray-500'
+                          }`}>
+                            {request.design_status}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-cyan-500/20"
+                            onClick={() => navigate(`/admin/conversations/design-request/${request.id}`)}
+                            title="Open conversation"
+                          >
+                            <MessageSquare className="w-4 h-4 text-cyan-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
