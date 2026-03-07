@@ -277,19 +277,19 @@ const AdminDesignAssistance = () => {
         formData.append('message', messageText);
         formData.append('file', attachedFile);
         
-        console.log('[Admin] FormData prepared, sending to:', `${API_URL}/conversations/${currentConversationId}/messages`);
-        
-        response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+        console.log('[Admin] FormData prepared, sending to:', `${API_URL}/admin/conversations/${currentConversationId}/messages`);
+
+        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
           },
           body: formData,
         });
-        
+
         console.log('[Admin] Response status:', response.status, response.statusText);
       } else {
-        response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -982,8 +982,40 @@ const AdminDesignAssistance = () => {
                     </div>
                   </div>
 
+                  {/* Attached Reference Files from User */}
+                  {selectedRequestForConversation.attached_files && selectedRequestForConversation.attached_files.length > 0 && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
+                        <Package className="w-3 h-3" />
+                        User's Reference Files ({selectedRequestForConversation.attached_files.length})
+                      </p>
+                      <div className="space-y-1">
+                        {selectedRequestForConversation.attached_files.map((file: any, idx: number) => (
+                          <a
+                            key={idx}
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 rounded bg-gray-800 hover:bg-gray-700 transition-colors group"
+                          >
+                            <Upload className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                            <span className="text-gray-300 text-xs truncate flex-1 group-hover:text-white">
+                              {file.name || `File ${idx + 1}`}
+                            </span>
+                            {file.size && (
+                              <span className="text-gray-500 text-xs flex-shrink-0">
+                                {(file.size / 1024).toFixed(0)} KB
+                              </span>
+                            )}
+                            <Download className="w-3 h-3 text-gray-500 group-hover:text-cyan-400 flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Messages */}
-                  <ScrollArea className="h-[400px] pr-4">
+                  <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-4 pb-4 pt-4">
                       {messages.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">

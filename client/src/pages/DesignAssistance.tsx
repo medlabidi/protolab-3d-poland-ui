@@ -725,8 +725,106 @@ const DesignAssistance = () => {
               <CardContent className="flex-1 overflow-hidden flex flex-col p-0 gap-4">
                 {selectedRequest ? (
                   <>
+                    {/* Request Details Summary */}
+                    <div className="px-4 pt-4 space-y-3">
+                      <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-white font-semibold text-sm">{selectedRequest.project_name}</h3>
+                          <Badge className={getStatusColor(selectedRequest.design_status)}>
+                            {selectedRequest.design_status}
+                          </Badge>
+                        </div>
+                        <p className="text-gray-400 text-xs mb-3 line-clamp-2">{selectedRequest.idea_description}</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {selectedRequest.usage_type && (
+                            <div>
+                              <span className="text-gray-500">Usage:</span>{' '}
+                              <span className="text-gray-300 capitalize">{selectedRequest.usage_type}</span>
+                            </div>
+                          )}
+                          {selectedRequest.approximate_dimensions && selectedRequest.approximate_dimensions !== 'Not specified' && (
+                            <div>
+                              <span className="text-gray-500">Dimensions:</span>{' '}
+                              <span className="text-gray-300">{selectedRequest.approximate_dimensions}</span>
+                            </div>
+                          )}
+                          {selectedRequest.usage_details && selectedRequest.usage_details !== 'Not specified' && (
+                            <div className="col-span-2">
+                              <span className="text-gray-500">Details:</span>{' '}
+                              <span className="text-gray-300">{selectedRequest.usage_details}</span>
+                            </div>
+                          )}
+                          {selectedRequest.estimated_price && (
+                            <div>
+                              <span className="text-gray-500">Est. Price:</span>{' '}
+                              <span className="text-cyan-400 font-semibold">{selectedRequest.estimated_price} PLN</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Attached Reference Files */}
+                      {selectedRequest.attached_files && selectedRequest.attached_files.length > 0 && (
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                          <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            Reference Files ({selectedRequest.attached_files.length})
+                          </p>
+                          <div className="space-y-1">
+                            {selectedRequest.attached_files.map((file: any, idx: number) => (
+                              <a
+                                key={idx}
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 rounded bg-gray-800 hover:bg-gray-700 transition-colors group"
+                              >
+                                <Upload className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                                <span className="text-gray-300 text-xs truncate flex-1 group-hover:text-white">
+                                  {file.name || `File ${idx + 1}`}
+                                </span>
+                                {file.size && (
+                                  <span className="text-gray-500 text-xs flex-shrink-0">
+                                    {(file.size / 1024).toFixed(0)} KB
+                                  </span>
+                                )}
+                                <Download className="w-3 h-3 text-gray-500 group-hover:text-cyan-400 flex-shrink-0" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reference Images */}
+                      {selectedRequest.reference_images && selectedRequest.reference_images.length > 0 && (
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                          <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            Reference Images ({selectedRequest.reference_images.length})
+                          </p>
+                          <div className="space-y-1">
+                            {selectedRequest.reference_images.map((file: any, idx: number) => (
+                              <a
+                                key={idx}
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 rounded bg-gray-800 hover:bg-gray-700 transition-colors group"
+                              >
+                                <Upload className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                                <span className="text-gray-300 text-xs truncate flex-1 group-hover:text-white">
+                                  {file.name || `Image ${idx + 1}`}
+                                </span>
+                                <Download className="w-3 h-3 text-gray-500 group-hover:text-cyan-400 flex-shrink-0" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Messages */}
-                    <ScrollArea className="h-[400px] pr-4 px-4">
+                    <ScrollArea className="h-[300px] pr-4 px-4">
                       <div className="space-y-4 pb-4 pt-4">
                         {messages.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
