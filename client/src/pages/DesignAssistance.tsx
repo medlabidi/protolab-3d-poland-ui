@@ -25,7 +25,6 @@ interface DesignRequest {
   usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
   usage_details?: string;
   approximate_dimensions?: string;
-  desired_material?: string;
   attached_files?: any[];
   reference_images?: any[];
   design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
@@ -80,11 +79,13 @@ const DesignAssistance = () => {
 
   // Form state
   const [formData, setFormData] = useState({
+    designTitle: "",
     ideaDescription: "",
     usage: "functional" as 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other',
     usageDetails: "",
-    approximateDimensions: "",
-    desiredMaterial: "",
+    dimWidth: "",
+    dimHeight: "",
+    dimDepth: "",
   });
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -209,14 +210,19 @@ const DesignAssistance = () => {
     setSubmitting(true);
 
     try {
-      const token = localStorage.getItem('accessToken');    
+      const token = localStorage.getItem('accessToken');
       const submitData = new FormData();
-      submitData.append('projectName', `Design Request - ${formData.usage}`);
+      submitData.append('projectName', formData.designTitle || `Design Request - ${formData.usage}`);
       submitData.append('ideaDescription', formData.ideaDescription);
       submitData.append('usage', formData.usage);
       submitData.append('usageDetails', formData.usageDetails || 'Not specified');
-      submitData.append('approximateDimensions', formData.approximateDimensions || 'Not specified');
-      submitData.append('desiredMaterial', formData.desiredMaterial || 'Not specified');
+
+      // Build dimensions string from individual float inputs
+      const dimParts = [];
+      if (formData.dimWidth) dimParts.push(`${formData.dimWidth}mm`);
+      if (formData.dimHeight) dimParts.push(`${formData.dimHeight}mm`);
+      if (formData.dimDepth) dimParts.push(`${formData.dimDepth}mm`);
+      submitData.append('approximateDimensions', dimParts.length > 0 ? dimParts.join(' x ') : 'Not specified');
 
       attachedFiles.forEach(file => {
         submitData.append('referenceFiles', file);
@@ -245,11 +251,13 @@ const DesignAssistance = () => {
       
       // Reset form
       setFormData({
+        designTitle: "",
         ideaDescription: "",
         usage: "functional",
         usageDetails: "",
-        approximateDimensions: "",
-        desiredMaterial: "",
+        dimWidth: "",
+        dimHeight: "",
+        dimDepth: "",
       });
       setAttachedFiles([]);
       setShowFormDialog(false);
@@ -976,10 +984,6 @@ const DesignAssistance = () => {
                   <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
                 </div>
                 <div>
-                  <Label className="text-gray-400 text-sm">Material</Label>
-                  <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
-                </div>
-                <div className="col-span-2">
                   <Label className="text-gray-400 text-sm">Dimensions</Label>
                   <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
                 </div>
@@ -1065,6 +1069,20 @@ const DesignFormDialog = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {/* Design Title */}
+          <div className="space-y-2">
+            <Label htmlFor="designTitle" className="text-base font-semibold">
+              Design Title
+            </Label>
+            <Input
+              id="designTitle"
+              value={formData.designTitle}
+              onChange={(e) => setFormData({ ...formData, designTitle: e.target.value })}
+              placeholder="Give your design a name (e.g., Phone Stand, Gear Bracket)"
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+
           {/* Design Type */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">What type of design do you need?</Label>
@@ -1119,27 +1137,49 @@ const DesignFormDialog = ({
             />
           </div>
 
-          {/* Dimensions & Material */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dimensions">Approximate Dimensions</Label>
-              <Input
-                id="dimensions"
-                value={formData.approximateDimensions}
-                onChange={(e) => setFormData({ ...formData, approximateDimensions: e.target.value })}
-                placeholder="e.g., 10cm x 5cm"
-                className="bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="material">Desired Material</Label>
-              <Input
-                id="material"
-                value={formData.desiredMaterial}
-                onChange={(e) => setFormData({ ...formData, desiredMaterial: e.target.value })}
-                placeholder="e.g., PLA, ABS"
-                className="bg-gray-800 border-gray-700 text-white"
-              />
+          {/* Approximate Dimensions */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Approximate Dimensions (mm)</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="dimWidth" className="text-xs text-gray-400">Width</Label>
+                <Input
+                  id="dimWidth"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.dimWidth}
+                  onChange={(e) => setFormData({ ...formData, dimWidth: e.target.value })}
+                  placeholder="0.0"
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="dimHeight" className="text-xs text-gray-400">Height</Label>
+                <Input
+                  id="dimHeight"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.dimHeight}
+                  onChange={(e) => setFormData({ ...formData, dimHeight: e.target.value })}
+                  placeholder="0.0"
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="dimDepth" className="text-xs text-gray-400">Depth</Label>
+                <Input
+                  id="dimDepth"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.dimDepth}
+                  onChange={(e) => setFormData({ ...formData, dimDepth: e.target.value })}
+                  placeholder="0.0"
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
             </div>
           </div>
 
