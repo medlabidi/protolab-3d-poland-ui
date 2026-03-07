@@ -975,41 +975,47 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       };
       
       messageContent = getField('message') || '';
-      
-      // Handle file attachments
-      const uploadedFiles = files.attachments;
+
+      // Handle file attachments - accept both 'attachments' and 'file' keys
+      const uploadedFiles = files.attachments || files.file;
       if (uploadedFiles) {
         const fileArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
-        
+
         for (const file of fileArray) {
           if (!file || !file.filepath) continue;
-          
+
           const fs = await import('fs/promises');
           const path = await import('path');
-          
+
           // Read file and upload to Supabase Storage
           const fileBuffer = await fs.readFile(file.filepath);
           const fileExt = path.extname(file.originalFilename || '');
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
           const filePath = `conversations/${conversationId}/${fileName}`;
-          
+          const bucket = 'conversation-attachments';
+
           const { error: uploadError } = await supabase.storage
-            .from('conversation-attachments')
+            .from(bucket)
             .upload(filePath, fileBuffer, {
               contentType: file.mimetype || 'application/octet-stream',
               upsert: false
             });
-          
+
           if (uploadError) {
             console.error('[ADMIN_SEND_MESSAGE] File upload error:', uploadError);
             continue;
           }
-          
+
+          // Get public URL for the uploaded file
+          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
           attachments.push({
             file_path: filePath,
             original_name: file.originalFilename || fileName,
             file_size: file.size,
-            mime_type: file.mimetype
+            mime_type: file.mimetype,
+            url: urlData.publicUrl,
+            name: file.originalFilename || fileName
           });
         }
       }
@@ -1493,6 +1499,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/conversations\/design-request\/[^/]+$/) && req.method === 'GET') {
       return await handleGetDesignRequestConversation(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/conversations\/design-request\/[^/]+$/) && req.method === 'POST') {
+      return await handleCreateDesignRequestConversation(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/conversations\/[^/]+\/messages$/) && req.method === 'GET') {
       return await handleGetMessages(req as AuthenticatedRequest, res);
@@ -3299,14 +3308,22 @@ async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res
 
   const supabase = getSupabase();
 
-  // Verify ownership (it's an order with order_type='design')
-  const { data: order } = await supabase
+  // Check if user is admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  const isAdmin = userData?.role === 'admin';
+
+  // Verify access: admin can access any, regular user only their own
+  let orderQuery = supabase
     .from('orders')
     .select('id, user_id')
     .eq('id', designRequestId)
-    .eq('user_id', user.userId)
-    .eq('order_type', 'design')
-    .single();
+    .eq('order_type', 'design');
+
+  if (!isAdmin) {
+    orderQuery = orderQuery.eq('user_id', user.userId);
+  }
+
+  const { data: order } = await orderQuery.single();
 
   if (!order) {
     return res.status(404).json({ error: 'Design request not found' });
@@ -3317,15 +3334,15 @@ async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res
     .from('conversations')
     .select('*')
     .eq('order_id', designRequestId)
-    .single();
+    .maybeSingle();
 
   if (!conversation) {
     return res.status(200).json({ conversation: null, messages: [] });
   }
 
-  // Fetch messages
+  // Fetch messages from conversation_messages table
   const { data: messages } = await supabase
-    .from('messages')
+    .from('conversation_messages')
     .select('*')
     .eq('conversation_id', conversation.id)
     .order('created_at', { ascending: true });
@@ -3334,6 +3351,72 @@ async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res
     conversation,
     messages: messages || [],
   });
+}
+
+async function handleCreateDesignRequestConversation(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const designRequestId = url.split('/').pop()?.split('?')[0];
+
+  if (!designRequestId) {
+    return res.status(400).json({ error: 'Design request ID required' });
+  }
+
+  const supabase = getSupabase();
+
+  // Check if user is admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  const isAdmin = userData?.role === 'admin';
+
+  // Verify the design request exists and user has access
+  let orderQuery = supabase
+    .from('orders')
+    .select('id, user_id')
+    .eq('id', designRequestId)
+    .eq('order_type', 'design');
+
+  if (!isAdmin) {
+    orderQuery = orderQuery.eq('user_id', user.userId);
+  }
+
+  const { data: order } = await orderQuery.single();
+
+  if (!order) {
+    return res.status(404).json({ error: 'Design request not found' });
+  }
+
+  // Check if conversation already exists for this design request
+  const { data: existingConversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('order_id', designRequestId)
+    .maybeSingle();
+
+  if (existingConversation) {
+    return res.status(200).json({ conversation: existingConversation });
+  }
+
+  // Create new conversation linked to the design request order
+  const { subject } = req.body || {};
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .insert({
+      order_id: designRequestId,
+      user_id: order.user_id,
+      subject: subject || `Design Assistance - ${designRequestId.slice(0, 8)}`,
+      status: 'open'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating design request conversation:', error);
+    return res.status(500).json({ error: 'Failed to create conversation' });
+  }
+
+  return res.status(201).json({ conversation });
 }
 
 // ==================== ADMIN DESIGN REQUESTS HANDLERS ====================
@@ -3662,41 +3745,47 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       };
       
       messageContent = getField('message') || '';
-      
-      // Handle file attachments
-      const uploadedFiles = files.attachments;
+
+      // Handle file attachments - accept both 'attachments' and 'file' keys
+      const uploadedFiles = files.attachments || files.file;
       if (uploadedFiles) {
         const fileArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
-        
+
         for (const file of fileArray) {
           if (!file || !file.filepath) continue;
-          
+
           const fs = await import('fs/promises');
           const path = await import('path');
-          
+
           // Read file and upload to Supabase Storage
           const fileBuffer = await fs.readFile(file.filepath);
           const fileExt = path.extname(file.originalFilename || '');
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
           const filePath = `conversations/${conversationId}/${fileName}`;
-          
+          const bucket = 'conversation-attachments';
+
           const { error: uploadError } = await supabase.storage
-            .from('conversation-attachments')
+            .from(bucket)
             .upload(filePath, fileBuffer, {
               contentType: file.mimetype || 'application/octet-stream',
               upsert: false
             });
-          
+
           if (uploadError) {
             console.error('[SEND_MESSAGE] File upload error:', uploadError);
             continue;
           }
-          
+
+          // Get public URL for the uploaded file
+          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
           attachments.push({
             file_path: filePath,
             original_name: file.originalFilename || fileName,
             file_size: file.size,
-            mime_type: file.mimetype
+            mime_type: file.mimetype,
+            url: urlData.publicUrl,
+            name: file.originalFilename || fileName
           });
         }
       }
