@@ -77,10 +77,74 @@ const AdminDesignAssistance = () => {
   const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
   
   const conversationRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    setTimeout(() => {
+      const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }, 100);
+  }, [messages]);
 
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!selectedRequestForConversation) return;
+    const interval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.conversation?.id && !conversationId) {
+            setConversationId(data.conversation.id);
+          }
+          if (data.messages) {
+            setMessages(data.messages);
+          }
+        }
+      } catch (e) {
+        // Silent fail on polling
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRequestForConversation?.id]);
+
+  // Poll for new/updated design requests every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+        const response = await fetch(`${API_URL}/admin/design-requests`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const newOrders = data.designRequests || [];
+          setOrders(newOrders);
+          // Update selectedRequestForConversation with fresh data
+          if (selectedRequestForConversation) {
+            const updated = newOrders.find((r: any) => r.id === selectedRequestForConversation.id);
+            if (updated) {
+              setSelectedRequestForConversation(updated);
+            }
+          }
+        }
+      } catch (e) {
+        // Silent fail on polling
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [selectedRequestForConversation?.id]);
 
   const fetchOrders = async () => {
     try {
@@ -265,39 +329,92 @@ const AdminDesignAssistance = () => {
 
       // Send message with or without file
       let response;
+      let uploadedAttachment: any = null;
+
       if (attachedFile) {
-        console.log('[Admin] Sending message with file:', {
+        console.log('[Admin] Uploading file directly to storage:', {
           fileName: attachedFile.name,
           fileSize: attachedFile.size,
           fileType: attachedFile.type
         });
-        
-        const formData = new FormData();
-        const messageText = proposedPrice ? `${newMessage}\n\n💰 Proposed Price: ${proposedPrice} PLN` : newMessage;
-        formData.append('message', messageText);
-        formData.append('file', attachedFile);
-        
-        console.log('[Admin] FormData prepared, sending to:', `${API_URL}/admin/conversations/${currentConversationId}/messages`);
 
-        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
-        });
-
-        console.log('[Admin] Response status:', response.status, response.statusText);
-      } else {
-        response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
+        // Step 1: Get signed upload URL from backend
+        const uploadUrlResponse = await fetch(`${API_URL}/conversations/upload-url`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ message: newMessage }),
+          body: JSON.stringify({
+            conversationId: currentConversationId,
+            fileName: attachedFile.name,
+          }),
+        });
+
+        if (!uploadUrlResponse.ok) {
+          const errData = await uploadUrlResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('[Admin] Failed to get upload URL:', errData);
+          toast.error(`Failed to prepare upload: ${errData.details || errData.error}`);
+          return;
+        }
+
+        const { signedUrl, filePath, publicUrl } = await uploadUrlResponse.json();
+        console.log('[Admin] Got signed URL, uploading file directly to Supabase...');
+
+        // Step 2: Upload file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+        const uploadResponse = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': attachedFile.type || 'application/octet-stream',
+          },
+          body: attachedFile,
+        });
+
+        if (!uploadResponse.ok) {
+          const uploadErr = await uploadResponse.text().catch(() => 'Unknown upload error');
+          console.error('[Admin] Direct upload failed:', uploadErr);
+          toast.error('Failed to upload file to storage. Please try again.');
+          return;
+        }
+
+        console.log('[Admin] File uploaded successfully to Supabase Storage');
+        uploadedAttachment = {
+          file_path: filePath,
+          original_name: attachedFile.name,
+          file_size: attachedFile.size,
+          mime_type: attachedFile.type,
+          url: publicUrl,
+          name: attachedFile.name,
+        };
+      }
+
+      // Step 3: Send the message as JSON (with attachment metadata if file was uploaded)
+      const messageText = proposedPrice ? `${newMessage}\n\n💰 Proposed Price: ${proposedPrice} PLN` : newMessage;
+      const messageBody: any = { message: messageText };
+      if (uploadedAttachment) {
+        messageBody.attachments = [uploadedAttachment];
+      }
+
+      // If admin is proposing a price, save it to the DB first
+      if (proposedPrice && selectedRequestForConversation?.id) {
+        await fetch(`${API_URL}/admin/design-requests/${selectedRequestForConversation.id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ price: parseFloat(proposedPrice) }),
         });
       }
+
+      response = await fetch(`${API_URL}/admin/conversations/${currentConversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messageBody),
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -333,6 +450,16 @@ const AdminDesignAssistance = () => {
         
         setNewMessage('');
         setAttachedFile(null);
+        // Update local orders list with new price if proposed
+        if (proposedPrice) {
+          const newPrice = parseFloat(proposedPrice);
+          setOrders(prev => prev.map(r =>
+            r.id === selectedRequestForConversation.id ? { ...r, estimated_price: newPrice } : r
+          ));
+          if (selectedRequestForConversation.id === selectedOrder?.id) {
+            setSelectedOrder(prev => prev ? { ...prev, estimated_price: newPrice } : prev);
+          }
+        }
         setProposedPrice('');
         toast.success(attachedFile ? 'Message and file sent successfully' : 'Message sent');
       } else {
@@ -343,10 +470,11 @@ const AdminDesignAssistance = () => {
           error: errorData
         });
         
+        const errorMsg = errorData.details || errorData.error || 'Unknown error';
         if (attachedFile) {
-          toast.error(`Failed to upload file: ${errorData.error || 'Unknown error'}. Please check file format and size.`);
+          toast.error(`Failed to upload file: ${errorMsg}. Please check file format and size.`);
         } else {
-          toast.error(errorData.error || 'Failed to send message');
+          toast.error(errorMsg || 'Failed to send message');
         }
       }
     } catch (error) {
@@ -1015,6 +1143,7 @@ const AdminDesignAssistance = () => {
                   )}
 
                   {/* Messages */}
+                  <div ref={messagesScrollRef}>
                   <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-4 pb-4 pt-4">
                       {messages.length === 0 ? (
@@ -1110,8 +1239,7 @@ const AdminDesignAssistance = () => {
                       )}
                     </div>
                   </ScrollArea>
-
-                  {/* Message Input */}
+                  </div>
                   <div className="flex-shrink-0 space-y-2">
                     {attachedFile && (
                       <div className="space-y-2">

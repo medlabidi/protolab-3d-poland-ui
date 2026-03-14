@@ -22,6 +22,7 @@ import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
 import NewPrint from "./pages/NewPrint";
+import PrintJobs from "./pages/PrintJobs";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
 import EditOrder from "./pages/EditOrder";
@@ -89,6 +90,7 @@ const App = () => {
                 {/* Protected Routes - Require Authentication */}
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/new-print" element={<ProtectedRoute><NewPrint /></ProtectedRoute>} />
+                <Route path="/print-jobs" element={<ProtectedRoute><PrintJobs /></ProtectedRoute>} />
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />

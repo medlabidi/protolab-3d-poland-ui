@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { API_URL } from "@/config/api";
 
 const menuItems = [
   {
@@ -127,8 +128,30 @@ const menuItems = [
 export const AdminSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [approvedAndPaid, setApprovedAndPaid] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/admin/conversations/unread-count`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadMessages(data.unreadMessages || 0);
+          setApprovedAndPaid(data.approvedAndPaid || 0);
+        }
+      } catch {}
+    };
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     // Log activity before clearing localStorage
@@ -239,6 +262,9 @@ export const AdminSidebar = () => {
                     {item.subItems.map((subItem) => {
                       const isSubActive = location.pathname === subItem.path || 
                         location.pathname.startsWith(subItem.path);
+                      const subBadge = subItem.path === '/admin/orders/design-assistance'
+                        ? unreadMessages + approvedAndPaid
+                        : 0;
                       
                       return (
                         <NavLink
@@ -255,7 +281,12 @@ export const AdminSidebar = () => {
                             "w-4 h-4 flex-shrink-0",
                             isSubActive ? "text-blue-400" : "text-gray-500 group-hover:text-white"
                           )} />
-                          <span className="font-medium">{subItem.title}</span>
+                          <span className="font-medium flex-1">{subItem.title}</span>
+                          {subBadge > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                              {subBadge > 9 ? '9+' : subBadge}
+                            </span>
+                          )}
                         </NavLink>
                       );
                     })}
@@ -266,6 +297,10 @@ export const AdminSidebar = () => {
           }
           
           // Regular menu item without submenu
+          const itemBadge = item.path === '/admin/notifications' ? approvedAndPaid
+            : item.path === '/admin/conversations' ? unreadMessages
+            : 0;
+
           return (
             <NavLink
               key={item.path}
@@ -277,12 +312,26 @@ export const AdminSidebar = () => {
                   : "text-gray-400 hover:text-white hover:bg-gray-800"
               )}
             >
-              <item.icon className={cn(
-                "w-5 h-5 flex-shrink-0",
-                isActive ? "text-white" : "text-gray-500 group-hover:text-white"
-              )} />
+              <div className="relative flex-shrink-0">
+                <item.icon className={cn(
+                  "w-5 h-5",
+                  isActive ? "text-white" : "text-gray-500 group-hover:text-white"
+                )} />
+                {collapsed && itemBadge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {itemBadge > 9 ? '9+' : itemBadge}
+                  </span>
+                )}
+              </div>
               {!collapsed && (
-                <span className="font-medium">{item.title}</span>
+                <>
+                  <span className="font-medium flex-1">{item.title}</span>
+                  {itemBadge > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {itemBadge > 9 ? '9+' : itemBadge}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           );

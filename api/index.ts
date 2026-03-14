@@ -1600,58 +1600,69 @@ async function handleAdminGetConversationMessages(req: AuthenticatedRequest, res
 async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
-  
+
   const url = req.url || '';
-  const path = url.split('?')[0].replace('/api', '');
-  const conversationId = path.split('/')[3]; // /admin/conversations/:id/messages
-  
+  const urlPath = url.split('?')[0].replace('/api', '');
+  const conversationId = urlPath.split('/')[3]; // /admin/conversations/:id/messages
+
+  console.log('[ADMIN_SEND_MESSAGE] Start:', { conversationId, contentType: req.headers['content-type'] });
+
   const supabase = getSupabase();
-  
+
   const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
   if (userData?.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  
+
   try {
     // Get current conversation status
-    const { data: conversation } = await supabase
+    const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .select('status')
       .eq('id', conversationId)
-      .single();
-    
+      .maybeSingle();
+
+    if (convError) {
+      console.error('[ADMIN_SEND_MESSAGE] Conversation query error:', convError);
+    }
+
     const contentType = req.headers['content-type'] || '';
     let messageContent: string;
     let attachments: any[] = [];
 
     // Check if multipart (has files)
     if (contentType.includes('multipart/form-data')) {
+      console.log('[ADMIN_SEND_MESSAGE] Parsing multipart form data...');
       const { fields, files } = await parseFormData(req);
-      
+      console.log('[ADMIN_SEND_MESSAGE] Form parsed. Fields:', Object.keys(fields), 'Files:', Object.keys(files));
+
       const getField = (name: string): string | undefined => {
         const value = fields[name];
         return Array.isArray(value) ? value[0] : value;
       };
-      
+
       messageContent = getField('message') || '';
 
       // Handle file attachments - accept both 'attachments' and 'file' keys
       const uploadedFiles = files.attachments || files.file;
       if (uploadedFiles) {
         const fileArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
+        console.log('[ADMIN_SEND_MESSAGE] Processing', fileArray.length, 'files');
 
         for (const file of fileArray) {
           if (!file || !file.filepath) continue;
 
-          const fs = await import('fs/promises');
-          const path = await import('path');
+          const fsModule = await import('fs/promises');
+          const pathModule = await import('path');
 
           // Read file and upload to Supabase Storage
-          const fileBuffer = await fs.readFile(file.filepath);
-          const fileExt = path.extname(file.originalFilename || '');
+          const fileBuffer = await fsModule.readFile(file.filepath);
+          const fileExt = pathModule.extname(file.originalFilename || '');
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
           const filePath = `conversations/${conversationId}/${fileName}`;
           const bucket = 'conversation-attachments';
+
+          console.log('[ADMIN_SEND_MESSAGE] Uploading file:', { fileName: file.originalFilename, size: file.size, mimetype: file.mimetype, bucket, filePath });
 
           const { error: uploadError } = await supabase.storage
             .from(bucket)
@@ -1661,12 +1672,14 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
             });
 
           if (uploadError) {
-            console.error('[ADMIN_SEND_MESSAGE] File upload error:', uploadError);
+            console.error('[ADMIN_SEND_MESSAGE] File upload error:', uploadError.message || uploadError);
+            // Continue without the file attachment - message will still be sent
             continue;
           }
 
           // Get public URL for the uploaded file
           const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+          console.log('[ADMIN_SEND_MESSAGE] File uploaded successfully:', urlData.publicUrl);
 
           attachments.push({
             file_path: filePath,
@@ -1679,65 +1692,152 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
         }
       }
     } else {
-      // Parse JSON body
+      // Parse JSON body (may include pre-uploaded attachments)
       const body = await parseJsonBody(req);
       messageContent = body.message || '';
+      if (body.attachments && Array.isArray(body.attachments)) {
+        attachments = body.attachments;
+      }
     }
-    
+
     const messageData: any = {
       conversation_id: conversationId,
       sender_id: user.userId,
       message: messageContent || '',
       sender_type: 'engineer'
     };
-    
+
     // Only include attachments if column exists (backward compatibility)
     if (attachments.length > 0) {
       messageData.attachments = attachments;
     }
-    
+
+    console.log('[ADMIN_SEND_MESSAGE] Inserting message:', { conversationId, hasAttachments: attachments.length > 0 });
+
     let { data: message, error } = await supabase
       .from('conversation_messages')
-      .insert(messageData)
+      .insert([messageData])
       .select()
       .single();
-    
+
     // If error and we have attachments, try without attachments (column might not exist yet)
     if (error && attachments.length > 0 && error.message?.includes('attachments')) {
       console.log('[ADMIN_SEND_MESSAGE] Retrying without attachments (column may not exist yet)');
       delete messageData.attachments;
       const retry = await supabase
         .from('conversation_messages')
-        .insert(messageData)
+        .insert([messageData])
         .select()
         .single();
       message = retry.data;
       error = retry.error;
     }
-    
+
     if (error) {
-      return res.status(500).json({ error: 'Failed to send message' });
+      console.error('[ADMIN_SEND_MESSAGE] Message insert error:', error.message || error);
+      return res.status(500).json({ error: 'Failed to send message', details: error.message });
     }
-    
+
     // Update conversation: mark as unread for user and change status to "in_progress" if it's "open"
-    const updateData: any = { 
-      user_read: false, 
-      updated_at: new Date().toISOString() 
+    const updateData: any = {
+      user_read: false,
+      updated_at: new Date().toISOString()
     };
-    
+
     if (conversation?.status === 'open') {
       updateData.status = 'in_progress';
     }
-    
+
     await supabase
       .from('conversations')
       .update(updateData)
       .eq('id', conversationId);
-    
+
+    console.log('[ADMIN_SEND_MESSAGE] Message sent successfully:', message?.id);
     return res.status(200).json({ message });
-  } catch (error) {
-    console.error('Send message error:', error);
-    return res.status(500).json({ error: 'Failed to send message' });
+  } catch (error: any) {
+    console.error('[ADMIN_SEND_MESSAGE] Unhandled error:', error?.message || error);
+    return res.status(500).json({ error: 'Failed to send message', details: error?.message || 'Unknown error' });
+  }
+}
+
+async function handleConversationUploadUrl(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const body = req.body || await parseJsonBody(req);
+  const { conversationId, fileName } = body;
+
+  if (!conversationId || !fileName) {
+    return res.status(400).json({ error: 'conversationId and fileName are required' });
+  }
+
+  // Check if user is admin or conversation owner
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  const isAdmin = userData?.role === 'admin';
+
+  if (!isAdmin) {
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.userId)
+      .maybeSingle();
+    if (!conv) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+
+  try {
+    const bucket = 'conversation-attachments';
+
+    // Ensure bucket exists and accepts all file types
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const existingBucket = buckets?.find((b: any) => b.id === bucket);
+    if (!existingBucket) {
+      console.log('[UPLOAD_URL] Creating conversation-attachments bucket');
+      await supabase.storage.createBucket(bucket, {
+        public: true,
+        fileSizeLimit: 52428800, // 50MB
+      });
+    } else if (existingBucket.allowed_mime_types && existingBucket.allowed_mime_types.length > 0) {
+      // Remove MIME type restrictions so all file types (including 3D models) are accepted
+      console.log('[UPLOAD_URL] Removing MIME type restrictions from bucket');
+      await supabase.storage.updateBucket(bucket, {
+        public: true,
+        fileSizeLimit: 52428800,
+        allowedMimeTypes: null as any,
+      });
+    }
+
+    // Generate unique file path
+    const fileExt = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')) : '';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
+    const filePath = `conversations/${conversationId}/${uniqueName}`;
+
+    // Create signed upload URL
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUploadUrl(filePath);
+
+    if (error) {
+      console.error('[UPLOAD_URL] Error creating signed URL:', error);
+      return res.status(500).json({ error: 'Failed to create upload URL', details: error.message });
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    return res.status(200).json({
+      signedUrl: data.signedUrl,
+      token: data.token,
+      filePath,
+      publicUrl: urlData.publicUrl,
+    });
+  } catch (error: any) {
+    console.error('[UPLOAD_URL] Unhandled error:', error?.message || error);
+    return res.status(500).json({ error: 'Failed to create upload URL', details: error?.message });
   }
 }
 
@@ -2157,8 +2257,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Conversations routes
+    if (path === '/conversations/upload-url' && req.method === 'POST') {
+      return await handleConversationUploadUrl(req as AuthenticatedRequest, res);
+    }
     if (path === '/conversations' && req.method === 'GET') {
       return await handleGetConversations(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/conversations\/order\/[^/]+$/) && req.method === 'GET') {
+      return await handleGetOrderConversation(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/conversations\/order\/[^/]+$/) && req.method === 'POST') {
       return await handleCreateOrderConversation(req as AuthenticatedRequest, res);
@@ -2177,6 +2283,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/conversations\/[^/]+\/read$/) && req.method === 'PATCH') {
       return await handleMarkConversationRead(req as AuthenticatedRequest, res);
+    }
+    if (path === '/conversations/unread-count' && req.method === 'GET') {
+      return await handleGetUserUnreadCount(req as AuthenticatedRequest, res);
+    }
+    if (path === '/admin/conversations/unread-count' && req.method === 'GET') {
+      return await handleGetAdminUnreadCount(req as AuthenticatedRequest, res);
     }
     if (path.match(/^\/conversations\/[^/]+\/typing$/) && req.method === 'POST') {
       return await handleSetTypingStatus(req as AuthenticatedRequest, res);
@@ -2946,6 +3058,7 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
   if (!user) return;
   
   const filter = req.query.filter as string || 'active';
+  const orderType = req.query.orderType as string | undefined;
   const supabase = getSupabase();
   
   console.log(`📦 [ORDERS] Fetching orders for user: ${user.userId}, filter: ${filter}`);
@@ -2971,7 +3084,14 @@ async function handleGetMyOrders(req: AuthenticatedRequest, res: VercelResponse)
   } else if (filter === 'deleted') {
     query = query.eq('status', 'deleted');
   }
-  
+
+  // Filter by order type if specified
+  if (orderType === 'print') {
+    query = query.or('order_type.eq.print,order_type.is.null');
+  } else if (orderType === 'design') {
+    query = query.eq('order_type', 'design');
+  }
+
   const { data: orders, error } = await query;
   
   console.log(`📦 [ORDERS] Filtered orders: ${orders?.length || 0}, error: ${error ? JSON.stringify(error) : 'none'}`);
@@ -3806,8 +3926,8 @@ function mapOrderToDesignRequest(order: any) {
     payment_status: order.payment_status || 'pending',
     admin_notes: order.notes || null,
     admin_design_file: order.admin_design_file || null,
-    user_approval_status: 'pending',
-    user_approval_at: null,
+    user_approval_status: order.design_status === 'completed' ? 'approved' : (order.design_status === 'cancelled' ? 'rejected' : 'pending'),
+    user_approval_at: order.design_status === 'completed' ? order.updated_at : null,
     user_rejection_reason: null,
     created_at: order.created_at,
     updated_at: order.updated_at || order.created_at,
@@ -4008,6 +4128,61 @@ async function handleRejectDesignRequest(req: AuthenticatedRequest, res: VercelR
   return res.status(200).json(mapOrderToDesignRequest(data));
 }
 
+async function handleGetOrderConversation(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const orderId = url.split('/conversations/order/')[1]?.split('?')[0];
+
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID required' });
+  }
+
+  const supabase = getSupabase();
+
+  // Verify user owns this order
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, user_id')
+    .eq('id', orderId)
+    .eq('user_id', user.userId)
+    .single();
+
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  // Find existing conversation by order_id
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('order_id', orderId)
+    .maybeSingle();
+
+  if (!conversation) {
+    return res.status(200).json({ conversation: null, messages: [] });
+  }
+
+  // Fetch messages
+  const { data: messages } = await supabase
+    .from('conversation_messages')
+    .select('*')
+    .eq('conversation_id', conversation.id)
+    .order('created_at', { ascending: true });
+
+  // Mark as read for user
+  await supabase.from('conversations')
+    .update({ user_read: true })
+    .eq('id', conversation.id)
+    .eq('user_id', user.userId);
+
+  return res.status(200).json({
+    conversation,
+    messages: messages || [],
+  });
+}
+
 async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res: VercelResponse) {
   const user = requireAuth(req, res);
   if (!user) return;
@@ -4059,6 +4234,13 @@ async function handleGetDesignRequestConversation(req: AuthenticatedRequest, res
     .select('*')
     .eq('conversation_id', conversation.id)
     .order('created_at', { ascending: true });
+
+  // Mark conversation as read for the current viewer
+  if (isAdmin) {
+    await supabase.from('conversations').update({ admin_read: true }).eq('id', conversation.id);
+  } else {
+    await supabase.from('conversations').update({ user_read: true }).eq('id', conversation.id).eq('user_id', user.userId);
+  }
 
   return res.status(200).json({
     conversation,
@@ -4237,11 +4419,21 @@ async function handleAdminUpdateDesignStatus(req: AuthenticatedRequest, res: Ver
   const path = url.split('?')[0].replace('/api', '');
   const orderId = path.split('/')[3]; // /admin/design-requests/:id/status
 
-  const { status } = req.body || {};
+  const { status, price } = req.body || {};
+
+  const updateFields: any = {};
+  if (status) updateFields.design_status = status;
+  if (price !== undefined && price !== null && price !== '') {
+    updateFields.price = parseFloat(price);
+  }
+
+  if (Object.keys(updateFields).length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
 
   const { data, error } = await supabase
     .from('orders')
-    .update({ design_status: status })
+    .update(updateFields)
     .eq('id', orderId)
     .eq('order_type', 'design')
     .select()
@@ -4503,9 +4695,12 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
         }
       }
     } else {
-      // Parse JSON body
+      // Parse JSON body (may include pre-uploaded attachments)
       const body = await parseJsonBody(req);
       messageContent = body.content || body.message || '';
+      if (body.attachments && Array.isArray(body.attachments)) {
+        attachments = body.attachments;
+      }
     }
     
     if (!messageContent && attachments.length === 0) {
@@ -4629,6 +4824,62 @@ async function handleMarkConversationRead(req: AuthenticatedRequest, res: Vercel
   }
 }
 
+// ==================== UNREAD COUNT HANDLERS ====================
+
+async function handleGetUserUnreadCount(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  try {
+    // Count conversations belonging to this user where user_read = false (admin sent something unread)
+    const { count } = await supabase
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.userId)
+      .eq('user_read', false);
+
+    return res.status(200).json({ unreadCount: count || 0 });
+  } catch (err: any) {
+    return res.status(200).json({ unreadCount: 0 });
+  }
+}
+
+async function handleGetAdminUnreadCount(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    // Count conversations where admin_read = false (user sent something unread)
+    const { count: unreadMessages } = await supabase
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('admin_read', false);
+
+    // Count design orders that are completed (approved) AND paid - new notifications for admin
+    const { count: approvedAndPaid } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('order_type', 'design')
+      .eq('design_status', 'completed')
+      .eq('payment_status', 'paid');
+
+    return res.status(200).json({
+      unreadMessages: unreadMessages || 0,
+      approvedAndPaid: approvedAndPaid || 0,
+    });
+  } catch (err: any) {
+    return res.status(200).json({ unreadMessages: 0, approvedAndPaid: 0 });
+  }
+}
+
 // ==================== PAYU PAYMENT HANDLERS ====================
 
 // PayU Configuration
@@ -4636,7 +4887,7 @@ const PAYU_CONFIG = {
   clientId: process.env.PAYU_CLIENT_ID || '501885',
   clientSecret: process.env.PAYU_CLIENT_SECRET || '81927c33ee2b36ee897bef24ef90a446',
   posId: process.env.PAYU_POS_ID || '501885',
-  baseUrl: 'https://secure.snd.payu.com',
+  baseUrl: process.env.PAYU_BASE_URL || 'https://secure.snd.payu.com',
 };
 
 async function getPayUToken(): Promise<string> {
@@ -4645,6 +4896,7 @@ async function getPayUToken(): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'ProtoLab3D/1.0',
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
@@ -4672,6 +4924,7 @@ async function createPayUOrder(token: string, orderData: any): Promise<any> {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'User-Agent': 'ProtoLab3D/1.0',
     },
     body: JSON.stringify(orderData),
     redirect: 'manual',

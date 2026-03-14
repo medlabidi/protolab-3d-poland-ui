@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -17,6 +17,7 @@ import { ModelPreviewCard } from "@/components/ModelPreviewCard";
 import { ModelViewerModal } from "@/components/ModelViewerModal";
 import { is3DFile } from "@/utils/fileHelpers";
 import { Attachment } from "@/types/attachment";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 interface DesignRequest {
   id: string;
@@ -65,6 +66,7 @@ const DesignAssistance = () => {
   const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationFile, setConversationFile] = useState<File | null>(null);
 
   // Approval/Rejection state
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -90,6 +92,20 @@ const DesignAssistance = () => {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+
+  const isPaymentCompleted = selectedRequest?.payment_status === 'paid';
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    setTimeout(() => {
+      const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }, 100);
+  }, [messages]);
+
   useEffect(() => {
     const loggedIn = localStorage.getItem('isLoggedIn') === 'true' && !!localStorage.getItem('accessToken');
     setIsLoggedIn(loggedIn);
@@ -102,6 +118,60 @@ const DesignAssistance = () => {
 
     fetchDesignRequests();
   }, [navigate]);
+
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!selectedRequest) return;
+    const interval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/conversations/design-request/${selectedRequest.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.conversation?.id && !conversationId) {
+            setConversationId(data.conversation.id);
+          }
+          if (data.messages) {
+            setMessages(data.messages);
+          }
+        }
+      } catch (e) {
+        // Silent fail on polling
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRequest?.id]);
+
+  // Poll for new/updated design requests every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+        const response = await fetch(`${API_URL}/design-requests/my`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : {};
+          const newRequests = data.requests || [];
+          setDesignRequests(newRequests);
+          // Update selectedRequest with fresh data if it's still in the list
+          if (selectedRequest) {
+            const updated = newRequests.find((r: DesignRequest) => r.id === selectedRequest.id);
+            if (updated) {
+              setSelectedRequest(updated);
+            }
+          }
+        }
+      } catch (e) {
+        // Silent fail on polling
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [selectedRequest?.id]);
 
   const fetchDesignRequests = async () => {
     try {
@@ -274,7 +344,7 @@ const DesignAssistance = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !conversationFile) return;
 
     if (!selectedRequest) {
       toast.error("Please select a design request first");
@@ -284,7 +354,7 @@ const DesignAssistance = () => {
     setSendingMessage(true);
     try {
       const token = localStorage.getItem('accessToken');
-      
+
       // Create conversation if it doesn't exist
       let currentConversationId = conversationId;
       if (!currentConversationId) {
@@ -313,13 +383,68 @@ const DesignAssistance = () => {
         }
       }
 
-      const response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+      let response;
+      let uploadedAttachment: any = null;
+
+      if (conversationFile) {
+        // Step 1: Get signed upload URL from backend
+        const uploadUrlResponse = await fetch(`${API_URL}/conversations/upload-url`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            conversationId: currentConversationId,
+            fileName: conversationFile.name,
+          }),
+        });
+
+        if (!uploadUrlResponse.ok) {
+          const errData = await uploadUrlResponse.json().catch(() => ({ error: 'Unknown error' }));
+          toast.error(`Failed to prepare upload: ${errData.details || errData.error}`);
+          return;
+        }
+
+        const { signedUrl, filePath, publicUrl } = await uploadUrlResponse.json();
+
+        // Step 2: Upload file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+        const uploadResponse = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': conversationFile.type || 'application/octet-stream',
+          },
+          body: conversationFile,
+        });
+
+        if (!uploadResponse.ok) {
+          toast.error('Failed to upload file. Please try again.');
+          return;
+        }
+
+        uploadedAttachment = {
+          file_path: filePath,
+          original_name: conversationFile.name,
+          file_size: conversationFile.size,
+          mime_type: conversationFile.type,
+          url: publicUrl,
+          name: conversationFile.name,
+        };
+      }
+
+      // Step 3: Send the message as JSON (with attachment metadata if file was uploaded)
+      const messageBody: any = { message: newMessage };
+      if (uploadedAttachment) {
+        messageBody.attachments = [uploadedAttachment];
+      }
+
+      response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: newMessage }),
+        body: JSON.stringify(messageBody),
       });
 
       if (response.ok) {
@@ -332,6 +457,7 @@ const DesignAssistance = () => {
         }
         setMessages(prev => [...prev, data.message]);
         setNewMessage("");
+        setConversationFile(null);
         toast.success("Message sent");
       }
     } catch (error) {
@@ -496,16 +622,8 @@ const DesignAssistance = () => {
   };
 
   const handleProceedToPayment = (request: DesignRequest) => {
-    // Store request data in sessionStorage
-    sessionStorage.setItem('designPaymentData', JSON.stringify({
-      requestId: request.id,
-      amount: request.final_price || request.estimated_price || 0,
-      projectName: request.project_name,
-      type: 'design'
-    }));
-    
-    // Navigate to checkout
-    navigate(`/checkout?type=design&id=${request.id}`);
+    // Navigate to checkout with the order ID
+    navigate(`/checkout?orderId=${request.id}`);
   };
 
   const getApprovalStatusBadge = (status?: string) => {
@@ -754,14 +872,57 @@ const DesignAssistance = () => {
                               <span className="text-gray-300">{selectedRequest.usage_details}</span>
                             </div>
                           )}
-                          {selectedRequest.estimated_price && (
-                            <div>
-                              <span className="text-gray-500">Est. Price:</span>{' '}
-                              <span className="text-cyan-400 font-semibold">{selectedRequest.estimated_price} PLN</span>
-                            </div>
-                          )}
                         </div>
                       </div>
+
+                      {/* Prominent Price Banner */}
+                      {selectedRequest.estimated_price ? (
+                        <div className={`rounded-xl border p-4 space-y-3 ${
+                          isPaymentCompleted
+                            ? 'bg-green-500/10 border-green-500/40'
+                            : selectedRequest.design_status === 'completed'
+                              ? 'bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/60'
+                              : 'bg-gray-800/60 border-yellow-500/40'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">
+                              {isPaymentCompleted ? 'Amount Paid' : 'Price Proposed by Admin'}
+                            </span>
+                            {isPaymentCompleted ? (
+                              <Badge className="bg-green-500/20 text-green-400 border-green-500 text-xs">✓ Paid</Badge>
+                            ) : selectedRequest.design_status === 'completed' ? (
+                              <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500 text-xs animate-pulse">Action Required</Badge>
+                            ) : (
+                              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500 text-xs">Estimate</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className={`text-3xl font-bold ${isPaymentCompleted ? 'text-green-400' : 'text-cyan-400'}`}>
+                              {selectedRequest.estimated_price.toFixed(2)}
+                            </span>
+                            <span className="text-gray-400 text-base font-medium">PLN</span>
+                          </div>
+                          {!isPaymentCompleted && selectedRequest.design_status === 'completed' && (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-cyan-200 text-xs">The admin has completed your design. Review it and approve to proceed to payment.</p>
+                              <Button
+                                onClick={() => handleApproveDesign(selectedRequest.id)}
+                                disabled={processingApproval}
+                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold text-sm h-10"
+                              >
+                                {processingApproval ? (
+                                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
+                                ) : (
+                                  <><Check className="w-4 h-4 mr-2" />Approve & Pay {selectedRequest.estimated_price.toFixed(2)} PLN</>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                          {!isPaymentCompleted && selectedRequest.design_status !== 'completed' && (
+                            <p className="text-gray-400 text-xs">Waiting for admin to finalize the design before you can approve and pay.</p>
+                          )}
+                        </div>
+                      ) : null}
 
                       {/* Attached Reference Files */}
                       {selectedRequest.attached_files && selectedRequest.attached_files.length > 0 && (
@@ -824,6 +985,7 @@ const DesignAssistance = () => {
                     </div>
 
                     {/* Messages */}
+                    <div ref={messagesScrollRef}>
                     <ScrollArea className="h-[300px] pr-4 px-4">
                       <div className="space-y-4 pb-4 pt-4">
                         {messages.length === 0 ? (
@@ -890,6 +1052,50 @@ const DesignAssistance = () => {
                                       </span>
                                     </div>
 
+                                    {/* File Attachments */}
+                                    {msg.attachments && msg.attachments.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {msg.attachments.filter((att: any) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: any, idx: number) => {
+                                          const isAdminFile = msg.sender_type !== 'user';
+                                          const isDownloadBlocked = isAdminFile && !isPaymentCompleted;
+
+                                          if (isDownloadBlocked) {
+                                            return (
+                                              <TooltipProvider key={idx}>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <div className="flex items-center gap-2 text-xs opacity-60 cursor-not-allowed">
+                                                      <Lock className="w-3 h-3 text-yellow-400" />
+                                                      <span className="truncate text-gray-400">{att.name || 'Attachment'}</span>
+                                                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500 text-[10px] px-1.5 py-0">
+                                                        Pay to download
+                                                      </Badge>
+                                                    </div>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent className="bg-gray-800 border-gray-600 text-gray-200">
+                                                    <p>Complete payment to download this file</p>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
+                                            );
+                                          }
+
+                                          return (
+                                            <a
+                                              key={idx}
+                                              href={att.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2 text-xs opacity-90 hover:opacity-100"
+                                            >
+                                              <FileText className="w-3 h-3" />
+                                              <span className="truncate underline">{att.name || 'Attachment'}</span>
+                                            </a>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
                                     {/* 3D File Attachments from Admin */}
                                     {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (() => {
                                       const filtered3DFiles = msg.attachments.filter((att: any) => {
@@ -923,8 +1129,7 @@ const DesignAssistance = () => {
                         )}
                       </div>
                     </ScrollArea>
-
-                    {/* Message Input */}
+                    </div>
                     {selectedRequest.user_approval_status === 'rejected' ? (
                       <div className="flex gap-2 flex-shrink-0 px-4 pb-4">
                         <div className="w-full p-3 bg-red-500/20 border border-red-500 rounded-lg text-center">
@@ -935,22 +1140,48 @@ const DesignAssistance = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex gap-2 flex-shrink-0 px-4 pb-4">
-                        <Input
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                          placeholder="Type your message..."
-                          className="bg-gray-800 border-gray-700 text-white"
-                          disabled={sendingMessage}
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={sendingMessage || !newMessage.trim()}
-                          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                        >
-                          {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                        </Button>
+                      <div className="flex-shrink-0 px-4 pb-4 space-y-2">
+                        {conversationFile && (
+                          <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg border border-cyan-500/30">
+                            <FileText className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                            <span className="text-gray-300 text-xs truncate flex-1">{conversationFile.name}</span>
+                            <span className="text-gray-500 text-xs flex-shrink-0">{(conversationFile.size / 1024).toFixed(0)} KB</span>
+                            <button onClick={() => setConversationFile(null)} className="text-gray-400 hover:text-red-400">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <label className="flex items-center justify-center w-10 h-10 bg-gray-800 border border-gray-700 rounded-md cursor-pointer hover:bg-gray-700 transition-colors flex-shrink-0">
+                            <Upload className="w-4 h-4 text-gray-400" />
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                  setConversationFile(e.target.files[0]);
+                                }
+                                e.target.value = '';
+                              }}
+                              disabled={sendingMessage}
+                            />
+                          </label>
+                          <Input
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            placeholder="Type your message..."
+                            className="bg-gray-800 border-gray-700 text-white"
+                            disabled={sendingMessage}
+                          />
+                          <Button
+                            onClick={handleSendMessage}
+                            disabled={sendingMessage || (!newMessage.trim() && !conversationFile)}
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                          >
+                            {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </>
@@ -1025,7 +1256,8 @@ const DesignAssistance = () => {
           setModelViewerModal({ open: false, attachment: null });
           setShowRejectDialog(true);
         }}
-        onDownload={handleDownload}
+        onDownload={isPaymentCompleted ? handleDownload : undefined}
+        downloadBlocked={!isPaymentCompleted}
         processingApproval={processingApproval}
       />
 

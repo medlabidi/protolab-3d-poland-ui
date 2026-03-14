@@ -1,14 +1,15 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Printer, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { stopTokenRefresh } from "@/utils/tokenRefresh";
+import { API_URL } from "@/config/api";
 
 export const DashboardSidebar = () => {
   const { t } = useLanguage();
@@ -16,6 +17,26 @@ export const DashboardSidebar = () => {
   const { clearAllNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [designUnreadCount, setDesignUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/conversations/unread-count`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDesignUnreadCount(data.unreadCount || 0);
+        }
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   const handleLogout = () => {
     // Log activity before clearing localStorage
@@ -53,10 +74,9 @@ export const DashboardSidebar = () => {
   
   const menuItems = [
     { icon: LayoutDashboard, label: t('dashboard.overview'), path: "/dashboard" },
-    { icon: Plus, label: t('dashboard.newPrint'), path: "/new-print" },
+    { icon: Printer, label: "Print Jobs", path: "/print-jobs" },
     { icon: Palette, label: "3D Design Assistance", path: "/design-assistance" },
-    { icon: Package, label: t('dashboard.orders'), path: "/orders" },
-    { icon: MessageSquare, label: t('sidebar.conversations'), path: "/conversations" },
+    { icon: History, label: "Order History", path: "/orders" },
     { icon: Wallet, label: t('sidebar.credits'), path: "/credits" },
     { icon: Building2, label: t('sidebar.business'), path: "/business" },
     { icon: Settings, label: t('dashboard.settings'), path: "/settings" },
@@ -117,19 +137,36 @@ export const DashboardSidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => (
+        {menuItems.map((item) => {
+          const unread = item.path === '/design-assistance' ? designUnreadCount : 0;
+          return (
           <NavLink
             key={item.path}
             to={item.path}
             className={`flex items-center ${isCollapsed ? 'justify-center px-3' : 'gap-3 px-3'} py-2.5 rounded-lg transition-all duration-200 group text-gray-400 hover:text-white hover:bg-gray-800`}
             activeClassName="!bg-blue-600 !text-white shadow-lg shadow-blue-600/20"
-            onClick={() => setIsOpen(false)}
+            onClick={() => { setIsOpen(false); if (item.path === '/design-assistance') setDesignUnreadCount(0); }}
             title={isCollapsed ? item.label : undefined}
           >
-            <item.icon className={`${isCollapsed ? 'w-5 h-5' : 'w-5 h-5'} flex-shrink-0 group-hover:scale-110 transition-transform`} />
-            {!isCollapsed && <span className="font-medium">{item.label}</span>}
+            <div className="relative flex-shrink-0">
+              <item.icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              {unread > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </div>
+            {!isCollapsed && (
+              <span className="font-medium flex-1">{item.label}</span>
+            )}
+            {!isCollapsed && unread > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
           </NavLink>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom section */}

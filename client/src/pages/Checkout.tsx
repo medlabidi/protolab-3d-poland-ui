@@ -8,16 +8,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  ArrowLeft, 
-  Package, 
-  MapPin, 
-  CreditCard, 
-  FileText, 
-  Loader2, 
+  ArrowLeft,
+  Package,
+  MapPin,
+  CreditCard,
+  FileText,
+  Loader2,
   Edit2,
   Building2,
   Receipt,
-  Download
+  Download,
+  Palette
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
@@ -43,6 +44,11 @@ interface Order {
   advanced_mode?: boolean;
   support_type?: string;
   infill_pattern?: string;
+  order_type?: string;
+  idea_description?: string;
+  usage_type?: string;
+  approximate_dimensions?: string;
+  notes?: string;
 }
 
 interface ShippingAddress {
@@ -87,6 +93,8 @@ export function Checkout() {
   const [requestInvoice, setRequestInvoice] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({});
   const [hasBusinessInfo, setHasBusinessInfo] = useState(false);
+
+  const isDesignOrder = order?.order_type === 'design';
 
   useEffect(() => {
     if (isProjectMode) {
@@ -391,9 +399,11 @@ export function Checkout() {
         body: JSON.stringify({
           orderId: orderToProcess.id,
           amount: totalAmount,
-          description: isProjectMode 
+          description: isProjectMode
             ? `Project: ${projectData.projectName} (${projectData.files.length} files)`
-            : `Order #${orderToProcess.id.slice(0, 8)} - ${orderToProcess.file_name}`,
+            : isDesignOrder
+              ? `Design Assistance: ${orderToProcess.file_name}`
+              : `Order #${orderToProcess.id.slice(0, 8)} - ${orderToProcess.file_name}`,
           userId: orderToProcess.user_id,
           requestInvoice,
           businessInfo: requestInvoice ? businessInfo : null,
@@ -586,7 +596,9 @@ export function Checkout() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold dark:text-gray-100">Checkout</h1>
-            <p className="text-gray-600 dark:text-gray-400">Review your order before payment</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isDesignOrder ? 'Review your design service before payment' : 'Review your order before payment'}
+            </p>
           </div>
         </div>
 
@@ -721,6 +733,41 @@ export function Checkout() {
                   </Card>
                 ))}
               </>
+            ) : order && isDesignOrder ? (
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Design Assistance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Project:</span>
+                    <span className="font-medium dark:text-gray-100">{order.file_name}</span>
+                  </div>
+                  {(order.idea_description || order.notes) && (
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-300 text-sm">Description:</span>
+                      <p className="text-sm font-medium dark:text-gray-100 mt-1">
+                        {order.idea_description || order.notes}
+                      </p>
+                    </div>
+                  )}
+                  {order.usage_type && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Usage:</span>
+                      <span className="font-medium dark:text-gray-100 capitalize">{order.usage_type}</span>
+                    </div>
+                  )}
+                  {order.approximate_dimensions && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Dimensions:</span>
+                      <span className="font-medium dark:text-gray-100">{order.approximate_dimensions}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             ) : order ? (
               <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
@@ -786,8 +833,8 @@ export function Checkout() {
               </Card>
             ) : null}
 
-            {/* Delivery Information */}
-            {renderDeliveryInfo()}
+            {/* Delivery Information (not needed for design orders) */}
+            {!isDesignOrder && renderDeliveryInfo()}
 
             {/* Invoice Request */}
             <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -942,7 +989,9 @@ export function Checkout() {
                   ) : order ? (
                     <>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-300">Print Cost:</span>
+                        <span className="text-gray-600 dark:text-gray-300">
+                          {isDesignOrder ? 'Design Service:' : 'Print Cost:'}
+                        </span>
                         <span className="dark:text-gray-100">{order.price.toFixed(2)} PLN</span>
                       </div>
                       <Separator className="dark:bg-gray-600" />

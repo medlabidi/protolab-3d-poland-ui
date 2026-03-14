@@ -204,7 +204,6 @@ export const loadSTLFromUrl = (url: string): Promise<THREE.BufferGeometry> => {
       headers: {
         'Accept': 'application/octet-stream, model/stl, */*'
       },
-      credentials: 'include' // Include credentials for authenticated requests
     })
       .then(response => {
         console.log('[STL Loader] Response status:', response.status, response.statusText);

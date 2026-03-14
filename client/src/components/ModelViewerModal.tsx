@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThreeViewer } from '@/components/ThreeViewer/ThreeViewer';
-import { Check, X, Download, Loader2 } from 'lucide-react';
+import { Check, X, Download, Loader2, Lock } from 'lucide-react';
 import { DesignApprovalStatus } from './ModelPreviewCard';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 interface ModelViewerModalProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface ModelViewerModalProps {
   onDownload?: () => void;
   processingApproval?: boolean;
   downloading?: boolean;
+  downloadBlocked?: boolean;
 }
 
 const getApprovalStatusBadge = (status?: DesignApprovalStatus) => {
@@ -57,6 +59,7 @@ const ModelViewerModalComponent = ({
   onDownload,
   processingApproval = false,
   downloading = false,
+  downloadBlocked = false,
 }: ModelViewerModalProps) => {
   const isPending = !approvalStatus || approvalStatus === 'pending';
   const showApprovalButtons = isPending && (onApprove || onReject);
@@ -90,6 +93,25 @@ const ModelViewerModalComponent = ({
                   )}
                   {downloading ? 'Downloading...' : 'Download'}
                 </Button>
+              )}
+              {!onDownload && downloadBlocked && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled
+                        className="border-yellow-500/50 text-yellow-400 opacity-70 cursor-not-allowed"
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        Pay to Download
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-gray-800 border-gray-600 text-gray-200">
+                      <p>Complete payment to download this design file</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </DialogHeader>
