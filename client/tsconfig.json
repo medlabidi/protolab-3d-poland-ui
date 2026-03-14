@@ -41,6 +41,8 @@
     "src/server.ts",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
+    "src/setupTests.ts",
+    "src/types",
     "node_modules"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
