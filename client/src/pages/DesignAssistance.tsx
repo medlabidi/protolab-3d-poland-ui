@@ -168,12 +168,12 @@ const DesignAssistance = () => {
         }
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
-        console.log('✅ [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
+        console.log('Ô£à [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
         
         // Log messages with attachments for debugging
         const messagesWithAttachments = data.messages?.filter((msg: any) => msg.attachments && msg.attachments.length > 0);
         if (messagesWithAttachments && messagesWithAttachments.length > 0) {
-          console.log('📎 [Design Assistance] Messages with attachments:', messagesWithAttachments.length);
+          console.log('­ƒôÄ [Design Assistance] Messages with attachments:', messagesWithAttachments.length);
           messagesWithAttachments.forEach((msg: any, idx: number) => {
             console.log(`  Message ${idx + 1}:`, {
               id: msg.id,
@@ -403,7 +403,7 @@ const DesignAssistance = () => {
   };
 
   const handleDownload = async () => {
-    if (!modelViewerModal.attachment) return;
+    if (!modelViewerModal.attachment || !modelViewerModal.attachment.url) return;
     
     try {
       const attachment = modelViewerModal.attachment;
@@ -764,14 +764,14 @@ const DesignAssistance = () => {
                       </div>
 
                       {/* Attached Reference Files */}
-                      {selectedRequest.attached_files && selectedRequest.attached_files.length > 0 && (
+                      {selectedRequest.attached_files && selectedRequest.attached_files.filter((f: any) => f && f.url).length > 0 && (
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
                           <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
                             <FileText className="w-3 h-3" />
-                            Reference Files ({selectedRequest.attached_files.length})
+                            Reference Files ({selectedRequest.attached_files.filter((f: any) => f && f.url).length})
                           </p>
                           <div className="space-y-1">
-                            {selectedRequest.attached_files.map((file: any, idx: number) => (
+                            {selectedRequest.attached_files.filter((f: any) => f && f.url).map((file: any, idx: number) => (
                               <a
                                 key={idx}
                                 href={file.url}
@@ -796,14 +796,14 @@ const DesignAssistance = () => {
                       )}
 
                       {/* Reference Images */}
-                      {selectedRequest.reference_images && selectedRequest.reference_images.length > 0 && (
+                      {selectedRequest.reference_images && selectedRequest.reference_images.filter((f: any) => f && f.url).length > 0 && (
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
                           <p className="text-gray-400 text-xs font-semibold mb-2 flex items-center gap-1">
                             <FileText className="w-3 h-3" />
-                            Reference Images ({selectedRequest.reference_images.length})
+                            Reference Images ({selectedRequest.reference_images.filter((f: any) => f && f.url).length})
                           </p>
                           <div className="space-y-1">
-                            {selectedRequest.reference_images.map((file: any, idx: number) => (
+                            {selectedRequest.reference_images.filter((f: any) => f && f.url).map((file: any, idx: number) => (
                               <a
                                 key={idx}
                                 href={file.url}
@@ -834,7 +834,7 @@ const DesignAssistance = () => {
                           messages.map((msg) => {
                             // Log message details for debugging
                             if (msg.attachments && msg.attachments.length > 0) {
-                              console.log(`💬 [Message] ID: ${msg.id}, Sender: ${msg.sender_type}, Attachments: ${msg.attachments.length}`);
+                              console.log(`­ƒÆ¼ [Message] ID: ${msg.id}, Sender: ${msg.sender_type}, Attachments: ${msg.attachments.length}`);
                             }
                             
                             return (
@@ -881,7 +881,7 @@ const DesignAssistance = () => {
                                           year: 'numeric',
                                         })}
                                       </span>
-                                      <span>•</span>
+                                      <span>ÔÇó</span>
                                       <span>
                                         {new Date(msg.created_at).toLocaleTimeString('en-US', {
                                           hour: '2-digit',
@@ -1286,15 +1286,15 @@ const DesignFormDialog = ({
             <Label className="text-base font-semibold">Reference Files (Optional)</Label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4 text-sm">
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">🖼️ Images</p>
+                <p className="font-semibold text-cyan-400 mb-1">­ƒû╝´©Å Images</p>
                 <p className="text-gray-400 text-xs">JPG, PNG, GIF, SVG, WEBP, BMP, TIFF, ICO</p>
               </div>
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">📄 Documents</p>
+                <p className="font-semibold text-cyan-400 mb-1">­ƒôä Documents</p>
                 <p className="text-gray-400 text-xs">PDF</p>
               </div>
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">🎯 3D Files</p>
+                <p className="font-semibold text-cyan-400 mb-1">­ƒÄ» 3D Files</p>
                 <p className="text-gray-400 text-xs">STL, OBJ, STEP, STP, 3MF</p>
               </div>
             </div>

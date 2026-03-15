@@ -15,7 +15,7 @@ import { LockerPickerModal } from "@/components/LockerPickerModal";
 import { DPDAddressForm, isAddressValid, ShippingAddress } from "@/components/DPDAddressForm";
 import { ModelViewer } from "@/components/ModelViewer/ModelViewer";
 import type { ModelAnalysis } from "@/components/ModelViewer/useModelAnalysis";
-import { apiFormData } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_URL } from "@/config/api";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -89,7 +89,7 @@ interface MaterialData {
   is_active: boolean;
 }
 
-const NewPrint = () => {
+const NewPrintCreate = ({ onClose, isModal = true }: { onClose?: () => void; isModal?: boolean }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   
@@ -115,10 +115,10 @@ const NewPrint = () => {
   
   // Quality presets with characteristics
   const qualityPresets = {
-    draft: { layerHeight: '0.28mm', infill: '10%', speed: 'Very Fast', detail: 'Low', icon: '⚡' },
-    standard: { layerHeight: '0.20mm', infill: '20%', speed: 'Fast', detail: 'Medium', icon: '✨' },
-    high: { layerHeight: '0.12mm', infill: '30%', speed: 'Medium', detail: 'High', icon: '💎' },
-    ultra: { layerHeight: '0.08mm', infill: '40%', speed: 'Slow', detail: 'Very High', icon: '🏆' }
+    draft: { layerHeight: '0.28mm', infill: '10%', speed: 'Very Fast', detail: 'Low', icon: '���' },
+    standard: { layerHeight: '0.20mm', infill: '20%', speed: 'Fast', detail: 'Medium', icon: 'ԣ�' },
+    high: { layerHeight: '0.12mm', infill: '30%', speed: 'Medium', detail: 'High', icon: '����' },
+    ultra: { layerHeight: '0.08mm', infill: '40%', speed: 'Slow', detail: 'Very High', icon: '����' }
   };
   
   // Materials from database
@@ -152,7 +152,7 @@ const NewPrint = () => {
     const material = materials.find(m => getMaterialKey(m.material_type, m.color) === materialValue);
     if (!material || material.stock_status !== 'out_of_stock') return null;
     const days = material.lead_time_days || 2;
-    return `⚠️ Material color is out of stock. Print process will take approximately +${days} days longer.`;
+    return `��ᴩ� Material color is out of stock. Print process will take approximately +${days} days longer.`;
   };
   
   // Project (multi-file) state
@@ -176,10 +176,13 @@ const NewPrint = () => {
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   
+  // Purpose / notes
+  const [purpose, setPurpose] = useState("");
+
   // Drag and drop state
   const [isDragging, setIsDragging] = useState(false);
 
-  // Material densities (g/cm³) - matches backend
+  // Material densities (g/cm-�) - matches backend
   const MATERIAL_DENSITIES: Record<string, number> = {
     pla: 1.24,
     abs: 1.04,
@@ -204,7 +207,7 @@ const NewPrint = () => {
     '0.1': 40,   // Ultra
   };
 
-  // Print speed multipliers by quality (base speed in cm³/hour)
+  // Print speed multipliers by quality (base speed in cm-�/hour)
   const PRINT_SPEED_CM3_PER_HOUR: Record<string, number> = {
     draft: 15,      // Fastest - larger layers
     standard: 10,   // Normal speed
@@ -235,7 +238,7 @@ const NewPrint = () => {
     const infillPercent = advancedMode && customInfill ? parseInt(customInfill) : 
                          (INFILL_BY_QUALITY[quality] || 20);
     
-    // Weight = volume × density × (1 + infill%)
+    // Weight = volume +� density +� (1 + infill%)
     const effectiveVolume = modelAnalysis.volumeCm3 * (1 + infillPercent / 100);
     const weight = effectiveVolume * density;
     
@@ -485,13 +488,13 @@ const NewPrint = () => {
     setIsModelLoading(false);
     setModelError(null);
     
-    console.log('📦 Model Analysis Complete:');
-    console.log('  - Volume:', analysis.volumeCm3.toFixed(2), 'cm³');
+    console.log('���� Model Analysis Complete:');
+    console.log('  - Volume:', analysis.volumeCm3.toFixed(2), 'cm-�');
     console.log('  - Bounding Box:', 
-      `${analysis.boundingBox.x.toFixed(1)} × ${analysis.boundingBox.y.toFixed(1)} × ${analysis.boundingBox.z.toFixed(1)} cm`);
-    console.log('  - Surface Area:', analysis.surfaceArea.toFixed(2), 'cm²');
+      `${analysis.boundingBox.x.toFixed(1)} +� ${analysis.boundingBox.y.toFixed(1)} +� ${analysis.boundingBox.z.toFixed(1)} cm`);
+    console.log('  - Surface Area:', analysis.surfaceArea.toFixed(2), 'cm-�');
     
-    toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm³`);
+    toast.success(`Model analyzed! Volume: ${analysis.volumeCm3.toFixed(2)} cm-�`);
   };
 
   const handleModelError = (error: string | null) => {
@@ -768,7 +771,7 @@ const NewPrint = () => {
       const effectiveVolume = volumeCm3 * (1 + (infillPercent / 100));
       materialWeightGrams = effectiveVolume * density;
     } else {
-      // Fallback: 1MB ≈ 10g
+      // Fallback: 1MB ��� 10g
       materialWeightGrams = (file.size / 1024 / 1024) * 10;
       toast.warning("Using estimated weight. Model is still loading...");
     }
@@ -1014,7 +1017,7 @@ const NewPrint = () => {
           : selectedDeliveryOption === 'dpd' && shippingAddress 
           ? shippingAddress
           : selectedDeliveryOption === 'pickup'
-          ? { type: 'pickup', address: 'Zielonogórska 13, 30-406 Kraków' }
+          ? { type: 'pickup', address: 'Zielonog+�rska 13, 30-406 Krak+�w' }
           : null
       };
 
@@ -1031,6 +1034,7 @@ const NewPrint = () => {
       
       // Navigate to checkout page with project mode flag
       toast.success(`Project ready for checkout!`);
+      onClose?.();
       navigate('/checkout?projectMode=true');
       return;
     }
@@ -1112,76 +1116,95 @@ const NewPrint = () => {
       }
       
       // Create order first
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('material', material.split('-')[0]);
-      formData.append('color', material.split('-')[1] || 'white');
-      
+      // Step 1: Get a presigned upload URL from the server
+      const presignedRes = await apiFetch('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+
+      if (!presignedRes.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl, filePath: storedFilePath } = await presignedRes.json();
+
+      // Step 2: Upload the file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      // Step 3: Create the order with JSON (file already in storage)
       // Use custom layer height if advanced settings enabled, otherwise quality preset
-      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight :
                          (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('layerHeight', layerHeight);
-      
+
       // Use custom infill if advanced settings enabled, otherwise quality preset
       const infill = advancedMode && customInfill ? customInfill :
                     (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
-      formData.append('infill', infill);
-      
-      formData.append('quantity', quantity.toString());
-      formData.append('shippingMethod', selectedDeliveryOption);
-      formData.append('paymentMethod', 'pending');
-      formData.append('price', totalAmount.toString());
-      
-      // Add advanced mode flag
-      formData.append('advancedMode', advancedMode.toString());
-      
+
+      const orderBody: any = {
+        fileName: file.name,
+        fileUrl: publicUrl,
+        material: material.split('-')[0],
+        color: material.split('-')[1] || 'white',
+        layerHeight,
+        infill,
+        quantity,
+        shippingMethod: selectedDeliveryOption,
+        paymentMethod: 'pending',
+        price: totalAmount,
+        advancedMode,
+        notes: purpose || undefined,
+      };
+
       // Add quality preset if not in advanced mode
       if (!advancedMode) {
-        formData.append('quality', quality);
+        orderBody.quality = quality;
       }
-      
+
       // Add advanced settings only if advanced mode is enabled
       if (advancedMode) {
-        formData.append('infillPattern', infillPattern);
+        orderBody.infillPattern = infillPattern;
+        if (customLayerHeight) orderBody.customLayerHeight = customLayerHeight;
+        if (customInfill) orderBody.customInfill = customInfill;
       }
-      
-      // Add custom values if advanced mode was used
-      if (advancedMode) {
-        if (customLayerHeight) {
-          formData.append('customLayerHeight', customLayerHeight);
-        }
-        if (customInfill) {
-          formData.append('customInfill', customInfill);
-        }
-      }
-      
+
       // Add material weight and print time for accurate price recalculation later
       if (estimatedWeight && estimatedPrintTime) {
-        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
-        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
+        orderBody.materialWeight = Math.round(estimatedWeight); // in grams
+        orderBody.printTime = Math.round(estimatedPrintTime * 60); // convert hours to minutes
       }
-      
+
       // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
       if (modelAnalysis) {
-        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
+        orderBody.modelVolume = modelAnalysis.volumeCm3; // in cm-�
       }
 
       // Add delivery details
       if (selectedDeliveryOption === 'inpost' && selectedLocker) {
-        formData.append('shippingAddress', JSON.stringify({
+        orderBody.shippingAddress = {
           lockerCode: selectedLocker.name,
           lockerAddress: selectedLocker.address
-        }));
+        };
       } else if (selectedDeliveryOption === 'dpd' && shippingAddress) {
-        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+        orderBody.shippingAddress = shippingAddress;
       } else if (selectedDeliveryOption === 'pickup') {
-        formData.append('shippingAddress', JSON.stringify({
+        orderBody.shippingAddress = {
           type: 'pickup',
-          address: 'Zielonogórska 13, 30-406 Kraków'
-        }));
+          address: 'Zielonog+�rska 13, 30-406 Krak+�w'
+        };
       }
 
-      const response = await apiFormData('/orders', formData);
+      const response = await apiFetch('/orders', {
+        method: 'POST',
+        body: JSON.stringify(orderBody),
+      });
 
       if (!response.ok) {
         let errorMessage = 'Failed to create order';
@@ -1223,6 +1246,7 @@ const NewPrint = () => {
       
       // Navigate to checkout page for review before payment
       toast.success('Order created. Please review your order before payment.');
+      onClose?.();
       navigate(`/checkout?orderId=${result.id}`);
     } catch (error) {
       console.error('Order creation error:', error);
@@ -1276,66 +1300,85 @@ const NewPrint = () => {
     }
 
     try {
-      // Create FormData to send file and order details
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('material', material.split('-')[0]); // e.g., 'pla-white' -> 'pla'
-      formData.append('color', material.split('-')[1] || 'white'); // e.g., 'pla-white' -> 'white'
-      
+      // Step 1: Get a presigned upload URL from the server
+      const presignedRes = await apiFetch('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+
+      if (!presignedRes.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl } = await presignedRes.json();
+
+      // Step 2: Upload the file directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      // Step 3: Create the order with JSON (file already in storage)
       // Use custom layer height if advanced settings enabled, otherwise quality preset
-      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight : 
+      const layerHeight = advancedMode && customLayerHeight ? customLayerHeight :
                          (quality === 'draft' ? '0.3' : quality === 'standard' ? '0.2' : quality === 'high' ? '0.15' : '0.1');
-      formData.append('layerHeight', layerHeight);
-      
+
       // Use custom infill if advanced settings enabled, otherwise quality preset
       const infill = advancedMode && customInfill ? customInfill :
                     (quality === 'draft' ? '10' : quality === 'standard' ? '20' : quality === 'high' ? '30' : '40');
-      formData.append('infill', infill);
-      
-      formData.append('quantity', quantity.toString());
-      formData.append('shippingMethod', selectedDeliveryOption);
-      formData.append('price', estimatedPrice.toString());
-      
-      // Add advanced mode flag
-      formData.append('advancedMode', advancedMode.toString());
-      
-      // Add advanced settings
-      formData.append('supportType', supportType);
-      formData.append('infillPattern', infillPattern);
-      
+
+      const orderBody: any = {
+        fileName: file.name,
+        fileUrl: publicUrl,
+        material: material.split('-')[0],
+        color: material.split('-')[1] || 'white',
+        layerHeight,
+        infill,
+        quantity,
+        shippingMethod: selectedDeliveryOption,
+        price: estimatedPrice,
+        advancedMode,
+        supportType,
+        infillPattern,
+        notes: purpose || undefined,
+      };
+
       // Add custom values if advanced mode was used
       if (advancedMode) {
-        if (customLayerHeight) {
-          formData.append('customLayerHeight', customLayerHeight);
-        }
-        if (customInfill) {
-          formData.append('customInfill', customInfill);
-        }
-      }
-      
-      // Add material weight and print time for accurate price recalculation later
-      // These values are calculated based on actual model analysis
-      if (estimatedWeight && estimatedPrintTime) {
-        formData.append('materialWeight', Math.round(estimatedWeight).toString()); // in grams
-        formData.append('printTime', Math.round(estimatedPrintTime * 60).toString()); // convert hours to minutes
-      }
-      
-      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
-      if (modelAnalysis) {
-        formData.append('modelVolume', modelAnalysis.volumeCm3.toString()); // in cm³
-      }
-      
-      // Add delivery-specific details
-      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
-        formData.append('shippingAddress', JSON.stringify({
-          lockerCode: selectedLocker.name,
-          lockerAddress: selectedLocker.address
-        }));
-      } else if (selectedDeliveryOption === 'dpd') {
-        formData.append('shippingAddress', JSON.stringify(shippingAddress));
+        if (customLayerHeight) orderBody.customLayerHeight = customLayerHeight;
+        if (customInfill) orderBody.customInfill = customInfill;
       }
 
-      const response = await apiFormData('/orders', formData);
+      // Add material weight and print time for accurate price recalculation later
+      if (estimatedWeight && estimatedPrintTime) {
+        orderBody.materialWeight = Math.round(estimatedWeight);
+        orderBody.printTime = Math.round(estimatedPrintTime * 60);
+      }
+
+      // CRITICAL: Store the base model volume for accurate recalculation in EditOrder
+      if (modelAnalysis) {
+        orderBody.modelVolume = modelAnalysis.volumeCm3;
+      }
+
+      // Add delivery-specific details
+      if (selectedDeliveryOption === 'inpost' && selectedLocker) {
+        orderBody.shippingAddress = {
+          lockerCode: selectedLocker.name,
+          lockerAddress: selectedLocker.address
+        };
+      } else if (selectedDeliveryOption === 'dpd') {
+        orderBody.shippingAddress = shippingAddress;
+      }
+
+      const response = await apiFetch('/orders', {
+        method: 'POST',
+        body: JSON.stringify(orderBody),
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -1348,6 +1391,7 @@ const NewPrint = () => {
       
       // Navigate to orders page after short delay
       setTimeout(() => {
+        onClose?.();
         navigate('/orders');
       }, 1500);
       
@@ -1358,26 +1402,8 @@ const NewPrint = () => {
   };
 
   return (
-    <div className="flex min-h-screen overflow-hidden" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
-      {isLoggedIn && <DashboardSidebar />}
-      
-      {!isLoggedIn && (
-        <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
-            >
-              <Logo size="sm" textClassName="text-xl" />
-            </button>
-            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
-              {t('common.login')}
-            </Button>
-          </div>
-        </header>
-      )}
-      
-      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
+    <div className="w-full h-full overflow-y-auto" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
+      <main className="p-6 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="animate-slide-up">
             <h1 className="text-4xl font-bold mb-3 gradient-text">{t('newPrint.title')}</h1>
@@ -1458,7 +1484,7 @@ const NewPrint = () => {
                           {t('newPrint.preview.title')} {isModelLoading && `(${t('common.loading')})`}
                         </p>
                         {modelAnalysis && (
-                          <span className="text-xs text-green-600 font-semibold">✓ {t('newPrint.analysisComplete')}</span>
+                          <span className="text-xs text-green-600 font-semibold">ԣ� {t('newPrint.analysisComplete')}</span>
                         )}
                       </div>
                       <ModelViewer file={file} onAnalysisComplete={handleAnalysisComplete} onError={handleModelError} />
@@ -1468,7 +1494,7 @@ const NewPrint = () => {
                         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
-                            <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                            <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm-�</p>
                           </div>
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
@@ -1568,15 +1594,15 @@ const NewPrint = () => {
                                       <p className="font-semibold">{pf.file.name}</p>
                                       <p className="text-xs text-muted-foreground">
                                         {(pf.file.size / 1024 / 1024).toFixed(2)} MB
-                                        {pf.modelAnalysis && ` • ${pf.modelAnalysis.volumeCm3.toFixed(2)} cm³`}
-                                        {pf.estimatedPrice && ` • ${pf.estimatedPrice.toFixed(2)} PLN`}
+                                        {pf.modelAnalysis && ` ��� ${pf.modelAnalysis.volumeCm3.toFixed(2)} cm-�`}
+                                        {pf.estimatedPrice && ` ��� ${pf.estimatedPrice.toFixed(2)} PLN`}
                                       </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {pf.isLoading && <span className="text-xs text-yellow-600">{t('common.loading')}</span>}
                                     {pf.error && <span className="text-xs text-red-600">{t('common.error')}</span>}
-                                    {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
+                                    {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">ԣ�</span>}
                                     <div 
                                       className="p-1 hover:bg-muted rounded cursor-pointer"
                                       onClick={(e) => {
@@ -1621,7 +1647,7 @@ const NewPrint = () => {
                                           {materialsLoading ? (
                                             <div className="px-2 py-2 text-sm text-muted-foreground">Loading materials...</div>
                                           ) : (
-                                            ['PLA', 'ABS', 'PETG'].map(type => {
+                                            [...new Set(materials.filter(m => m.is_active).map(m => m.material_type))].sort().map(type => {
                                               const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
                                               if (typeMaterials.length === 0) return null;
                                               return (
@@ -1632,7 +1658,7 @@ const NewPrint = () => {
                                                     const isOOS = mat.stock_status === 'out_of_stock';
                                                     return (
                                                       <SelectItem key={mat.id} value={materialKey}>
-                                                        <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                                        <span style={{ color: mat.hex_color || '#000000' }}>���</span> {mat.material_type} - {mat.color} {isOOS && "��ᴩ�"}
                                                       </SelectItem>
                                                     );
                                                   })}
@@ -1655,10 +1681,10 @@ const NewPrint = () => {
                                           <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="draft">⚡ Draft</SelectItem>
-                                          <SelectItem value="standard">✨ Standard</SelectItem>
-                                          <SelectItem value="high">💎 High</SelectItem>
-                                          <SelectItem value="ultra">🏆 Ultra</SelectItem>
+                                          <SelectItem value="draft">��� Draft</SelectItem>
+                                          <SelectItem value="standard">ԣ� Standard</SelectItem>
+                                          <SelectItem value="high">���� High</SelectItem>
+                                          <SelectItem value="ultra">���� Ultra</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -1754,7 +1780,7 @@ const NewPrint = () => {
                                     <div className="grid grid-cols-4 gap-3 text-center">
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
-                                        <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                                        <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm-�</p>
                                       </div>
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
@@ -1823,7 +1849,7 @@ const NewPrint = () => {
                       {materialsLoading ? (
                         <div className="px-2 py-3 text-sm text-muted-foreground">Loading materials...</div>
                       ) : (
-                        ['PLA', 'ABS', 'PETG'].map(type => {
+                        [...new Set(materials.filter(m => m.is_active).map(m => m.material_type))].sort().map(type => {
                           const typeMaterials = materials.filter(m => m.material_type === type && m.is_active);
                           if (typeMaterials.length === 0) return null;
                           return (
@@ -1834,7 +1860,7 @@ const NewPrint = () => {
                                 const isOOS = mat.stock_status === 'out_of_stock';
                                 return (
                                   <SelectItem key={mat.id} value={materialKey}>
-                                    <span style={{ color: mat.hex_color || '#000000' }}>♥</span> {mat.material_type} - {mat.color} {isOOS && "⚠️"}
+                                    <span style={{ color: mat.hex_color || '#000000' }}>���</span> {mat.material_type} - {mat.color} {isOOS && "��ᴩ�"}
                                   </SelectItem>
                                 );
                               })}
@@ -1863,25 +1889,25 @@ const NewPrint = () => {
                     <SelectContent>
                       <SelectItem value="draft">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">⚡ Draft - Fast</div>
+                          <div className="font-semibold">��� Draft - Fast</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.28mm | Infill: 10% | Speed: Very Fast</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="standard">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">✨ Standard</div>
+                          <div className="font-semibold">ԣ� Standard</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.20mm | Infill: 20% | Speed: Fast</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="high">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">💎 High Quality</div>
+                          <div className="font-semibold">���� High Quality</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.12mm | Infill: 30% | Speed: Medium</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="ultra">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">🏆 Ultra - Finest</div>
+                          <div className="font-semibold">���� Ultra - Finest</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.08mm | Infill: 40% | Speed: Slow</div>
                         </div>
                       </SelectItem>
@@ -1891,10 +1917,10 @@ const NewPrint = () => {
                     <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                       <div className="font-medium mb-1">{qualityPresets[quality as keyof typeof qualityPresets].icon} {quality.charAt(0).toUpperCase() + quality.slice(1)} Quality</div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>• Layer Height: {qualityPresets[quality as keyof typeof qualityPresets].layerHeight}</div>
-                        <div>• Infill: {qualityPresets[quality as keyof typeof qualityPresets].infill}</div>
-                        <div>• Print Speed: {qualityPresets[quality as keyof typeof qualityPresets].speed}</div>
-                        <div>• Detail Level: {qualityPresets[quality as keyof typeof qualityPresets].detail}</div>
+                        <div>��� Layer Height: {qualityPresets[quality as keyof typeof qualityPresets].layerHeight}</div>
+                        <div>��� Infill: {qualityPresets[quality as keyof typeof qualityPresets].infill}</div>
+                        <div>��� Print Speed: {qualityPresets[quality as keyof typeof qualityPresets].speed}</div>
+                        <div>��� Detail Level: {qualityPresets[quality as keyof typeof qualityPresets].detail}</div>
                       </div>
                     </div>
                   )}
@@ -1919,6 +1945,8 @@ const NewPrint = () => {
                   id="purpose"
                   placeholder={t('newPrint.notesPlaceholder')}
                   rows={3}
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
                 />
               </div>
 
@@ -2015,7 +2043,7 @@ const NewPrint = () => {
                   variant="outline"
                 >
                   <span className="flex items-center">
-                    🔒 {t('newPrint.loginRequired')}
+                    ���� {t('newPrint.loginRequired')}
                   </span>
                 </Button>
               ) : null}
@@ -2028,9 +2056,9 @@ const NewPrint = () => {
                     <div className="flex items-center justify-between">
                       <p className="text-lg font-bold">{t('newPrint.pricing.title')}</p>
                       {modelAnalysis ? (
-                        <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ {t('newPrint.actualWeight')}</span>
+                        <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">ԣ� {t('newPrint.actualWeight')}</span>
                       ) : (
-                        <span className="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">⚠ {t('newPrint.estimated')}</span>
+                        <span className="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2 py-1 rounded">��� {t('newPrint.estimated')}</span>
                       )}
                     </div>
 
@@ -2055,12 +2083,12 @@ const NewPrint = () => {
                     {/* Print Cost Total */}
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(×${quantity})` : ''}</span>
+                        <span className="font-bold">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(+�${quantity})` : ''}</span>
                         <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                       {modelAnalysis && estimatedWeight && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {estimatedWeight.toFixed(1)}g • {modelAnalysis.volumeCm3.toFixed(2)} cm³ • {formatPrintTime(estimatedPrintTime)}
+                          {estimatedWeight.toFixed(1)}g ��� {modelAnalysis.volumeCm3.toFixed(2)} cm-� ��� {formatPrintTime(estimatedPrintTime)}
                         </p>
                       )}
                     </div>
@@ -2219,4 +2247,4 @@ const NewPrint = () => {
   );
 };
 
-export default NewPrint;
+export default NewPrintCreate;

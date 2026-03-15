@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Plus, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Boxes, Package, Settings, LogOut, Wallet, MessageSquare, Building2, Palette, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -53,7 +53,7 @@ export const DashboardSidebar = () => {
   
   const menuItems = [
     { icon: LayoutDashboard, label: t('dashboard.overview'), path: "/dashboard" },
-    { icon: Plus, label: t('dashboard.newPrint'), path: "/new-print" },
+    { icon: Boxes, label: "Print Jobs", path: "/print-jobs" },
     { icon: Palette, label: "3D Design Assistance", path: "/design-assistance" },
     { icon: Package, label: t('dashboard.orders'), path: "/orders" },
     { icon: MessageSquare, label: t('sidebar.conversations'), path: "/conversations" },
