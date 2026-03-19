@@ -1171,28 +1171,31 @@ const DesignAssistance = () => {
                                             );
                                           }
 
-                                          {/* Case 2: Paid PDF, not yet paid — watermarked card */}
+                                          {/* Case 2: Paid PDF, not yet paid — embedded PDF with watermark overlay */}
                                           if (isPaidUnpaid && isPdf) {
                                             return (
                                               <div key={idx} className="mt-1">
-                                                <div className="watermark-overlay rounded-lg border border-yellow-500/30 bg-gray-900 p-4">
-                                                  <div className="flex items-center gap-3">
-                                                    <div className="flex-shrink-0 w-12 h-14 bg-red-500/20 rounded flex items-center justify-center">
-                                                      <FileText className="w-6 h-6 text-red-400" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                      <p className="text-sm text-white font-medium truncate">{att.name || 'Document.pdf'}</p>
-                                                      <p className="text-xs text-gray-400 mt-0.5">PDF Document</p>
-                                                    </div>
-                                                  </div>
+                                                <div
+                                                  className="watermark-overlay rounded-lg border border-yellow-500/30 bg-gray-900"
+                                                  onContextMenu={(e) => e.preventDefault()}
+                                                >
+                                                  <embed
+                                                    src={`${att.url}#toolbar=0&navpanes=0&scrollbar=0`}
+                                                    type="application/pdf"
+                                                    className="w-full rounded-t-lg"
+                                                    style={{ height: '360px', pointerEvents: 'none' }}
+                                                  />
                                                   <div className="absolute top-2 right-2 z-20">
                                                     <Badge className="text-[10px] px-2 py-0.5 bg-yellow-500/90 text-black border-yellow-600 font-semibold shadow-lg">
                                                       {att.price ? `${att.price} PLN` : 'Paid'}
                                                     </Badge>
                                                   </div>
-                                                  <div className="mt-2 flex items-center gap-2 text-xs text-yellow-300 relative z-20">
-                                                    <Lock className="w-3 h-3" />
-                                                    <span>Pay to download full PDF</span>
+                                                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-2 rounded-b-lg">
+                                                    <div className="flex items-center gap-2 text-xs text-yellow-300">
+                                                      <Lock className="w-3 h-3" />
+                                                      <span className="truncate">{att.name || 'Document.pdf'}</span>
+                                                      <span className="ml-auto opacity-75">Pay to download</span>
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
