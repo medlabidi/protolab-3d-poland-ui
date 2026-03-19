@@ -1160,10 +1160,18 @@ const DesignAssistance = () => {
                                                     <div className="flex items-center gap-2 text-xs text-yellow-300">
                                                       <Lock className="w-3 h-3" />
                                                       <span className="truncate">{att.name || 'Attachment'}</span>
-                                                      <span className="ml-auto opacity-75">Pay to download</span>
                                                     </div>
                                                   </div>
                                                 </div>
+                                                {selectedRequest && (
+                                                  <button
+                                                    onClick={() => handleProceedToPayment(selectedRequest)}
+                                                    className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black transition-colors"
+                                                  >
+                                                    <Lock className="w-3 h-3" />
+                                                    Pay {att.price ? `${att.price} PLN` : ''} to download
+                                                  </button>
+                                                )}
                                               </div>
                                             );
                                           }
@@ -1191,10 +1199,18 @@ const DesignAssistance = () => {
                                                     <div className="flex items-center gap-2 text-xs text-yellow-300">
                                                       <Lock className="w-3 h-3" />
                                                       <span className="truncate">{att.name || 'Document.pdf'}</span>
-                                                      <span className="ml-auto opacity-75">Pay to download</span>
                                                     </div>
                                                   </div>
                                                 </div>
+                                                {selectedRequest && (
+                                                  <button
+                                                    onClick={() => handleProceedToPayment(selectedRequest)}
+                                                    className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black transition-colors"
+                                                  >
+                                                    <Lock className="w-3 h-3" />
+                                                    Pay {att.price ? `${att.price} PLN` : ''} to download
+                                                  </button>
+                                                )}
                                               </div>
                                             );
                                           }
