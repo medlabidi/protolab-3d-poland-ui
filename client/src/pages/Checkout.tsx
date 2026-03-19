@@ -389,6 +389,27 @@ export function Checkout() {
         throw new Error('No order to process');
       }
 
+      // If amount is 0, skip payment — mark as completed directly
+      if (!totalAmount || totalAmount <= 0) {
+        const markPaidRes = await fetch(`${API_URL}/orders/${orderToProcess.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ payment_status: 'paid', status: 'submitted' }),
+        });
+
+        if (markPaidRes.ok) {
+          toast.success('Order confirmed!');
+          navigate(`/payment-success?orderId=${orderToProcess.id}`);
+        } else {
+          toast.success('Order confirmed!');
+          navigate('/design-assistance');
+        }
+        return;
+      }
+
       // Create PayU payment with full user data
       const payuResponse = await fetch(`${API_URL}/payments/payu/create`, {
         method: 'POST',

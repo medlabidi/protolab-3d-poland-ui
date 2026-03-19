@@ -41,7 +41,7 @@ interface Order {
   attached_files?: any[];
   reference_images?: any[];
   request_chat?: boolean;
-  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
+  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'approved' | 'cancelled';
   admin_design_file?: string;
   admin_notes?: string;
   user_approval_status?: 'pending' | 'approved' | 'rejected';
@@ -60,6 +60,7 @@ interface Order {
 
 const AdminDesignAssistance = () => {
   const navigate = useNavigate();
+  const formatStatus = (status: string) => status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +72,8 @@ const AdminDesignAssistance = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [proposedPrice, setProposedPrice] = useState<string>('');
+  const [fileAccessType, setFileAccessType] = useState<'paid' | 'preview_only' | null>(null);
+  const [filePrice, setFilePrice] = useState<string>('');
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -385,6 +388,10 @@ const AdminDesignAssistance = () => {
           mime_type: attachedFile.type,
           url: publicUrl,
           name: attachedFile.name,
+          access_type: fileAccessType || 'preview_only',
+          price: fileAccessType === 'paid' ? parseFloat(filePrice) : undefined,
+          download_allowed: false,
+          payment_status: fileAccessType === 'paid' ? 'pending' : undefined,
         };
       }
 
@@ -450,6 +457,8 @@ const AdminDesignAssistance = () => {
         
         setNewMessage('');
         setAttachedFile(null);
+        setFileAccessType(null);
+        setFilePrice('');
         // Update local orders list with new price if proposed
         if (proposedPrice) {
           const newPrice = parseFloat(proposedPrice);
@@ -461,6 +470,18 @@ const AdminDesignAssistance = () => {
           }
         }
         setProposedPrice('');
+
+        // Auto-update status to 'in_review' if currently 'pending'
+        if (selectedRequestForConversation.design_status === 'pending') {
+          setOrders(prev => prev.map(r =>
+            r.id === selectedRequestForConversation.id ? { ...r, design_status: 'in_review' } : r
+          ));
+          if (selectedRequestForConversation.id === selectedOrder?.id) {
+            setSelectedOrder(prev => prev ? { ...prev, design_status: 'in_review' } : prev);
+          }
+          setSelectedRequestForConversation(prev => prev ? { ...prev, design_status: 'in_review' } : prev);
+        }
+
         toast.success(attachedFile ? 'Message and file sent successfully' : 'Message sent');
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -482,6 +503,38 @@ const AdminDesignAssistance = () => {
       toast.error('Failed to send message');
     } finally {
       setSendingMessage(false);
+    }
+  };
+
+  const handleGrantDownloadAccess = async (messageId: string, attachmentIdx: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/conversations/messages/${messageId}/attachment-access`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ attachmentIndex: attachmentIdx, download_allowed: true }),
+      });
+      if (response.ok) {
+        toast.success('Download access granted');
+        // Reload conversation messages to reflect the change
+        if (selectedRequestForConversation) {
+          const convResponse = await fetch(`${API_URL}/conversations/design-request/${selectedRequestForConversation.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (convResponse.ok) {
+            const convData = await convResponse.json();
+            setMessages(convData.messages || []);
+          }
+        }
+      } else {
+        toast.error('Failed to grant download access');
+      }
+    } catch (error) {
+      console.error('Error granting download access:', error);
+      toast.error('Failed to grant download access');
     }
   };
 
@@ -615,10 +668,20 @@ const AdminDesignAssistance = () => {
                 </div>
               </CardContent>
             </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-cyan-500">
+                    {orders.filter(o => o.design_status === 'approved').length}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">Approved (Awaiting Payment)</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Kanban Board - Orders by Status */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-6 gap-4">
             {/* Pending Column */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
@@ -664,6 +727,7 @@ const AdminDesignAssistance = () => {
                             <SelectItem value="in_review">In Review</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
@@ -719,6 +783,7 @@ const AdminDesignAssistance = () => {
                             <SelectItem value="in_review">In Review</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
@@ -774,6 +839,7 @@ const AdminDesignAssistance = () => {
                             <SelectItem value="in_review">In Review</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
@@ -829,6 +895,71 @@ const AdminDesignAssistance = () => {
                             <SelectItem value="in_review">In Review</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Approved (Awaiting Payment) Column */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-cyan-500 text-sm font-semibold flex items-center justify-between">
+                  <span>Approved</span>
+                  <span className="bg-cyan-500/20 text-cyan-500 px-2 py-1 rounded text-xs">
+                    {filteredOrders.filter(o => o.design_status === 'approved').length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                {filteredOrders.filter(o => o.design_status === 'approved').length === 0 ? (
+                  <p className="text-gray-500 text-xs text-center py-4">No approved requests</p>
+                ) : (
+                  filteredOrders.filter(o => o.design_status === 'approved').map((order) => (
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-cyan-500/50 transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="text-white font-medium text-sm truncate flex-1">{order.project_name}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-purple-500/20"
+                            onClick={() => handleSelectRequestForConversation(order, true)}
+                          >
+                            <Eye className="w-3 h-3 text-purple-400" />
+                          </Button>
+                        </div>
+                        <p className="text-gray-400 text-xs truncate">{order.idea_description}</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
+                          <span className="text-white font-medium">{formatPrice(order.final_price || order.estimated_price)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs">
+                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500 text-[10px]">
+                            Client Approved
+                          </Badge>
+                          <Badge className="bg-orange-500/20 text-orange-400 border-orange-500 text-[10px]">
+                            {order.payment_status === 'paid' ? 'Paid' : 'Payment Pending'}
+                          </Badge>
+                        </div>
+                        <Select
+                          value={order.design_status}
+                          onValueChange={(value) => updateOrderStatus(order.id, value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_review">In Review</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
@@ -884,6 +1015,7 @@ const AdminDesignAssistance = () => {
                             <SelectItem value="in_review">In Review</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
@@ -937,8 +1069,8 @@ const AdminDesignAssistance = () => {
                         {order.idea_description?.slice(0, 50)}...
                       </div>
                       <div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize bg-gray-700 text-white">
-                          {order.design_status}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-white">
+                          {formatStatus(order.design_status)}
                         </span>
                       </div>
                       <div>
@@ -1020,9 +1152,10 @@ const AdminDesignAssistance = () => {
                             request.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
                             request.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
                             request.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                            request.design_status === 'approved' ? 'bg-cyan-500/20 text-cyan-500' :
                             'bg-gray-500/20 text-gray-500'
                           }`}>
-                            {request.design_status}
+                            {formatStatus(request.design_status)}
                           </Badge>
                           {request.admin_design_file && (
                             <Badge className={`${getApprovalStatusBadge(request.user_approval_status).className} border text-xs`}>
@@ -1097,9 +1230,10 @@ const AdminDesignAssistance = () => {
                           selectedRequestForConversation.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
                           selectedRequestForConversation.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
                           selectedRequestForConversation.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                          selectedRequestForConversation.design_status === 'approved' ? 'bg-cyan-500/20 text-cyan-500' :
                           'bg-gray-500/20 text-gray-500'
                         }`}>
-                          {selectedRequestForConversation.design_status}
+                          {formatStatus(selectedRequestForConversation.design_status)}
                         </Badge>
                         {selectedRequestForConversation.admin_design_file && (
                           <Badge className={`${getApprovalStatusBadge(selectedRequestForConversation.user_approval_status).className} border text-xs`}>
@@ -1190,18 +1324,36 @@ const AdminDesignAssistance = () => {
                                   {msg.attachments && msg.attachments.length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
                                       {msg.attachments.map((att: any, idx: number) => (
-                                        <div key={idx} className="flex items-center gap-2 text-xs opacity-90">
+                                        <div key={idx} className="flex items-center gap-2 text-xs opacity-90 flex-wrap">
                                           <Package className="w-3 h-3" />
-                                          <span className="truncate">{att.name || 'Attachment'}</span>
+                                          <span className="truncate max-w-[120px]">{att.name || 'Attachment'}</span>
+                                          {att.access_type === 'preview_only' && (
+                                            <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px]">
+                                              {att.download_allowed ? '🔓 Download Granted' : '👁 Preview Only'}
+                                            </span>
+                                          )}
+                                          {att.access_type === 'paid' && (
+                                            <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 text-[10px]">
+                                              {att.payment_status === 'paid' ? '✅ Paid' : `💰 ${att.price} PLN`}
+                                            </span>
+                                          )}
                                           {att.url && (
-                                            <a 
-                                              href={att.url} 
-                                              target="_blank" 
+                                            <a
+                                              href={att.url}
+                                              target="_blank"
                                               rel="noopener noreferrer"
                                               className="text-cyan-200 hover:text-cyan-100 underline"
                                             >
                                               View
                                             </a>
+                                          )}
+                                          {att.access_type === 'preview_only' && !att.download_allowed && msg.sender_type !== 'user' && (
+                                            <button
+                                              onClick={() => handleGrantDownloadAccess(msg.id, idx)}
+                                              className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 text-[10px] transition-colors"
+                                            >
+                                              Grant Download
+                                            </button>
                                           )}
                                         </div>
                                       ))}
@@ -1251,7 +1403,7 @@ const AdminDesignAssistance = () => {
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0 hover:bg-red-500/20 ml-auto"
-                              onClick={() => setAttachedFile(null)}
+                              onClick={() => { setAttachedFile(null); setFileAccessType(null); setFilePrice(''); }}
                             >
                               <X className="w-4 h-4 text-red-400" />
                             </Button>
@@ -1259,17 +1411,46 @@ const AdminDesignAssistance = () => {
                           <div className="text-xs space-y-1 text-gray-300">
                             <p className="truncate">📄 <span className="font-medium">{attachedFile.name}</span></p>
                             <p>📦 Size: {(attachedFile.size / 1024).toFixed(2)} KB</p>
-                            <p>🔧 Type: {attachedFile.type || 'Unknown'}</p>
+                          </div>
+                          {/* File Access Type Selector */}
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs text-gray-400 font-semibold">File Access:</p>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant={fileAccessType === 'paid' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setFileAccessType('paid')}
+                                className={fileAccessType === 'paid' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                              >
+                                💰 Set Price
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={fileAccessType === 'preview_only' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => { setFileAccessType('preview_only'); setFilePrice(''); }}
+                                className={fileAccessType === 'preview_only' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                              >
+                                👁 Preview Only
+                              </Button>
+                            </div>
+                            {fileAccessType === 'paid' && (
+                              <Input
+                                type="number"
+                                placeholder="Price in PLN"
+                                value={filePrice}
+                                onChange={(e) => setFilePrice(e.target.value)}
+                                className="bg-gray-800 border-gray-700 text-white"
+                                min="0.01"
+                                step="0.01"
+                              />
+                            )}
+                            {!fileAccessType && (
+                              <p className="text-xs text-yellow-400">⚠ Select file access type to enable sending</p>
+                            )}
                           </div>
                         </div>
-                        <Input
-                          type="number"
-                          placeholder="Proposed price (PLN)"
-                          value={proposedPrice}
-                          onChange={(e) => setProposedPrice(e.target.value)}
-                          className="bg-gray-800 border-gray-700 text-white"
-                          disabled={sendingMessage}
-                        />
                       </div>
                     )}
                     <div className="flex gap-2">
@@ -1285,7 +1466,7 @@ const AdminDesignAssistance = () => {
                         type="file"
                         id="file-upload"
                         className="hidden"
-                        accept=".stl,.obj,.3mf,.glb,.gltf,.step,.stp,.iges,.igs"
+                        accept="*/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -1310,7 +1491,12 @@ const AdminDesignAssistance = () => {
                       </Button>
                       <Button
                         onClick={handleSendMessage}
-                        disabled={sendingMessage || (!newMessage.trim() && !attachedFile)}
+                        disabled={
+                          sendingMessage ||
+                          (!newMessage.trim() && !attachedFile) ||
+                          (!!attachedFile && !fileAccessType) ||
+                          (!!attachedFile && fileAccessType === 'paid' && (!filePrice || parseFloat(filePrice) <= 0))
+                        }
                         className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
                       >
                         {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
@@ -1389,7 +1575,7 @@ const AdminDesignAssistance = () => {
                     </div>
                     <div>
                       <label className="text-sm text-gray-400">Status</label>
-                      <p className="text-white font-medium capitalize">{selectedOrder.design_status}</p>
+                      <p className="text-white font-medium">{formatStatus(selectedOrder.design_status)}</p>
                     </div>
                   </div>
 
@@ -1518,6 +1704,7 @@ const AdminDesignAssistance = () => {
                       <option value="in_review">In Review</option>
                       <option value="in_progress">In Progress</option>
                       <option value="completed">Completed</option>
+                      <option value="approved">Approved</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
@@ -1575,9 +1762,10 @@ const AdminDesignAssistance = () => {
                   detailsRequest.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-500' :
                   detailsRequest.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
                   detailsRequest.design_status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                  detailsRequest.design_status === 'approved' ? 'bg-cyan-500/20 text-cyan-500' :
                   'bg-gray-500/20 text-gray-500'
                 }`}>
-                  {detailsRequest.design_status}
+                  {formatStatus(detailsRequest.design_status)}
                 </Badge>
               </div>
 

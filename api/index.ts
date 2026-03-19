@@ -1615,10 +1615,10 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
   }
 
   try {
-    // Get current conversation status
+    // Get current conversation status and order_id (needed for auto-status change)
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('status')
+      .select('status, order_id')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -1753,12 +1753,118 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       .update(updateData)
       .eq('id', conversationId);
 
+    // Auto-set design request status to 'in_review' on admin's first message
+    try {
+      const { count: adminMsgCount } = await supabase
+        .from('conversation_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId)
+        .in('sender_type', ['engineer', 'admin']);
+
+      if (adminMsgCount === 1 && conversation?.order_id) {
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('id, order_type, design_status')
+          .eq('id', conversation.order_id)
+          .single();
+
+        if (orderData?.order_type === 'design' && orderData?.design_status === 'pending') {
+          await supabase
+            .from('orders')
+            .update({ design_status: 'in_review' })
+            .eq('id', orderData.id);
+          console.log(`[ADMIN_SEND_MESSAGE] Auto-set design ${orderData.id} status to in_review`);
+        }
+      }
+    } catch (statusErr) {
+      console.error('[ADMIN_SEND_MESSAGE] Failed to auto-update design status:', statusErr);
+    }
+
+    // If a paid attachment was sent, update the order's estimated_price
+    if (attachments.length > 0 && conversation?.order_id) {
+      const paidAttachment = attachments.find((att: any) => att.access_type === 'paid' && att.price);
+      if (paidAttachment) {
+        try {
+          await supabase
+            .from('orders')
+            .update({ estimated_price: paidAttachment.price, price: paidAttachment.price })
+            .eq('id', conversation.order_id);
+          console.log(`[ADMIN_SEND_MESSAGE] Updated order ${conversation.order_id} price to ${paidAttachment.price}`);
+        } catch (priceErr) {
+          console.error('[ADMIN_SEND_MESSAGE] Failed to update order price:', priceErr);
+        }
+      }
+    }
+
     console.log('[ADMIN_SEND_MESSAGE] Message sent successfully:', message?.id);
     return res.status(200).json({ message });
   } catch (error: any) {
     console.error('[ADMIN_SEND_MESSAGE] Unhandled error:', error?.message || error);
     return res.status(500).json({ error: 'Failed to send message', details: error?.message || 'Unknown error' });
   }
+}
+
+async function handleUpdateAttachmentAccess(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+
+  // Check admin role
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const url = req.url || '';
+  const parts = url.split('/');
+  const messagesIdx = parts.indexOf('messages');
+  const messageId = parts[messagesIdx + 1]?.split('?')[0];
+
+  if (!messageId) {
+    return res.status(400).json({ error: 'Message ID required' });
+  }
+
+  const body = req.body || await parseJsonBody(req);
+  const { attachmentIndex, download_allowed } = body;
+
+  if (attachmentIndex === undefined || attachmentIndex === null) {
+    return res.status(400).json({ error: 'attachmentIndex is required' });
+  }
+
+  // Fetch current message
+  const { data: message, error: fetchErr } = await supabase
+    .from('conversation_messages')
+    .select('attachments')
+    .eq('id', messageId)
+    .single();
+
+  if (fetchErr || !message) {
+    return res.status(404).json({ error: 'Message not found' });
+  }
+
+  const attachments = [...(message.attachments || [])];
+  if (attachmentIndex < 0 || attachmentIndex >= attachments.length) {
+    return res.status(400).json({ error: 'Invalid attachment index' });
+  }
+
+  attachments[attachmentIndex] = {
+    ...attachments[attachmentIndex],
+    download_allowed: !!download_allowed,
+  };
+
+  const { error: updateErr } = await supabase
+    .from('conversation_messages')
+    .update({ attachments })
+    .eq('id', messageId);
+
+  if (updateErr) {
+    console.error('[ATTACHMENT_ACCESS] Update error:', updateErr);
+    return res.status(500).json({ error: 'Failed to update attachment access' });
+  }
+
+  console.log(`[ATTACHMENT_ACCESS] Updated message ${messageId} attachment ${attachmentIndex} download_allowed=${download_allowed}`);
+  return res.status(200).json({ success: true });
 }
 
 async function handleConversationUploadUrl(req: AuthenticatedRequest, res: VercelResponse) {
@@ -2243,6 +2349,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Design requests routes
+    if (path === '/design-requests/upload-url' && req.method === 'POST') {
+      return await handleDesignUploadUrl(req as AuthenticatedRequest, res);
+    }
     if (path === '/design-requests' && req.method === 'POST') {
       return await handleCreateDesignRequest(req as AuthenticatedRequest, res);
     }
@@ -2415,6 +2524,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/admin\/conversations\/[^\/]+\/typing$/) && req.method === 'POST') {
       return await handleAdminSetTypingStatus(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/conversations\/messages\/[^\/]+\/attachment-access$/) && req.method === 'PATCH') {
+      return await handleUpdateAttachmentAccess(req as AuthenticatedRequest, res);
     }
     
     // Admin business routes
@@ -3331,9 +3443,6 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
 
   // Set order type (default to 'print' if not specified)
   orderData.order_type = orderType || 'print';
-  if (description) {
-    orderData.notes = description;
-  }
   if (creditsAmount && creditsAmount > 0) {
     orderData.credits_amount = creditsAmount;
   }
@@ -3418,11 +3527,9 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
     orderData.quality = quality;
   }
   
-  // Add optional fields if provided
-  if (notes) orderData.notes = notes;
+  // Add optional fields if provided (notes excluded - sent as first conversation message)
   if (projectName) orderData.project_name = projectName;
   if (shippingAddress) orderData.shipping_address = shippingAddress;
-  if (paymentMethod) orderData.payment_method = paymentMethod;
   
   console.log(`📦 [ORDER-CREATE] Creating order for user: ${user.userId}`, JSON.stringify(orderData));
   
@@ -3458,6 +3565,63 @@ async function handleCreateOrder(req: AuthenticatedRequest, res: VercelResponse)
   }
   
   console.log(`📦 [ORDER-CREATE] Success! Order ID: ${order?.id}`);
+
+  // Auto-create conversation for the order, and send notes/description as first message
+  if (order) {
+    try {
+      // Check if conversation already exists
+      const { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('order_id', order.id)
+        .maybeSingle();
+
+      let conversationId = existingConv?.id;
+
+      if (!conversationId) {
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            order_id: order.id,
+            user_id: user.userId,
+            subject: `Job conversation for ${fileName}`,
+            status: 'open',
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error('📦 [ORDER-CREATE] Failed to create conversation:', convError);
+        } else {
+          conversationId = newConv.id;
+          console.log(`📦 [ORDER-CREATE] Auto-created conversation ${conversationId}`);
+        }
+      }
+
+      // Send notes/description as first message
+      const noteText = notes || description;
+      if (conversationId && noteText && noteText.trim()) {
+        const { error: msgError } = await supabase
+          .from('conversation_messages')
+          .insert({
+            conversation_id: conversationId,
+            sender_id: user.userId,
+            sender_type: 'user',
+            message: noteText.trim(),
+          });
+
+        if (msgError) {
+          console.error('📦 [ORDER-CREATE] Failed to send initial message:', msgError);
+        } else {
+          console.log(`📦 [ORDER-CREATE] Sent initial note to conversation ${conversationId}`);
+        }
+      }
+    } catch (convErr) {
+      console.error('📦 [ORDER-CREATE] Conversation auto-creation error:', convErr);
+      // Don't fail order creation if conversation fails
+    }
+  }
+
   return res.status(201).json(order);
 }
 
@@ -3926,12 +4090,65 @@ function mapOrderToDesignRequest(order: any) {
     payment_status: order.payment_status || 'pending',
     admin_notes: order.notes || null,
     admin_design_file: order.admin_design_file || null,
-    user_approval_status: order.design_status === 'completed' ? 'approved' : (order.design_status === 'cancelled' ? 'rejected' : 'pending'),
-    user_approval_at: order.design_status === 'completed' ? order.updated_at : null,
+    user_approval_status: order.design_status === 'approved' ? 'approved' : (order.design_status === 'cancelled' ? 'rejected' : 'pending'),
+    user_approval_at: order.design_status === 'approved' ? order.updated_at : null,
     user_rejection_reason: null,
     created_at: order.created_at,
     updated_at: order.updated_at || order.created_at,
   };
+}
+
+async function handleDesignUploadUrl(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const body = req.body || await parseJsonBody(req);
+  const { fileName } = body;
+
+  if (!fileName) {
+    return res.status(400).json({ error: 'fileName is required' });
+  }
+
+  try {
+    const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+
+    // Ensure bucket accepts all file types
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const existingBucket = buckets?.find((b: any) => b.id === bucket);
+    if (existingBucket?.allowed_mime_types && existingBucket.allowed_mime_types.length > 0) {
+      await supabase.storage.updateBucket(bucket, {
+        public: true,
+        fileSizeLimit: 52428800,
+        allowedMimeTypes: null as any,
+      });
+    }
+
+    const fileExt = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')) : '';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExt}`;
+    const filePath = `${user.userId}/${uniqueName}`;
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUploadUrl(filePath);
+
+    if (error) {
+      console.error('[DESIGN-UPLOAD] Error creating signed URL:', error);
+      return res.status(500).json({ error: 'Failed to create upload URL' });
+    }
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    return res.status(200).json({
+      signedUrl: data.signedUrl,
+      token: data.token,
+      filePath,
+      publicUrl: urlData.publicUrl,
+    });
+  } catch (error: any) {
+    console.error('[DESIGN-UPLOAD] Error:', error?.message || error);
+    return res.status(500).json({ error: 'Failed to create upload URL' });
+  }
 }
 
 async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelResponse) {
@@ -3969,30 +4186,51 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
       const refFiles = files.referenceFiles;
       const fileList = Array.isArray(refFiles) ? refFiles : refFiles ? [refFiles] : [];
 
-      for (const fileData of fileList) {
-        const fs = await import('fs');
-        const fileBuffer = fs.readFileSync(fileData.filepath);
+      if (fileList.length > 0) {
         const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
-        const fileName = fileData.originalFilename || 'reference-file';
-        const filePath = `${user.userId}/${Date.now()}-${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from(bucket)
-          .upload(filePath, fileBuffer, {
-            contentType: fileData.mimetype || 'application/octet-stream',
-          });
-
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-          attachedFiles.push({
-            name: fileName,
-            url: urlData.publicUrl,
-            size: fileData.size,
-            type: fileData.mimetype,
-          });
+        // Ensure bucket accepts all file types (remove MIME restrictions for 3D files etc.)
+        try {
+          const { data: bucketsList } = await supabase.storage.listBuckets();
+          const existingBucket = bucketsList?.find((b: any) => b.id === bucket);
+          if (existingBucket?.allowed_mime_types && existingBucket.allowed_mime_types.length > 0) {
+            console.log('[DESIGN] Removing MIME type restrictions from bucket:', bucket);
+            await supabase.storage.updateBucket(bucket, {
+              public: true,
+              fileSizeLimit: 52428800,
+              allowedMimeTypes: null as any,
+            });
+          }
+        } catch (bucketErr) {
+          console.error('[DESIGN] Bucket check/update error:', bucketErr);
         }
 
-        fs.unlinkSync(fileData.filepath);
+        for (const fileData of fileList) {
+          const fs = await import('fs');
+          const fileBuffer = fs.readFileSync(fileData.filepath);
+          const fileName = fileData.originalFilename || 'reference-file';
+          const filePath = `${user.userId}/${Date.now()}-${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, fileBuffer, {
+              contentType: fileData.mimetype || 'application/octet-stream',
+            });
+
+          if (uploadError) {
+            console.error('[DESIGN] File upload error:', uploadError.message || uploadError);
+          } else {
+            const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+            attachedFiles.push({
+              name: fileName,
+              url: urlData.publicUrl,
+              size: fileData.size,
+              type: fileData.mimetype,
+            });
+          }
+
+          fs.unlinkSync(fileData.filepath);
+        }
       }
     } else {
       const body = req.body || {};
@@ -4002,6 +4240,10 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
       usageDetails = body.usageDetails || '';
       approximateDimensions = body.approximateDimensions || '';
       desiredMaterial = body.desiredMaterial || '';
+      // Accept pre-uploaded files from client (uploaded via signed URL)
+      if (Array.isArray(body.attachedFiles)) {
+        attachedFiles = body.attachedFiles;
+      }
     }
 
     if (!ideaDescription) {
@@ -4038,6 +4280,42 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
     if (error) {
       console.error('Design request creation error:', error);
       return res.status(500).json({ error: 'Failed to create design request' });
+    }
+
+    // Auto-create conversation and send idea_description as first message
+    if (order) {
+      try {
+        const { data: conv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            order_id: order.id,
+            user_id: user.userId,
+            subject: `Design Assistance - ${projectName}`,
+            status: 'open',
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error('[DESIGN] Failed to create conversation:', convError);
+        } else if (conv && ideaDescription) {
+          const { error: msgError } = await supabase
+            .from('conversation_messages')
+            .insert({
+              conversation_id: conv.id,
+              sender_id: user.userId,
+              sender_type: 'user',
+              message: ideaDescription,
+            });
+          if (msgError) {
+            console.error('[DESIGN] Failed to send initial message:', msgError);
+          } else {
+            console.log(`[DESIGN] Auto-created conversation ${conv.id} with initial description message`);
+          }
+        }
+      } catch (convErr) {
+        console.error('[DESIGN] Conversation auto-creation error:', convErr);
+      }
     }
 
     return res.status(201).json(mapOrderToDesignRequest(order));
@@ -4081,7 +4359,7 @@ async function handleApproveDesignRequest(req: AuthenticatedRequest, res: Vercel
 
   const { data, error } = await supabase
     .from('orders')
-    .update({ design_status: 'completed' })
+    .update({ design_status: 'approved' })
     .eq('id', requestId)
     .eq('user_id', user.userId)
     .eq('order_type', 'design')
@@ -5166,7 +5444,7 @@ async function handlePayUNotify(req: VercelRequest, res: VercelResponse) {
       if (order.status === 'COMPLETED') {
         const { data: orderData } = await supabase
           .from('orders')
-          .select('order_type, credits_amount, user_id')
+          .select('order_type, credits_amount, user_id, design_status')
           .eq('id', order.extOrderId)
           .single();
 

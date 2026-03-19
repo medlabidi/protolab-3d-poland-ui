@@ -4,21 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Printer, FileText, Plus, Loader2, MessageSquare, Package } from "lucide-react";
+import { Upload, X, Printer, FileText, Plus, Loader2, MessageSquare, Package, CreditCard, AlertCircle, ChevronRight, Eye, Pencil, Copy } from "lucide-react";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { API_URL } from "@/config/api";
 
 interface PrintOrder {
   id: string;
   file_name: string;
+  file_url?: string;
   project_name?: string;
   material: string;
   color: string;
   quality?: string;
   quantity: number;
   price: number;
+  paid_amount?: number;
   status: string;
   payment_status?: string;
   shipping_method?: string;
@@ -68,6 +73,19 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+const formatPrice = (price: number | null | undefined) => {
+  const numPrice = Number(price);
+  if (price === null || price === undefined || isNaN(numPrice)) {
+    return '0.00 PLN';
+  }
+  return `${numPrice.toFixed(2)} PLN`;
+};
+
+const capitalizeFirst = (str: string | null | undefined) => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
 const PrintJobs = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -80,6 +98,7 @@ const PrintJobs = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationFile, setConversationFile] = useState<File | null>(null);
+  const [detailOrder, setDetailOrder] = useState<PrintOrder | null>(null);
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -429,9 +448,18 @@ const PrintJobs = () => {
                                 {order.file_name}
                               </h3>
                             </div>
-                            <Badge className={getStatusColor(order.status)}>
-                              {order.status.replace('_', ' ')}
-                            </Badge>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Badge className={getStatusColor(order.status)}>
+                                {order.status.replace('_', ' ')}
+                              </Badge>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDetailOrder(order); }}
+                                className="p-1 rounded-md hover:bg-gray-700 text-gray-400 hover:text-cyan-400 transition-colors"
+                                title="View details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
                             <span>{order.material} - {order.color}</span>
@@ -455,6 +483,7 @@ const PrintJobs = () => {
                               <span className="text-cyan-400 font-semibold">
                                 {order.price?.toFixed(2)} PLN
                               </span>
+                              <ChevronRight className="w-3 h-3 text-gray-500" />
                             </div>
                           </div>
                         </CardContent>
@@ -602,47 +631,71 @@ const PrintJobs = () => {
 
                     {/* Message Input */}
                     <div className="flex-shrink-0 px-4 pb-4 space-y-2">
-                      {conversationFile && (
-                        <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg border border-cyan-500/30">
-                          <FileText className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                          <span className="text-gray-300 text-xs truncate flex-1">{conversationFile.name}</span>
-                          <span className="text-gray-500 text-xs flex-shrink-0">{(conversationFile.size / 1024).toFixed(0)} KB</span>
-                          <button onClick={() => setConversationFile(null)} className="text-gray-400 hover:text-red-400">
-                            <X className="w-3 h-3" />
-                          </button>
+                      {selectedOrder.payment_status && selectedOrder.payment_status !== 'paid' ? (
+                        <div className="rounded-lg border border-yellow-500/50 bg-yellow-900/20 p-4 flex flex-col gap-3">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-yellow-300 font-semibold text-sm">Payment Required</p>
+                              <p className="text-yellow-400/80 text-xs mt-1">
+                                You need to complete payment for this order before you can send messages to our team.
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/checkout?orderId=${selectedOrder.id}`)}
+                            className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white w-full"
+                            size="sm"
+                          >
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Complete Payment — {selectedOrder.price?.toFixed(2)} PLN
+                          </Button>
                         </div>
+                      ) : (
+                        <>
+                          {conversationFile && (
+                            <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg border border-cyan-500/30">
+                              <FileText className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                              <span className="text-gray-300 text-xs truncate flex-1">{conversationFile.name}</span>
+                              <span className="text-gray-500 text-xs flex-shrink-0">{(conversationFile.size / 1024).toFixed(0)} KB</span>
+                              <button onClick={() => setConversationFile(null)} className="text-gray-400 hover:text-red-400">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <label className="flex items-center justify-center w-10 h-10 bg-gray-800 border border-gray-700 rounded-md cursor-pointer hover:bg-gray-700 transition-colors flex-shrink-0">
+                              <Upload className="w-4 h-4 text-gray-400" />
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    setConversationFile(e.target.files[0]);
+                                  }
+                                  e.target.value = '';
+                                }}
+                                disabled={sendingMessage}
+                              />
+                            </label>
+                            <Input
+                              value={newMessage}
+                              onChange={(e) => setNewMessage(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                              placeholder="Type your message..."
+                              className="bg-gray-800 border-gray-700 text-white"
+                              disabled={sendingMessage}
+                            />
+                            <Button
+                              onClick={handleSendMessage}
+                              disabled={sendingMessage || (!newMessage.trim() && !conversationFile)}
+                              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                            >
+                              {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                            </Button>
+                          </div>
+                        </>
                       )}
-                      <div className="flex gap-2">
-                        <label className="flex items-center justify-center w-10 h-10 bg-gray-800 border border-gray-700 rounded-md cursor-pointer hover:bg-gray-700 transition-colors flex-shrink-0">
-                          <Upload className="w-4 h-4 text-gray-400" />
-                          <input
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                setConversationFile(e.target.files[0]);
-                              }
-                              e.target.value = '';
-                            }}
-                            disabled={sendingMessage}
-                          />
-                        </label>
-                        <Input
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                          placeholder="Type your message..."
-                          className="bg-gray-800 border-gray-700 text-white"
-                          disabled={sendingMessage}
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={sendingMessage || (!newMessage.trim() && !conversationFile)}
-                          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                        >
-                          {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                        </Button>
-                      </div>
                     </div>
                   </>
                 ) : (
@@ -655,6 +708,170 @@ const PrintJobs = () => {
           </div>
         </div>
       </main>
+
+      {/* Print Job Detail Dialog */}
+      <Dialog open={!!detailOrder} onOpenChange={(open) => !open && setDetailOrder(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Package className="w-6 h-6 text-primary" />
+              {detailOrder?.file_name}
+            </DialogTitle>
+            <DialogDescription>
+              Order ID: {detailOrder?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailOrder && (
+            <div className="grid md:grid-cols-2 gap-6 mt-4">
+              {/* Left Column - 3D Model Preview */}
+              <div className="space-y-4">
+                <div className="bg-muted rounded-lg p-4 h-[400px] flex items-center justify-center">
+                  {detailOrder.file_url ? (
+                    <ModelViewerUrl
+                      url={detailOrder.file_url}
+                      fileName={detailOrder.file_name || 'model.stl'}
+                      height="400px"
+                    />
+                  ) : (
+                    <div className="text-center text-muted-foreground">
+                      <Package className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                      <p>No 3D model preview available</p>
+                    </div>
+                  )}
+                </div>
+
+                {detailOrder.project_name && (
+                  <div className="bg-primary/5 rounded-lg p-3">
+                    <p className="text-sm text-muted-foreground">Project</p>
+                    <p className="font-semibold text-primary">{detailOrder.project_name}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Order Details */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <StatusBadge status={detailOrder.status as OrderStatus} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Payment</p>
+                    {detailOrder.payment_status ? (
+                      <PaymentStatusBadge status={detailOrder.payment_status as PaymentStatus} />
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Material</p>
+                  <p className="font-semibold">
+                    {capitalizeFirst(detailOrder.material)} ({capitalizeFirst(detailOrder.color)})
+                  </p>
+                </div>
+
+                {detailOrder.quality && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Quality</p>
+                    <p className="font-semibold capitalize">{detailOrder.quality}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Quantity</p>
+                    <p className="font-semibold">{detailOrder.quantity}</p>
+                  </div>
+                  {detailOrder.shipping_method && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Shipping</p>
+                      <p className="font-semibold capitalize">{detailOrder.shipping_method}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Price</p>
+                  <p className="text-2xl font-bold text-primary">{formatPrice(detailOrder.price)}</p>
+                  {detailOrder.paid_amount && detailOrder.paid_amount > 0 && (
+                    <p className="text-sm text-green-600">
+                      Paid: {formatPrice(detailOrder.paid_amount)}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="font-medium">{formatDate(detailOrder.created_at)}</p>
+                </div>
+
+                {/* Payment warning + CTA */}
+                {detailOrder.payment_status && detailOrder.payment_status !== 'paid' && (
+                  <div className="rounded-lg border border-yellow-500/50 bg-yellow-900/20 p-4 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-yellow-300 font-semibold text-sm">Payment Required</p>
+                        <p className="text-yellow-400/80 text-xs mt-1">
+                          Complete your payment to unlock messaging and proceed with your print job.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => { setDetailOrder(null); navigate(`/checkout?orderId=${detailOrder.id}`); }}
+                      className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white w-full"
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Complete Payment — {formatPrice(detailOrder.price)}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (detailOrder) {
+                  navigator.clipboard.writeText(detailOrder.id);
+                  toast.success('Order ID copied');
+                }
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy ID
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (detailOrder) {
+                  setDetailOrder(null);
+                  navigate(`/orders/${detailOrder.id}/edit`);
+                }
+              }}
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Order
+            </Button>
+            <Button
+              onClick={() => {
+                if (detailOrder) {
+                  setDetailOrder(null);
+                  handleSelectOrder(detailOrder);
+                }
+              }}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Open Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

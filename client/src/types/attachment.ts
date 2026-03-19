@@ -8,6 +8,10 @@ export interface Attachment {
   type?: string;
   size?: number;
   created_at?: string;
+  access_type?: 'free' | 'paid' | 'preview_only';
+  download_allowed?: boolean;
+  payment_status?: string;
+  price?: number;
 }
 
 /**

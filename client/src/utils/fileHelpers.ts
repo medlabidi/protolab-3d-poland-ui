@@ -46,6 +46,25 @@ export function getFileBaseName(filename: string): string {
 }
 
 /**
+ * Check if a file is an image based on its extension or MIME type
+ */
+export function isImageFile(filename: string, mimeType?: string): boolean {
+  if (mimeType && mimeType.startsWith('image/')) return true;
+  if (!filename) return false;
+  const ext = filename.toLowerCase().split('.').pop();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '');
+}
+
+/**
+ * Check if a file is a PDF based on its extension or MIME type
+ */
+export function isPdfFile(filename: string, mimeType?: string): boolean {
+  if (mimeType === 'application/pdf') return true;
+  if (!filename) return false;
+  return filename.toLowerCase().split('.').pop() === 'pdf';
+}
+
+/**
  * Format file size in human-readable format
  * @param bytes - Size in bytes
  * @returns Formatted string like "1.5 MB"

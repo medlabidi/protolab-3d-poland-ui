@@ -26,6 +26,7 @@ import {
   X,
   FileIcon,
   Download,
+  Lock,
   Palette
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -635,22 +636,56 @@ const Conversations = () => {
                                   {message.message && <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.message}</p>}
                                   {message.attachments && message.attachments.length > 0 && (
                                     <div className="mt-2 space-y-2">
-                                      {message.attachments.map((attachment: any, idx: number) => (
-                                        <a
-                                          key={idx}
-                                          href={`${API_URL}/uploads/${attachment.file_path}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={cn(
-                                            "flex items-center gap-2 p-2 rounded-lg border transition-colors",
-                                            message.sender_type === 'user' ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
-                                          )}
-                                        >
-                                          <FileIcon className="w-4 h-4" />
-                                          <span className="text-xs flex-1 truncate">{attachment.original_name}</span>
-                                          <Download className="w-3 h-3" />
-                                        </a>
-                                      ))}
+                                      {message.attachments.map((attachment: any, idx: number) => {
+                                        const isAdminFile = message.sender_type !== 'user';
+                                        const accessType = attachment.access_type || 'free';
+                                        const isDownloadBlocked = isAdminFile && (
+                                          (accessType === 'paid' && attachment.payment_status !== 'paid') ||
+                                          (accessType === 'preview_only' && !attachment.download_allowed)
+                                        );
+
+                                        if (isDownloadBlocked) {
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className={cn(
+                                                "flex items-center gap-2 p-2 rounded-lg border opacity-60 cursor-not-allowed",
+                                                "bg-muted/30 border-yellow-500/30"
+                                              )}
+                                            >
+                                              <Lock className="w-4 h-4 text-yellow-400" />
+                                              <span className="text-xs flex-1 truncate">{attachment.original_name || attachment.name}</span>
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                                accessType === 'paid'
+                                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                                  : 'bg-purple-500/20 text-purple-400'
+                                              }`}>
+                                                {accessType === 'paid'
+                                                  ? `Pay ${attachment.price || ''} PLN`
+                                                  : 'Preview only'}
+                                              </span>
+                                            </div>
+                                          );
+                                        }
+
+                                        const fileUrl = attachment.url || `${API_URL}/uploads/${attachment.file_path}`;
+                                        return (
+                                          <a
+                                            key={idx}
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={cn(
+                                              "flex items-center gap-2 p-2 rounded-lg border transition-colors",
+                                              message.sender_type === 'user' ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
+                                            )}
+                                          >
+                                            <FileIcon className="w-4 h-4" />
+                                            <span className="text-xs flex-1 truncate">{attachment.original_name || attachment.name}</span>
+                                            <Download className="w-3 h-3" />
+                                          </a>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                 </div>

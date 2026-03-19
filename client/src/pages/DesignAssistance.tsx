@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
 import { ModelPreviewCard } from "@/components/ModelPreviewCard";
 import { ModelViewerModal } from "@/components/ModelViewerModal";
-import { is3DFile } from "@/utils/fileHelpers";
+import { is3DFile, isImageFile, isPdfFile } from "@/utils/fileHelpers";
 import { Attachment } from "@/types/attachment";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
@@ -28,7 +28,7 @@ interface DesignRequest {
   approximate_dimensions?: string;
   attached_files?: any[];
   reference_images?: any[];
-  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'cancelled';
+  design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'approved' | 'cancelled';
   estimated_price?: number;
   final_price?: number;
   payment_status?: string;
@@ -84,7 +84,6 @@ const DesignAssistance = () => {
     designTitle: "",
     ideaDescription: "",
     usage: "functional" as 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other',
-    usageDetails: "",
     dimWidth: "",
     dimHeight: "",
     dimDepth: "",
@@ -281,29 +280,68 @@ const DesignAssistance = () => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const submitData = new FormData();
-      submitData.append('projectName', formData.designTitle || `Design Request - ${formData.usage}`);
-      submitData.append('ideaDescription', formData.ideaDescription);
-      submitData.append('usage', formData.usage);
-      submitData.append('usageDetails', formData.usageDetails || 'Not specified');
+
+      // Upload files directly to Supabase via signed URLs (avoids Vercel 4.5MB body limit)
+      const uploadedFiles: { name: string; url: string; size: number; type: string }[] = [];
+      for (const file of attachedFiles) {
+        try {
+          // Get signed upload URL
+          const urlRes = await fetch(`${API_URL}/design-requests/upload-url`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fileName: file.name }),
+          });
+
+          if (!urlRes.ok) throw new Error('Failed to get upload URL');
+          const { signedUrl, token: uploadToken, publicUrl } = await urlRes.json();
+
+          // Upload file directly to Supabase Storage
+          const uploadRes = await fetch(signedUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type || 'application/octet-stream',
+              'x-upsert': 'true',
+            },
+            body: file,
+          });
+
+          if (!uploadRes.ok) throw new Error('File upload failed');
+
+          uploadedFiles.push({
+            name: file.name,
+            url: publicUrl,
+            size: file.size,
+            type: file.type,
+          });
+        } catch (uploadErr) {
+          console.error('File upload error:', uploadErr);
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
 
       // Build dimensions string from individual float inputs
       const dimParts = [];
       if (formData.dimWidth) dimParts.push(`${formData.dimWidth}mm`);
       if (formData.dimHeight) dimParts.push(`${formData.dimHeight}mm`);
       if (formData.dimDepth) dimParts.push(`${formData.dimDepth}mm`);
-      submitData.append('approximateDimensions', dimParts.length > 0 ? dimParts.join(' x ') : 'Not specified');
 
-      attachedFiles.forEach(file => {
-        submitData.append('referenceFiles', file);
-      });
-
+      // Send design request with JSON body (no multipart, files already uploaded)
       const response = await fetch(`${API_URL}/design-requests`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: submitData,
+        body: JSON.stringify({
+          projectName: formData.designTitle || `Design Request - ${formData.usage}`,
+          ideaDescription: formData.ideaDescription,
+          usage: formData.usage,
+          approximateDimensions: dimParts.length > 0 ? dimParts.join(' x ') : 'Not specified',
+          attachedFiles: uploadedFiles,
+        }),
       });
 
       if (!response.ok) {
@@ -324,7 +362,6 @@ const DesignAssistance = () => {
         designTitle: "",
         ideaDescription: "",
         usage: "functional",
-        usageDetails: "",
         dimWidth: "",
         dimHeight: "",
         dimDepth: "",
@@ -503,13 +540,19 @@ const DesignAssistance = () => {
       );
 
       if (response.ok) {
-        toast.success('Design approved! Redirecting to payment...');
+        const updatedRequest = selectedRequest;
         await fetchDesignRequests(); // Refresh data
-        
-        // Redirect to payment after a short delay
-        setTimeout(() => {
-          handleProceedToPayment(selectedRequest!);
-        }, 1500);
+
+        // If price is 0, no payment needed — just show success
+        if (!updatedRequest?.estimated_price || updatedRequest.estimated_price <= 0) {
+          toast.success('Design approved!');
+        } else {
+          toast.success('Design approved! Redirecting to payment...');
+          // Redirect to payment after a short delay
+          setTimeout(() => {
+            handleProceedToPayment(selectedRequest!);
+          }, 1500);
+        }
       } else {
         let error;
         try {
@@ -642,12 +685,17 @@ const DesignAssistance = () => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const formatStatus = (status: string) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/20 text-yellow-500';
       case 'in_review': return 'bg-orange-500/20 text-orange-500';
       case 'in_progress': return 'bg-blue-500/20 text-blue-500';
       case 'completed': return 'bg-green-500/20 text-green-500';
+      case 'approved': return 'bg-cyan-500/20 text-cyan-500';
       case 'cancelled': return 'bg-red-500/20 text-red-500';
       default: return 'bg-gray-500/20 text-gray-500';
     }
@@ -791,7 +839,7 @@ const DesignAssistance = () => {
                             </h3>
                             <div className="flex items-center gap-2">
                               <Badge className={getStatusColor(request.design_status)}>
-                                {request.design_status}
+                                {formatStatus(request.design_status)}
                               </Badge>
                               <Button
                                 variant="ghost"
@@ -849,7 +897,7 @@ const DesignAssistance = () => {
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="text-white font-semibold text-sm">{selectedRequest.project_name}</h3>
                           <Badge className={getStatusColor(selectedRequest.design_status)}>
-                            {selectedRequest.design_status}
+                            {formatStatus(selectedRequest.design_status)}
                           </Badge>
                         </div>
                         <p className="text-gray-400 text-xs mb-3 line-clamp-2">{selectedRequest.idea_description}</p>
@@ -876,11 +924,11 @@ const DesignAssistance = () => {
                       </div>
 
                       {/* Prominent Price Banner */}
-                      {selectedRequest.estimated_price ? (
+                      {(selectedRequest.estimated_price || selectedRequest.design_status === 'approved') ? (
                         <div className={`rounded-xl border p-4 space-y-3 ${
                           isPaymentCompleted
                             ? 'bg-green-500/10 border-green-500/40'
-                            : selectedRequest.design_status === 'completed'
+                            : (selectedRequest.design_status === 'completed' || selectedRequest.design_status === 'approved')
                               ? 'bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/60'
                               : 'bg-gray-800/60 border-yellow-500/40'
                         }`}>
@@ -892,13 +940,15 @@ const DesignAssistance = () => {
                               <Badge className="bg-green-500/20 text-green-400 border-green-500 text-xs">✓ Paid</Badge>
                             ) : selectedRequest.design_status === 'completed' ? (
                               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500 text-xs animate-pulse">Action Required</Badge>
+                            ) : selectedRequest.design_status === 'approved' ? (
+                              <Badge className="bg-orange-500/20 text-orange-400 border-orange-500 text-xs animate-pulse">Payment Pending</Badge>
                             ) : (
                               <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500 text-xs">Estimate</Badge>
                             )}
                           </div>
                           <div className="flex items-baseline gap-2">
                             <span className={`text-3xl font-bold ${isPaymentCompleted ? 'text-green-400' : 'text-cyan-400'}`}>
-                              {selectedRequest.estimated_price.toFixed(2)}
+                              {(selectedRequest.estimated_price || 0).toFixed(2)}
                             </span>
                             <span className="text-gray-400 text-base font-medium">PLN</span>
                           </div>
@@ -913,12 +963,28 @@ const DesignAssistance = () => {
                                 {processingApproval ? (
                                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
                                 ) : (
-                                  <><Check className="w-4 h-4 mr-2" />Approve & Pay {selectedRequest.estimated_price.toFixed(2)} PLN</>
+                                  <><Check className="w-4 h-4 mr-2" />Approve & Pay {(selectedRequest.estimated_price || 0).toFixed(2)} PLN</>
                                 )}
                               </Button>
                             </div>
                           )}
-                          {!isPaymentCompleted && selectedRequest.design_status !== 'completed' && (
+                          {!isPaymentCompleted && selectedRequest.design_status === 'approved' && selectedRequest.estimated_price && selectedRequest.estimated_price > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-cyan-200 text-xs">You approved this design. Complete payment to download your files.</p>
+                              <Button
+                                onClick={() => handleProceedToPayment(selectedRequest)}
+                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold text-sm h-10"
+                              >
+                                <Check className="w-4 h-4 mr-2" />Proceed to Payment — {selectedRequest.estimated_price.toFixed(2)} PLN
+                              </Button>
+                            </div>
+                          )}
+                          {!isPaymentCompleted && selectedRequest.design_status === 'approved' && (!selectedRequest.estimated_price || selectedRequest.estimated_price <= 0) && (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-green-200 text-xs">You approved this design. Files are available for download.</p>
+                            </div>
+                          )}
+                          {!isPaymentCompleted && selectedRequest.design_status !== 'completed' && selectedRequest.design_status !== 'approved' && (
                             <p className="text-gray-400 text-xs">Waiting for admin to finalize the design before you can approve and pay.</p>
                           )}
                         </div>
@@ -1054,12 +1120,94 @@ const DesignAssistance = () => {
 
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
-                                      <div className="mt-2 space-y-1">
+                                      <div className="mt-2 space-y-2">
                                         {msg.attachments.filter((att: any) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: any, idx: number) => {
                                           const isAdminFile = msg.sender_type !== 'user';
-                                          const isDownloadBlocked = isAdminFile && !isPaymentCompleted;
+                                          const accessType = att.access_type || 'free';
+                                          const isDownloadBlocked = isAdminFile && (
+                                            (accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid' && !isPaymentCompleted) ||
+                                            (accessType === 'preview_only' && !att.download_allowed)
+                                          );
+                                          const fileName = att.name || att.url || '';
+                                          const mimeType = att.type || att.mime_type || '';
+                                          const isImage = isImageFile(fileName, mimeType);
+                                          const isPdf = isPdfFile(fileName, mimeType);
+                                          const isPaidUnpaid = isAdminFile && accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid' && !isPaymentCompleted;
+                                          const isPaidCompleted = isAdminFile && accessType === 'paid' && (att.payment_status === 'paid' || isPaymentCompleted);
 
+                                          // Debug: log attachment details for troubleshooting watermark logic
+                                          console.log(`🔍 [Attachment] name=${fileName}, access_type=${accessType}, price=${att.price}, payment_status=${att.payment_status}, isAdmin=${isAdminFile}, isImage=${isImage}, isPdf=${isPdf}, isPaidUnpaid=${isPaidUnpaid}, isPaidCompleted=${isPaidCompleted}, isDownloadBlocked=${isDownloadBlocked}, isPaymentCompleted=${isPaymentCompleted}`);
+
+                                          {/* Case 1: Paid image, not yet paid — watermarked preview */}
+                                          if (isPaidUnpaid && isImage) {
+                                            return (
+                                              <div key={idx} className="mt-1">
+                                                <div
+                                                  className="watermark-overlay rounded-lg border border-yellow-500/30 bg-gray-900"
+                                                  onContextMenu={(e) => e.preventDefault()}
+                                                >
+                                                  <img
+                                                    src={att.url}
+                                                    alt={att.name || 'Preview'}
+                                                    className="w-full max-h-64 object-contain rounded-lg"
+                                                    draggable={false}
+                                                    onDragStart={(e) => e.preventDefault()}
+                                                    style={{ pointerEvents: 'none' }}
+                                                  />
+                                                  <div className="absolute top-2 right-2 z-20">
+                                                    <Badge className="text-[10px] px-2 py-0.5 bg-yellow-500/90 text-black border-yellow-600 font-semibold shadow-lg">
+                                                      {att.price ? `${att.price} PLN` : 'Paid'}
+                                                    </Badge>
+                                                  </div>
+                                                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-2 rounded-b-lg">
+                                                    <div className="flex items-center gap-2 text-xs text-yellow-300">
+                                                      <Lock className="w-3 h-3" />
+                                                      <span className="truncate">{att.name || 'Attachment'}</span>
+                                                      <span className="ml-auto opacity-75">Pay to download</span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          {/* Case 2: Paid PDF, not yet paid — watermarked card */}
+                                          if (isPaidUnpaid && isPdf) {
+                                            return (
+                                              <div key={idx} className="mt-1">
+                                                <div className="watermark-overlay rounded-lg border border-yellow-500/30 bg-gray-900 p-4">
+                                                  <div className="flex items-center gap-3">
+                                                    <div className="flex-shrink-0 w-12 h-14 bg-red-500/20 rounded flex items-center justify-center">
+                                                      <FileText className="w-6 h-6 text-red-400" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                      <p className="text-sm text-white font-medium truncate">{att.name || 'Document.pdf'}</p>
+                                                      <p className="text-xs text-gray-400 mt-0.5">PDF Document</p>
+                                                    </div>
+                                                  </div>
+                                                  <div className="absolute top-2 right-2 z-20">
+                                                    <Badge className="text-[10px] px-2 py-0.5 bg-yellow-500/90 text-black border-yellow-600 font-semibold shadow-lg">
+                                                      {att.price ? `${att.price} PLN` : 'Paid'}
+                                                    </Badge>
+                                                  </div>
+                                                  <div className="mt-2 flex items-center gap-2 text-xs text-yellow-300 relative z-20">
+                                                    <Lock className="w-3 h-3" />
+                                                    <span>Pay to download full PDF</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          {/* Case 3: Download blocked (preview_only, or paid non-previewable) — lock + badge */}
                                           if (isDownloadBlocked) {
+                                            const blockMessage = accessType === 'paid'
+                                              ? `Pay ${att.price ? att.price + ' PLN' : ''} to download`
+                                              : 'Preview only';
+                                            const tooltipText = accessType === 'paid'
+                                              ? `Complete payment of ${att.price || ''} PLN to download this file`
+                                              : 'This file is for preview only. Contact admin for download access.';
+
                                             return (
                                               <TooltipProvider key={idx}>
                                                 <Tooltip>
@@ -1067,19 +1215,53 @@ const DesignAssistance = () => {
                                                     <div className="flex items-center gap-2 text-xs opacity-60 cursor-not-allowed">
                                                       <Lock className="w-3 h-3 text-yellow-400" />
                                                       <span className="truncate text-gray-400">{att.name || 'Attachment'}</span>
-                                                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500 text-[10px] px-1.5 py-0">
-                                                        Pay to download
+                                                      <Badge className={`text-[10px] px-1.5 py-0 ${
+                                                        accessType === 'paid'
+                                                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500'
+                                                          : 'bg-purple-500/20 text-purple-400 border-purple-500'
+                                                      }`}>
+                                                        {blockMessage}
                                                       </Badge>
                                                     </div>
                                                   </TooltipTrigger>
                                                   <TooltipContent className="bg-gray-800 border-gray-600 text-gray-200">
-                                                    <p>Complete payment to download this file</p>
+                                                    <p>{tooltipText}</p>
                                                   </TooltipContent>
                                                 </Tooltip>
                                               </TooltipProvider>
                                             );
                                           }
 
+                                          {/* Case 4: Paid image, paid — inline image with download */}
+                                          if (isPaidCompleted && isImage) {
+                                            return (
+                                              <div key={idx} className="mt-1">
+                                                <a href={att.url} target="_blank" rel="noopener noreferrer">
+                                                  <img
+                                                    src={att.url}
+                                                    alt={att.name || 'Image'}
+                                                    className="w-full max-h-64 object-contain rounded-lg border border-gray-600 hover:border-cyan-500 transition-colors cursor-pointer"
+                                                  />
+                                                </a>
+                                                <div className="flex items-center gap-2 mt-1 text-xs">
+                                                  <Download className="w-3 h-3 text-green-400" />
+                                                  <a
+                                                    href={att.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-green-400 hover:text-green-300 underline truncate"
+                                                  >
+                                                    {att.name || 'Download'}
+                                                  </a>
+                                                  <Badge className="text-[10px] px-1.5 py-0 bg-green-500/20 text-green-400 border-green-500">
+                                                    Paid
+                                                  </Badge>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          {/* Case 5: Default — simple link */}
                                           return (
                                             <a
                                               key={idx}
@@ -1108,15 +1290,31 @@ const DesignAssistance = () => {
 
                                       return (
                                         <div className="mt-3 space-y-3">
-                                          {filtered3DFiles.map((attachment: any, idx: number) => (
-                                            <ModelPreviewCard
-                                              key={idx}
-                                              attachment={attachment}
-                                              approvalStatus={selectedRequest.user_approval_status as any}
-                                              onOpenFullscreen={() => setModelViewerModal({ open: true, attachment })}
-                                              showApprovalButtons={true}
-                                            />
-                                          ))}
+                                          {filtered3DFiles.map((attachment: any, idx: number) => {
+                                            const isPreviewOnly = attachment.access_type === 'preview_only' && !attachment.download_allowed;
+                                            return (
+                                              <div key={idx}>
+                                                {isPreviewOnly && (
+                                                  <div className="flex items-center gap-1 mb-1">
+                                                    <Lock className="w-3 h-3 text-purple-400" />
+                                                    <Badge className="text-[10px] px-1.5 py-0 bg-purple-500/20 text-purple-400 border-purple-500">
+                                                      Preview only — download restricted
+                                                    </Badge>
+                                                  </div>
+                                                )}
+                                                <ModelPreviewCard
+                                                  attachment={attachment}
+                                                  approvalStatus={
+                                                    isPreviewOnly
+                                                      ? undefined
+                                                      : selectedRequest.user_approval_status as any
+                                                  }
+                                                  onOpenFullscreen={() => setModelViewerModal({ open: true, attachment })}
+                                                  showApprovalButtons={!isPreviewOnly}
+                                                />
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       );
                                     })()}
@@ -1251,13 +1449,29 @@ const DesignAssistance = () => {
         modelUrl={modelViewerModal.attachment?.url || null}
         fileName={modelViewerModal.attachment?.name || 'model'}
         approvalStatus={selectedRequest?.user_approval_status as any}
-        onApprove={selectedRequest ? () => handleApproveDesign(selectedRequest.id) : undefined}
-        onReject={() => {
-          setModelViewerModal({ open: false, attachment: null });
-          setShowRejectDialog(true);
-        }}
-        onDownload={isPaymentCompleted ? handleDownload : undefined}
-        downloadBlocked={!isPaymentCompleted}
+        onApprove={
+          selectedRequest &&
+          modelViewerModal.attachment?.access_type !== 'preview_only'
+            ? () => handleApproveDesign(selectedRequest.id)
+            : undefined
+        }
+        onReject={
+          modelViewerModal.attachment?.access_type !== 'preview_only'
+            ? () => {
+                setModelViewerModal({ open: false, attachment: null });
+                setShowRejectDialog(true);
+              }
+            : undefined
+        }
+        onDownload={
+          isPaymentCompleted && modelViewerModal.attachment?.download_allowed !== false
+            ? handleDownload
+            : undefined
+        }
+        downloadBlocked={
+          !isPaymentCompleted ||
+          modelViewerModal.attachment?.access_type === 'preview_only'
+        }
         processingApproval={processingApproval}
       />
 
@@ -1297,7 +1511,7 @@ const DesignAssistance = () => {
                   <p className="text-gray-400 text-sm">Created: {formatDate(detailsRequest.created_at)}</p>
                 </div>
                 <Badge className={getStatusColor(detailsRequest.design_status)}>
-                  {detailsRequest.design_status}
+                  {formatStatus(detailsRequest.design_status)}
                 </Badge>
               </div>
 
@@ -1455,18 +1669,6 @@ const DesignFormDialog = ({
             />
           </div>
 
-          {/* Usage Details */}
-          <div className="space-y-2">
-            <Label htmlFor="usageDetails">Usage Details</Label>
-            <Input
-              id="usageDetails"
-              value={formData.usageDetails}
-              onChange={(e) => setFormData({ ...formData, usageDetails: e.target.value })}
-              placeholder="How will you use this?"
-              className="bg-gray-800 border-gray-700 text-white"
-            />
-          </div>
-
           {/* Approximate Dimensions */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">Approximate Dimensions (mm)</Label>
@@ -1516,18 +1718,10 @@ const DesignFormDialog = ({
           {/* File Upload */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Reference Files (Optional)</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4 text-sm">
+            <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">🖼️ Images</p>
-                <p className="text-gray-400 text-xs">JPG, PNG, GIF, SVG, WEBP, BMP, TIFF, ICO</p>
-              </div>
-              <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">📄 Documents</p>
-                <p className="text-gray-400 text-xs">PDF</p>
-              </div>
-              <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
-                <p className="font-semibold text-cyan-400 mb-1">🎯 3D Files</p>
-                <p className="text-gray-400 text-xs">STL, OBJ, STEP, STP, 3MF</p>
+                <p className="font-semibold text-cyan-400 mb-1">📎 All Formats</p>
+                <p className="text-gray-400 text-xs">Images, documents, 3D files, archives, and more</p>
               </div>
             </div>
             <div
@@ -1546,7 +1740,6 @@ const DesignFormDialog = ({
                 <input
                   type="file"
                   multiple
-                  accept="image/*,.pdf,.stl,.obj,.step,.stp,.3mf"
                   onChange={handleFileChange}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
