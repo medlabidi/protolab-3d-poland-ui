@@ -1137,6 +1137,7 @@ const DesignAssistance = () => {
 
                                           // Debug: log attachment details for troubleshooting watermark logic
                                           console.log(`🔍 [Attachment] name=${fileName}, access_type=${accessType}, price=${att.price}, payment_status=${att.payment_status}, isAdmin=${isAdminFile}, isImage=${isImage}, isPdf=${isPdf}, isPaidUnpaid=${isPaidUnpaid}, isPaidCompleted=${isPaidCompleted}, isDownloadBlocked=${isDownloadBlocked}, isPaymentCompleted=${isPaymentCompleted}`);
+                                          console.log(`🔍 [Attachment RAW]`, JSON.stringify(att));
 
                                           {/* Case 1: Paid image, not yet paid — watermarked preview */}
                                           if (isPaidUnpaid && isImage) {
@@ -1266,16 +1267,22 @@ const DesignAssistance = () => {
 
                                           {/* Case 5: Default — simple link */}
                                           return (
-                                            <a
-                                              key={idx}
-                                              href={att.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2 text-xs opacity-90 hover:opacity-100"
-                                            >
-                                              <FileText className="w-3 h-3" />
-                                              <span className="truncate underline">{att.name || 'Attachment'}</span>
-                                            </a>
+                                            <div key={idx}>
+                                              {isAdminFile && (
+                                                <div className="text-[9px] bg-red-900/80 text-red-200 p-1 rounded mb-1 font-mono break-all">
+                                                  DBG: type={att.access_type || 'NONE'} | price={att.price ?? 'NONE'} | pay_status={att.payment_status || 'NONE'} | orderPaid={String(isPaymentCompleted)}
+                                                </div>
+                                              )}
+                                              <a
+                                                href={att.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 text-xs opacity-90 hover:opacity-100"
+                                              >
+                                                <FileText className="w-3 h-3" />
+                                                <span className="truncate underline">{att.name || 'Attachment'}</span>
+                                              </a>
+                                            </div>
                                           );
                                         })}
                                       </div>

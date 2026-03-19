@@ -1712,7 +1712,17 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
       messageData.attachments = attachments;
     }
 
-    console.log('[ADMIN_SEND_MESSAGE] Inserting message:', { conversationId, hasAttachments: attachments.length > 0 });
+    console.log('[ADMIN_SEND_MESSAGE] Inserting message:', {
+      conversationId,
+      hasAttachments: attachments.length > 0,
+      attachmentDetails: attachments.map((a: any) => ({
+        name: a.name,
+        access_type: a.access_type,
+        price: a.price,
+        payment_status: a.payment_status,
+        download_allowed: a.download_allowed,
+      })),
+    });
 
     let { data: message, error } = await supabase
       .from('conversation_messages')
@@ -1722,7 +1732,7 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
 
     // If error and we have attachments, try without attachments (column might not exist yet)
     if (error && attachments.length > 0 && error.message?.includes('attachments')) {
-      console.log('[ADMIN_SEND_MESSAGE] Retrying without attachments (column may not exist yet)');
+      console.error('[ADMIN_SEND_MESSAGE] ⚠️ ATTACHMENTS COLUMN ERROR - retrying without attachments. Error:', error.message);
       delete messageData.attachments;
       const retry = await supabase
         .from('conversation_messages')
