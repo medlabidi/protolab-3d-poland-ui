@@ -1797,9 +1797,9 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
         try {
           await supabase
             .from('orders')
-            .update({ estimated_price: paidAttachment.price, price: paidAttachment.price })
+            .update({ estimated_price: paidAttachment.price, price: paidAttachment.price, payment_status: 'pending' })
             .eq('id', conversation.order_id);
-          console.log(`[ADMIN_SEND_MESSAGE] Updated order ${conversation.order_id} price to ${paidAttachment.price}`);
+          console.log(`[ADMIN_SEND_MESSAGE] Updated order ${conversation.order_id} price to ${paidAttachment.price} and reset payment_status to pending`);
         } catch (priceErr) {
           console.error('[ADMIN_SEND_MESSAGE] Failed to update order price:', priceErr);
         }
