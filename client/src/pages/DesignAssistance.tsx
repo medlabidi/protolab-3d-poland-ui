@@ -1096,7 +1096,7 @@ const DesignAssistance = () => {
                                       ? 'text-emerald-400 text-left'
                                       : 'text-purple-400 text-left'
                                   }`}>
-                                    {msg.sender_type === 'user' ? 'You' : msg.sender_type === 'system' ? 'AI Assistant' : 'Admin'}
+                                    {msg.sender_type === 'user' ? 'You' : msg.sender_type === 'system' ? 'Pikoro' : 'Admin'}
                                   </span>
                                   
                                   <div

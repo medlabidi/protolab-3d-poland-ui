@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -1295,26 +1295,32 @@ const AdminDesignAssistance = () => {
                               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                                 msg.sender_type === 'engineer' || msg.sender_type === 'admin'
                                   ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                                  : msg.sender_type === 'system'
+                                  ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white'
                                   : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
                               }`}>
-                                {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'A' : 'U'}
+                                {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'A' : msg.sender_type === 'system' ? <Bot className="w-4 h-4" /> : 'U'}
                               </div>
                               
                               {/* Message Bubble */}
                               <div className="flex flex-col gap-1 flex-1">
                                 {/* Sender Label */}
                                 <span className={`text-xs font-semibold ${
-                                  msg.sender_type === 'engineer' || msg.sender_type === 'admin' 
-                                    ? 'text-cyan-400 text-right' 
+                                  msg.sender_type === 'engineer' || msg.sender_type === 'admin'
+                                    ? 'text-cyan-400 text-right'
+                                    : msg.sender_type === 'system'
+                                    ? 'text-emerald-400 text-left'
                                     : 'text-purple-400 text-left'
                                 }`}>
-                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : 'User'}
+                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : msg.sender_type === 'system' ? 'Pikoro' : 'User'}
                                 </span>
-                                
+
                                 <div
                                   className={`rounded-lg p-3 ${
                                     msg.sender_type === 'engineer' || msg.sender_type === 'admin'
                                       ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                      : msg.sender_type === 'system'
+                                      ? 'bg-gradient-to-r from-emerald-900/50 to-teal-900/50 text-gray-200 border border-emerald-700/50'
                                       : 'bg-gray-800 text-gray-200 border border-gray-700'
                                   }`}
                                 >
