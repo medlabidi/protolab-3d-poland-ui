@@ -5128,8 +5128,8 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
  * Called internally after user sends a message or after initial design request creation.
  */
 async function triggerAIAgentResponse(conversationId: string, orderId: string) {
-  if (process.env.AI_AGENT_ENABLED !== 'true') {
-    console.log('[AI_AGENT] Disabled via AI_AGENT_ENABLED env var');
+  if ((process.env.AI_AGENT_ENABLED || '').trim() !== 'true') {
+    console.log('[AI_AGENT] Disabled via AI_AGENT_ENABLED env var, value:', JSON.stringify(process.env.AI_AGENT_ENABLED));
     return;
   }
 
