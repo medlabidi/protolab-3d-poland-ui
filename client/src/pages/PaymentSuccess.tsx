@@ -25,10 +25,19 @@ const PaymentSuccess = () => {
   const checkPaymentStatus = async () => {
     try {
       const orderId = searchParams.get('orderId');
-      
+      const isFilePayment = searchParams.get('filePayment') === 'true';
+
       if (!orderId) {
         setStatus('failed');
         toast.error('Invalid payment reference');
+        return;
+      }
+
+      // File payment — PayU webhook handles the JSONB update; just show success
+      if (isFilePayment) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setStatus('success');
+        toast.success('Payment successful! Your file is now unlocked.');
         return;
       }
 
@@ -104,6 +113,11 @@ const PaymentSuccess = () => {
   };
 
   const handleContinue = () => {
+    const isFilePayment = searchParams.get('filePayment') === 'true';
+    if (isFilePayment) {
+      navigate('/design-assistance');
+      return;
+    }
     const orderId = searchParams.get('orderId');
     if (orderId) {
       navigate(`/orders/${orderId}`);

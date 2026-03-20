@@ -1797,9 +1797,9 @@ async function handleAdminSendMessage(req: AuthenticatedRequest, res: VercelResp
         try {
           await supabase
             .from('orders')
-            .update({ estimated_price: paidAttachment.price, price: paidAttachment.price, payment_status: 'pending' })
+            .update({ estimated_price: paidAttachment.price, price: paidAttachment.price })
             .eq('id', conversation.order_id);
-          console.log(`[ADMIN_SEND_MESSAGE] Updated order ${conversation.order_id} price to ${paidAttachment.price} and reset payment_status to pending`);
+          console.log(`[ADMIN_SEND_MESSAGE] Updated order ${conversation.order_id} price to ${paidAttachment.price}`);
         } catch (priceErr) {
           console.error('[ADMIN_SEND_MESSAGE] Failed to update order price:', priceErr);
         }
@@ -5256,10 +5256,13 @@ async function handlePayUCreateOrder(req: VercelRequest, res: VercelResponse) {
     } = req.body;
 
     if (!orderId || !amount || !description || !userId) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: orderId, amount, description, userId' 
+      return res.status(400).json({
+        error: 'Missing required fields: orderId, amount, description, userId'
       });
     }
+
+    // Detect file payment mode (orderId format: file__<orderId>__<messageId>__<attachmentIdx>)
+    const isFilePayment = typeof orderId === 'string' && orderId.startsWith('file__');
 
     const supabase = getSupabase();
     
@@ -5331,29 +5334,34 @@ async function handlePayUCreateOrder(req: VercelRequest, res: VercelResponse) {
       ],
       buyer,
       notifyUrl: `https://protolab.info/api/payments/payu/notify`,
-      continueUrl: `https://protolab.info/payment-success?orderId=${orderId}`,
+      continueUrl: isFilePayment
+        ? `https://protolab.info/payment-success?filePayment=true&orderId=${orderId}`
+        : `https://protolab.info/payment-success?orderId=${orderId}`,
     };
-    
+
     if (payMethods) {
       orderPayload.payMethods = payMethods;
     }
 
     const payuResult = await createPayUOrder(token, orderPayload);
-    
-    const updateData: any = { 
-      payment_status: 'pending',
-      payment_method: payMethods?.payMethod?.value || 'redirect',
-    };
 
-    if (requestInvoice && businessInfo) {
-      updateData.invoice_required = true;
-      updateData.invoice_business_info = JSON.stringify(businessInfo);
+    // Only update order payment_status for regular (non-file) payments
+    if (!isFilePayment) {
+      const updateData: any = {
+        payment_status: 'pending',
+        payment_method: payMethods?.payMethod?.value || 'redirect',
+      };
+
+      if (requestInvoice && businessInfo) {
+        updateData.invoice_required = true;
+        updateData.invoice_business_info = JSON.stringify(businessInfo);
+      }
+
+      await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId);
     }
-
-    await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId);
 
     let finalOrderId = payuResult.orderId;
     if (!finalOrderId && payuResult.redirectUri) {
@@ -5434,7 +5442,53 @@ async function handlePayUNotify(req: VercelRequest, res: VercelResponse) {
 
     const supabase = getSupabase();
 
-    // Update order in database
+    // Check if this is a file payment (extOrderId format: file__<orderId>__<messageId>__<attachmentIdx>)
+    const isFilePayment = typeof order.extOrderId === 'string' && order.extOrderId.startsWith('file__');
+
+    if (isFilePayment) {
+      const parts = order.extOrderId.split('__');
+      // parts: ['file', orderId, messageId, attachmentIdx]
+      const messageId = parts[2];
+      const attachmentIdx = parseInt(parts[3], 10);
+
+      console.log(`[PAYU-NOTIFY] File payment detected: messageId=${messageId}, attachmentIdx=${attachmentIdx}, status=${paymentStatus}`);
+
+      if (paymentStatus === 'paid') {
+        // Fetch the message to get current attachments
+        const { data: msgData, error: msgError } = await supabase
+          .from('conversation_messages')
+          .select('attachments')
+          .eq('id', messageId)
+          .single();
+
+        if (msgError || !msgData) {
+          console.error('[PAYU-NOTIFY] Failed to fetch message:', msgError);
+          return res.status(200).send('');
+        }
+
+        const attachments = msgData.attachments || [];
+        if (attachmentIdx >= 0 && attachmentIdx < attachments.length) {
+          attachments[attachmentIdx].payment_status = 'paid';
+
+          const { error: updateError } = await supabase
+            .from('conversation_messages')
+            .update({ attachments })
+            .eq('id', messageId);
+
+          if (updateError) {
+            console.error('[PAYU-NOTIFY] Failed to update attachment payment_status:', updateError);
+          } else {
+            console.log(`[PAYU-NOTIFY] Attachment ${attachmentIdx} in message ${messageId} marked as paid`);
+          }
+        } else {
+          console.error(`[PAYU-NOTIFY] Invalid attachment index: ${attachmentIdx}, total: ${attachments.length}`);
+        }
+      }
+
+      return res.status(200).send('');
+    }
+
+    // Regular order payment — update order in database
     if (order.extOrderId) {
       const { error: updateError } = await supabase
         .from('orders')

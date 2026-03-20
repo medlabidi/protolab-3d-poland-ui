@@ -1125,15 +1125,15 @@ const DesignAssistance = () => {
                                           const isAdminFile = msg.sender_type !== 'user';
                                           const accessType = att.access_type || 'free';
                                           const isDownloadBlocked = isAdminFile && (
-                                            (accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid' && !isPaymentCompleted) ||
+                                            (accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid') ||
                                             (accessType === 'preview_only' && !att.download_allowed)
                                           );
                                           const fileName = att.name || att.url || '';
                                           const mimeType = att.type || att.mime_type || '';
                                           const isImage = isImageFile(fileName, mimeType);
                                           const isPdf = isPdfFile(fileName, mimeType);
-                                          const isPaidUnpaid = isAdminFile && accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid' && !isPaymentCompleted;
-                                          const isPaidCompleted = isAdminFile && accessType === 'paid' && (att.payment_status === 'paid' || isPaymentCompleted);
+                                          const isPaidUnpaid = isAdminFile && accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid';
+                                          const isPaidCompleted = isAdminFile && accessType === 'paid' && att.payment_status === 'paid';
 
                                           {/* Case 1: Paid image, not yet paid — watermarked preview */}
                                           if (isPaidUnpaid && isImage) {
@@ -1165,7 +1165,7 @@ const DesignAssistance = () => {
                                                 </div>
                                                 {selectedRequest && (
                                                   <button
-                                                    onClick={() => handleProceedToPayment(selectedRequest)}
+                                                    onClick={() => navigate(`/checkout?orderId=${selectedRequest.id}&filePayment=true&messageId=${msg.id}&attachmentIdx=${idx}&amount=${att.price}&fileName=${encodeURIComponent(att.name || 'File')}`)}
                                                     className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black transition-colors"
                                                   >
                                                     <Lock className="w-3 h-3" />
@@ -1204,7 +1204,7 @@ const DesignAssistance = () => {
                                                 </div>
                                                 {selectedRequest && (
                                                   <button
-                                                    onClick={() => handleProceedToPayment(selectedRequest)}
+                                                    onClick={() => navigate(`/checkout?orderId=${selectedRequest.id}&filePayment=true&messageId=${msg.id}&attachmentIdx=${idx}&amount=${att.price}&fileName=${encodeURIComponent(att.name || 'File')}`)}
                                                     className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black transition-colors"
                                                   >
                                                     <Lock className="w-3 h-3" />

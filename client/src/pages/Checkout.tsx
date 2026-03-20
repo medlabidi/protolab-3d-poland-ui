@@ -77,6 +77,11 @@ export function Checkout() {
   const orderId = searchParams.get('orderId');
   const isProjectOrders = searchParams.get('projectOrders') === 'true';
   const isProjectMode = searchParams.get('projectMode') === 'true';
+  const isFilePayment = searchParams.get('filePayment') === 'true';
+  const fileMessageId = searchParams.get('messageId');
+  const fileAttachmentIdx = searchParams.get('attachmentIdx');
+  const fileAmount = searchParams.get('amount');
+  const fileFileName = searchParams.get('fileName');
 
   const [order, setOrder] = useState<Order | null>(null);
   const [projectOrders, setProjectOrders] = useState<Order[]>([]);
@@ -97,6 +102,11 @@ export function Checkout() {
   const isDesignOrder = order?.order_type === 'design';
 
   useEffect(() => {
+    if (isFilePayment) {
+      // File payment mode — no need to fetch order details
+      setLoading(false);
+      return;
+    }
     if (isProjectMode) {
       loadProjectData();
       fetchBusinessInfo();
@@ -270,6 +280,55 @@ export function Checkout() {
       const token = localStorage.getItem('accessToken');
       if (!token) {
         navigate('/login');
+        return;
+      }
+
+      // File payment mode — pay for a specific attachment
+      if (isFilePayment && fileMessageId && fileAttachmentIdx !== null && fileAmount && orderId) {
+        const amount = parseFloat(fileAmount);
+
+        if (!amount || amount <= 0) {
+          toast.error('Invalid payment amount');
+          setProcessing(false);
+          return;
+        }
+
+        // Get user ID from the order
+        const userRes = await fetch(`${API_URL}/orders/${orderId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const orderData = await userRes.json();
+        const userId = orderData?.order?.user_id || orderData?.user_id;
+
+        if (!userId) {
+          throw new Error('Could not determine user');
+        }
+
+        const payuResponse = await fetch(`${API_URL}/payments/payu/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            orderId: `file__${orderId}__${fileMessageId}__${fileAttachmentIdx}`,
+            amount,
+            description: `File: ${fileFileName || 'Document'}`,
+            userId,
+          }),
+        });
+
+        if (!payuResponse.ok) {
+          const errorData = await payuResponse.json();
+          throw new Error(errorData.error || 'Payment creation failed');
+        }
+
+        const payuData = await payuResponse.json();
+        if (payuData.redirectUri) {
+          window.location.href = payuData.redirectUri;
+        } else {
+          throw new Error('No payment redirect URL received');
+        }
         return;
       }
 
@@ -581,7 +640,7 @@ export function Checkout() {
     );
   }
 
-  if (error || (!order && !isProjectMode)) {
+  if (error || (!order && !isProjectMode && !isFilePayment)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
         <Card className="max-w-md w-full dark:bg-gray-800">
@@ -598,6 +657,69 @@ export function Checkout() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // File payment mode — simplified checkout UI
+  if (isFilePayment) {
+    const amount = parseFloat(fileAmount || '0');
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="max-w-lg mx-auto space-y-6 py-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="dark:text-gray-300"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold dark:text-gray-100">File Payment</h1>
+              <p className="text-gray-600 dark:text-gray-400">Pay to unlock your file</p>
+            </div>
+          </div>
+
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                File Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-gray-300">File</span>
+                <span className="font-medium dark:text-gray-100">{decodeURIComponent(fileFileName || 'Document')}</span>
+              </div>
+              <Separator className="dark:bg-gray-700" />
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                <span className="text-2xl font-bold text-yellow-500">{amount.toFixed(2)} PLN</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            onClick={handleProceedToPayment}
+            className="w-full h-12 text-lg bg-yellow-500 hover:bg-yellow-400 text-black font-semibold"
+            disabled={processing}
+          >
+            {processing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-5 w-5" />
+                Pay {amount.toFixed(2)} PLN
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     );
   }
