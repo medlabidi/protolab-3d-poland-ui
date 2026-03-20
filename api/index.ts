@@ -4350,6 +4350,11 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
             console.log(`[DESIGN] Auto-created conversation ${conv.id} with initial description message`);
 
             // Trigger AI agent to generate first response
+            console.log('[DESIGN] >>> About to trigger AI agent for conv:', conv.id, 'order:', order.id);
+            console.log('[DESIGN] >>> AI_AGENT_ENABLED:', process.env.AI_AGENT_ENABLED);
+            console.log('[DESIGN] >>> generateAIResponse loaded:', !!generateAIResponse);
+            console.log('[DESIGN] >>> buildGeminiHistory loaded:', !!buildGeminiHistory);
+            console.log('[DESIGN] >>> buildDesignContext loaded:', !!buildDesignContext);
             try {
               // Try to set ai_status (may fail if column doesn't exist yet — that's ok)
               await supabase
@@ -4361,8 +4366,9 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
             }
             try {
               await triggerAIAgentResponse(conv.id, order.id);
+              console.log('[DESIGN] >>> AI agent trigger completed successfully');
             } catch (aiErr) {
-              console.error('[DESIGN] AI agent trigger error:', aiErr);
+              console.error('[DESIGN] >>> AI agent trigger error:', aiErr);
             }
           }
         }
