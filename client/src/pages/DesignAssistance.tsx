@@ -92,17 +92,21 @@ const DesignAssistance = () => {
   const [isDragging, setIsDragging] = useState(false);
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef<number>(0);
 
   const isPaymentCompleted = selectedRequest?.payment_status === 'paid';
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom only when new messages arrive (not on every poll)
   useEffect(() => {
-    setTimeout(() => {
-      const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
-    }, 100);
+    if (messages.length > prevMessageCountRef.current) {
+      setTimeout(() => {
+        const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 100);
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   useEffect(() => {
