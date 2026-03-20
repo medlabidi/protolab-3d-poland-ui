@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye, Bot } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -1075,26 +1075,32 @@ const DesignAssistance = () => {
                                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                                   msg.sender_type === 'user'
                                     ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
+                                    : msg.sender_type === 'system'
+                                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white'
                                     : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
                                 }`}>
-                                  {msg.sender_type === 'user' ? 'Y' : 'A'}
+                                  {msg.sender_type === 'user' ? 'Y' : msg.sender_type === 'system' ? <Bot className="w-4 h-4" /> : 'A'}
                                 </div>
                                 
                                 {/* Message Content */}
                                 <div className="flex flex-col gap-1 flex-1">
                                   {/* Sender Label */}
                                   <span className={`text-xs font-semibold ${
-                                    msg.sender_type === 'user' 
-                                      ? 'text-cyan-400 text-right' 
+                                    msg.sender_type === 'user'
+                                      ? 'text-cyan-400 text-right'
+                                      : msg.sender_type === 'system'
+                                      ? 'text-emerald-400 text-left'
                                       : 'text-purple-400 text-left'
                                   }`}>
-                                    {msg.sender_type === 'user' ? 'You' : 'Admin'}
+                                    {msg.sender_type === 'user' ? 'You' : msg.sender_type === 'system' ? 'AI Assistant' : 'Admin'}
                                   </span>
                                   
                                   <div
                                     className={`rounded-lg p-3 ${
                                       msg.sender_type === 'user'
                                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                                        : msg.sender_type === 'system'
+                                        ? 'bg-gradient-to-r from-emerald-900/50 to-teal-900/50 text-gray-200 border border-emerald-700/50'
                                         : 'bg-gray-800 text-gray-200 border border-gray-700'
                                     }`}
                                   >
@@ -1117,6 +1123,52 @@ const DesignAssistance = () => {
                                         })}
                                       </span>
                                     </div>
+
+                                    {/* Thingiverse Results (AI Agent) */}
+                                    {msg.sender_type === 'system' && msg.attachments && msg.attachments.some((att: any) => att.source === 'thingiverse') && (
+                                      <div className="mt-3 space-y-2">
+                                        <div className="flex items-center gap-1 mb-1">
+                                          <Eye className="w-3 h-3 text-emerald-400" />
+                                          <span className="text-xs text-emerald-400 font-medium">Found on Thingiverse (preview only)</span>
+                                        </div>
+                                        {msg.attachments.filter((att: any) => att.source === 'thingiverse').map((att: any, idx: number) => (
+                                          <div key={`tv-${idx}`} className="flex gap-3 p-2 bg-gray-900/50 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-colors">
+                                            {att.url && (
+                                              <img
+                                                src={att.url}
+                                                alt={att.name}
+                                                className="w-16 h-16 object-cover rounded flex-shrink-0"
+                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                              />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm text-white font-medium truncate">{att.name}</p>
+                                              {att.description && (
+                                                <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{att.description}</p>
+                                              )}
+                                              <div className="flex items-center gap-2 mt-1">
+                                                {att.creator && (
+                                                  <span className="text-xs text-gray-500">by {att.creator}</span>
+                                                )}
+                                                {att.thingiverse_url && (
+                                                  <a
+                                                    href={att.thingiverse_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-emerald-400 hover:text-emerald-300 underline"
+                                                  >
+                                                    View on Thingiverse
+                                                  </a>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-600 self-start flex-shrink-0">
+                                              Preview
+                                            </Badge>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
 
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
@@ -1420,6 +1472,43 @@ const DesignAssistance = () => {
                       </div>
                     ) : (
                       <div className="flex-shrink-0 px-4 pb-4 space-y-2">
+                        {/* Talk to Human button — show when AI is active */}
+                        {messages.some((m: any) => m.sender_type === 'system') && !messages.some((m: any) => m.sender_type === 'engineer') && (
+                          <div className="flex justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('accessToken');
+                                  if (!conversationId) return;
+                                  const resp = await fetch(`${API_URL}/conversations/${conversationId}/escalate`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}` },
+                                  });
+                                  if (resp.ok) {
+                                    toast.success("A human engineer will continue this conversation shortly.");
+                                    // Refresh messages to show the system message
+                                    if (selectedRequest) {
+                                      const msgResp = await fetch(`${API_URL}/conversations/design-request/${selectedRequest.id}`, {
+                                        headers: { 'Authorization': `Bearer ${token}` },
+                                      });
+                                      if (msgResp.ok) {
+                                        const data = await msgResp.json();
+                                        if (data.messages) setMessages(data.messages);
+                                      }
+                                    }
+                                  }
+                                } catch (e) {
+                                  toast.error("Failed to escalate. Please try again.");
+                                }
+                              }}
+                              className="text-xs border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                            >
+                              Talk to Human Engineer
+                            </Button>
+                          </div>
+                        )}
                         {conversationFile && (
                           <div className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg border border-cyan-500/30">
                             <FileText className="w-4 h-4 text-cyan-400 flex-shrink-0" />

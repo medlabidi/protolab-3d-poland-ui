@@ -38,6 +38,11 @@ let requireAuth: any;
 let sendVerificationEmail: any;
 let sendPasswordResetEmail: any;
 let sendWelcomeEmail: any;
+let generateAIResponse: any;
+let buildGeminiHistory: any;
+let buildDesignContext: any;
+let searchThingiverse: any;
+let formatThingiverseAsAttachments: any;
 
 const initModules = async () => {
   if (!bcrypt) {
@@ -64,6 +69,25 @@ const initModules = async () => {
     sendVerificationEmail = emailModule.sendVerificationEmail;
     sendPasswordResetEmail = emailModule.sendPasswordResetEmail;
     sendWelcomeEmail = emailModule.sendWelcomeEmail;
+  }
+  if (!generateAIResponse) {
+    try {
+      const geminiModule = await import('./_lib/gemini');
+      generateAIResponse = geminiModule.generateAIResponse;
+      buildGeminiHistory = geminiModule.buildGeminiHistory;
+      buildDesignContext = geminiModule.buildDesignContext;
+    } catch (e) {
+      console.warn('[AI_AGENT] Gemini module not available:', e);
+    }
+  }
+  if (!searchThingiverse) {
+    try {
+      const thingiverseModule = await import('./_lib/thingiverse');
+      searchThingiverse = thingiverseModule.searchThingiverse;
+      formatThingiverseAsAttachments = thingiverseModule.formatThingiverseAsAttachments;
+    } catch (e) {
+      console.warn('[AI_AGENT] Thingiverse module not available:', e);
+    }
   }
 };
 
@@ -2412,6 +2436,9 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path.match(/^\/conversations\/[^/]+\/typing$/) && req.method === 'POST') {
       return await handleSetTypingStatus(req as AuthenticatedRequest, res);
     }
+    if (path.match(/^\/conversations\/[^/]+\/escalate$/) && req.method === 'POST') {
+      return await handleEscalateToAdmin(req as AuthenticatedRequest, res);
+    }
     
     // Admin routes
     if (path === '/admin/orders' && req.method === 'GET') {
@@ -4321,6 +4348,17 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
             console.error('[DESIGN] Failed to send initial message:', msgError);
           } else {
             console.log(`[DESIGN] Auto-created conversation ${conv.id} with initial description message`);
+
+            // Trigger AI agent to generate first response
+            try {
+              await supabase
+                .from('conversations')
+                .update({ ai_status: 'active' })
+                .eq('id', conv.id);
+              await triggerAIAgentResponse(conv.id, order.id);
+            } catch (aiErr) {
+              console.error('[DESIGN] AI agent trigger error:', aiErr);
+            }
           }
         }
       } catch (convErr) {
@@ -5043,11 +5081,217 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       .eq('id', conversationId);
     
     console.log('[SEND_MESSAGE] Message sent successfully:', message);
+
+    // Trigger AI agent response if this is a design conversation and AI is active
+    try {
+      const { data: convData } = await supabase
+        .from('conversations')
+        .select('order_id, ai_status')
+        .eq('id', conversationId)
+        .single();
+
+      if (convData?.ai_status === 'active' && convData?.order_id) {
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('order_type')
+          .eq('id', convData.order_id)
+          .single();
+
+        if (orderData?.order_type === 'design') {
+          await triggerAIAgentResponse(conversationId, convData.order_id);
+        }
+      }
+    } catch (aiError) {
+      console.error('[SEND_MESSAGE] AI agent trigger error:', aiError);
+    }
+
     return res.status(201).json({ message });
   } catch (error: any) {
     console.error('[SEND_MESSAGE] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
+}
+
+/**
+ * AI Agent: Generate and insert an AI response for a design conversation.
+ * Called internally after user sends a message or after initial design request creation.
+ */
+async function triggerAIAgentResponse(conversationId: string, orderId: string) {
+  if (process.env.AI_AGENT_ENABLED !== 'true') {
+    console.log('[AI_AGENT] Disabled via AI_AGENT_ENABLED env var');
+    return;
+  }
+
+  if (!generateAIResponse || !buildGeminiHistory || !buildDesignContext) {
+    console.log('[AI_AGENT] Gemini module not loaded, skipping');
+    return;
+  }
+
+  const supabase = getSupabase();
+
+  try {
+    // 1. Check conversation AI status
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('ai_status')
+      .eq('id', conversationId)
+      .single();
+
+    if (!conversation || conversation.ai_status !== 'active') {
+      console.log('[AI_AGENT] Conversation AI status is not active:', conversation?.ai_status);
+      return;
+    }
+
+    // 2. Fetch the order (design request) for context
+    const { data: order } = await supabase
+      .from('orders')
+      .select('file_name, idea_description, usage_type, approximate_dimensions, desired_material, attached_files')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) {
+      console.error('[AI_AGENT] Order not found:', orderId);
+      return;
+    }
+
+    // 3. Fetch all messages in the conversation
+    const { data: messages } = await supabase
+      .from('conversation_messages')
+      .select('sender_type, message')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (!messages) {
+      console.error('[AI_AGENT] No messages found for conversation:', conversationId);
+      return;
+    }
+
+    // 4. If admin already responded, auto-escalate and stop
+    const hasEngineerMessages = messages.some((m: any) => m.sender_type === 'engineer');
+    if (hasEngineerMessages) {
+      console.log('[AI_AGENT] Engineer already responded, auto-escalating');
+      await supabase
+        .from('conversations')
+        .update({ ai_status: 'escalated' })
+        .eq('id', conversationId);
+      return;
+    }
+
+    // 5. Build conversation history and generate AI response
+    const designContext = buildDesignContext(order);
+    const geminiHistory = buildGeminiHistory(messages, designContext);
+    const { text: aiText, shouldEscalate, thingiverseSearches } = await generateAIResponse(geminiHistory);
+
+    // 6. Execute Thingiverse searches if requested
+    let allAttachments: any[] = [];
+    if (thingiverseSearches.length > 0 && searchThingiverse && formatThingiverseAsAttachments) {
+      for (const searchQuery of thingiverseSearches.slice(0, 2)) {
+        const results = await searchThingiverse(searchQuery);
+        if (results.length > 0) {
+          allAttachments = allAttachments.concat(formatThingiverseAsAttachments(results));
+        }
+      }
+    }
+
+    // 7. Insert AI message
+    const aiMessageData: any = {
+      conversation_id: conversationId,
+      sender_type: 'system',
+      sender_id: null,
+      message: aiText,
+    };
+
+    if (allAttachments.length > 0) {
+      aiMessageData.attachments = allAttachments;
+    }
+
+    const { error: insertError } = await supabase
+      .from('conversation_messages')
+      .insert([aiMessageData]);
+
+    if (insertError) {
+      console.error('[AI_AGENT] Failed to insert AI message:', insertError);
+      return;
+    }
+
+    // 8. Mark conversation as unread for user
+    await supabase
+      .from('conversations')
+      .update({
+        user_read: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
+
+    // 9. Handle escalation
+    if (shouldEscalate) {
+      await supabase
+        .from('conversations')
+        .update({ ai_status: 'escalated', admin_read: false })
+        .eq('id', conversationId);
+
+      await supabase
+        .from('conversation_messages')
+        .insert([{
+          conversation_id: conversationId,
+          sender_type: 'system',
+          sender_id: null,
+          message: 'This conversation has been escalated to a human design engineer. An admin will review the conversation history and continue assisting you shortly.',
+        }]);
+
+      console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);
+    }
+
+    console.log('[AI_AGENT] AI response sent for conversation:', conversationId);
+  } catch (error) {
+    console.error('[AI_AGENT] Error generating response:', error);
+  }
+}
+
+async function handleEscalateToAdmin(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const conversationId = path.split('/')[2];
+
+  if (!conversationId) {
+    return res.status(400).json({ error: 'Conversation ID required' });
+  }
+
+  const supabase = getSupabase();
+
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('id, ai_status')
+    .eq('id', conversationId)
+    .eq('user_id', user.userId)
+    .single();
+
+  if (!conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+
+  if (conversation.ai_status !== 'active') {
+    return res.status(200).json({ message: 'Already escalated or AI not active' });
+  }
+
+  await supabase
+    .from('conversations')
+    .update({ ai_status: 'escalated', admin_read: false })
+    .eq('id', conversationId);
+
+  await supabase
+    .from('conversation_messages')
+    .insert([{
+      conversation_id: conversationId,
+      sender_type: 'system',
+      sender_id: null,
+      message: 'You have requested to speak with a human design engineer. A team member will continue this conversation shortly.',
+    }]);
+
+  return res.status(200).json({ message: 'Escalated to admin' });
 }
 
 async function handleSetTypingStatus(req: AuthenticatedRequest, res: VercelResponse) {
