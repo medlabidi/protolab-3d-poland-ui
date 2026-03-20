@@ -48,7 +48,7 @@ export async function searchThingiverse(query: string): Promise<ThingiverseResul
       return [];
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     const hits = data.hits || data || [];
 
     const results: ThingiverseResult[] = hits.slice(0, THINGIVERSE_CONFIG.maxResults).map((thing: any) => ({

@@ -4351,10 +4351,15 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
 
             // Trigger AI agent to generate first response
             try {
+              // Try to set ai_status (may fail if column doesn't exist yet — that's ok)
               await supabase
                 .from('conversations')
                 .update({ ai_status: 'active' })
                 .eq('id', conv.id);
+            } catch (e) {
+              console.log('[DESIGN] Could not set ai_status:', e);
+            }
+            try {
               await triggerAIAgentResponse(conv.id, order.id);
             } catch (aiErr) {
               console.error('[DESIGN] AI agent trigger error:', aiErr);
@@ -5130,17 +5135,27 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
   const supabase = getSupabase();
 
   try {
-    // 1. Check conversation AI status
-    const { data: conversation } = await supabase
-      .from('conversations')
-      .select('ai_status')
-      .eq('id', conversationId)
-      .single();
+    // 1. Check conversation AI status (fallback to 'active' if column doesn't exist yet)
+    let aiStatus = 'active';
+    try {
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('ai_status')
+        .eq('id', conversationId)
+        .single();
+      if (conversation?.ai_status) {
+        aiStatus = conversation.ai_status;
+      }
+    } catch (e) {
+      console.log('[AI_AGENT] Could not read ai_status, assuming active');
+    }
 
-    if (!conversation || conversation.ai_status !== 'active') {
-      console.log('[AI_AGENT] Conversation AI status is not active:', conversation?.ai_status);
+    if (aiStatus !== 'active') {
+      console.log('[AI_AGENT] Conversation AI status is not active:', aiStatus);
       return;
     }
+
+    console.log('[AI_AGENT] Starting AI response for conversation:', conversationId);
 
     // 2. Fetch the order (design request) for context
     const { data: order } = await supabase
