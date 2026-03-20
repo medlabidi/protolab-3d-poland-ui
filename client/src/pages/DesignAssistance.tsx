@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -1134,6 +1134,7 @@ const DesignAssistance = () => {
                                           const isPdf = isPdfFile(fileName, mimeType);
                                           const isPaidUnpaid = isAdminFile && accessType === 'paid' && att.price > 0 && att.payment_status !== 'paid';
                                           const isPaidCompleted = isAdminFile && accessType === 'paid' && att.payment_status === 'paid';
+                                          const isPreviewOnly = isAdminFile && accessType === 'preview_only' && !att.download_allowed;
 
                                           {/* Case 1: Paid image, not yet paid — watermarked preview */}
                                           if (isPaidUnpaid && isImage) {
@@ -1215,7 +1216,71 @@ const DesignAssistance = () => {
                                             );
                                           }
 
-                                          {/* Case 3: Download blocked (preview_only, or paid non-previewable) — lock + badge */}
+                                          {/* Case 2b: Preview-only image — watermarked preview, no download */}
+                                          if (isPreviewOnly && isImage) {
+                                            return (
+                                              <div key={idx} className="mt-1">
+                                                <div
+                                                  className="watermark-overlay rounded-lg border border-purple-500/30 bg-gray-900"
+                                                  onContextMenu={(e) => e.preventDefault()}
+                                                >
+                                                  <img
+                                                    src={att.url}
+                                                    alt={att.name || 'Preview'}
+                                                    className="w-full max-h-64 object-contain rounded-lg"
+                                                    draggable={false}
+                                                    onDragStart={(e) => e.preventDefault()}
+                                                    style={{ pointerEvents: 'none' }}
+                                                  />
+                                                  <div className="absolute top-2 right-2 z-20">
+                                                    <Badge className="text-[10px] px-2 py-0.5 bg-purple-500/90 text-white border-purple-600 font-semibold shadow-lg">
+                                                      Preview Only
+                                                    </Badge>
+                                                  </div>
+                                                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-2 rounded-b-lg">
+                                                    <div className="flex items-center gap-2 text-xs text-purple-300">
+                                                      <Eye className="w-3 h-3" />
+                                                      <span className="truncate">{att.name || 'Attachment'}</span>
+                                                      <span className="ml-auto opacity-75">View only</span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          {/* Case 2c: Preview-only PDF — embedded PDF with watermark, no download */}
+                                          if (isPreviewOnly && isPdf) {
+                                            return (
+                                              <div key={idx} className="mt-1">
+                                                <div
+                                                  className="watermark-overlay rounded-lg border border-purple-500/30 bg-gray-900"
+                                                  onContextMenu={(e) => e.preventDefault()}
+                                                >
+                                                  <embed
+                                                    src={`${att.url}#toolbar=0&navpanes=0&scrollbar=0`}
+                                                    type="application/pdf"
+                                                    className="w-full rounded-t-lg"
+                                                    style={{ height: '360px', pointerEvents: 'none' }}
+                                                  />
+                                                  <div className="absolute top-2 right-2 z-20">
+                                                    <Badge className="text-[10px] px-2 py-0.5 bg-purple-500/90 text-white border-purple-600 font-semibold shadow-lg">
+                                                      Preview Only
+                                                    </Badge>
+                                                  </div>
+                                                  <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-2 rounded-b-lg">
+                                                    <div className="flex items-center gap-2 text-xs text-purple-300">
+                                                      <Eye className="w-3 h-3" />
+                                                      <span className="truncate">{att.name || 'Document.pdf'}</span>
+                                                      <span className="ml-auto opacity-75">View only</span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+
+                                          {/* Case 3: Download blocked (preview_only non-previewable, or paid non-previewable) — lock + badge */}
                                           if (isDownloadBlocked) {
                                             const blockMessage = accessType === 'paid'
                                               ? `Pay ${att.price ? att.price + ' PLN' : ''} to download`
