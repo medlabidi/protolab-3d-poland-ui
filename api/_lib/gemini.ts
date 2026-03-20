@@ -2,7 +2,7 @@
 
 const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY || '',
-  model: 'gemini-1.5-flash',
+  model: 'gemini-2.5-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
   maxTokens: 1024,
 };
