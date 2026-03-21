@@ -35,6 +35,9 @@ let getRefreshTokenExpiry: any;
 let verifyAccessToken: any;
 let cors: any;
 let requireAuth: any;
+let requireAdmin: any;
+let extractPathParam: any;
+let getParam: any;
 let sendVerificationEmail: any;
 let sendPasswordResetEmail: any;
 let sendWelcomeEmail: any;
@@ -63,6 +66,9 @@ const initModules = async () => {
     const middlewareModule = await import('./_lib/middleware');
     cors = middlewareModule.cors;
     requireAuth = middlewareModule.requireAuth;
+    requireAdmin = middlewareModule.requireAdmin;
+    extractPathParam = middlewareModule.extractPathParam;
+    getParam = middlewareModule.getParam;
   }
   if (!sendVerificationEmail) {
     const emailModule = await import('./_lib/email');
@@ -121,46 +127,24 @@ const parseJsonBody = async (req: VercelRequest): Promise<any> => {
 // These handlers MUST be declared before the router export to avoid "is not defined" errors
 
 async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  // Check if user is admin
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // Get filter type from query parameter
   const orderType = req.query?.type as string | undefined;
+  let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
   
-  // Build query
-  let query = supabase
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  // Filter by order_type if specified
   if (orderType === 'print') {
-    // Include orders where order_type is 'print' OR NULL (legacy orders before order_type was added)
     query = query.or('order_type.eq.print,order_type.is.null');
   } else if (orderType === 'design') {
     query = query.eq('order_type', 'design');
   }
-
+  
   const { data: orders, error } = await query;
-
   if (error) {
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
-
-  // Fetch user data separately (no FK join dependency)
+  
   const orderList = orders || [];
   const userIds = [...new Set(orderList.map((o: any) => o.user_id).filter(Boolean))];
   let userMap: Record<string, any> = {};
@@ -174,28 +158,15 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     }
   }
   const enrichedOrders = orderList.map((o: any) => ({ ...o, users: userMap[o.user_id] || null }));
-
+  
   return res.status(200).json({ orders: enrichedOrders });
 }
 
 async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  // Check if user is admin
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // Get all users
   const { data: users, error } = await supabase
     .from('users')
     .select('id, name, email, role, phone, address, city, zip_code, country, email_verified, created_at, status')
@@ -279,16 +250,9 @@ async function handleMarkNotificationRead(req: AuthenticatedRequest, res: Vercel
 }
 
 async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
   const supabase = getSupabase();
-  
-  // Check admin
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
-  if (userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  const user = await requireAdmin(req, res, supabase);
+  if (!user) return;
   
   try {
     const { data: businesses, error } = await supabase
@@ -301,7 +265,6 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
       return res.status(200).json({ businesses: [] });
     }
     
-    // Enhance with order stats for each business
     const businessesWithStats = await Promise.all((businesses || []).map(async (business: any) => {
       const { data: orders } = await supabase
         .from('orders')
@@ -313,11 +276,7 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
         sum + (parseFloat(o.paid_amount) || parseFloat(o.price) || 0), 0
       ) || 0;
       
-      return {
-        ...business,
-        orderCount,
-        totalSpent
-      };
+      return { ...business, orderCount, totalSpent };
     }));
     
     return res.status(200).json({ businesses: businessesWithStats });
@@ -328,30 +287,12 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const url = req.url || '';
-  const path = url.split('?')[0].replace('/api', '');
-  const orderId = path.split('/')[3]; // /admin/orders/:id
-  
-  const { data: order, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .single();
+  const orderId = extractPathParam(req, 2);
+  const { data: order, error } = await supabase.from('orders').select('*').eq('id', orderId).single();
   
   if (error || !order) {
     return res.status(404).json({ error: 'Order not found' });
@@ -461,24 +402,11 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
 }
 
 async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const url = req.url || '';
-  const path = url.split('?')[0].replace('/api', '');
-  const targetUserId = path.split('/')[3]; // /admin/users/:id/role
+  const targetUserId = extractPathParam(req, 2);
   const { role } = req.body;
   
   if (!['user', 'admin'].includes(role)) {
@@ -500,26 +428,11 @@ async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { data: settings, error } = await supabase
-    .from('settings')
-    .select('*')
-    .limit(1)
-    .single();
+  const { data: settings, error } = await supabase.from('settings').select('*').limit(1).single();
   
   if (error && error.code !== 'PGRST116') {
     return res.status(500).json({ error: 'Failed to fetch settings' });
@@ -529,28 +442,12 @@ async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResp
 }
 
 async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
   const updates = req.body;
-  
-  const { data: existing } = await supabase
-    .from('settings')
-    .select('id')
-    .limit(1)
-    .single();
+  const { data: existing } = await supabase.from('settings').select('id').limit(1).single();
   
   let result;
   if (existing) {
@@ -566,11 +463,7 @@ async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelR
     }
     result = data;
   } else {
-    const { data, error } = await supabase
-      .from('settings')
-      .insert([updates])
-      .select()
-      .single();
+    const { data, error } = await supabase.from('settings').insert([updates]).select().single();
     
     if (error) {
       return res.status(500).json({ error: 'Failed to create settings' });
@@ -582,20 +475,9 @@ async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
   const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  const user = await requireAdmin(req, res, supabase);
+  if (!user) return;
   
   const { data: materials, error } = await supabase
     .from('materials')
@@ -612,20 +494,9 @@ async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelRes
 }
 
 async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
   const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  const user = await requireAdmin(req, res, supabase);
+  if (!user) return;
   
   const { data: printers, error } = await supabase
     .from('printers')
@@ -640,38 +511,15 @@ async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResp
 }
 
 async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // Extract only the fields that exist in the database
   const { material_type, color, hex_color, price_per_kg, stock_status, supplier, description, is_active } = req.body;
-  
-  const materialData = {
-    material_type,
-    color,
-    hex_color,
-    price_per_kg,
-    stock_status,
-    supplier,
-    description,
-    is_active
-  };
   
   const { data: material, error } = await supabase
     .from('materials')
-    .insert([materialData])
+    .insert([{ material_type, color, hex_color, price_per_kg, stock_status, supplier, description, is_active }])
     .select()
     .single();
   
@@ -684,33 +532,19 @@ async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { id, ...updates } = req.body;
+  const { id, stock_quantity, ...updates } = req.body;
   
   if (!id) {
     return res.status(400).json({ error: 'Material ID is required' });
   }
   
-  // Remove stock_quantity if it exists (column doesn't exist in DB)
-  const { stock_quantity, ...filteredUpdates } = updates;
-  
   const { data: material, error } = await supabase
     .from('materials')
-    .update(filteredUpdates)
+    .update(updates)
     .eq('id', id)
     .select()
     .single();
@@ -723,32 +557,16 @@ async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const materialId = req.query.id;
-  
+  const materialId = getParam(req, 'id');
   if (!materialId) {
     return res.status(400).json({ error: 'Material ID is required' });
   }
   
-  const { error } = await supabase
-    .from('materials')
-    .delete()
-    .eq('id', materialId);
-  
+  const { error } = await supabase.from('materials').delete().eq('id', materialId);
   if (error) {
     return res.status(500).json({ error: 'Failed to delete material', details: error.message });
   }
@@ -759,20 +577,9 @@ async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelR
 // Material Types handlers
 async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
-    if (!user) return;
-    
     const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    const user = await requireAdmin(req, res, supabase);
+    if (!user) return;
     
     const { data: materialTypes, error } = await supabase
       .from('material_types')
@@ -799,39 +606,23 @@ async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: Verce
 }
 
 async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
   const { name, description } = req.body;
-  
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Material type name is required' });
   }
   
   const { data: materialType, error } = await supabase
     .from('material_types')
-    .insert([{ 
-      name: name.trim(), 
-      description: description || null,
-      is_active: true 
-    }])
+    .insert([{ name: name.trim(), description: description || null, is_active: true }])
     .select()
     .single();
   
   if (error) {
-    if (error.code === '23505') { // Unique constraint violation
+    if (error.code === '23505') {
       return res.status(409).json({ error: 'Material type already exists' });
     }
     return res.status(500).json({ error: 'Failed to create material type', details: error.message });
@@ -841,29 +632,16 @@ async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: Ver
 }
 
 async function handleAdminUpdateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const materialTypeId = req.query.id;
-  
+  const materialTypeId = getParam(req, 'id');
   if (!materialTypeId) {
     return res.status(400).json({ error: 'Material type ID is required' });
   }
   
   const { name, description, is_active } = req.body;
-  
   const updateData: any = {};
   if (name !== undefined) updateData.name = name.trim();
   if (description !== undefined) updateData.description = description;
@@ -887,28 +665,15 @@ async function handleAdminUpdateMaterialType(req: AuthenticatedRequest, res: Ver
 }
 
 async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const materialTypeId = req.query.id;
-  
+  const materialTypeId = getParam(req, 'id');
   if (!materialTypeId) {
     return res.status(400).json({ error: 'Material type ID is required' });
   }
   
-  // Check if any materials are using this type
   const { data: materials, error: checkError } = await supabase
     .from('materials')
     .select('id')
@@ -923,11 +688,7 @@ async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: Ver
     return res.status(409).json({ error: 'Cannot delete material type that is in use by materials' });
   }
   
-  const { error } = await supabase
-    .from('material_types')
-    .delete()
-    .eq('id', materialTypeId);
-  
+  const { error } = await supabase.from('material_types').delete().eq('id', materialTypeId);
   if (error) {
     return res.status(500).json({ error: 'Failed to delete material type', details: error.message });
   }
@@ -938,20 +699,9 @@ async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: Ver
 // Suppliers handlers
 async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
-    if (!user) return;
-    
     const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    const user = await requireAdmin(req, res, supabase);
+    if (!user) return;
     
     const { data: suppliers, error } = await supabase
       .from('suppliers')
@@ -966,7 +716,6 @@ async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelRes
       });
     }
     
-    // Ensure materials_supplied are integers, not strings
     const suppliersWithIntegers = (suppliers || []).map(supplier => ({
       ...supplier,
       materials_supplied: Array.isArray(supplier.materials_supplied)
@@ -986,36 +735,11 @@ async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelRes
 
 async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
+    const supabase = getSupabase();
+    const user = await requireAdmin(req, res, supabase);
     if (!user) return;
     
-    const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const { 
-      name, 
-      contact_name, 
-      email, 
-      phone, 
-      address, 
-      city, 
-      postal_code, 
-      country, 
-      website, 
-      materials_supplied, 
-      delivery_time, 
-      notes, 
-      active 
-    } = req.body;
+    const { name, contact_name, email, phone, address, city, postal_code, country, website, materials_supplied, delivery_time, notes, active } = req.body;
     
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
@@ -1071,42 +795,16 @@ async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelR
 
 async function handleAdminUpdateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
+    const supabase = getSupabase();
+    const user = await requireAdmin(req, res, supabase);
     if (!user) return;
     
-    const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const supplierId = req.query.id;
-    
+    const supplierId = getParam(req, 'id');
     if (!supplierId) {
       return res.status(400).json({ error: 'Supplier ID is required' });
     }
     
-    const { 
-      name, 
-      contact_name, 
-      email, 
-      phone, 
-      address, 
-      city, 
-      postal_code, 
-      country, 
-      website, 
-      materials_supplied, 
-      delivery_time, 
-      notes, 
-      active 
-    } = req.body;
+    const { name, contact_name, email, phone, address, city, postal_code, country, website, materials_supplied, delivery_time, notes, active } = req.body;
     
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
@@ -1149,32 +847,16 @@ async function handleAdminUpdateSupplier(req: AuthenticatedRequest, res: VercelR
 
 async function handleAdminDeleteSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
+    const supabase = getSupabase();
+    const user = await requireAdmin(req, res, supabase);
     if (!user) return;
     
-    const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const supplierId = req.query.id;
-    
+    const supplierId = getParam(req, 'id');
     if (!supplierId) {
       return res.status(400).json({ error: 'Supplier ID is required' });
     }
     
-    const { error } = await supabase
-      .from('suppliers')
-      .delete()
-      .eq('id', supplierId);
-    
+    const { error } = await supabase.from('suppliers').delete().eq('id', supplierId);
     if (error) {
       return res.status(500).json({ error: 'Failed to delete supplier', details: error.message });
     }
@@ -1292,23 +974,11 @@ async function handleAdminCreateMaintenance(req: AuthenticatedRequest, res: Verc
 
 async function handleAdminUpdateMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
+    const supabase = getSupabase();
+    const user = await requireAdmin(req, res, supabase);
     if (!user) return;
     
-    const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const maintenanceId = req.query.id;
-    
+    const maintenanceId = getParam(req, 'id');
     if (!maintenanceId) {
       return res.status(400).json({ error: 'Maintenance ID is required' });
     }
@@ -1337,32 +1007,16 @@ async function handleAdminUpdateMaintenance(req: AuthenticatedRequest, res: Verc
 
 async function handleAdminDeleteMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const user = requireAuth(req, res);
+    const supabase = getSupabase();
+    const user = await requireAdmin(req, res, supabase);
     if (!user) return;
     
-    const supabase = getSupabase();
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.userId)
-      .single();
-    
-    if (userError || userData?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
-    const maintenanceId = req.query.id;
-    
+    const maintenanceId = getParam(req, 'id');
     if (!maintenanceId) {
       return res.status(400).json({ error: 'Maintenance ID is required' });
     }
     
-    const { error } = await supabase
-      .from('maintenances')
-      .delete()
-      .eq('id', maintenanceId);
-    
+    const { error } = await supabase.from('maintenances').delete().eq('id', maintenanceId);
     if (error) {
       console.error('Error deleting maintenance:', error);
       return res.status(500).json({ error: 'Failed to delete maintenance', details: error.message });
@@ -1379,20 +1033,9 @@ async function handleAdminDeleteMaintenance(req: AuthenticatedRequest, res: Verc
 }
 
 async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
-  if (!user) return;
-  
   const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  const user = await requireAdmin(req, res, supabase);
+  if (!user) return;
   
   console.log('Creating printer with data:', req.body);
   
@@ -1411,55 +1054,33 @@ async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
   const { id, ...updates } = req.body;
-  
   if (!id) {
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
-  // Count total printers
-  const { count: totalPrinters } = await supabase
-    .from('printers')
-    .select('*', { count: 'exact', head: true });
+  const { count: totalPrinters } = await supabase.from('printers').select('*', { count: 'exact', head: true });
   
   console.log('[PRINTER_UPDATE] Total printers:', totalPrinters);
   console.log('[PRINTER_UPDATE] Updates:', updates);
   
-  // If only one printer, it MUST be default - force it
   if (totalPrinters === 1) {
     console.log('[PRINTER_UPDATE] Only one printer - forcing is_default=true');
     updates.is_default = true;
   }
   
-  // If setting as default, unset all other printers first
   if (updates.is_default === true && totalPrinters > 1) {
     console.log('[PRINTER_UPDATE] Setting as default - unsetting others');
-    const { error: unsetError } = await supabase
-      .from('printers')
-      .update({ is_default: false })
-      .neq('id', id);
-    
+    const { error: unsetError } = await supabase.from('printers').update({ is_default: false }).neq('id', id);
     if (unsetError) {
       console.error('[PRINTER_UPDATE] Error unsetting other default printers:', unsetError);
     }
   }
   
-  // If trying to unset default on the only printer, reject it
   if (updates.is_default === false && totalPrinters === 1) {
     return res.status(400).json({ 
       error: 'Cannot unset default on the only printer',
@@ -1467,42 +1088,20 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
     });
   }
   
-  // If unsetting default and multiple printers exist, ensure another one becomes default
   if (updates.is_default === false && totalPrinters > 1) {
-    const { data: otherDefault } = await supabase
-      .from('printers')
-      .select('id')
-      .eq('is_default', true)
-      .neq('id', id)
-      .limit(1)
-      .single();
+    const { data: otherDefault } = await supabase.from('printers').select('id').eq('is_default', true).neq('id', id).limit(1).single();
     
     if (!otherDefault) {
-      // No other default exists, find first active printer and make it default
-      const { data: firstActive } = await supabase
-        .from('printers')
-        .select('id')
-        .eq('is_active', true)
-        .neq('id', id)
-        .limit(1)
-        .single();
+      const { data: firstActive } = await supabase.from('printers').select('id').eq('is_active', true).neq('id', id).limit(1).single();
       
       if (firstActive) {
         console.log('[PRINTER_UPDATE] Making another printer default:', firstActive.id);
-        await supabase
-          .from('printers')
-          .update({ is_default: true })
-          .eq('id', firstActive.id);
+        await supabase.from('printers').update({ is_default: true }).eq('id', firstActive.id);
       }
     }
   }
   
-  const { data: printer, error } = await supabase
-    .from('printers')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const { data: printer, error } = await supabase.from('printers').update(updates).eq('id', id).select().single();
   
   if (error) {
     console.error('[PRINTER_UPDATE] Error updating printer:', error);
@@ -1514,32 +1113,16 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminDeletePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const user = requireAuth(req, res);
+  const supabase = getSupabase();
+  const user = await requireAdmin(req, res, supabase);
   if (!user) return;
   
-  const supabase = getSupabase();
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.userId)
-    .single();
-  
-  if (userError || userData?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const printerId = req.query.id;
-  
+  const printerId = getParam(req, 'id');
   if (!printerId) {
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
-  const { error } = await supabase
-    .from('printers')
-    .delete()
-    .eq('id', printerId);
-  
+  const { error } = await supabase.from('printers').delete().eq('id', printerId);
   if (error) {
     return res.status(500).json({ error: 'Failed to delete printer', details: error.message });
   }

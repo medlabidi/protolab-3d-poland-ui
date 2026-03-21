@@ -1002,7 +1002,7 @@ const DesignAssistance = () => {
                             Reference Files ({selectedRequest.attached_files.length})
                           </p>
                           <div className="space-y-1">
-                            {selectedRequest.attached_files.map((file: any, idx: number) => (
+                            {selectedRequest.attached_files.filter((file: any) => file != null && file.url).map((file: any, idx: number) => (
                               <a
                                 key={idx}
                                 href={file.url}
