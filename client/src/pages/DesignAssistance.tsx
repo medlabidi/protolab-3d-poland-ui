@@ -16,7 +16,7 @@ import { API_URL } from "@/config/api";
 import { ModelPreviewCard } from "@/components/ModelPreviewCard";
 import { ModelViewerModal } from "@/components/ModelViewerModal";
 import { is3DFile, isImageFile, isPdfFile } from "@/utils/fileHelpers";
-import { Attachment } from "@/types/attachment";
+import { Attachment, Message } from "@/types/attachment";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 interface DesignRequest {
@@ -26,8 +26,8 @@ interface DesignRequest {
   usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
   usage_details?: string;
   approximate_dimensions?: string;
-  attached_files?: any[];
-  reference_images?: any[];
+  attached_files?: Attachment[];
+  reference_images?: Attachment[];
   design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'approved' | 'cancelled';
   estimated_price?: number;
   final_price?: number;
@@ -39,15 +39,6 @@ interface DesignRequest {
   user_rejection_reason?: string;
   created_at: string;
   updated_at?: string;
-}
-
-interface Message {
-  id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  message: string;
-  attachments?: any[];
-  created_at: string;
-  is_read: boolean;
 }
 
 const DesignAssistance = () => {
@@ -241,23 +232,8 @@ const DesignAssistance = () => {
         }
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
-        console.log('✅ [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
         
-        // Log messages with attachments for debugging
-        const messagesWithAttachments = data.messages?.filter((msg: any) => msg.attachments && msg.attachments.length > 0);
-        if (messagesWithAttachments && messagesWithAttachments.length > 0) {
-          console.log('📎 [Design Assistance] Messages with attachments:', messagesWithAttachments.length);
-          messagesWithAttachments.forEach((msg: any, idx: number) => {
-            console.log(`  Message ${idx + 1}:`, {
-              id: msg.id,
-              sender: msg.sender_type,
-              attachments: msg.attachments.map((att: any) => ({
-                name: att.name,
-                url: att.url,
-                size: att.size
-              }))
-            });
-          });
+        // Load messages and conversation details
         }
       } else if (response.status === 404) {
         // No conversation yet
@@ -1129,13 +1105,13 @@ const DesignAssistance = () => {
                                     </div>
 
                                     {/* Thingiverse Results (AI Agent) */}
-                                    {msg.sender_type === 'system' && msg.attachments && msg.attachments.some((att: any) => att.source === 'thingiverse') && (
+                                    {msg.sender_type === 'system' && msg.attachments && msg.attachments.some((att: Attachment) => att.source === 'thingiverse') && (
                                       <div className="mt-3 space-y-2">
                                         <div className="flex items-center gap-1 mb-1">
                                           <Eye className="w-3 h-3 text-emerald-400" />
                                           <span className="text-xs text-emerald-400 font-medium">Found on Thingiverse (preview only)</span>
                                         </div>
-                                        {msg.attachments.filter((att: any) => att.source === 'thingiverse').map((att: any, idx: number) => (
+                                        {msg.attachments.filter((att: Attachment) => att.source === 'thingiverse').map((att: Attachment, idx: number) => (
                                           <div key={`tv-${idx}`} className="flex gap-3 p-2 bg-gray-900/50 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-colors">
                                             {att.url && (
                                               <img
@@ -1177,7 +1153,7 @@ const DesignAssistance = () => {
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
                                       <div className="mt-2 space-y-2">
-                                        {msg.attachments.filter((att: any) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: any, idx: number) => {
+                                        {msg.attachments.filter((att: Attachment) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: Attachment, idx: number) => {
                                           const isAdminFile = msg.sender_type !== 'user';
                                           const accessType = att.access_type || 'free';
                                           const isDownloadBlocked = isAdminFile && (
@@ -1417,7 +1393,7 @@ const DesignAssistance = () => {
 
                                     {/* 3D File Attachments from Admin */}
                                     {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (() => {
-                                      const filtered3DFiles = msg.attachments.filter((att: any) => {
+                                      const filtered3DFiles = msg.attachments.filter((att: Attachment) => {
                                         const hasUrl = !!att.url;
                                         const fileName = att.name || att.url;
                                         return hasUrl && is3DFile(fileName);
@@ -1427,7 +1403,7 @@ const DesignAssistance = () => {
 
                                       return (
                                         <div className="mt-3 space-y-3">
-                                          {filtered3DFiles.map((attachment: any, idx: number) => {
+                                          {filtered3DFiles.map((attachment: Attachment, idx: number) => {
                                             const isPreviewOnly = attachment.access_type === 'preview_only' && !attachment.download_allowed;
                                             return (
                                               <div key={idx}>

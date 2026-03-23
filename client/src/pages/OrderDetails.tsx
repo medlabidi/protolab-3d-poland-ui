@@ -52,11 +52,8 @@ const OrderDetails = () => {
   const [reviewText, setReviewText] = useState("");
   const [startingConversation, setStartingConversation] = useState(false);
 
-  console.log('OrderDetails component mounted, orderId:', orderId);
-
   useEffect(() => {
     if (!orderId) {
-      console.error('No orderId in URL params!');
       setError('Order ID is missing');
       setLoading(false);
       return;
@@ -102,17 +99,13 @@ const OrderDetails = () => {
         return;
       }
       
-      console.log('Fetching order:', orderId);
       let response = await fetch(`${API_URL}/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      console.log('Order response status:', response.status);
-
       if (response.status === 401 && retry) {
-        console.log('Token expired, refreshing...');
         const newToken = await refreshAccessToken();
         if (newToken) {
           return fetchOrder(false);
@@ -122,26 +115,21 @@ const OrderDetails = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Order fetch failed:', response.status, errorText);
         throw new Error(`Failed to fetch order: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Order data received:', JSON.stringify(data, null, 2));
       
       // Handle both { order } and direct order response
       const orderData = data.order || data;
       
       if (!orderData || !orderData.id) {
-        console.error('Invalid order data structure:', data);
         throw new Error('Invalid order data received');
       }
       
-      console.log('Setting order:', orderData);
       setOrder(orderData);
       setError(null);
     } catch (err) {
-      console.error('Error fetching order:', err);
       setError(err instanceof Error ? err.message : 'Failed to load order');
       toast.error('Failed to load order details');
     } finally {

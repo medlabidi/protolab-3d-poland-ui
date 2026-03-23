@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { OrderTimeline } from "@/components/OrderTimeline";
+import type { Attachment, Message } from '@/types/attachment';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -38,8 +39,8 @@ interface Order {
   usage_details?: string;
   approximate_dimensions?: string;
   desired_material?: string;
-  attached_files?: any[];
-  reference_images?: any[];
+  attached_files?: Attachment[];
+  reference_images?: Attachment[];
   request_chat?: boolean;
   design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'approved' | 'cancelled';
   admin_design_file?: string;
@@ -1329,7 +1330,7 @@ const AdminDesignAssistance = () => {
                                   {/* Attachments */}
                                   {msg.attachments && msg.attachments.length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
-                                      {msg.attachments.map((att: any, idx: number) => (
+                                      {msg.attachments.map((att: Attachment, idx: number) => (
                                         <div key={idx} className="flex items-center gap-2 text-xs opacity-90 flex-wrap">
                                           <Package className="w-3 h-3" />
                                           <span className="truncate max-w-[120px]">{att.name || 'Attachment'}</span>

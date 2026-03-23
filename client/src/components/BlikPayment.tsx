@@ -52,8 +52,8 @@ export function BlikPayment({ orderId, amount, onSuccess, onError }: BlikPayment
 
       setSuccess(true);
       onSuccess?.();
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to process payment';
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error) ? err.message : 'Failed to process payment';
       setError(errorMessage);
       onError?.(errorMessage);
     } finally {
@@ -92,8 +92,8 @@ export function BlikPayment({ orderId, amount, onSuccess, onError }: BlikPayment
       if (data.redirectUri) {
         window.location.href = data.redirectUri;
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to process payment';
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error) ? err.message : 'Failed to process payment';
       setError(errorMessage);
       onError?.(errorMessage);
     } finally {

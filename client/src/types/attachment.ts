@@ -12,6 +12,23 @@ export interface Attachment {
   download_allowed?: boolean;
   payment_status?: string;
   price?: number;
+  file_path?: string;
+  original_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  source?: 'user' | 'thingiverse' | 'system';
+}
+
+/**
+ * Message in a conversation
+ */
+export interface Message {
+  id: string;
+  sender_type: 'user' | 'engineer' | 'system';
+  message: string;
+  attachments: Attachment[];
+  created_at: string;
+  is_read: boolean;
 }
 
 /**

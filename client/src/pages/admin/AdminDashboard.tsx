@@ -347,8 +347,8 @@ const AdminDashboard = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <main className="flex-1 p-4 sm:p-6 md:p-8 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-500" />
         </main>
       </div>
     );
@@ -361,33 +361,33 @@ const AdminDashboard = () => {
       <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Dashboard</h1>
-            <p className="text-sm sm:text-base text-gray-400">Welcome back! Here's what's happening with your business.</p>
+          <div className="animate-slide-up">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 sm:mb-2">Dashboard</h1>
+            <p className="text-xs sm:text-sm md:text-base text-gray-400">Welcome back! Here's what's happening with your business.</p>
           </div>
 
           {/* Job Notifications */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
             {/* Print Jobs Notification */}
             {stats.printJobs > 0 && (
               <Card 
                 className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 border-blue-700/50 cursor-pointer hover:from-blue-900/60 hover:to-blue-800/40 transition-all group"
                 onClick={() => navigate('/admin/orders/print-jobs')}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-blue-600 rounded-lg group-hover:scale-110 transition-transform">
-                        <Boxes className="w-6 h-6 text-white" />
+                <CardContent className="p-3 sm:p-4 md:p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                      <div className="p-2 sm:p-3 bg-blue-600 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                        <Boxes className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white mb-1">
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-0.5 sm:mb-1">
                           {stats.printJobs} Print {stats.printJobs === 1 ? 'Job' : 'Jobs'}
                         </h3>
-                        <p className="text-blue-200 text-sm">Click to view and manage</p>
+                        <p className="text-blue-200 text-xs sm:text-sm">Click to view and manage</p>
                       </div>
                     </div>
-                    <ArrowUpRight className="w-6 h-6 text-blue-300 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-300 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
@@ -402,16 +402,16 @@ const AdminDashboard = () => {
               } cursor-pointer hover:from-purple-900/60 hover:to-purple-800/40 transition-all group`}
               onClick={() => navigate('/admin/orders/design-assistance')}
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 ${
+              <CardContent className="p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                    <div className={`p-2 sm:p-3 ${
                       stats.designJobs > 0 ? 'bg-purple-600' : 'bg-gray-600'
-                    } rounded-lg group-hover:scale-110 transition-transform`}>
-                      <Palette className="w-6 h-6 text-white" />
+                    } rounded-lg group-hover:scale-110 transition-transform flex-shrink-0`}>
+                      <Palette className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white mb-1">
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-0.5 sm:mb-1">
                         {stats.designJobs > 0 
                           ? `${stats.designJobs} Design ${stats.designJobs === 1 ? 'Request' : 'Requests'}`
                           : 'No Design Requests'
@@ -419,14 +419,14 @@ const AdminDashboard = () => {
                       </h3>
                       <p className={`${
                         stats.designJobs > 0 ? 'text-purple-200' : 'text-gray-400'
-                      } text-sm`}>
+                      } text-xs sm:text-sm`}>
                         {stats.designJobs > 0 ? 'Click to view and respond' : 'Click to view all requests'}
                       </p>
                     </div>
                   </div>
-                  <ArrowUpRight className={`w-6 h-6 ${
+                  <ArrowUpRight className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${
                     stats.designJobs > 0 ? 'text-purple-300' : 'text-gray-400'
-                  } group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform`} />
+                  } group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform flex-shrink-0`} />
                 </div>
               </CardContent>
             </Card>
@@ -502,31 +502,31 @@ const AdminDashboard = () => {
           )}
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <Card className="bg-gradient-to-br from-purple-600 to-purple-700 border-0 cursor-pointer hover:from-purple-500 hover:to-purple-600 transition-all"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <Card className="bg-gradient-to-br from-purple-600 to-purple-700 border-0 cursor-pointer hover:from-purple-500 hover:to-purple-600 transition-all group"
               onClick={() => navigate('/admin/users')}
             >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-xl">
-                  <Users className="w-6 h-6 text-white" />
+              <CardContent className="p-3 sm:p-4 md:p-6 flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-white/20 rounded-xl group-hover:scale-110 transition-transform flex-shrink-0">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                 </div>
-                <div>
-                  <p className="text-white font-semibold">Manage Users</p>
-                  <p className="text-purple-200 text-sm">View customer accounts</p>
+                <div className="min-w-0">
+                  <p className="text-white font-semibold text-xs sm:text-sm md:text-base">Manage Users</p>
+                  <p className="text-purple-200 text-xs hidden sm:block">View customer accounts</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-600 to-green-700 border-0 cursor-pointer hover:from-green-500 hover:to-green-600 transition-all"
+            <Card className="bg-gradient-to-br from-green-600 to-green-700 border-0 cursor-pointer hover:from-green-500 hover:to-green-600 transition-all group"
               onClick={() => navigate('/admin/printers')}
             >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-xl">
-                  <Printer className="w-6 h-6 text-white" />
+              <CardContent className="p-3 sm:p-4 md:p-6 flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-white/20 rounded-xl group-hover:scale-110 transition-transform flex-shrink-0">
+                  <Printer className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                 </div>
-                <div>
-                  <p className="text-white font-semibold">Printer Status</p>
-                  <p className="text-green-200 text-sm">Monitor your printers</p>
+                <div className="min-w-0">
+                  <p className="text-white font-semibold text-xs sm:text-sm md:text-base">Printer Status</p>
+                  <p className="text-green-200 text-xs hidden sm:block">Monitor your printers</p>
                 </div>
               </CardContent>
             </Card>
@@ -536,19 +536,19 @@ const AdminDashboard = () => {
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+        <DialogContent className="max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white p-3 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-xl sm:text-2xl font-bold">
               {selectedOrder?.order_type === 'design' ? '🎨 Design Assistance Request' : '📦 Print Job'} 
             </DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogDescription className="text-gray-400 text-xs sm:text-sm">
               {selectedOrder?.file_name || 'Order details and specifications'}
             </DialogDescription>
           </DialogHeader>
 
           {loadingOrderDetails ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-500" />
             </div>
           ) : selectedOrder ? (
             <div className="space-y-6">

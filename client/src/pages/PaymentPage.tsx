@@ -77,13 +77,16 @@ export function PaymentPage() {
   const [blikCode, setBlikCode] = useState<string>('');
 
   useEffect(() => {
-    if (orderId) {
-      // Fetch existing order
-      Promise.all([fetchOrder(), fetchPaymentMethods()]);
-    } else {
-      setError('No order ID provided');
-      setLoading(false);
-    }
+    const init = async () => {
+      if (orderId) {
+        // Fetch existing order
+        await Promise.all([fetchOrder(), fetchPaymentMethods()]);
+      } else {
+        setError('No order ID provided');
+        setLoading(false);
+      }
+    };
+    init();
   }, [orderId]);
 
   const fetchOrder = async () => {
@@ -111,8 +114,8 @@ export function PaymentPage() {
       if (data.order.payment_status === 'paid') {
         navigate(`/orders/${data.order.id}`);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load order');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Failed to load order');
     } finally {
       setLoading(false);
     }
@@ -128,8 +131,7 @@ export function PaymentPage() {
 
       const data = await response.json();
       setPaymentMethods(data.data);
-    } catch (err: any) {
-      console.error('Failed to load payment methods:', err);
+    } catch (err: unknown) {
       // Continue even if payment methods fail - fallback to basic options
     }
   };
@@ -229,8 +231,8 @@ export function PaymentPage() {
         }
       }
 
-    } catch (err: any) {
-      setError(err.message || 'Payment failed');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Payment failed');
     } finally {
       setProcessing(false);
     }

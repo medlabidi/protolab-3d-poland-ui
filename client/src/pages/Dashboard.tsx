@@ -423,8 +423,8 @@ const Dashboard = () => {
     return (
       <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <main className="flex-1 p-4 sm:p-6 md:p-8 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
         </main>
       </div>
     );
@@ -480,50 +480,50 @@ const Dashboard = () => {
           {/* Order Type Sections - Print Jobs & Design Assistance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Print Jobs Card */}
-            <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5">
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Boxes className="w-5 h-5 text-blue-500" />
+            <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5 animate-scale-in">
+              <CardHeader className="border-b p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                  <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+                    <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                     Print Jobs
-                    <span className="text-sm font-normal text-muted-foreground">({stats.printJobsCount})</span>
+                    <span className="text-xs sm:text-sm font-normal text-muted-foreground">({stats.printJobsCount})</span>
                   </CardTitle>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => navigate('/orders')}
-                    className="hover:bg-blue-500/10 hover:border-blue-500"
+                    className="hover:bg-blue-500/10 hover:border-blue-500 text-xs sm:text-sm h-8 sm:h-9"
                   >
                     View All
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4 md:p-6">
                 {printJobs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Boxes className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">No print jobs yet</p>
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                    <Boxes className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 mx-auto mb-2 sm:mb-3 opacity-20" />
+                    <p className="text-xs sm:text-sm">No print jobs yet</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1 sm:space-y-2">
                     {printJobs.map((order) => (
                       <div
                         key={order.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-blue-500/5 transition-colors cursor-pointer border border-transparent hover:border-blue-500/20"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg hover:bg-blue-500/5 transition-colors cursor-pointer border border-transparent hover:border-blue-500/20 gap-2 sm:gap-0"
                         onClick={() => navigate(`/orders/${order.id}`)}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                          <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
                           <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{order.file_name}</p>
+                            <p className="font-medium text-xs sm:text-sm truncate">{order.file_name}</p>
                             <p className="text-xs text-muted-foreground">
                               {order.material} • {new Date(order.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0 justify-end sm:justify-start">
                           <StatusBadge status={order.status as OrderStatus} />
-                          <Eye className="w-4 h-4 text-muted-foreground" />
+                          <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
                         </div>
                       </div>
                     ))}
@@ -534,20 +534,20 @@ const Dashboard = () => {
 
             {/* Design Assistance Card */}
             <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-card to-cyan-500/5">
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-cyan-500" />
+              <CardHeader className="border-b p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-2 sm:gap-3">
+                  <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+                    <Palette className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
                     Design Assistance
-                    <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
+                    <span className="text-xs sm:text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
                   </CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                     {designRequests.length > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate('/design-assistance')}
-                        className="hover:bg-cyan-500/10"
+                        className="hover:bg-cyan-500/10 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-none"
                       >
                         View All
                       </Button>
@@ -556,18 +556,18 @@ const Dashboard = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => navigate('/design-assistance')}
-                      className="hover:bg-cyan-500/10 hover:border-cyan-500"
+                      className="hover:bg-cyan-500/10 hover:border-cyan-500 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-none"
                     >
                       New Request
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-3 sm:p-4 md:p-6">
                 {designRequests.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground px-4">
-                    <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">No design requests yet</p>
+                  <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                    <Palette className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 mx-auto mb-2 sm:mb-3 opacity-20" />
+                    <p className="text-xs sm:text-sm">No design requests yet</p>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -578,18 +578,18 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[400px] px-4">
-                    <div className="space-y-2 pt-4 pb-1">
+                  <ScrollArea className="h-56 sm:h-64 md:h-80">
+                    <div className="space-y-1 sm:space-y-2 pr-4">
                       {designRequests.slice(0, 5).map((request) => (
                         <div
                           key={request.id}
-                          className="flex items-center justify-between p-3 rounded-lg hover:bg-cyan-500/5 transition-colors cursor-pointer border border-transparent hover:border-cyan-500/20"
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 rounded-lg hover:bg-cyan-500/5 transition-colors cursor-pointer border border-transparent hover:border-cyan-500/20 gap-2 sm:gap-0"
                           onClick={() => navigate(`/design-assistance?request=${request.id}`)}
                         >
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{request.project_name}</p>
+                          <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <Palette className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-500 flex-shrink-0 mt-1 sm:mt-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-xs sm:text-sm truncate">{request.project_name}</p>
                               <p className="text-xs text-muted-foreground truncate">
                                 {request.idea_description ? request.idea_description.substring(0, 50) + '...' : 'No description'}
                               </p>
@@ -599,9 +599,9 @@ const Dashboard = () => {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 justify-end sm:justify-start">
                             <StatusBadge status={request.design_status === 'pending' ? 'submitted' : request.design_status === 'in_review' ? 'in_queue' : request.design_status === 'in_progress' ? 'printing' : request.design_status === 'completed' ? 'finished' : 'submitted'} />
-                            <Eye className="w-4 h-4 text-muted-foreground" />
+                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
                           </div>
                         </div>
                       ))}
@@ -614,22 +614,22 @@ const Dashboard = () => {
 
           {/* Recent Orders & Projects */}
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="border-b p-4 md:p-6">
-              <CardTitle className="text-xl md:text-2xl flex items-center gap-2">
-                <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+            <CardHeader className="border-b p-3 sm:p-4 md:p-6">
+              <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl flex items-center gap-2">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
                 {t('dashboard.recentOrders')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 md:pt-6">
+            <CardContent className="p-3 sm:p-4 md:p-6">
               <div className="space-y-2">
                 {orders.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Package className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg mb-2">{t('dashboard.noOrders')}</p>
-                    <p className="text-sm">{t('dashboard.noOrdersDescription')}</p>
+                  <div className="text-center py-8 sm:py-10 md:py-12 text-muted-foreground">
+                    <Package className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto mb-2 sm:mb-3 md:mb-4 opacity-20" />
+                    <p className="text-sm sm:text-base md:text-lg mb-1 sm:mb-2">{t('dashboard.noOrders')}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">{t('dashboard.noOrdersDescription')}</p>
                     <Button
                       onClick={() => navigate('/orders')}
-                      className="mt-4"
+                      className="text-xs sm:text-sm h-9 sm:h-10"
                     >
                       {t('dashboard.projects.viewOrders')}
                     </Button>
@@ -644,14 +644,14 @@ const Dashboard = () => {
                         onOpenChange={() => toggleProject(projectName)}
                       >
                         <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10 mb-2">
-                          <div className="flex items-center justify-between p-3 md:p-4 hover:bg-primary/5 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 md:p-4 hover:bg-primary/5 transition-colors gap-2 sm:gap-0">
                               <CollapsibleTrigger className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 md:gap-3">
-                                  <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <FolderOpen className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                  <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <FolderOpen className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-primary" />
                                   </div>
                                   <div className="text-left min-w-0">
-                                    <p className="font-bold text-primary text-sm md:text-base truncate">{projectName}</p>
+                                    <p className="font-bold text-primary text-xs sm:text-sm md:text-base truncate">{projectName}</p>
                                     <p className="text-xs text-muted-foreground">
                                       {projectOrders.length} file{projectOrders.length > 1 ? 's' : ''} • 
                                       {new Date(projectOrders[0].created_at).toLocaleDateString()}
@@ -659,12 +659,12 @@ const Dashboard = () => {
                                   </div>
                                 </div>
                               </CollapsibleTrigger>
-                              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0 w-full sm:w-auto justify-end">
                                 <StatusBadge status={getProjectStatus(projectOrders)} />
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                    <Button variant="outline" size="sm" className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50">
-                                      <MoreHorizontal className="w-4 h-4" />
+                                    <Button variant="outline" size="sm" className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50 h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-2">
+                                      <MoreHorizontal className="w-3 h-3 sm:w-4 sm:h-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48">
@@ -714,25 +714,25 @@ const Dashboard = () => {
                                 </DropdownMenu>
                                 <CollapsibleTrigger>
                                   {expandedProjects.has(projectName) ? (
-                                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                                   ) : (
-                                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                                   )}
                                 </CollapsibleTrigger>
                               </div>
                             </div>
                           <CollapsibleContent>
-                            <div className="border-t border-primary/10 p-2 space-y-1">
+                            <div className="border-t border-primary/10 p-2 sm:p-3 space-y-1">
                               {projectOrders.map((order) => (
                                 <div 
                                   key={order.id}
-                                  className="flex items-center justify-between p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors gap-2 sm:gap-0"
                                 >
-                                  <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
-                                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                    <span className="text-xs md:text-sm font-medium truncate">{order.file_name}</span>
+                                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                    <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-xs sm:text-sm font-medium truncate">{order.file_name}</span>
                                   </div>
-                                  <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                                  <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 justify-end">
                                     <StatusBadge status={order.status as OrderStatus} />
                                     <Button
                                       variant="ghost"
@@ -740,7 +740,7 @@ const Dashboard = () => {
                                       onClick={() => navigate(`/orders/${order.id}`)}
                                       className="h-8 w-8 p-0"
                                     >
-                                      <Eye className="w-4 h-4" />
+                                      <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                                     </Button>
                                   </div>
                                 </div>
@@ -755,35 +755,35 @@ const Dashboard = () => {
                     {groupedOrders.standaloneOrders.length > 0 && (
                       <>
                         {Object.keys(groupedOrders.projects).length > 0 && (
-                          <div className="text-xs font-semibold text-muted-foreground py-2 px-4">{t('dashboard.projects.individualOrders')}</div>
+                          <div className="text-xs font-semibold text-muted-foreground py-2 px-2 sm:px-3 md:px-4">{t('dashboard.projects.individualOrders')}</div>
                         )}
                         {groupedOrders.standaloneOrders.map((order, index) => (
                           <div 
                             key={order.id} 
-                            className="flex items-center justify-between py-3 md:py-4 px-3 md:px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20"
+                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 sm:py-3 md:py-4 px-2 sm:px-3 md:px-4 rounded-lg hover:bg-primary/5 transition-all hover-lift border border-transparent hover:border-primary/20 gap-2 sm:gap-0"
                             style={{ animationDelay: `${index * 0.1}s` }}
                           >
-                            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
-                              <div className="w-8 h-8 md:w-10 md:h-10 bg-muted/50 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-muted/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-muted-foreground" />
                               </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-primary truncate text-sm md:text-base">{order.file_name || 'Unnamed'}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-primary truncate text-xs sm:text-sm md:text-base">{order.file_name || 'Unnamed'}</p>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {order.material || 'N/A'} • {new Date(order.created_at).toLocaleDateString()}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0 w-full sm:w-auto justify-end">
                               <StatusBadge status={order.status as OrderStatus} />
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50"
+                                    className="hover-lift shadow-sm hover:shadow-md hover:border-primary/50 h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-2"
                                   >
-                                    <MoreHorizontal className="w-4 h-4" />
+                                    <MoreHorizontal className="w-3 h-3 sm:w-4 sm:h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">

@@ -134,8 +134,8 @@ export function Checkout() {
       setProjectData(data);
       setShippingAddress(data.shippingAddress || {});
       setLoading(false);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load project data');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Failed to load project data');
       setLoading(false);
     }
   };
@@ -185,8 +185,8 @@ export function Checkout() {
           }
         }
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load project orders');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Failed to load project orders');
       toast.error('Failed to load order details');
     } finally {
       setLoading(false);
@@ -220,11 +220,11 @@ export function Checkout() {
         try {
           setShippingAddress(JSON.parse(orderData.shipping_address));
         } catch (e) {
-          console.error('Failed to parse shipping address:', e);
+          // Failed to parse shipping address
         }
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load order');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Failed to load order');
       toast.error('Failed to load order details');
     } finally {
       setLoading(false);
@@ -269,8 +269,8 @@ export function Checkout() {
       toast.success('Delivery address updated');
       setIsEditingAddress(false);
       fetchOrder();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update address');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error) ? err.message : 'Failed to update address');
     }
   };
 

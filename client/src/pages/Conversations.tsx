@@ -32,6 +32,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Message, Attachment } from '@/types/attachment';
 
 interface Order {
   id: string;
@@ -44,17 +45,6 @@ interface DesignRequest {
   id: string;
   project_description: string;
   status: string;
-}
-
-interface Message {
-  id: string;
-  conversation_id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  sender_id?: string;
-  message: string;
-  attachments: any[];
-  is_read: boolean;
-  created_at: string;
 }
 
 interface Conversation {
@@ -636,7 +626,7 @@ const Conversations = () => {
                                   {message.message && <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.message}</p>}
                                   {message.attachments && message.attachments.length > 0 && (
                                     <div className="mt-2 space-y-2">
-                                      {message.attachments.map((attachment: any, idx: number) => {
+                                      {message.attachments.map((attachment: Attachment, idx: number) => {
                                         const isAdminFile = message.sender_type !== 'user';
                                         const accessType = attachment.access_type || 'free';
                                         const isDownloadBlocked = isAdminFile && (

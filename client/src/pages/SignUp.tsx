@@ -216,42 +216,44 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-3 sm:p-6">
       <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="space-y-3 text-center">
+        <CardHeader className="space-y-3 text-center p-4 sm:p-6">
           <div className="flex justify-center">
             <Logo size="lg" showText={false} />
           </div>
-          <CardTitle className="text-2xl">{t('signup.title')}</CardTitle>
-          <CardDescription>{t('signup.subtitle')}</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl">{t('signup.title')}</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">{t('signup.subtitle')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">{t('signup.fields.firstName')} *</Label>
+                <Label htmlFor="firstName" className="text-xs sm:text-sm">{t('signup.fields.firstName')} *</Label>
                 <Input 
                   id="firstName" 
                   placeholder={t('signup.placeholders.firstName')}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required 
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">{t('signup.fields.lastName')} *</Label>
+                <Label htmlFor="lastName" className="text-xs sm:text-sm">{t('signup.fields.lastName')} *</Label>
                 <Input 
                   id="lastName" 
                   placeholder={t('signup.placeholders.lastName')}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required 
+                  className="h-9 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">{t('signup.fields.email')} *</Label>
+              <Label htmlFor="email" className="text-xs sm:text-sm">{t('signup.fields.email')} *</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -259,10 +261,11 @@ const SignUp = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
+                className="h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t('signup.fields.password')} *</Label>
+              <Label htmlFor="password" className="text-xs sm:text-sm">{t('signup.fields.password')} *</Label>
               <Input 
                 id="password" 
                 type="password"
@@ -270,64 +273,70 @@ const SignUp = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                className="h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('signup.fields.confirmPassword')} *</Label>
+              <Label htmlFor="confirmPassword" className="text-xs sm:text-sm">{t('signup.fields.confirmPassword')} *</Label>
               <Input 
                 id="confirmPassword" 
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
+                className="h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">{t('signup.fields.phone')}</Label>
+              <Label htmlFor="phone" className="text-xs sm:text-sm">{t('signup.fields.phone')}</Label>
               <Input 
                 id="phone" 
                 type="tel"
                 placeholder={t('signup.placeholders.phone')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                className="h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">{t('signup.fields.address')}</Label>
+              <Label htmlFor="address" className="text-xs sm:text-sm">{t('signup.fields.address')}</Label>
               <Input 
                 id="address" 
                 placeholder={t('signup.placeholders.address')}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                className="h-9 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             
-            <div className="pt-2 border-t space-y-3">
+            <div className="pt-2 sm:pt-3 border-t space-y-2 sm:space-y-3">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" />
-                <Label className="text-sm font-semibold">{t('signup.fields.deliveryLocation')}</Label>
+                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                <Label className="text-xs sm:text-sm font-semibold">{t('signup.fields.deliveryLocation')}</Label>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={detectLocation}
                   disabled={isDetectingLocation}
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
                   {isDetectingLocation ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                   ) : (
                     t('signup.buttons.detect')
                   )}
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="city" className="text-xs">{t('signup.fields.city')}</Label>
                   <Input 
                     id="city" 
                     placeholder={t('signup.placeholders.city')}
                     value={city}
+                    className="h-8 sm:h-9 text-xs"
                     onChange={(e) => setCity(e.target.value)}
                   />
                 </div>
@@ -338,6 +347,7 @@ const SignUp = () => {
                     placeholder={t('signup.placeholders.zipCode')}
                     value={zipCode}
                     onChange={(e) => setZipCode(e.target.value)}
+                    className="h-8 sm:h-9 text-xs"
                   />
                 </div>
               </div>
@@ -349,31 +359,32 @@ const SignUp = () => {
                   placeholder={t('signup.placeholders.country')}
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
+                  className="h-8 sm:h-9 text-xs"
                 />
               </div>
 
               {latitude && longitude && (
-                <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                <div className="text-xs text-muted-foreground bg-muted p-2 sm:p-3 rounded">
                   📍 {t('signup.coordinates')}: {latitude.toFixed(4)}, {longitude.toFixed(4)}
                 </div>
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+          <CardFooter className="flex flex-col gap-2 sm:gap-3 p-4 sm:p-6">
+            <Button type="submit" className="w-full h-9 sm:h-10 text-xs sm:text-sm" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   {t('signup.buttons.creating')}
                 </>
               ) : (
                 t('signup.buttons.createAccount')
               )}
             </Button>
-            <p className="text-xs text-center text-muted-foreground">
+            <p className="text-xs sm:text-xs text-center text-muted-foreground">
               {t('signup.termsNotice')}
             </p>
-            <div className="text-center text-sm">
+            <div className="text-center text-xs sm:text-sm">
               {t('signup.alreadyHaveAccount')}{" "}
               <Link to="/signin" className="text-primary hover:underline font-semibold">
                 {t('signup.signIn')}

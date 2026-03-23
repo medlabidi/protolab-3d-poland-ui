@@ -246,12 +246,10 @@ export function PayUSecureForm({ onTokenReceived, amount }: PayUSecureFormProps)
       } else {
         const errorMessages = response.error?.messages || ['Tokenization failed'];
         setError(errorMessages.join(', '));
-        console.error('[PAYU-SECURE-FORM] Tokenization failed:', errorMessages);
       }
 
-    } catch (err: any) {
-      console.error('[PAYU-SECURE-FORM] Tokenization error:', err);
-      setError(err.message || 'Failed to process card information');
+    } catch (err: unknown) {
+      setError((err instanceof Error) ? err.message : 'Failed to process card information');
     } finally {
       setTokenizing(false);
     }

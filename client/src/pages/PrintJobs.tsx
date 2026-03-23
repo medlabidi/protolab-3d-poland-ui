@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { StatusBadge, PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { API_URL } from "@/config/api";
+import type { Message, Attachment } from '@/types/attachment';
 
 interface PrintOrder {
   id: string;
@@ -31,15 +32,6 @@ interface PrintOrder {
   updated_at?: string;
   order_type?: string;
   has_unread_messages?: boolean;
-}
-
-interface Message {
-  id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  message: string;
-  attachments?: any[];
-  created_at: string;
-  is_read: boolean;
 }
 
 const getStatusColor = (status: string) => {
@@ -261,7 +253,7 @@ const PrintJobs = () => {
         }
       }
 
-      let uploadedAttachment: any = null;
+      let uploadedAttachment: Attachment | null = null;
 
       if (conversationFile) {
         // Step 1: Get signed upload URL
@@ -308,7 +300,7 @@ const PrintJobs = () => {
       }
 
       // Step 3: Send the message
-      const messageBody: any = { message: newMessage };
+      const messageBody: { message: string; attachments?: Attachment[] } = { message: newMessage };
       if (uploadedAttachment) {
         messageBody.attachments = [uploadedAttachment];
       }
@@ -606,7 +598,7 @@ const PrintJobs = () => {
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
                                       <div className="mt-2 space-y-1">
-                                        {msg.attachments.filter((att: any) => att.url).map((att: any, idx: number) => (
+                                        {msg.attachments.filter((att: Attachment) => att.url).map((att: Attachment, idx: number) => (
                                           <a
                                             key={idx}
                                             href={att.url}

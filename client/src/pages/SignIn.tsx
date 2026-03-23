@@ -169,26 +169,26 @@ const SignIn = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-3 sm:p-6">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-10 sm:top-20 left-5 sm:left-10 w-48 h-48 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-primary/20 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-10 sm:bottom-20 right-5 sm:right-10 w-40 h-40 sm:w-72 sm:h-72 md:w-80 md:h-80 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10 relative z-10 animate-scale-in bg-gradient-to-br from-card to-muted/50">
-        <CardHeader className="space-y-4 text-center pb-8">
+        <CardHeader className="space-y-4 text-center pb-6 sm:pb-8 p-4 sm:p-6">
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
           </div>
-          <CardTitle className="text-3xl gradient-text">{t('login.welcome')}</CardTitle>
-          <CardDescription className="text-base">{t('login.subtitle')}</CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl gradient-text">{t('login.welcome')}</CardTitle>
+          <CardDescription className="text-xs sm:text-base">{t('login.subtitle')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleLogin}>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4 sm:space-y-5 p-4 sm:p-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">{t('login.email')}</Label>
+              <Label htmlFor="email" className="text-xs sm:text-sm font-semibold">{t('login.email')}</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -197,11 +197,11 @@ const SignIn = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required 
                 autoComplete="email"
-                className="h-12 border-2 focus:border-primary transition-all"
+                className="h-10 sm:h-12 text-xs sm:text-sm border-2 focus:border-primary transition-all"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">{t('login.password')}</Label>
+              <Label htmlFor="password" className="text-xs sm:text-sm font-semibold">{t('login.password')}</Label>
               <Input 
                 id="password" 
                 type="password"
@@ -210,10 +210,10 @@ const SignIn = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required 
                 autoComplete="current-password"
-                className="h-12 border-2 focus:border-primary transition-all"
+                className="h-10 sm:h-12 text-xs sm:text-sm border-2 focus:border-primary transition-all"
               />
             </div>
-            <Button type="button" variant="link" className="px-0 text-sm text-primary hover:text-primary/80" onClick={() => setForgotPasswordOpen(true)}>
+            <Button type="button" variant="link" className="px-0 text-xs sm:text-sm text-primary hover:text-primary/80" onClick={() => setForgotPasswordOpen(true)}>
               {t('login.forgotPassword')}
             </Button>
             
@@ -222,22 +222,22 @@ const SignIn = () => {
               setForgotPasswordOpen(open);
               if (!open) resetForgotPasswordDialog();
             }}>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md p-4 sm:p-6">
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
+                  <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     {forgotSuccess ? (
                       <>
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                         {t('signIn.checkYourEmail')}
                       </>
                     ) : (
                       <>
-                        <Mail className="w-5 h-5 text-primary" />
+                        <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                         {t('signIn.resetPassword')}
                       </>
                     )}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-xs sm:text-sm">
                     {forgotSuccess 
                       ? t('signIn.emailSentDescription')
                       : t('signIn.enterEmailDescription')
@@ -249,7 +249,7 @@ const SignIn = () => {
                   <form onSubmit={handleForgotPassword}>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label htmlFor="forgot-email">{t('signIn.emailAddress')}</Label>
+                        <Label htmlFor="forgot-email" className="text-xs sm:text-sm">{t('signIn.emailAddress')}</Label>
                         <Input 
                           id="forgot-email" 
                           type="email" 
@@ -257,18 +257,18 @@ const SignIn = () => {
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
                           required
-                          className="h-11"
+                          className="h-9 sm:h-11 text-xs sm:text-sm"
                         />
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+                    <DialogFooter className="gap-2 sm:gap-3">
+                      <Button type="button" variant="outline" onClick={() => setForgotPasswordOpen(false)} className="text-xs sm:text-sm h-9 sm:h-10">
                         {t('common.cancel')}
                       </Button>
-                      <Button type="submit" disabled={forgotLoading}>
+                      <Button type="submit" disabled={forgotLoading} className="text-xs sm:text-sm h-9 sm:h-10">
                         {forgotLoading ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                             {t('signIn.sending')}
                           </>
                         ) : (
@@ -279,7 +279,7 @@ const SignIn = () => {
                   </form>
                 ) : (
                   <DialogFooter>
-                    <Button onClick={() => setForgotPasswordOpen(false)} className="w-full">
+                    <Button onClick={() => setForgotPasswordOpen(false)} className="w-full text-xs sm:text-sm h-9 sm:h-10">
                       {t('signIn.gotIt')}
                     </Button>
                   </DialogFooter>
@@ -287,15 +287,15 @@ const SignIn = () => {
               </DialogContent>
             </Dialog>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4 pt-2">
+          <CardFooter className="flex flex-col gap-3 sm:gap-4 pt-2 p-4 sm:p-6">
             <Button 
               type="submit" 
-              className="w-full h-12 text-base hover-lift shadow-lg group relative overflow-hidden" 
+              className="w-full h-10 sm:h-12 text-xs sm:text-base hover-lift shadow-lg group relative overflow-hidden" 
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                   {t('login.signingIn')}
                 </>
               ) : (
@@ -303,7 +303,7 @@ const SignIn = () => {
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </Button>
-            <div className="relative w-full my-2">
+            <div className="relative w-full my-1 sm:my-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/50" />
               </div>
@@ -311,14 +311,16 @@ const SignIn = () => {
                 <span className="bg-card px-3 text-muted-foreground font-semibold">{t('login.orContinueWith')}</span>
               </div>
             </div>
-            <div className="w-full flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                width="400"
-              />
+            <div className="w-full flex justify-center overflow-x-auto">
+              <div className="min-w-max">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  width={(typeof window !== 'undefined' && window.innerWidth < 640) ? "280" : "400"}
+                />
+              </div>
             </div>
-            <div className="text-center text-sm pt-2">
+            <div className="text-center text-xs sm:text-sm pt-1 sm:pt-2">
               {t('login.noAccount')}{" "}
               <Link to="/signup" className="text-primary hover:text-primary/80 font-bold underline-offset-4 hover:underline transition-all">
                 {t('login.signUp')}

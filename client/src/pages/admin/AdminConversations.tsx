@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Message, Attachment } from '@/types/attachment';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -36,18 +37,6 @@ interface ConversationOrder {
   status: string;
   price: number;
   created_at: string;
-}
-
-interface Message {
-  id: string;
-  conversation_id: string;
-  sender_type: 'user' | 'engineer' | 'system';
-  sender_id?: string;
-  message: string;
-  attachments: any[];
-  is_read: boolean;
-  created_at: string;
-  sender?: ConversationUser;
 }
 
 interface Conversation {

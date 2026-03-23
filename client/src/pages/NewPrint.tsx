@@ -1404,45 +1404,45 @@ const NewPrint = () => {
       
       {!isLoggedIn && (
         <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex items-center justify-between">
             <button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
+              className="flex items-center gap-2 text-lg sm:text-xl font-bold text-primary hover:opacity-80 transition-all group"
             >
-              <Logo size="sm" textClassName="text-xl" />
+              <Logo size="sm" textClassName="text-lg sm:text-xl" />
             </button>
-            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
+            <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift text-xs sm:text-sm">
               {t('common.login')}
             </Button>
           </div>
         </header>
       )}
       
-      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
-        <div className="max-w-4xl mx-auto space-y-8">
+      <main className={`flex-1 p-3 sm:p-4 md:p-6 lg:p-8 ${!isLoggedIn ? 'pt-20 sm:pt-24' : ''} overflow-y-auto max-h-screen`}>
+        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-3 gradient-text">{t('newPrint.title')}</h1>
-            <p className="text-muted-foreground text-lg">{t('newPrint.subtitle')}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 gradient-text">{t('newPrint.title')}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg">{t('newPrint.subtitle')}</p>
           </div>
 
           {/* Upload Mode Selection */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Upload className="w-6 h-6 text-primary" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.uploadTitle')}
               </CardTitle>
-              <CardDescription className="text-base">{t('newPrint.supportedFormats')}</CardDescription>
+              <CardDescription className="text-sm sm:text-base">{t('newPrint.supportedFormats')}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'single' | 'project')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="single" className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
+                <TabsList className="grid w-full grid-cols-2 gap-2 mb-6">
+                  <TabsTrigger value="single" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                     {t('newPrint.singleFile')}
                   </TabsTrigger>
-                  <TabsTrigger value="project" className="flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4" />
+                  <TabsTrigger value="project" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                    <FolderOpen className="w-3 h-3 sm:w-4 sm:h-4" />
                     {t('newPrint.projectMultiple')}
                   </TabsTrigger>
                 </TabsList>
@@ -1450,7 +1450,7 @@ const NewPrint = () => {
                 {/* Single File Upload */}
                 <TabsContent value="single">
                   <div 
-                    className={`border-3 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                    className={`border-3 border-dashed rounded-2xl p-6 sm:p-8 md:p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
                       isDragging 
                         ? 'border-primary bg-primary/10 scale-[1.02]' 
                         : 'border-primary/30 hover:border-primary hover:bg-primary/5'
@@ -1468,33 +1468,33 @@ const NewPrint = () => {
                       onChange={handleFileChange}
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      <div className={`w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transition-all duration-300 ${
+                      <div className={`w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg transition-all duration-300 ${
                         isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
                       }`}>
-                        <Upload className="w-10 h-10 text-white" />
+                        <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
                       {file ? (
                         <div className="animate-scale-in">
-                          <p className="font-bold text-xl text-primary mb-2">{file.name}</p>
-                          <p className="text-muted-foreground">
+                          <p className="font-bold text-lg sm:text-xl text-primary mb-1 sm:mb-2 break-words">{file.name}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
                       ) : (
                         <div>
-                          <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                          <p className={`font-bold text-lg sm:text-xl mb-1 sm:mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
                             {isDragging ? t('newPrint.dropFileHere') : t('newPrint.clickToUpload')}
                           </p>
-                          <p className="text-muted-foreground">{t('newPrint.fileFormats')}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.fileFormats')}</p>
                         </div>
                       )}
                     </label>
                   </div>
                   
                   {file && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm font-bold flex items-center gap-2">
+                    <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <p className="text-xs sm:text-sm font-bold flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
                           {t('newPrint.preview.title')} {isModelLoading && `(${t('common.loading')})`}
                         </p>
@@ -1506,24 +1506,24 @@ const NewPrint = () => {
                       
                       {/* Dynamic Model Stats */}
                       {modelAnalysis && (
-                        <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                          <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
-                            <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                        <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-center">
+                          <div className="p-3 sm:p-4 bg-card rounded-lg border border-primary/20">
+                            <p className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
+                            <p className="text-base sm:text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                           </div>
-                          <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
-                            <p className="text-lg font-bold text-primary">
+                          <div className="p-3 sm:p-4 bg-card rounded-lg border border-primary/20">
+                            <p className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.estWeight')}</p>
+                            <p className="text-base sm:text-lg font-bold text-primary">
                               {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
                             </p>
-                            {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
+                            {material && <p className="text-xs sm:text-sm text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
                           </div>
-                          <div className="p-3 bg-card rounded-lg border border-primary/20">
-                            <p className="text-xs text-muted-foreground">{t('newPrint.estPrintTime')}</p>
-                            <p className="text-lg font-bold text-primary">
+                          <div className="p-3 sm:p-4 bg-card rounded-lg border border-primary/20">
+                            <p className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.estPrintTime')}</p>
+                            <p className="text-base sm:text-lg font-bold text-primary">
                               {formatPrintTime(estimatedPrintTime)}
                             </p>
-                            {quality && <p className="text-xs text-muted-foreground">{t(`newPrint.qualityOptions.${quality}`)}</p>}
+                            {quality && <p className="text-xs sm:text-sm text-muted-foreground">{t(`newPrint.qualityOptions.${quality}`)}</p>}
                           </div>
                         </div>
                       )}
@@ -1533,22 +1533,22 @@ const NewPrint = () => {
 
                 {/* Project (Multiple Files) Upload */}
                 <TabsContent value="project">
-                  <div className="space-y-4">
+                  <div className="space-y-4 sm:space-y-6">
                     {/* Project Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="project-name" className="text-base font-semibold">{t('newPrint.projectName')}</Label>
+                      <Label htmlFor="project-name" className="text-sm sm:text-base font-semibold">{t('newPrint.projectName')}</Label>
                       <Input 
                         id="project-name"
                         placeholder={t('newPrint.projectNamePlaceholder')}
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
-                        className="h-12"
+                        className="h-10 sm:h-12 text-sm sm:text-base"
                       />
                     </div>
 
                     {/* Drop zone for multiple files */}
                     <div 
-                      className={`border-3 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                      className={`border-3 border-dashed rounded-2xl p-6 sm:p-8 md:p-10 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
                         isDragging 
                           ? 'border-primary bg-primary/10 scale-[1.02]' 
                           : 'border-primary/30 hover:border-primary hover:bg-primary/5'
@@ -1567,23 +1567,23 @@ const NewPrint = () => {
                         onChange={handleProjectFileChange}
                       />
                       <label htmlFor="project-file-upload" className="cursor-pointer">
-                        <div className={`w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-all duration-300 ${
+                        <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg transition-all duration-300 ${
                           isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
                         }`}>
-                          <Plus className="w-8 h-8 text-white" />
+                          <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                         </div>
-                        <p className={`font-bold text-lg mb-1 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                        <p className={`font-bold text-base sm:text-lg mb-1 sm:mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
                           {isDragging ? t('newPrint.dropFilesHere') : t('newPrint.addFilesToProject')}
                         </p>
-                        <p className="text-sm text-muted-foreground">{t('newPrint.clickOrDragMultiple')}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.clickOrDragMultiple')}</p>
                       </label>
                     </div>
 
                     {/* Project Files List */}
                     {projectFiles.length > 0 && (
-                      <div className="space-y-4 mt-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-lg">{projectFiles.length} {projectFiles.length > 1 ? t('newPrint.filesInProject') : t('newPrint.fileInProject')}</h3>
+                      <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                          <h3 className="font-bold text-base sm:text-lg">{projectFiles.length} {projectFiles.length > 1 ? t('newPrint.filesInProject') : t('newPrint.fileInProject')}</h3>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -1591,8 +1591,9 @@ const NewPrint = () => {
                               const input = document.getElementById('project-file-upload') as HTMLInputElement;
                               input?.click();
                             }}
+                            className="text-xs sm:text-sm"
                           >
-                            <Plus className="w-4 h-4 mr-1" /> {t('newPrint.addMore')}
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {t('newPrint.addMore')}
                           </Button>
                         </div>
 
@@ -1600,13 +1601,13 @@ const NewPrint = () => {
                           <Collapsible key={pf.id} open={pf.isExpanded} onOpenChange={() => toggleFileExpanded(pf.id)}>
                             <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-card">
                               <CollapsibleTrigger className="w-full">
-                                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center">
-                                      <FileText className="w-5 h-5 text-primary" />
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 hover:bg-muted/50 transition-colors gap-2 sm:gap-0">
+                                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                      <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                                     </div>
-                                    <div className="text-left">
-                                      <p className="font-semibold">{pf.file.name}</p>
+                                    <div className="text-left min-w-0">
+                                      <p className="font-semibold text-sm sm:text-base truncate">{pf.file.name}</p>
                                       <p className="text-xs text-muted-foreground">
                                         {(pf.file.size / 1024 / 1024).toFixed(2)} MB
                                         {pf.modelAnalysis && ` • ${pf.modelAnalysis.volumeCm3.toFixed(2)} cm³`}
@@ -1619,23 +1620,23 @@ const NewPrint = () => {
                                     {pf.error && <span className="text-xs text-red-600">{t('common.error')}</span>}
                                     {pf.modelAnalysis && !pf.error && <span className="text-xs text-green-600">✓</span>}
                                     <div 
-                                      className="p-1 hover:bg-muted rounded cursor-pointer"
+                                      className="p-1 hover:bg-muted rounded cursor-pointer flex-shrink-0"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removeProjectFile(pf.id);
                                       }}
                                     >
-                                      <X className="w-4 h-4 text-muted-foreground hover:text-red-500" />
+                                      <X className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hover:text-red-500" />
                                     </div>
-                                    {pf.isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    {pf.isExpanded ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
                                   </div>
                                 </div>
                               </CollapsibleTrigger>
                               
                               <CollapsibleContent>
-                                <div className="p-4 pt-0 space-y-4 border-t border-primary/10">
+                                <div className="p-3 sm:p-4 pt-0 sm:pt-0 space-y-4 sm:space-y-6 border-t border-primary/10">
                                   {/* 3D Preview - Only render when expanded */}
-                                  <div className="h-48 bg-muted/30 rounded-lg overflow-hidden">
+                                  <div className="h-40 sm:h-48 bg-muted/30 rounded-lg overflow-hidden">
                                     {pf.isExpanded && (
                                       <MemoizedModelViewer 
                                         file={pf.file}
@@ -1647,15 +1648,15 @@ const NewPrint = () => {
                                   </div>
 
                                   {/* File Configuration */}
-                                  <div className="grid grid-cols-3 gap-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                     <div className="space-y-1">
-                                      <Label className="text-sm">{t('newPrint.settings.material')}</Label>
+                                      <Label className="text-xs sm:text-sm">{t('newPrint.settings.material')}</Label>
                                       <Select 
                                         value={pf.material} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { material: v })}
                                         disabled={materialsLoading}
                                       >
-                                        <SelectTrigger className="h-10">
+                                        <SelectTrigger className="h-9 sm:h-10 text-xs sm:text-sm">
                                           <SelectValue placeholder={materialsLoading ? "Loading..." : "Select"} />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[300px]">
@@ -1686,13 +1687,13 @@ const NewPrint = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                      <Label className="text-sm">{t('newPrint.settings.quality')}</Label>
+                                      <Label className="text-xs sm:text-sm">{t('newPrint.settings.quality')}</Label>
                                       <Select 
                                         value={pf.quality} 
                                         onValueChange={(v) => updateProjectFile(pf.id, { quality: v })}
                                         disabled={pf.advancedMode}
                                       >
-                                        <SelectTrigger className="h-10">
+                                        <SelectTrigger className="h-9 sm:h-10 text-xs sm:text-sm">
                                           <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1746,9 +1747,9 @@ const NewPrint = () => {
                                     <div className="space-y-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
                                       <div className="flex items-center gap-2 mb-2">
                                         <AlertCircle className="w-4 h-4 text-primary" />
-                                        <span className="font-semibold text-sm text-primary">Advanced Mode Active</span>
+                                        <span className="font-semibold text-xs sm:text-sm text-primary">Advanced Mode Active</span>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-3">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                         <div className="space-y-1">
                                           <Label className="text-xs">Layer Height (mm)</Label>
                                           <Input
@@ -1756,7 +1757,7 @@ const NewPrint = () => {
                                             placeholder="e.g., 0.20"
                                             value={pf.customLayerHeight || ''}
                                             onChange={(e) => updateProjectFile(pf.id, { customLayerHeight: e.target.value })}
-                                            className="h-9"
+                                            className="h-8 sm:h-9 text-xs sm:text-sm"
                                           />
                                         </div>
                                         <div className="space-y-1">
@@ -1766,16 +1767,16 @@ const NewPrint = () => {
                                             placeholder="e.g., 20"
                                             value={pf.customInfill || ''}
                                             onChange={(e) => updateProjectFile(pf.id, { customInfill: e.target.value })}
-                                            className="h-9"
+                                            className="h-8 sm:h-9 text-xs sm:text-sm"
                                           />
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 sm:col-span-2">
                                           <Label className="text-xs">Infill Pattern</Label>
                                           <Select 
                                             value={pf.infillPattern || 'grid'} 
                                             onValueChange={(v) => updateProjectFile(pf.id, { infillPattern: v })}
                                           >
-                                            <SelectTrigger className="h-9">
+                                            <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                                               <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -1792,26 +1793,26 @@ const NewPrint = () => {
 
                                   {/* File Stats */}
                                   {pf.modelAnalysis && (
-                                    <div className="grid grid-cols-4 gap-3 text-center">
-                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
+                                      <div className="p-2 sm:p-3 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
-                                        <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                                        <p className="font-bold text-xs sm:text-sm text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                                       </div>
-                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                      <div className="p-2 sm:p-3 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
-                                        <p className="font-bold text-primary">
+                                        <p className="font-bold text-xs sm:text-sm text-primary">
                                           {pf.estimatedWeight ? `${pf.estimatedWeight.toFixed(1)}g` : '--'}
                                         </p>
                                       </div>
-                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                      <div className="p-2 sm:p-3 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">Print Time</p>
-                                        <p className="font-bold text-primary">
+                                        <p className="font-bold text-xs sm:text-sm text-primary">
                                           {pf.estimatedPrintTime ? formatPrintTime(pf.estimatedPrintTime) : '--'}
                                         </p>
                                       </div>
-                                      <div className="p-2 bg-muted/50 rounded-lg">
+                                      <div className="p-2 sm:p-3 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.pricing.total')}</p>
-                                        <p className="font-bold text-primary">
+                                        <p className="font-bold text-xs sm:text-sm text-primary">
                                           {pf.estimatedPrice ? `${pf.estimatedPrice.toFixed(2)} PLN` : '--'}
                                         </p>
                                       </div>
@@ -1825,10 +1826,10 @@ const NewPrint = () => {
 
                         {/* Project Total */}
                         {projectFiles.length > 0 && (
-                          <div className="p-4 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/30">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-lg">{t('newPrint.projectTotal')} ({projectFiles.length} {t('newPrint.items')})</span>
-                              <span className="text-2xl font-bold gradient-text">
+                          <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/30">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                              <span className="font-bold text-base sm:text-lg">{t('newPrint.projectTotal')} ({projectFiles.length} {t('newPrint.items')})</span>
+                              <span className="text-xl sm:text-2xl font-bold gradient-text">
                                 {totalProjectPrice > 0 ? `${totalProjectPrice.toFixed(2)} PLN` : '--'}
                               </span>
                             </div>
@@ -1845,19 +1846,19 @@ const NewPrint = () => {
           {/* Configuration - Only show for single file mode */}
           {uploadMode === 'single' && (
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.1s' }}>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Calculator className="w-6 h-6 text-primary" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.settings.title')}
               </CardTitle>
-              <CardDescription className="text-base">{t('newPrint.selectPreferredSettings')}</CardDescription>
+              <CardDescription className="text-sm sm:text-base">{t('newPrint.selectPreferredSettings')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-1 gap-6">
+            <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="grid md:grid-cols-1 gap-4 sm:gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="material" className="text-base font-semibold">{t('newPrint.material')}</Label>
+                  <Label htmlFor="material" className="text-sm sm:text-base font-semibold">{t('newPrint.material')}</Label>
                   <Select value={material} onValueChange={setMaterial} disabled={materialsLoading}>
-                    <SelectTrigger id="material" className="h-12">
+                    <SelectTrigger id="material" className="h-10 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder={materialsLoading ? "Loading materials..." : t('newPrint.selectMaterial')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
@@ -1886,9 +1887,9 @@ const NewPrint = () => {
                     </SelectContent>
                   </Select>
                   {material && isOutOfStock(material) && (
-                    <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-scale-in">
-                      <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                    <div className="flex items-start gap-2 p-3 sm:p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-scale-in">
+                      <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400">
                         {getOutOfStockWarning(material)}
                       </p>
                     </div>
@@ -1896,42 +1897,42 @@ const NewPrint = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quality" className="text-base font-semibold">{t('newPrint.quality')}</Label>
+                  <Label htmlFor="quality" className="text-sm sm:text-base font-semibold">{t('newPrint.quality')}</Label>
                   <Select value={quality} onValueChange={setQuality} disabled={advancedMode}>
-                    <SelectTrigger id="quality" className="h-12">
+                    <SelectTrigger id="quality" className="h-10 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder={t('newPrint.selectQuality')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">⚡ Draft - Fast</div>
+                          <div className="font-semibold text-sm">⚡ Draft - Fast</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.28mm | Infill: 10% | Speed: Very Fast</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="standard">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">✨ Standard</div>
+                          <div className="font-semibold text-sm">✨ Standard</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.20mm | Infill: 20% | Speed: Fast</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="high">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">💎 High Quality</div>
+                          <div className="font-semibold text-sm">💎 High Quality</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.12mm | Infill: 30% | Speed: Medium</div>
                         </div>
                       </SelectItem>
                       <SelectItem value="ultra">
                         <div className="flex flex-col py-1">
-                          <div className="font-semibold">🏆 Ultra - Finest</div>
+                          <div className="font-semibold text-sm">🏆 Ultra - Finest</div>
                           <div className="text-xs text-muted-foreground">Layer: 0.08mm | Infill: 40% | Speed: Slow</div>
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   {quality && !advancedMode && (
-                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                      <div className="font-medium mb-1">{qualityPresets[quality as keyof typeof qualityPresets].icon} {quality.charAt(0).toUpperCase() + quality.slice(1)} Quality</div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="text-xs sm:text-sm text-muted-foreground bg-muted p-3 sm:p-4 rounded-md">
+                      <div className="font-medium mb-1 text-sm sm:text-base">{qualityPresets[quality as keyof typeof qualityPresets].icon} {quality.charAt(0).toUpperCase() + quality.slice(1)} Quality</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div>• Layer Height: {qualityPresets[quality as keyof typeof qualityPresets].layerHeight}</div>
                         <div>• Infill: {qualityPresets[quality as keyof typeof qualityPresets].infill}</div>
                         <div>• Print Speed: {qualityPresets[quality as keyof typeof qualityPresets].speed}</div>
@@ -1942,12 +1943,12 @@ const NewPrint = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quantity" className="text-base font-semibold">{t('newPrint.quantity')}</Label>
+                  <Label htmlFor="quantity" className="text-sm sm:text-base font-semibold">{t('newPrint.quantity')}</Label>
                   <Input 
                     id="quantity" 
                     type="number" 
                     min="1"
-                    className="h-12 text-lg"
+                    className="h-10 sm:h-12 text-sm sm:text-lg"
                     value={quantity}
                     onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   />
@@ -1955,21 +1956,22 @@ const NewPrint = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="purpose">{t('newPrint.purpose')}</Label>
+                <Label htmlFor="purpose" className="text-sm sm:text-base">{t('newPrint.purpose')}</Label>
                 <Textarea
                   id="purpose"
                   placeholder={t('newPrint.notesPlaceholder')}
                   rows={3}
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
+                  className="text-xs sm:text-sm"
                 />
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div>
-                    <Label htmlFor="advancedMode" className="text-base font-semibold cursor-pointer">Advanced Mode</Label>
-                    <p className="text-sm text-muted-foreground">Manually configure all print parameters</p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-muted rounded-lg">
+                  <div className="flex-1">
+                    <Label htmlFor="advancedMode" className="text-sm sm:text-base font-semibold cursor-pointer">Advanced Mode</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Manually configure all print parameters</p>
                   </div>
                   <Checkbox
                     id="advancedMode"
@@ -1985,43 +1987,46 @@ const NewPrint = () => {
                         }
                       }
                     }}
+                    className="flex-shrink-0"
                   />
                 </div>
               </div>
 
               {advancedMode && (
-                <div className="space-y-4 p-4 bg-muted rounded-lg border-2 border-primary/20">
-                  <div className="flex items-center gap-2 mb-4">
-                    <AlertCircle className="w-5 h-5 text-primary" />
-                    <span className="font-semibold text-primary">Advanced Settings Active</span>
+                <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 bg-muted rounded-lg border-2 border-primary/20">
+                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                    <span className="font-semibold text-xs sm:text-sm text-primary">Advanced Settings Active</span>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="customLayerHeight">Layer Height (mm)</Label>
+                      <Label htmlFor="customLayerHeight" className="text-xs sm:text-sm">Layer Height (mm)</Label>
                       <Input
                         id="customLayerHeight"
                         type="text"
                         placeholder="e.g., 0.20"
                         value={customLayerHeight || ''}
                         onChange={(e) => setCustomLayerHeight(e.target.value)}
+                        className="h-8 sm:h-9 text-xs sm:text-sm"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="customInfill">Infill (%)</Label>
+                      <Label htmlFor="customInfill" className="text-xs sm:text-sm">Infill (%)</Label>
                       <Input
                         id="customInfill"
                         type="text"
                         placeholder="e.g., 20"
                         value={customInfill || ''}
                         onChange={(e) => setCustomInfill(e.target.value)}
+                        className="h-8 sm:h-9 text-xs sm:text-sm"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="infillPattern">Infill Pattern</Label>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="infillPattern" className="text-xs sm:text-sm">Infill Pattern</Label>
                       <Select value={infillPattern} onValueChange={setInfillPattern}>
-                        <SelectTrigger id="infillPattern">
+                        <SelectTrigger id="infillPattern" className="h-8 sm:h-9 text-xs sm:text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -2041,20 +2046,20 @@ const NewPrint = () => {
 
           {/* Price Estimate */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.2s' }}>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Calculator className="w-6 h-6 text-primary" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.estimatedPrice')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               {!isLoggedIn ? (
                 <Button
                   onClick={() => {
                     toast.info(t('newPrint.loginRequired'));
                     window.location.href = '/login';
                   }}
-                  className="w-full h-12 hover-lift shadow-lg border-2 border-primary/50"
+                  className="w-full h-10 sm:h-12 hover-lift shadow-lg border-2 border-primary/50 text-xs sm:text-sm"
                   variant="outline"
                 >
                   <span className="flex items-center">
@@ -2065,11 +2070,11 @@ const NewPrint = () => {
 
               {/* Single file price breakdown */}
               {uploadMode === 'single' && estimatedPrice !== null && priceBreakdown && (
-                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
-                  <div className="space-y-4">
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                  <div className="space-y-3 sm:space-y-4">
                     {/* Price Breakdown Header */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">{t('newPrint.pricing.title')}</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                      <p className="text-base sm:text-lg font-bold">{t('newPrint.pricing.title')}</p>
                       {modelAnalysis ? (
                         <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ {t('newPrint.actualWeight')}</span>
                       ) : (
@@ -2079,27 +2084,27 @@ const NewPrint = () => {
 
                     {/* Internal Costs */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">{t('newPrint.pricing.internalCosts')}</span>
-                      <span className="font-semibold">{priceBreakdown.internalCost.toFixed(2)} {t('common.pln')}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.pricing.internalCosts')}</span>
+                      <span className="text-xs sm:text-sm font-semibold">{priceBreakdown.internalCost.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* Service Fee */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">{t('newPrint.pricing.serviceFee')}</span>
-                      <span className="font-semibold">{priceBreakdown.serviceFee.toFixed(2)} {t('common.pln')}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.pricing.serviceFee')}</span>
+                      <span className="text-xs sm:text-sm font-semibold">{priceBreakdown.serviceFee.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* VAT */}
                     <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                      <span className="text-muted-foreground">{t('newPrint.pricing.vat')}</span>
-                      <span className="font-semibold">{priceBreakdown.vat.toFixed(2)} {t('common.pln')}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.pricing.vat')}</span>
+                      <span className="text-xs sm:text-sm font-semibold">{priceBreakdown.vat.toFixed(2)} {t('common.pln')}</span>
                     </div>
 
                     {/* Print Cost Total */}
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(×${quantity})` : ''}</span>
-                        <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
+                        <span className="font-bold text-sm sm:text-base">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(×${quantity})` : ''}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                       {modelAnalysis && estimatedWeight && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -2111,16 +2116,16 @@ const NewPrint = () => {
                     {selectedDeliveryOption && (
                       <>
                         <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
-                          <span className="text-muted-foreground">{t('newPrint.delivery')}</span>
-                          <span className="font-semibold text-primary">
+                          <span className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.delivery')}</span>
+                          <span className="text-xs sm:text-sm font-semibold text-primary">
                             {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} {t('common.pln')}
                           </span>
                         </div>
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">{t('newPrint.pricing.total')}</span>
-                            <span className="text-4xl font-bold gradient-text">
+                            <span className="text-base sm:text-lg font-bold">{t('newPrint.pricing.total')}</span>
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text">
                               {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
@@ -2133,10 +2138,10 @@ const NewPrint = () => {
 
               {/* Project mode price summary */}
               {uploadMode === 'project' && projectFiles.length > 0 && totalProjectPrice > 0 && (
-                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">{t('newPrint.projectPriceSummary')}</p>
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+                      <p className="text-base sm:text-lg font-bold">{t('newPrint.projectPriceSummary')}</p>
                       <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">
                         {projectFiles.length} {projectFiles.length > 1 ? t('newPrint.files') : t('newPrint.file')}
                       </span>
@@ -2145,10 +2150,10 @@ const NewPrint = () => {
                     {/* Individual file costs */}
                     {projectFiles.map((pf, index) => (
                       <div key={pf.id} className="flex justify-between items-center py-2 border-b border-primary/20">
-                        <span className="text-muted-foreground text-sm truncate max-w-[200px]">
+                        <span className="text-xs sm:text-sm text-muted-foreground truncate max-w-[200px]">
                           {index + 1}. {pf.file.name}
                         </span>
-                        <span className="font-semibold">
+                        <span className="text-xs sm:text-sm font-semibold flex-shrink-0">
                           {pf.estimatedPrice ? `${pf.estimatedPrice.toFixed(2)} PLN` : '--'}
                         </span>
                       </div>
@@ -2157,24 +2162,24 @@ const NewPrint = () => {
                     {/* Subtotal */}
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold">{t('newPrint.pricing.printCostAllFiles')}</span>
-                        <span className="text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} {t('common.pln')}</span>
+                        <span className="font-bold text-sm sm:text-base">{t('newPrint.pricing.printCostAllFiles')}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                     </div>
                     
                     {selectedDeliveryOption && (
                       <>
                         <div className="border-t border-primary/20 pt-3 flex justify-between items-center">
-                          <span className="text-muted-foreground">{t('newPrint.delivery')}</span>
-                          <span className="font-semibold text-primary">
+                          <span className="text-xs sm:text-sm text-muted-foreground">{t('newPrint.delivery')}</span>
+                          <span className="text-xs sm:text-sm font-semibold text-primary">
                             {(deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0).toFixed(2)} {t('common.pln')}
                           </span>
                         </div>
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">{t('newPrint.totalProjectPrice')}</span>
-                            <span className="text-4xl font-bold gradient-text">
+                            <span className="text-base sm:text-lg font-bold">{t('newPrint.totalProjectPrice')}</span>
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text">
                               {(totalProjectPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
@@ -2189,13 +2194,13 @@ const NewPrint = () => {
 
           {/* Delivery */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.3s' }}>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Send className="w-6 h-6 text-primary" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('delivery.title')}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <DeliveryOptions
                 selectedOption={selectedDeliveryOption}
                 onSelectOption={(optionId) => {
@@ -2219,7 +2224,7 @@ const NewPrint = () => {
 
               {/* DPD Address Form */}
               {selectedDeliveryOption === "dpd" && (
-                <div className="mt-4 animate-scale-in">
+                <div className="mt-4 sm:mt-6 animate-scale-in">
                   <DPDAddressForm
                     address={shippingAddress}
                     onChange={setShippingAddress}
@@ -2229,9 +2234,9 @@ const NewPrint = () => {
 
               {/* Selected Locker Confirmation */}
               {selectedLocker && selectedDeliveryOption === "inpost" && (
-                <div className="mt-4 p-4 bg-primary/5 border-2 border-primary/20 rounded-lg animate-scale-in">
-                  <p className="font-bold text-sm mb-1">{t('delivery.selectedLocker')}:</p>
-                  <p className="text-sm">{selectedLocker.name}</p>
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary/5 border-2 border-primary/20 rounded-lg animate-scale-in">
+                  <p className="font-bold text-xs sm:text-sm mb-1">{t('delivery.selectedLocker')}:</p>
+                  <p className="text-xs sm:text-sm">{selectedLocker.name}</p>
                   <p className="text-xs text-muted-foreground">{selectedLocker.address}</p>
                 </div>
               )}
@@ -2249,9 +2254,9 @@ const NewPrint = () => {
           />
 
           {/* Submit */}
-          <Button onClick={proceedToPayment} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
+          <Button onClick={proceedToPayment} size="lg" className="w-full h-11 sm:h-14 text-xs sm:text-base md:text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
             <span className="relative z-10 flex items-center">
-              <CreditCard className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
+              <CreditCard className="mr-2 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 group-hover:scale-110 transition-transform" />
               {t('newPrint.placeOrder')}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
