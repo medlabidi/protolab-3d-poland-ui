@@ -1128,52 +1128,6 @@ const DesignAssistance = () => {
                                       </span>
                                     </div>
 
-                                    {/* Thingiverse Results (AI Agent) */}
-                                    {msg.sender_type === 'system' && msg.attachments && msg.attachments.some((att: any) => att.source === 'thingiverse') && (
-                                      <div className="mt-3 space-y-2">
-                                        <div className="flex items-center gap-1 mb-1">
-                                          <Eye className="w-3 h-3 text-emerald-400" />
-                                          <span className="text-xs text-emerald-400 font-medium">Found on Thingiverse (preview only)</span>
-                                        </div>
-                                        {msg.attachments.filter((att: any) => att.source === 'thingiverse').map((att: any, idx: number) => (
-                                          <div key={`tv-${idx}`} className="flex gap-3 p-2 bg-gray-900/50 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-colors">
-                                            {att.url && (
-                                              <img
-                                                src={att.url}
-                                                alt={att.name}
-                                                className="w-16 h-16 object-cover rounded flex-shrink-0"
-                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                              />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                              <p className="text-sm text-white font-medium truncate">{att.name}</p>
-                                              {att.description && (
-                                                <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{att.description}</p>
-                                              )}
-                                              <div className="flex items-center gap-2 mt-1">
-                                                {att.creator && (
-                                                  <span className="text-xs text-gray-500">by {att.creator}</span>
-                                                )}
-                                                {att.thingiverse_url && (
-                                                  <a
-                                                    href={att.thingiverse_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-emerald-400 hover:text-emerald-300 underline"
-                                                  >
-                                                    View on Thingiverse
-                                                  </a>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-600 self-start flex-shrink-0">
-                                              Preview
-                                            </Badge>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
                                       <div className="mt-2 space-y-2">

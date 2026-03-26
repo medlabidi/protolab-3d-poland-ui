@@ -41,8 +41,6 @@ let sendWelcomeEmail: any;
 let generateAIResponse: any;
 let buildGeminiHistory: any;
 let buildDesignContext: any;
-let searchThingiverse: any;
-let formatThingiverseAsAttachments: any;
 
 const initModules = async () => {
   if (!bcrypt) {
@@ -78,15 +76,6 @@ const initModules = async () => {
       buildDesignContext = geminiModule.buildDesignContext;
     } catch (e) {
       console.warn('[AI_AGENT] Gemini module not available:', e);
-    }
-  }
-  if (!searchThingiverse) {
-    try {
-      const thingiverseModule = await import('./_lib/thingiverse');
-      searchThingiverse = thingiverseModule.searchThingiverse;
-      formatThingiverseAsAttachments = thingiverseModule.formatThingiverseAsAttachments;
-    } catch (e) {
-      console.warn('[AI_AGENT] Thingiverse module not available:', e);
     }
   }
 };
@@ -5201,30 +5190,15 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
     const geminiHistory = buildGeminiHistory(messages, designContext);
-    const { text: aiText, shouldEscalate, thingiverseSearches } = await generateAIResponse(geminiHistory);
+    const { text: aiText, shouldEscalate } = await generateAIResponse(geminiHistory);
 
-    // 6. Execute Thingiverse searches if requested
-    let allAttachments: any[] = [];
-    if (thingiverseSearches.length > 0 && searchThingiverse && formatThingiverseAsAttachments) {
-      for (const searchQuery of thingiverseSearches.slice(0, 2)) {
-        const results = await searchThingiverse(searchQuery);
-        if (results.length > 0) {
-          allAttachments = allAttachments.concat(formatThingiverseAsAttachments(results));
-        }
-      }
-    }
-
-    // 7. Insert AI message
+    // 6. Insert AI message
     const aiMessageData: any = {
       conversation_id: conversationId,
       sender_type: 'system',
       sender_id: null,
       message: aiText,
     };
-
-    if (allAttachments.length > 0) {
-      aiMessageData.attachments = allAttachments;
-    }
 
     const { error: insertError } = await supabase
       .from('conversation_messages')
