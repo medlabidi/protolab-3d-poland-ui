@@ -1063,12 +1063,13 @@ const DesignAssistance = () => {
                             No messages yet. Start the conversation!
                           </div>
                         ) : (
-                          messages.map((msg) => {
-                            // Log message details for debugging
-                            if (msg.attachments && msg.attachments.length > 0) {
-                              console.log(`💬 [Message] ID: ${msg.id}, Sender: ${msg.sender_type}, Attachments: ${msg.attachments.length}`);
+                          messages.filter((msg) => {
+                            // Hide admin-only messages (design briefs) from client view
+                            if (msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief')) {
+                              return false;
                             }
-                            
+                            return true;
+                          }).map((msg) => {
                             return (
                             <div
                               key={msg.id}

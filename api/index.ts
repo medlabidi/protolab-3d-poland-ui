@@ -5190,7 +5190,7 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
     const geminiHistory = buildGeminiHistory(messages, designContext);
-    const { text: aiText, shouldEscalate } = await generateAIResponse(geminiHistory);
+    const { text: aiText, shouldEscalate, adminBrief } = await generateAIResponse(geminiHistory);
 
     // 6. Insert AI message
     const aiMessageData: any = {
@@ -5225,14 +5225,18 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
         .update({ ai_status: 'escalated', admin_read: false })
         .eq('id', conversationId);
 
-      await supabase
-        .from('conversation_messages')
-        .insert([{
-          conversation_id: conversationId,
-          sender_type: 'system',
-          sender_id: null,
-          message: 'This conversation has been escalated to a human design engineer. An admin will review the conversation history and continue assisting you shortly.',
-        }]);
+      // Insert admin-only design brief (hidden from client, visible to admin)
+      if (adminBrief) {
+        await supabase
+          .from('conversation_messages')
+          .insert([{
+            conversation_id: conversationId,
+            sender_type: 'system',
+            sender_id: null,
+            message: adminBrief,
+            attachments: [{ type: 'admin_brief' }],
+          }]);
+      }
 
       console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);
     }
