@@ -127,7 +127,7 @@ const PaymentSuccess = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-3 sm:p-4">
       <Card className="max-w-md w-full dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="text-center">
           {status === 'checking' && (

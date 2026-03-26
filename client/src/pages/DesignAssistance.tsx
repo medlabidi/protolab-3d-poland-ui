@@ -1650,7 +1650,7 @@ const DesignAssistance = () => {
               </div>
 
               {/* Specifications Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-400 text-sm">Usage Type</Label>
                   <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
@@ -1670,7 +1670,7 @@ const DesignAssistance = () => {
               )}
 
               {/* Pricing */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
                 {detailsRequest.estimated_price && (
                   <div>
                     <Label className="text-gray-400 text-sm">Estimated Price</Label>
@@ -1761,7 +1761,7 @@ const DesignFormDialog = ({
             <RadioGroup
               value={formData.usage}
               onValueChange={(value) => setFormData({ ...formData, usage: value as any })}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
               <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
                 <RadioGroupItem value="mechanical" id="mechanical" />
@@ -1800,7 +1800,7 @@ const DesignFormDialog = ({
           {/* Approximate Dimensions */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">Approximate Dimensions (mm)</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="dimWidth" className="text-xs text-gray-400">Width</Label>
                 <Input
@@ -1853,7 +1853,7 @@ const DesignFormDialog = ({
               </div>
             </div>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+              className={`border-2 border-dashed rounded-lg p-3 sm:p-4 md:p-6 lg:p-8 text-center transition-all ${
                 isDragging ? 'border-cyan-500 bg-cyan-500/10' : 'border-gray-700 hover:border-gray-600'
               }`}
               onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}

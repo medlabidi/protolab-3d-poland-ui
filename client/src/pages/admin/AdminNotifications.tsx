@@ -84,12 +84,12 @@ const AdminNotifications = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Notifications</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Notifications</h1>
               <p className="text-gray-400">
                 {unreadCount} unread notifications
               </p>
@@ -101,29 +101,29 @@ const AdminNotifications = () => {
           </div>
 
           {/* Notification Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Total Notifications</p>
-                <p className="text-2xl font-bold text-white">{notifications.length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{notifications.length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Unread</p>
-                <p className="text-2xl font-bold text-blue-400">{unreadCount}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400">{unreadCount}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Alerts</p>
-                <p className="text-2xl font-bold text-red-400">{notifications.filter(n => n.type === 'alert').length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-red-400">{notifications.filter(n => n.type === 'alert').length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Success</p>
-                <p className="text-2xl font-bold text-green-400">{notifications.filter(n => n.type === 'success').length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400">{notifications.filter(n => n.type === 'success').length}</p>
               </CardContent>
             </Card>
           </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Upload, Settings, Truck, Package, Palette, Zap, Mail, Phone, MapPin, Clock, Send, LayoutDashboard, FileText, Calendar, Users, Award, Globe, Download, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, Settings, Truck, Package, Palette, Zap, Mail, Phone, MapPin, Clock, Send, LayoutDashboard, FileText, Calendar, Users, Award, Globe, Download, CheckCircle, Loader2, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Logo } from "@/components/Logo";
@@ -29,6 +29,9 @@ const Landing = () => {
   
   // Check if user is logged in
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('accessToken');
+
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Materials state
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -212,6 +215,13 @@ const Landing = () => {
                 {t('nav.services')}
               </Button>
             </nav>
+            <button
+              className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
             <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitcher />
               {isLoggedIn ? (
@@ -234,6 +244,18 @@ const Landing = () => {
           </div>
         </div>
       </header>
+
+      {/* Mobile Navigation Dropdown */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-x-0 top-[57px] z-40 md:hidden bg-background/95 backdrop-blur-md border-b border-border p-4 space-y-2">
+          <Button variant="ghost" onClick={() => { navigate("/about"); setMobileMenuOpen(false); }} className="w-full justify-start text-white hover:bg-white/10">
+            {t('nav.aboutUs')}
+          </Button>
+          <Button variant="ghost" onClick={() => { navigate("/services"); setMobileMenuOpen(false); }} className="w-full justify-start text-white hover:bg-white/10">
+            {t('nav.services')}
+          </Button>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 px-3 sm:px-4 md:px-6 relative animate-slide-up overflow-hidden">
@@ -404,7 +426,7 @@ const Landing = () => {
       </section>
 
       {/* Supported Materials */}
-      <section className="py-20 px-6 relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 relative overflow-hidden">
         {/* Background Image - Fixed */}
         <div 
           className="absolute inset-0 bg-fixed bg-center bg-cover opacity-40"
@@ -418,9 +440,9 @@ const Landing = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/70 to-background/80"></div>
         
         <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.supportedMaterials')}</h2>
-            <p className="text-muted-foreground text-lg">{t('landing.materialsSubtitle')}</p>
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.supportedMaterials')}</h2>
+            <p className="text-muted-foreground text-base sm:text-lg">{t('landing.materialsSubtitle')}</p>
           </div>
 
           {loadingMaterials ? (
@@ -571,7 +593,7 @@ const Landing = () => {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24 px-6 bg-gradient-to-b from-background via-primary/5 to-muted/30 relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-24 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-background via-primary/5 to-muted/30 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
@@ -580,23 +602,23 @@ const Landing = () => {
         </div>
         
         <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 gradient-text leading-tight">
+          <div className="text-center mb-10 sm:mb-14 md:mb-20">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 md:mb-6 gradient-text leading-tight">
               {t('landing.whyChooseUsSubtitle')}
             </h2>
-            <p className="text-muted-foreground text-xl max-w-3xl mx-auto">
+            <p className="text-muted-foreground text-base sm:text-lg md:text-xl max-w-3xl mx-auto">
               {t('landing.whyChooseUsDescription')}
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {features.map((feature, index) => (
               <div 
                 key={index} 
                 className="group animate-scale-in relative"
                 style={{ animationDelay: `${index * 0.15}s` }}
               >
-                <div className="relative p-8 rounded-3xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-500 h-full shadow-lg">
+                <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-500 h-full shadow-lg">
                   {/* Icon Container */}
                   <div className="relative mb-6">
                     <div className="w-20 h-20 bg-gradient-to-br from-primary via-purple-600 to-accent rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 relative z-10">
@@ -608,10 +630,10 @@ const Landing = () => {
                   </div>
                   
                   {/* Content */}
-                  <h3 className="text-2xl font-bold mb-4 group-hover:text-primary transition-colors duration-300">
+                  <h3 className="text-xl sm:text-2xl font-bold mb-4 group-hover:text-primary transition-colors duration-300">
                     {feature.title}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed text-lg group-hover:text-foreground/80 transition-colors duration-300">
+                  <p className="text-muted-foreground leading-relaxed text-base sm:text-lg group-hover:text-foreground/80 transition-colors duration-300">
                     {feature.description}
                   </p>
                   
@@ -630,19 +652,19 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-accent/5"></div>
         <div className="w-full relative z-10">
-          <div className="px-6 md:px-12 py-16 bg-white/95 backdrop-blur-sm shadow-2xl border-y-2 border-primary/10">
+          <div className="px-3 sm:px-4 md:px-6 lg:px-12 py-8 sm:py-12 md:py-16 bg-white/95 backdrop-blur-sm shadow-2xl border-y-2 border-primary/10">
             <div className="container mx-auto text-center max-w-7xl">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">{t('landing.readyToStart')}</h2>
-              <p className="text-muted-foreground mb-10 text-lg leading-relaxed max-w-2xl mx-auto">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 md:mb-6 gradient-text">{t('landing.readyToStart')}</h2>
+              <p className="text-muted-foreground mb-6 sm:mb-8 md:mb-10 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
                 {t('landing.subtitle')}
               </p>
               <div className="flex items-center justify-center gap-4 flex-wrap">
                 <Button 
                   size="lg" 
-                  className="text-lg px-12 py-7 hover-lift shadow-xl group relative overflow-hidden"
+                  className="text-base sm:text-lg px-6 sm:px-8 md:px-12 py-5 sm:py-6 md:py-7 hover-lift shadow-xl group relative overflow-hidden"
                   onClick={() => navigate("/new-print")}
                 >
                   <span className="relative z-10 flex items-center">
@@ -658,14 +680,14 @@ const Landing = () => {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
+      <section id="contact" className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <h2 id="contact-form" className="text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.contactTitle')}</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{t('landing.contactSubtitle')}</p>
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 id="contact-form" className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 gradient-text">{t('landing.contactTitle')}</h2>
+            <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">{t('landing.contactSubtitle')}</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12">
+          <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
             {/* Contact Form */}
             <Card className="shadow-xl border-2 border-primary/10 bg-gradient-to-br from-card to-muted/30 animate-scale-in">
               <CardContent className="pt-8 pb-8">
@@ -797,7 +819,7 @@ const Landing = () => {
           </div>
 
           {/* Full-width Google Maps at bottom */}
-          <div className="w-full mt-12">
+          <div className="w-full mt-6 sm:mt-8 md:mt-12">
             <div className="h-80 w-full rounded-lg overflow-hidden shadow-xl border-2 border-primary/10">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2443.2879478476776!2d21.01223431594395!3d52.22967797975988!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x471ecc669a869f01%3A0x72f0be2a88ead3fc!2sPalace%20of%20Culture%20and%20Science!5e0!3m2!1sen!2spl!4v1234567890123!5m2!1sen!2spl"
@@ -813,9 +835,9 @@ const Landing = () => {
         </div>
       </section>
 
-      <footer className="border-t border-border py-16 px-6 bg-gradient-to-b from-background to-muted/30 relative">
+      <footer className="border-t border-border py-8 sm:py-12 md:py-16 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-background to-muted/30 relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
+          <div className="grid md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
             <div>
               <div className="flex items-center gap-2 text-xl font-bold mb-6 group cursor-pointer">
                 <Logo size="sm" textClassName="text-xl" />

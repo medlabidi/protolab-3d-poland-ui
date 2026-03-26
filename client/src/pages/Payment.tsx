@@ -206,8 +206,8 @@ const Payment = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
       <DashboardSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto max-h-screen">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header */}
           <div className="animate-slide-up">
             <Button 
@@ -218,15 +218,15 @@ const Payment = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               {isUpgradePayment ? t('payment.backToEditOrder') : t('payment.backToOrder')}
             </Button>
-            <h1 className="text-4xl font-bold mb-3 gradient-text">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 gradient-text">
               {isUpgradePayment ? displayTitle : t('payment.title')}
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
               {isUpgradePayment ? t('payment.payDifference') : t('payment.subtitle')}
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {/* Order Review */}
             <div className="lg:col-span-2 space-y-6">
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in">

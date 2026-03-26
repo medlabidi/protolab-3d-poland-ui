@@ -754,9 +754,9 @@ const Settings = () => {
             <p className="text-muted-foreground">{t('settings.profile.description')}</p>
           </div>
 
-          <div className="flex gap-8">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
             {/* Settings Navigation */}
-            <div className="w-72 shrink-0">
+            <div className="w-full lg:w-72 lg:shrink-0">
               <Card>
                 <CardContent className="p-2">
                   <nav className="space-y-1">
@@ -1604,7 +1604,7 @@ const Settings = () => {
 
         {/* Activity Log Dialog */}
         <Dialog open={showActivityLogDialog} onOpenChange={setShowActivityLogDialog}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[80vh]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />

@@ -169,7 +169,7 @@ const SignIn = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-3 sm:p-4 md:p-6">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float"></div>
@@ -181,7 +181,7 @@ const SignIn = () => {
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
           </div>
-          <CardTitle className="text-3xl gradient-text">{t('login.welcome')}</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl gradient-text">{t('login.welcome')}</CardTitle>
           <CardDescription className="text-base">{t('login.subtitle')}</CardDescription>
         </CardHeader>
 
@@ -311,7 +311,7 @@ const SignIn = () => {
                 <span className="bg-card px-3 text-muted-foreground font-semibold">{t('login.orContinueWith')}</span>
               </div>
             </div>
-            <div className="w-full flex justify-center">
+            <div className="w-full flex justify-center max-w-full overflow-hidden">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}

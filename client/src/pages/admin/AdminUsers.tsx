@@ -434,7 +434,7 @@ const AdminUsers = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
         </main>
       </div>
@@ -445,12 +445,12 @@ const AdminUsers = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Users Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Users Management</h1>
               <p className="text-gray-400">Total Users: {users.length}</p>
             </div>
             <div className="flex gap-2">
@@ -536,13 +536,13 @@ const AdminUsers = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Name</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Email</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Role</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Verified</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Joined</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Name</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Email</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Role</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Verified</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Joined</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
@@ -559,7 +559,7 @@ const AdminUsers = () => {
                           key={user.id}
                           className="hover:bg-gray-800/50 transition-colors"
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
                                 <User className="w-5 h-5 text-white" />
@@ -567,13 +567,13 @@ const AdminUsers = () => {
                               <p className="font-medium text-white">{user.name}</p>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className="flex items-center gap-2 text-gray-400">
                               <Mail className="w-4 h-4" />
                               {user.email}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${getRoleColor(user.role)}`}>
                               {user.role === 'admin' ? (
                                 <Shield className="w-4 h-4" />
@@ -583,13 +583,13 @@ const AdminUsers = () => {
                               <span className="capitalize text-sm">{user.role}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${getStatusColor(user.status)}`}>
                               <div className="w-2 h-2 rounded-full bg-current"></div>
                               <span className="capitalize text-sm">{user.status}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             {user.email_verified ? (
                               <div className="flex items-center gap-2 text-green-400">
                                 <CheckCircle2 className="w-4 h-4" />
@@ -602,10 +602,10 @@ const AdminUsers = () => {
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm text-gray-500">
                             {formatDate(user.created_at)}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className="flex gap-2">
                               <TooltipProvider>
                                 <Tooltip>
@@ -676,25 +676,25 @@ const AdminUsers = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Total Users</p>
-                <p className="text-2xl font-bold text-white">{users.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{users.length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Admins</p>
-                <p className="text-2xl font-bold text-purple-400">{users.filter(u => u.role === 'admin').length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-400">{users.filter(u => u.role === 'admin').length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Verified</p>
-                <p className="text-2xl font-bold text-green-400">{users.filter(u => u.email_verified).length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-400">{users.filter(u => u.email_verified).length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Unverified</p>
-                <p className="text-2xl font-bold text-yellow-400">{users.filter(u => !u.email_verified).length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-400">{users.filter(u => !u.email_verified).length}</p>
               </CardContent>
             </Card>
           </div>
@@ -703,7 +703,7 @@ const AdminUsers = () => {
 
       {/* Add/Edit User Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingUser ? 'Edit User' : 'Add New User'}
@@ -714,7 +714,7 @@ const AdminUsers = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
@@ -740,7 +740,7 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
                 <Select
@@ -775,7 +775,7 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
                 <Input
@@ -863,7 +863,7 @@ const AdminUsers = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-400">Name</p>
                       <p className="font-medium">{viewingUserDetails.user.name}</p>
@@ -927,7 +927,7 @@ const AdminUsers = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-400">Total Orders</p>
-                        <p className="text-2xl font-bold text-white">{viewingUserDetails.statistics.orders.total}</p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">{viewingUserDetails.statistics.orders.total}</p>
                       </div>
                       <ShoppingCart className="w-8 h-8 text-blue-400" />
                     </div>
@@ -939,7 +939,7 @@ const AdminUsers = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-400">Paid Orders</p>
-                        <p className="text-2xl font-bold text-green-400">{viewingUserDetails.statistics.orders.paid}</p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-400">{viewingUserDetails.statistics.orders.paid}</p>
                       </div>
                       <BadgeCheck className="w-8 h-8 text-green-400" />
                     </div>
@@ -951,7 +951,7 @@ const AdminUsers = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-400">Pending</p>
-                        <p className="text-2xl font-bold text-yellow-400">{viewingUserDetails.statistics.orders.pending}</p>
+                        <p className="text-xl sm:text-2xl font-bold text-yellow-400">{viewingUserDetails.statistics.orders.pending}</p>
                       </div>
                       <Clock className="w-8 h-8 text-yellow-400" />
                     </div>
@@ -1033,7 +1033,7 @@ const AdminUsers = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-3 bg-gray-700/50 rounded-lg">
                       <p className="text-sm text-gray-400">Payment Account</p>
                       <p className={`font-semibold ${viewingUserDetails.statistics.payment.has_payment_account ? 'text-green-400' : 'text-red-400'}`}>

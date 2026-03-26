@@ -594,7 +594,7 @@ export function Checkout() {
                   onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="postalCode">Postal Code</Label>
                   <Input
@@ -677,7 +677,7 @@ export function Checkout() {
               Back
             </Button>
             <div>
-              <h1 className="text-3xl font-bold dark:text-gray-100">File Payment</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold dark:text-gray-100">File Payment</h1>
               <p className="text-gray-600 dark:text-gray-400">Pay to unlock your file</p>
             </div>
           </div>
@@ -738,7 +738,7 @@ export function Checkout() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold dark:text-gray-100">Checkout</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold dark:text-gray-100">Checkout</h1>
             <p className="text-gray-600 dark:text-gray-400">
               {isDesignOrder ? 'Review your design service before payment' : 'Review your order before payment'}
             </p>
@@ -1043,7 +1043,7 @@ export function Checkout() {
                             onChange={(e) => setBusinessInfo({ ...businessInfo, address: e.target.value })}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <Label htmlFor="business_postal_code">Postal Code</Label>
                             <Input

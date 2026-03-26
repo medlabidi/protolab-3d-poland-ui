@@ -251,7 +251,7 @@ const OrderDetails = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <span className="ml-3 text-muted-foreground">{t('orderDetails.loading')}</span>
@@ -265,9 +265,9 @@ const OrderDetails = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto text-center py-12">
-            <p className="text-destructive text-lg">{error || t('orderDetails.notFound')}</p>
+            <p className="text-destructive text-sm sm:text-base md:text-lg">{error || t('orderDetails.notFound')}</p>
             <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
               {t('orderDetails.backToOrders')}
             </Button>
@@ -281,19 +281,19 @@ const OrderDetails = () => {
     <div className="flex min-h-screen bg-background">
       <DashboardSidebar />
       
-      <main className="flex-1 p-8">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <div className="flex items-center gap-4">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <Button variant="outline" size="icon" onClick={() => navigate("/orders")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">{t('orderDetails.orderTitle')} #{order?.id?.slice(0, 8) || 'Unknown'}</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t('orderDetails.orderTitle')} #{order?.id?.slice(0, 8) || 'Unknown'}</h1>
               <p className="text-muted-foreground">{t('orderDetails.placedOn')} {order?.created_at ? formatDate(order.created_at) : 'Unknown'}</p>
             </div>
-            <div className="ml-auto flex gap-2 items-center">
-              <Button 
-                variant="outline" 
+            <div className="sm:ml-auto flex flex-wrap gap-2 items-center">
+              <Button
+                variant="outline"
                 onClick={handleJobConversation}
                 disabled={startingConversation}
                 className="gap-2"
@@ -307,8 +307,8 @@ const OrderDetails = () => {
               </Button>
               <StatusBadge status={order.status} />
               {order.payment_status && (
-                <PaymentStatusBadge 
-                  status={order.payment_status} 
+                <PaymentStatusBadge
+                  status={order.payment_status}
                   amount={order.paid_amount}
                 />
               )}
@@ -325,7 +325,7 @@ const OrderDetails = () => {
             </CardContent>
           </Card>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* File Preview */}
             <Card>
               <CardHeader>
@@ -431,7 +431,7 @@ const OrderDetails = () => {
               <CardHeader>
                 <CardTitle>{t('orderDetails.technicalDetails')}</CardTitle>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {order.material_weight != null && order.material_weight > 0 && (
                   <div className="flex justify-between py-2">
                     <span className="text-muted-foreground">{t('orderDetails.params.materialWeight')}</span>
@@ -455,7 +455,7 @@ const OrderDetails = () => {
                 <CardTitle>{t('orderDetails.tracking')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="font-mono text-lg">{order.tracking_code}</p>
+                <p className="font-mono text-base sm:text-lg">{order.tracking_code}</p>
               </CardContent>
             </Card>
           )}

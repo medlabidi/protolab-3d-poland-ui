@@ -647,7 +647,7 @@ const Orders = () => {
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs text-muted-foreground">{t('orders.filters.status')}</Label>
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[140px] h-9">
+                        <SelectTrigger className="w-full sm:w-[140px] h-9">
                           <SelectValue placeholder={t('orders.filters.allStatuses')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -666,7 +666,7 @@ const Orders = () => {
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs text-muted-foreground">{t('orders.filters.material')}</Label>
                       <Select value={materialFilter} onValueChange={setMaterialFilter}>
-                        <SelectTrigger className="w-[140px] h-9">
+                        <SelectTrigger className="w-full sm:w-[140px] h-9">
                           <SelectValue placeholder={t('orders.filters.allMaterials')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -681,7 +681,7 @@ const Orders = () => {
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs text-muted-foreground">{t('orders.filters.payment')}</Label>
                       <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                        <SelectTrigger className="w-[140px] h-9">
+                        <SelectTrigger className="w-full sm:w-[140px] h-9">
                           <SelectValue placeholder={t('orders.filters.allPayments')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -696,7 +696,7 @@ const Orders = () => {
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs text-muted-foreground">{t('orders.filters.date')}</Label>
                       <Select value={dateFilter} onValueChange={setDateFilter}>
-                        <SelectTrigger className="w-[140px] h-9">
+                        <SelectTrigger className="w-full sm:w-[140px] h-9">
                           <SelectValue placeholder={t('orders.filters.allTime')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -838,7 +838,8 @@ const Orders = () => {
                                     open={expandedProjects.has(projectName)}
                                     onOpenChange={() => toggleProject(projectName)}
                                   >
-                                    <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10">
+                                    <div className="border-2 border-primary/20 rounded-xl overflow-x-auto bg-gradient-to-br from-primary/5 to-purple-500/5 dark:from-primary/10 dark:to-purple-500/10">
+                                      <div className="min-w-[700px]">
                                       <div className="grid grid-cols-7 gap-4 items-center p-4 hover:bg-primary/5 transition-colors">
                                         <CollapsibleTrigger className="flex items-center gap-3 col-span-1">
                                           <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1031,6 +1032,7 @@ const Orders = () => {
                                           ))}
                                         </div>
                                       </CollapsibleContent>
+                                      </div>
                                     </div>
                                   </Collapsible>
                                 ))}
@@ -1047,6 +1049,8 @@ const Orders = () => {
                                   </div>
                                 )}
 
+                                <div className="overflow-x-auto">
+                                  <div className="min-w-[700px]">
                                 <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                                   <div>{t('orders.table.fileName')}</div>
                                   <div>{t('orders.table.status')}</div>
@@ -1156,6 +1160,8 @@ const Orders = () => {
                                     </div>
                                   </div>
                                 ))}
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1170,6 +1176,8 @@ const Orders = () => {
                             </div>
 
                             <div className="space-y-2">
+                              <div className="overflow-x-auto">
+                                <div className="min-w-[600px]">
                               <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                                 <div>Project Name</div>
                                 <div>Design Status</div>
@@ -1284,6 +1292,8 @@ const Orders = () => {
                                   </div>
                                 </div>
                               ))}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -1320,6 +1330,8 @@ const Orders = () => {
                               <Printer className="w-5 h-5 text-primary" />
                               <h3 className="text-lg font-bold text-foreground">Print Jobs ({filteredArchivedPrintOrders.length})</h3>
                             </div>
+                            <div className="overflow-x-auto">
+                              <div className="min-w-[700px]">
                             <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>{t('orders.table.fileName')}</div>
                               <div>{t('orders.table.status')}</div>
@@ -1358,6 +1370,8 @@ const Orders = () => {
                                 </div>
                               </div>
                             ))}
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -1368,6 +1382,8 @@ const Orders = () => {
                               <Palette className="w-5 h-5 text-purple-500" />
                               <h3 className="text-lg font-bold text-foreground">Design Assistance ({filteredArchivedDesignOrders.length})</h3>
                             </div>
+                            <div className="overflow-x-auto">
+                              <div className="min-w-[600px]">
                             <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>Project Name</div>
                               <div>Design Status</div>
@@ -1413,6 +1429,8 @@ const Orders = () => {
                                 </div>
                               </div>
                             ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1448,6 +1466,8 @@ const Orders = () => {
                               <Printer className="w-5 h-5 text-primary" />
                               <h3 className="text-lg font-bold text-foreground">Print Jobs ({filteredDeletedPrintOrders.length})</h3>
                             </div>
+                            <div className="overflow-x-auto">
+                              <div className="min-w-[700px]">
                             <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>{t('orders.table.fileName')}</div>
                               <div>{t('orders.table.status')}</div>
@@ -1485,6 +1505,8 @@ const Orders = () => {
                                 </div>
                               </div>
                             ))}
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -1495,6 +1517,8 @@ const Orders = () => {
                               <Palette className="w-5 h-5 text-purple-500" />
                               <h3 className="text-lg font-bold text-foreground">Design Assistance ({filteredDeletedDesignOrders.length})</h3>
                             </div>
+                            <div className="overflow-x-auto">
+                              <div className="min-w-[600px]">
                             <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>Project Name</div>
                               <div>Design Status</div>
@@ -1539,6 +1563,8 @@ const Orders = () => {
                                 </div>
                               </div>
                             ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>

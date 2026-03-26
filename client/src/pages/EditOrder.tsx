@@ -958,7 +958,7 @@ const EditOrder = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <span className="ml-3 text-muted-foreground">{t('editOrder.loading')}</span>
@@ -972,9 +972,9 @@ const EditOrder = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto text-center py-12">
-            <p className="text-destructive text-lg">{error || t('editOrder.notFound')}</p>
+            <p className="text-destructive text-sm sm:text-base md:text-lg">{error || t('editOrder.notFound')}</p>
             <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
               {t('editOrder.backToOrders')}
             </Button>
@@ -988,13 +988,13 @@ const EditOrder = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Ban className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">{t('editOrder.cannotEditTitle')}</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-2">{t('editOrder.cannotEditTitle')}</h2>
                   <p className="text-muted-foreground mb-6">
                     {t('editOrder.cannotEditStatus')} "{order.status}".
                   </p>
@@ -1014,16 +1014,16 @@ const EditOrder = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto max-h-screen">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Header */}
-          <div className="flex items-center gap-4 animate-slide-up">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 animate-slide-up">
             <Button variant="outline" size="icon" onClick={() => navigate(`/orders/${orderId}`)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex-1">
-              <h1 className="text-4xl font-bold gradient-text">{t('editOrder.title')}</h1>
-              <p className="text-muted-foreground text-lg">Order #{order.order_number || order.id?.slice(0, 8) || 'N/A'} • {formatDate(order.created_at)}</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text">{t('editOrder.title')}</h1>
+              <p className="text-muted-foreground text-sm sm:text-base md:text-lg">Order #{order.order_number || order.id?.slice(0, 8) || 'N/A'} • {formatDate(order.created_at)}</p>
             </div>
             <StatusBadge status={order.status} />
           </div>
@@ -1048,7 +1048,7 @@ const EditOrder = () => {
           {/* File Preview Card (matching NewPrint upload style) */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30">
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
                 <FileText className="w-6 h-6 text-primary" />
                 {t('editOrder.modelPreview')}
               </CardTitle>
@@ -1058,14 +1058,14 @@ const EditOrder = () => {
             </CardHeader>
             <CardContent>
               {/* File preview styled like NewPrint upload zone */}
-              <div className="border-3 border-dashed rounded-2xl p-8 bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/30">
+              <div className="border-3 border-dashed rounded-2xl p-3 sm:p-4 md:p-8 bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/30">
                 <div className="space-y-6">
                   <div className="flex items-center justify-center gap-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                       <Upload className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <p className="font-bold text-xl text-primary">{order.file_name || 'Model file'}</p>
+                      <p className="font-bold text-lg sm:text-xl text-primary">{order.file_name || 'Model file'}</p>
                       <p className="text-sm text-muted-foreground">Current order file (cannot be changed)</p>
                     </div>
                   </div>
@@ -1081,7 +1081,7 @@ const EditOrder = () => {
 
                   {/* Model Stats (matching NewPrint) */}
                   {order.model_volume_cm3 && (
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                       <div className="p-3 bg-card rounded-lg border border-primary/20">
                         <p className="text-xs text-muted-foreground">Volume</p>
                         <p className="text-lg font-bold text-primary">{(order.model_volume_cm3 || 0).toFixed(2)} cm³</p>
@@ -1110,7 +1110,7 @@ const EditOrder = () => {
           {/* Configuration (matching NewPrint settings) */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
                 {t('editOrder.printParameters')}
               </CardTitle>
@@ -1286,7 +1286,7 @@ const EditOrder = () => {
           {/* Delivery Options (matching NewPrint) */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl">{t('editOrder.shippingDetails')}</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl">{t('editOrder.shippingDetails')}</CardTitle>
               <CardDescription className="text-base">
                 {canEditShipping 
                   ? t('editOrder.shippingDescription')
@@ -1316,14 +1316,14 @@ const EditOrder = () => {
           {/* Price Summary (matching NewPrint) */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
                 <Calculator className="w-6 h-6 text-primary" />
                 {t('editOrder.priceSummary')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Price Display */}
-              <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30">
+              <div className="p-3 sm:p-4 md:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-2 border-b border-primary/20">
                     <span className="text-muted-foreground">{t('editOrder.originalPrice')}</span>
@@ -1340,7 +1340,7 @@ const EditOrder = () => {
                       <span className="font-bold text-lg">
                         {priceDifference > 0.01 ? t('editOrder.extraPayment') : priceDifference < -0.01 ? t('editOrder.refundAmount') : t('editOrder.difference')}
                       </span>
-                      <span className={`text-2xl font-bold ${
+                      <span className={`text-xl sm:text-2xl font-bold ${
                         priceDifference > 0.01 ? 'text-blue-600' : priceDifference < -0.01 ? 'text-green-600' : 'text-muted-foreground'
                       }`}>
                         {priceDifference > 0 ? '+' : ''}{(priceDifference || 0).toFixed(2)} PLN
@@ -1361,8 +1361,8 @@ const EditOrder = () => {
                   {selectedDeliveryOption && (
                     <div className="border-t-2 border-primary/30 pt-4">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-xl">Total with Delivery</span>
-                        <span className="text-3xl font-bold gradient-text">
+                        <span className="font-bold text-lg sm:text-xl">Total with Delivery</span>
+                        <span className="text-2xl sm:text-3xl font-bold gradient-text">
                           {((newPrice || 0) + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} PLN
                         </span>
                       </div>
@@ -1372,7 +1372,7 @@ const EditOrder = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button 
                   onClick={handleSave} 
                   className="h-14 hover-lift shadow-lg group relative overflow-hidden"

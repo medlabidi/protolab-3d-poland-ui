@@ -603,37 +603,37 @@ const AdminDesignAssistance = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Palette className="w-8 h-8 text-purple-500" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 Design Assistance Orders
               </h1>
               <p className="text-gray-400 mt-1">Manage custom design requests and assistance orders</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
                   type="text"
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
+                  className="pl-10 bg-gray-900 border-gray-800 text-white w-full sm:w-64"
                 />
               </div>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{orders.length}</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{orders.length}</div>
                   <p className="text-sm text-gray-400 mt-1">Total Requests</p>
                 </div>
               </CardContent>
@@ -641,7 +641,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-500">
                     {orders.filter(o => o.design_status === 'pending' || o.design_status === 'in_review').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Pending</p>
@@ -651,7 +651,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500">
                     {orders.filter(o => o.design_status === 'in_progress').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">In Progress</p>
@@ -661,7 +661,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-500">
                     {orders.filter(o => o.design_status === 'completed').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Completed</p>
@@ -671,7 +671,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-cyan-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-500">
                     {orders.filter(o => o.design_status === 'approved').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Approved (Awaiting Payment)</p>
@@ -681,7 +681,9 @@ const AdminDesignAssistance = () => {
           </div>
 
           {/* Kanban Board - Orders by Status */}
-          <div className="grid grid-cols-6 gap-4">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 pb-4">
+            <div className="min-w-[900px] px-3 sm:px-0">
+              <div className="grid grid-cols-6 gap-3 sm:gap-4">
             {/* Pending Column */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
@@ -1025,6 +1027,8 @@ const AdminDesignAssistance = () => {
                 )}
               </CardContent>
             </Card>
+              </div>
+            </div>
           </div>
 
           {/* Orders Table - Hidden by default, can be toggled */}
@@ -1033,6 +1037,8 @@ const AdminDesignAssistance = () => {
               <CardTitle className="text-white">All Design Assistance Orders</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
+                <div className="min-w-[800px]">
               <div className="space-y-2">
                 <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
                   <div>Order ID</div>
@@ -1093,17 +1099,19 @@ const AdminDesignAssistance = () => {
                   ))
                 )}
               </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Design Requests List with Conversations */}
-        <div className="grid grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6 md:mt-8">
           {/* Left Column - Design Requests List */}
           <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
             <CardHeader className="border-b border-gray-800 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2 text-white">
                   <Palette className="w-5 h-5 text-cyan-500" />
                   Design Requests
                   <span className="text-sm font-normal text-gray-400">({orders.length})</span>
@@ -1187,7 +1195,7 @@ const AdminDesignAssistance = () => {
           <Card ref={conversationRef} className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
             <CardHeader className="border-b border-gray-800 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2 text-white">
                   <MessageSquare className="w-5 h-5 text-cyan-500" />
                   Conversation
                   {messages.length > 0 && (
@@ -1214,7 +1222,7 @@ const AdminDesignAssistance = () => {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-3 sm:p-4 md:p-6 pt-0 gap-3 sm:gap-4">
               {selectedRequestForConversation ? (
                 <>
                   {/* Project Info Bar */}
@@ -1520,11 +1528,11 @@ const AdminDesignAssistance = () => {
         </div>      </main>
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <DialogTitle className="text-2xl text-white">Design Assistance Order Details</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl md:text-2xl text-white">Design Assistance Order Details</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Order ID: {selectedOrder?.id}
                 </DialogDescription>
@@ -1546,7 +1554,7 @@ const AdminDesignAssistance = () => {
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
             </div>
           ) : selectedOrder ? (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Reference Files */}
               {selectedOrder.attached_files && selectedOrder.attached_files.length > 0 && (
                 <Card className="bg-gray-800 border-gray-700">
@@ -1574,7 +1582,7 @@ const AdminDesignAssistance = () => {
                   <CardTitle className="text-white">Design Project Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400">Project Name</label>
                       <p className="text-white font-medium">{selectedOrder.project_name}</p>
@@ -1641,7 +1649,7 @@ const AdminDesignAssistance = () => {
               </Card>
 
               {/* Customer & Payment Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
                     <CardTitle className="text-white">Customer Info</CardTitle>
@@ -1665,13 +1673,13 @@ const AdminDesignAssistance = () => {
                   <CardContent className="space-y-3">
                     <div>
                       <label className="text-sm text-gray-400">Estimated Price</label>
-                      <p className="text-white font-bold text-xl">
+                      <p className="text-white font-bold text-base sm:text-lg md:text-xl">
                         {selectedOrder.estimated_price ? formatPrice(selectedOrder.estimated_price) : 'Not set'}
                       </p>
                     </div>
                     <div>
                       <label className="text-sm text-gray-400">Final Price</label>
-                      <p className="text-white font-bold text-xl">
+                      <p className="text-white font-bold text-base sm:text-lg md:text-xl">
                         {selectedOrder.final_price ? formatPrice(selectedOrder.final_price) : 'Not set'}
                       </p>
                     </div>
@@ -1744,9 +1752,9 @@ const AdminDesignAssistance = () => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl text-cyan-400 flex items-center gap-2">
               <Info className="w-6 h-6" />
               Order Details
             </DialogTitle>
@@ -1756,11 +1764,11 @@ const AdminDesignAssistance = () => {
           </DialogHeader>
           
           {detailsRequest && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               {/* Project Name & Status */}
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
                   <p className="text-gray-400 text-sm">Created: {new Date(detailsRequest.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <Badge className={`${
@@ -1782,7 +1790,7 @@ const AdminDesignAssistance = () => {
               </div>
 
               {/* Specifications Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-400 text-sm">Usage Type</label>
                   <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
@@ -1791,7 +1799,7 @@ const AdminDesignAssistance = () => {
                   <label className="text-gray-400 text-sm">Material</label>
                   <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="text-gray-400 text-sm">Dimensions</label>
                   <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
                 </div>
@@ -1806,7 +1814,7 @@ const AdminDesignAssistance = () => {
               )}
 
               {/* Pricing */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
                 {detailsRequest.estimated_price && (
                   <div>
                     <label className="text-gray-400 text-sm">Estimated Price</label>

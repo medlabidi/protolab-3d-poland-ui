@@ -41,11 +41,11 @@ const AdminSettings = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Settings</h1>
             <p className="text-gray-400">Manage your application settings and preferences</p>
           </div>
 

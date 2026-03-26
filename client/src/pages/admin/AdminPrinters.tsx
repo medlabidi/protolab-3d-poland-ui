@@ -405,12 +405,12 @@ const AdminPrinters = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Printers Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Printers Management</h1>
               <p className="text-gray-400">Monitor and manage your 3D printer fleet</p>
             </div>
             <Button 
@@ -433,36 +433,36 @@ const AdminPrinters = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-12 text-center">
                 <Printer className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Printers</h3>
+                <h3 className="text-base sm:text-lg md:text-xl font-semibold text-white mb-2">No Printers</h3>
                 <p className="text-gray-400">Start by adding your first printer using the button above</p>
               </CardContent>
             </Card>
           ) : (
             <>
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Total Printers</p>
-                <p className="text-2xl font-bold text-white">{printers.length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{printers.length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Active</p>
-                <p className="text-2xl font-bold text-green-400">{printers.filter(p => p.is_active).length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400">{printers.filter(p => p.is_active).length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Inactive</p>
-                <p className="text-2xl font-bold text-red-400">{printers.filter(p => !p.is_active).length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-red-400">{printers.filter(p => !p.is_active).length}</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Default Printer</p>
-                <p className="text-xl font-bold text-yellow-400 truncate">
+                <p className="text-base sm:text-lg md:text-xl font-bold text-yellow-400 truncate">
                   {printers.find(p => p.is_default)?.name || 'None'}
                 </p>
               </CardContent>
@@ -665,7 +665,7 @@ const AdminPrinters = () => {
 
           {/* Add Printer Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Add New Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
@@ -677,7 +677,7 @@ const AdminPrinters = () => {
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Basic Information</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="printer-brand" className="text-gray-300">Brand *</Label>
                       <Input
@@ -927,7 +927,7 @@ const AdminPrinters = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="layer-min" className="text-gray-300">Min Layer Height (mm)</Label>
                       <Input
@@ -990,7 +990,7 @@ const AdminPrinters = () => {
 
           {/* Edit Printer Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Printer</DialogTitle>
                 <DialogDescription className="text-gray-400">
@@ -1002,7 +1002,7 @@ const AdminPrinters = () => {
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Basic Information</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-brand" className="text-gray-300">Brand *</Label>
                       <Input
@@ -1102,7 +1102,7 @@ const AdminPrinters = () => {
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-white border-b border-gray-700 pb-2">Additional Specifications</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-gray-300">Power (watts)</Label>
                       <Input
@@ -1124,7 +1124,7 @@ const AdminPrinters = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-gray-300">Min Layer Height (mm)</Label>
                       <Input

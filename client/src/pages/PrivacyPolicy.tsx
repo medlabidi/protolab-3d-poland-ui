@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 animate-slide-up">
         <div className="backdrop-blur-md bg-background/30 border-b border-white/10">
-          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <div className="container mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer" onClick={() => navigate("/")}>
               <Logo size="sm" textClassName="text-xl" />
             </div>
@@ -66,28 +66,28 @@ const PrivacyPolicy = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-12 px-6 relative">
+      <section className="pt-32 pb-12 px-3 sm:px-4 md:px-6 relative">
         <div className="container mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center gap-3 mb-6">
             <Shield className="w-16 h-16 text-primary" />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
             Privacy Policy
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Last updated: December 11, 2025
           </p>
         </div>
       </section>
 
       {/* Content */}
-      <section className="py-12 px-6 relative">
+      <section className="py-12 px-3 sm:px-4 md:px-6 relative">
         <div className="container mx-auto max-w-4xl">
           <div className="prose prose-lg max-w-none">
             
             {/* Introduction */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary flex items-center gap-3">
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary flex items-center gap-3">
                 <FileText className="w-8 h-8" />
                 Introduction
               </h2>
@@ -97,14 +97,14 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* Information We Collect */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary flex items-center gap-3">
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary flex items-center gap-3">
                 <Eye className="w-8 h-8" />
                 Information We Collect
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Personal Information</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-foreground mb-2">Personal Information</h3>
                   <p className="leading-relaxed">
                     We may collect personal information that you voluntarily provide to us when you:
                   </p>
@@ -121,7 +121,7 @@ const PrivacyPolicy = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Technical Information</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-foreground mb-2">Technical Information</h3>
                   <p className="leading-relaxed">
                     We automatically collect certain information when you visit our website:
                   </p>
@@ -135,7 +135,7 @@ const PrivacyPolicy = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">3D Files and Design Data</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-foreground mb-2">3D Files and Design Data</h3>
                   <p className="leading-relaxed">
                     When you upload 3D models or submit design requests, we collect and store your files and project specifications to fulfill your orders.
                   </p>
@@ -144,8 +144,8 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* How We Use Your Information */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary flex items-center gap-3">
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary flex items-center gap-3">
                 <Lock className="w-8 h-8" />
                 How We Use Your Information
               </h2>
@@ -164,8 +164,8 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* Data Security */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary flex items-center gap-3">
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary flex items-center gap-3">
                 <Shield className="w-8 h-8" />
                 Data Security
               </h2>
@@ -183,16 +183,16 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* Data Retention */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Data Retention</h2>
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Data Retention</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We retain your personal information for as long as necessary to fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required by law. 3D files and design data are retained for the duration of your project and may be archived for quality assurance purposes.
               </p>
             </div>
 
             {/* Your Rights */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Your Rights</h2>
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Your Rights</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p className="leading-relaxed">Under GDPR and applicable data protection laws, you have the right to:</p>
                 <ul className="list-disc pl-6 space-y-2">
@@ -210,24 +210,24 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* Cookies */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Cookies</h2>
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Cookies</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We use cookies and similar tracking technologies to enhance your browsing experience, analyze site traffic, and personalize content. You can control cookie preferences through your browser settings.
               </p>
             </div>
 
             {/* Third-Party Services */}
-            <div className="mb-12 p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Third-Party Services</h2>
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Third-Party Services</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We may use third-party service providers to help us operate our business and website. These providers have access to your information only to perform tasks on our behalf and are obligated to protect your data.
               </p>
             </div>
 
             {/* Contact Information */}
-            <div className="mb-12 p-6 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg border-2 border-primary/30">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Contact Us</h2>
+            <div className="mb-12 p-3 sm:p-4 md:p-6 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg border-2 border-primary/30">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 If you have any questions about this Privacy Policy or our data practices, please contact us:
               </p>
@@ -239,8 +239,8 @@ const PrivacyPolicy = () => {
             </div>
 
             {/* Updates */}
-            <div className="p-6 bg-card rounded-lg border-2 border-primary/20">
-              <h2 className="text-3xl font-bold mb-4 text-primary">Policy Updates</h2>
+            <div className="p-3 sm:p-4 md:p-6 bg-card rounded-lg border-2 border-primary/20">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-primary">Policy Updates</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
               </p>
@@ -251,7 +251,7 @@ const PrivacyPolicy = () => {
       </section>
 
       {/* Back to Home Button */}
-      <section className="py-12 px-6">
+      <section className="py-12 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-4xl text-center">
           <Button 
             onClick={() => navigate("/")} 
@@ -264,7 +264,7 @@ const PrivacyPolicy = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 px-6 mt-20">
+      <footer className="border-t border-border py-8 px-3 sm:px-4 md:px-6 mt-20">
         <div className="container mx-auto max-w-7xl text-center text-muted-foreground">
           <p>&copy; 2025 Protolab 3D Poland. All rights reserved.</p>
         </div>

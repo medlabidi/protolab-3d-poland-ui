@@ -216,7 +216,7 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-3 sm:p-4 md:p-6">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-3 text-center">
           <div className="flex justify-center">
@@ -228,7 +228,7 @@ const SignUp = () => {
 
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">{t('signup.fields.firstName')} *</Label>
                 <Input 
@@ -321,7 +321,7 @@ const SignUp = () => {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="city" className="text-xs">{t('signup.fields.city')}</Label>
                   <Input 

@@ -232,7 +232,7 @@ const Credits = () => {
                   </div>
                   <div>
                     <p className="text-sm text-green-700 dark:text-green-400 font-medium">{t('credits.currentBalance')}</p>
-                    <p className="text-4xl font-bold text-green-800 dark:text-green-300">{creditBalance.toFixed(2)} PLN</p>
+                    <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-800 dark:text-green-300">{creditBalance.toFixed(2)} PLN</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -242,7 +242,7 @@ const Credits = () => {
             </CardContent>
           </Card>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {/* Credit Packages */}
             <div className="lg:col-span-2 space-y-6">
               <Card className="shadow-xl border-2 border-primary/10 animate-scale-in">
@@ -255,7 +255,7 @@ const Credits = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Predefined Packages */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {creditPackages.map((pkg) => (
                       <div
                         key={pkg.id}
@@ -355,7 +355,7 @@ const Credits = () => {
                       )}
 
                       {/* Standard Payment Methods */}
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {paymentMethods.map((method) => (
                           <div
                             key={method.id}

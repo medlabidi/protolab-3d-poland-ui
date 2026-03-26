@@ -279,8 +279,8 @@ export function PaymentPage() {
   if (!order) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-background p-4">
-      <div className="max-w-5xl mx-auto space-y-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-background p-3 sm:p-4">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 py-4 sm:py-6 md:py-8">
         <Button
           variant="ghost"
           onClick={() => navigate('/orders')}
@@ -290,7 +290,7 @@ export function PaymentPage() {
           Back to Orders
         </Button>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Order Summary - Left Column */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -316,7 +316,7 @@ export function PaymentPage() {
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold">Total</span>
-                      <span className="text-2xl font-bold text-primary">
+                      <span className="text-xl sm:text-2xl font-bold text-primary">
                         {order.price.toFixed(2)} PLN
                       </span>
                     </div>
@@ -344,7 +344,7 @@ export function PaymentPage() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold">Total:</span>
-                    <span className="text-2xl font-bold">
+                    <span className="text-lg sm:text-2xl font-bold">
                       {order.price.toFixed(2)} PLN
                     </span>
                   </div>
@@ -362,7 +362,7 @@ export function PaymentPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={selectedMethod} onValueChange={(v) => setSelectedMethod(v as any)}>
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
                   <TabsTrigger value="card">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Card
@@ -380,7 +380,7 @@ export function PaymentPage() {
 {/* Card Payment */}
                 <TabsContent value="card" className="space-y-4 mt-4">
                   <div className="space-y-4">
-                    <div className="p-6 border rounded-lg bg-muted/50">
+                    <div className="p-3 sm:p-4 md:p-6 border rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3 mb-3">
                         <CreditCard className="h-6 w-6 text-primary" />
                         <h3 className="font-semibold">Secure Card Payment</h3>
@@ -409,7 +409,7 @@ export function PaymentPage() {
                       value={blikCode}
                       onChange={(e) => setBlikCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
-                      className="text-center text-2xl tracking-widest"
+                      className="text-center text-xl sm:text-2xl tracking-widest"
                     />
                     <p className="text-sm text-muted-foreground">
                       Open your banking app and generate a BLIK code

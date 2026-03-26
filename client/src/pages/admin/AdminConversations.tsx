@@ -283,16 +283,16 @@ const AdminConversations = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
 
-      <main className="flex-1 p-8 overflow-hidden flex flex-col">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden flex flex-col">
         <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">Conversations</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Conversations</h1>
             <p className="text-gray-400">Manage customer conversations and support messages</p>
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 overflow-hidden">
             {/* Conversations List */}
             <Card className="lg:col-span-1 bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
               <CardHeader className="border-b border-gray-800">
@@ -396,9 +396,9 @@ const AdminConversations = () => {
                 <>
                   {/* Conversation Header */}
                   <CardHeader className="border-b border-gray-800 flex-shrink-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div>
-                        <CardTitle className="text-xl text-white mb-2">
+                        <CardTitle className="text-base sm:text-lg md:text-xl text-white mb-2">
                           {selectedConversation.user?.name}
                         </CardTitle>
                         <div className="flex items-center gap-3 flex-wrap">

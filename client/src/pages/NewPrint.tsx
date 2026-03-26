@@ -1404,7 +1404,7 @@ const NewPrint = () => {
       
       {!isLoggedIn && (
         <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="container mx-auto px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 flex items-center justify-between">
             <button 
               onClick={() => navigate("/")}
               className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-all group"
@@ -1418,25 +1418,25 @@ const NewPrint = () => {
         </header>
       )}
       
-      <main className={`flex-1 p-8 ${!isLoggedIn ? 'pt-24' : ''} overflow-y-auto max-h-screen`}>
-        <div className="max-w-4xl mx-auto space-y-8">
+      <main className={`flex-1 p-3 sm:p-4 md:p-6 lg:p-8 ${!isLoggedIn ? 'pt-20 sm:pt-24' : ''} overflow-y-auto max-h-screen`}>
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold mb-3 gradient-text">{t('newPrint.title')}</h1>
-            <p className="text-muted-foreground text-lg">{t('newPrint.subtitle')}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 gradient-text">{t('newPrint.title')}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg">{t('newPrint.subtitle')}</p>
           </div>
 
           {/* Upload Mode Selection */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30">
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Upload className="w-6 h-6 text-primary" />
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.uploadTitle')}
               </CardTitle>
-              <CardDescription className="text-base">{t('newPrint.supportedFormats')}</CardDescription>
+              <CardDescription className="text-sm sm:text-base">{t('newPrint.supportedFormats')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'single' | 'project')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
                   <TabsTrigger value="single" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     {t('newPrint.singleFile')}
@@ -1449,8 +1449,8 @@ const NewPrint = () => {
 
                 {/* Single File Upload */}
                 <TabsContent value="single">
-                  <div 
-                    className={`border-3 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                  <div
+                    className={`border-3 border-dashed rounded-2xl p-6 sm:p-8 md:p-12 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
                       isDragging 
                         ? 'border-primary bg-primary/10 scale-[1.02]' 
                         : 'border-primary/30 hover:border-primary hover:bg-primary/5'
@@ -1468,21 +1468,21 @@ const NewPrint = () => {
                       onChange={handleFileChange}
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      <div className={`w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transition-all duration-300 ${
+                      <div className={`w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg transition-all duration-300 ${
                         isDragging ? 'scale-125 rotate-12' : 'group-hover:scale-110 group-hover:rotate-6'
                       }`}>
-                        <Upload className="w-10 h-10 text-white" />
+                        <Upload className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-white" />
                       </div>
                       {file ? (
                         <div className="animate-scale-in">
-                          <p className="font-bold text-xl text-primary mb-2">{file.name}</p>
+                          <p className="font-bold text-lg sm:text-xl text-primary mb-2">{file.name}</p>
                           <p className="text-muted-foreground">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
                       ) : (
                         <div>
-                          <p className={`font-bold text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                          <p className={`font-bold text-lg sm:text-xl mb-2 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
                             {isDragging ? t('newPrint.dropFileHere') : t('newPrint.clickToUpload')}
                           </p>
                           <p className="text-muted-foreground">{t('newPrint.fileFormats')}</p>
@@ -1492,7 +1492,7 @@ const NewPrint = () => {
                   </div>
                   
                   {file && (
-                    <div className="mt-6 p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
+                    <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-gradient-to-br from-muted/50 to-background rounded-2xl border-2 border-primary/10 animate-slide-up">
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm font-bold flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${isModelLoading ? 'bg-yellow-500 animate-pulse' : modelAnalysis ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></span>
@@ -1506,21 +1506,21 @@ const NewPrint = () => {
                       
                       {/* Dynamic Model Stats */}
                       {modelAnalysis && (
-                        <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
-                            <p className="text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-primary">{modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
                           </div>
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">{t('newPrint.estWeight')}</p>
-                            <p className="text-lg font-bold text-primary">
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-primary">
                               {estimatedWeight ? `${estimatedWeight.toFixed(1)}g` : '--'}
                             </p>
                             {material && <p className="text-xs text-muted-foreground">{material.split('-')[0].toUpperCase()}</p>}
                           </div>
                           <div className="p-3 bg-card rounded-lg border border-primary/20">
                             <p className="text-xs text-muted-foreground">{t('newPrint.estPrintTime')}</p>
-                            <p className="text-lg font-bold text-primary">
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-primary">
                               {formatPrintTime(estimatedPrintTime)}
                             </p>
                             {quality && <p className="text-xs text-muted-foreground">{t(`newPrint.qualityOptions.${quality}`)}</p>}
@@ -1547,8 +1547,8 @@ const NewPrint = () => {
                     </div>
 
                     {/* Drop zone for multiple files */}
-                    <div 
-                      className={`border-3 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
+                    <div
+                      className={`border-3 border-dashed rounded-2xl p-4 sm:p-6 md:p-8 text-center transition-all cursor-pointer group hover-lift bg-gradient-to-br from-primary/5 to-purple-500/5 ${
                         isDragging 
                           ? 'border-primary bg-primary/10 scale-[1.02]' 
                           : 'border-primary/30 hover:border-primary hover:bg-primary/5'
@@ -1572,7 +1572,7 @@ const NewPrint = () => {
                         }`}>
                           <Plus className="w-8 h-8 text-white" />
                         </div>
-                        <p className={`font-bold text-lg mb-1 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
+                        <p className={`font-bold text-base sm:text-lg mb-1 transition-colors ${isDragging ? 'text-primary' : 'group-hover:text-primary'}`}>
                           {isDragging ? t('newPrint.dropFilesHere') : t('newPrint.addFilesToProject')}
                         </p>
                         <p className="text-sm text-muted-foreground">{t('newPrint.clickOrDragMultiple')}</p>
@@ -1583,7 +1583,7 @@ const NewPrint = () => {
                     {projectFiles.length > 0 && (
                       <div className="space-y-4 mt-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-lg">{projectFiles.length} {projectFiles.length > 1 ? t('newPrint.filesInProject') : t('newPrint.fileInProject')}</h3>
+                          <h3 className="font-bold text-base sm:text-lg">{projectFiles.length} {projectFiles.length > 1 ? t('newPrint.filesInProject') : t('newPrint.fileInProject')}</h3>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -1647,7 +1647,7 @@ const NewPrint = () => {
                                   </div>
 
                                   {/* File Configuration */}
-                                  <div className="grid grid-cols-3 gap-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                     <div className="space-y-1">
                                       <Label className="text-sm">{t('newPrint.settings.material')}</Label>
                                       <Select 
@@ -1792,7 +1792,7 @@ const NewPrint = () => {
 
                                   {/* File Stats */}
                                   {pf.modelAnalysis && (
-                                    <div className="grid grid-cols-4 gap-3 text-center">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
                                       <div className="p-2 bg-muted/50 rounded-lg">
                                         <p className="text-xs text-muted-foreground">{t('newPrint.fileInfo.volume')}</p>
                                         <p className="font-bold text-primary">{pf.modelAnalysis.volumeCm3.toFixed(2)} cm³</p>
@@ -1827,8 +1827,8 @@ const NewPrint = () => {
                         {projectFiles.length > 0 && (
                           <div className="p-4 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/30">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-lg">{t('newPrint.projectTotal')} ({projectFiles.length} {t('newPrint.items')})</span>
-                              <span className="text-2xl font-bold gradient-text">
+                              <span className="font-bold text-base sm:text-lg">{t('newPrint.projectTotal')} ({projectFiles.length} {t('newPrint.items')})</span>
+                              <span className="text-xl sm:text-2xl font-bold gradient-text">
                                 {totalProjectPrice > 0 ? `${totalProjectPrice.toFixed(2)} PLN` : '--'}
                               </span>
                             </div>
@@ -1846,14 +1846,14 @@ const NewPrint = () => {
           {uploadMode === 'single' && (
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Calculator className="w-6 h-6 text-primary" />
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.settings.title')}
               </CardTitle>
-              <CardDescription className="text-base">{t('newPrint.selectPreferredSettings')}</CardDescription>
+              <CardDescription className="text-sm sm:text-base">{t('newPrint.selectPreferredSettings')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-1 gap-6">
+            <CardContent className="space-y-4 sm:space-y-6">
+              <div className="grid md:grid-cols-1 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="material" className="text-base font-semibold">{t('newPrint.material')}</Label>
                   <Select value={material} onValueChange={setMaterial} disabled={materialsLoading}>
@@ -1947,7 +1947,7 @@ const NewPrint = () => {
                     id="quantity" 
                     type="number" 
                     min="1"
-                    className="h-12 text-lg"
+                    className="h-12 text-base sm:text-lg"
                     value={quantity}
                     onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   />
@@ -2042,8 +2042,8 @@ const NewPrint = () => {
           {/* Price Estimate */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Calculator className="w-6 h-6 text-primary" />
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('newPrint.estimatedPrice')}
               </CardTitle>
             </CardHeader>
@@ -2065,11 +2065,11 @@ const NewPrint = () => {
 
               {/* Single file price breakdown */}
               {uploadMode === 'single' && estimatedPrice !== null && priceBreakdown && (
-                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
                   <div className="space-y-4">
                     {/* Price Breakdown Header */}
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">{t('newPrint.pricing.title')}</p>
+                      <p className="text-base sm:text-lg font-bold">{t('newPrint.pricing.title')}</p>
                       {modelAnalysis ? (
                         <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">✓ {t('newPrint.actualWeight')}</span>
                       ) : (
@@ -2099,7 +2099,7 @@ const NewPrint = () => {
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold">{t('newPrint.pricing.printCost')} {quantity > 1 ? `(×${quantity})` : ''}</span>
-                        <span className="text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-primary">{estimatedPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                       {modelAnalysis && estimatedWeight && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -2119,8 +2119,8 @@ const NewPrint = () => {
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">{t('newPrint.pricing.total')}</span>
-                            <span className="text-4xl font-bold gradient-text">
+                            <span className="text-base sm:text-lg font-bold">{t('newPrint.pricing.total')}</span>
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text">
                               {(estimatedPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
@@ -2133,10 +2133,10 @@ const NewPrint = () => {
 
               {/* Project mode price summary */}
               {uploadMode === 'project' && projectFiles.length > 0 && totalProjectPrice > 0 && (
-                <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-2xl border-2 border-primary/30 shadow-lg animate-scale-in">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold">{t('newPrint.projectPriceSummary')}</p>
+                      <p className="text-base sm:text-lg font-bold">{t('newPrint.projectPriceSummary')}</p>
                       <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded">
                         {projectFiles.length} {projectFiles.length > 1 ? t('newPrint.files') : t('newPrint.file')}
                       </span>
@@ -2158,7 +2158,7 @@ const NewPrint = () => {
                     <div className="pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold">{t('newPrint.pricing.printCostAllFiles')}</span>
-                        <span className="text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} {t('common.pln')}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-primary">{totalProjectPrice.toFixed(2)} {t('common.pln')}</span>
                       </div>
                     </div>
                     
@@ -2173,8 +2173,8 @@ const NewPrint = () => {
                         
                         <div className="border-t-2 border-primary/30 pt-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">{t('newPrint.totalProjectPrice')}</span>
-                            <span className="text-4xl font-bold gradient-text">
+                            <span className="text-base sm:text-lg font-bold">{t('newPrint.totalProjectPrice')}</span>
+                            <span className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text">
                               {(totalProjectPrice + (deliveryOptions.find(opt => opt.id === selectedDeliveryOption)?.price || 0)).toFixed(2)} {t('common.pln')}
                             </span>
                           </div>
@@ -2190,8 +2190,8 @@ const NewPrint = () => {
           {/* Delivery */}
           <Card className="shadow-xl border-2 border-primary/10 animate-scale-in bg-gradient-to-br from-card to-muted/30" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Send className="w-6 h-6 text-primary" />
+              <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {t('delivery.title')}
               </CardTitle>
             </CardHeader>
@@ -2249,9 +2249,9 @@ const NewPrint = () => {
           />
 
           {/* Submit */}
-          <Button onClick={proceedToPayment} size="lg" className="w-full h-14 text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
+          <Button onClick={proceedToPayment} size="lg" className="w-full h-12 sm:h-14 text-base sm:text-lg hover-lift shadow-xl group relative overflow-hidden animate-scale-in" style={{ animationDelay: '0.4s' }}>
             <span className="relative z-10 flex items-center">
-              <CreditCard className="mr-2 h-6 w-6 group-hover:scale-110 transition-transform" />
+              <CreditCard className="mr-2 h-5 w-5 sm:h-6 sm:w-6 group-hover:scale-110 transition-transform" />
               {t('newPrint.placeOrder')}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>

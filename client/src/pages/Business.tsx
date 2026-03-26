@@ -126,11 +126,11 @@ const Business = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <DashboardSidebar />
 
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-auto">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Header */}
           <div className="animate-slide-up">
-            <h1 className="text-4xl font-bold gradient-text mb-2">{t('business.title')}</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text mb-2">{t('business.title')}</h1>
             <p className="text-muted-foreground">
               {t('business.subtitle')}
             </p>
@@ -354,8 +354,8 @@ const Business = () => {
               <CardDescription>{t('business.features.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/20">
-                <h3 className="text-xl font-bold mb-2">{t('business.features.upgradeTitle')}</h3>
+              <div className="p-3 sm:p-4 md:p-6 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-xl border-2 border-primary/20">
+                <h3 className="text-lg sm:text-xl font-bold mb-2">{t('business.features.upgradeTitle')}</h3>
                 <p className="text-muted-foreground mb-4">
                   {t('business.features.upgradeDesc')}
                 </p>
