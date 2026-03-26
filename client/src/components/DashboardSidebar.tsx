@@ -104,7 +104,7 @@ export const DashboardSidebar = () => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40 relative
+        fixed lg:relative inset-y-0 left-0 z-40
         ${isCollapsed ? 'w-20' : 'w-64'} bg-gray-900 border-r border-gray-800 min-h-screen flex flex-col
         transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}

@@ -204,7 +204,7 @@ export const AdminSidebar = () => {
 
     <aside
       className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 ease-in-out min-h-screen relative",
+        "fixed lg:relative inset-y-0 left-0 z-40 bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 ease-in-out min-h-screen",
         collapsed ? "w-20" : "w-64",
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
