@@ -423,7 +423,7 @@ const Dashboard = () => {
     return (
       <div className="flex min-h-screen" style={{backgroundColor: 'rgb(3 7 18 / var(--tw-bg-opacity, 1))'}}>
         <DashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
       </div>
@@ -448,7 +448,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {statsConfig.map((stat, index) => (
               <Card 
                 key={stat.title}
@@ -483,8 +483,8 @@ const Dashboard = () => {
             <Card className="shadow-xl border-2 border-transparent hover:border-blue-500/20 transition-all bg-gradient-to-br from-card to-blue-500/5">
               <CardHeader className="border-b">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Boxes className="w-5 h-5 text-blue-500" />
+                  <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+                    <Boxes className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                     Print Jobs
                     <span className="text-sm font-normal text-muted-foreground">({stats.printJobsCount})</span>
                   </CardTitle>
@@ -535,13 +535,13 @@ const Dashboard = () => {
             {/* Design Assistance Card */}
             <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-card to-cyan-500/5">
               <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-cyan-500" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+                    <Palette className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
                     Design Assistance
                     <span className="text-sm font-normal text-muted-foreground">({stats.designJobsCount})</span>
                   </CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-shrink-0">
                     {designRequests.length > 0 && (
                       <Button
                         variant="ghost"
@@ -578,7 +578,7 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[400px] px-4">
+                  <ScrollArea className="h-[300px] sm:h-[400px] px-4">
                     <div className="space-y-2 pt-4 pb-1">
                       {designRequests.slice(0, 5).map((request) => (
                         <div
@@ -615,8 +615,8 @@ const Dashboard = () => {
           {/* Recent Orders & Projects */}
           <Card className="shadow-xl border-2 border-transparent hover:border-primary/10 transition-all animate-slide-up bg-gradient-to-br from-card to-muted/30">
             <CardHeader className="border-b p-4 md:p-6">
-              <CardTitle className="text-xl md:text-2xl flex items-center gap-2">
-                <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+              <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl flex items-center gap-2">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
                 {t('dashboard.recentOrders')}
               </CardTitle>
             </CardHeader>
