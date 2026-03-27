@@ -81,8 +81,20 @@ const AdminDesignAssistance = () => {
   
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef<number>(0);
 
-  // No auto-scroll on admin side — admin reads from top down
+  // Smart auto-scroll: only scroll when new messages arrive
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      setTimeout(() => {
+        const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 100);
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages]);
 
   useEffect(() => {
     fetchOrders();
