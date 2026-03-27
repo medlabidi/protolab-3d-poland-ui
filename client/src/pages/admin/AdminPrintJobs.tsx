@@ -72,7 +72,7 @@ const AdminPrintJobs = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders`, {
+      const response = await fetch(`${API_URL}/admin/orders?type=print`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -269,7 +269,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No submitted orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'submitted').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -277,7 +277,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -290,6 +290,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -306,6 +307,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -328,7 +330,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No orders in queue</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'in_queue').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -336,7 +338,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -349,6 +351,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -365,6 +368,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -387,7 +391,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No orders printing</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'printing').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -395,7 +399,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -408,6 +412,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -424,6 +429,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -446,7 +452,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No finished orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'finished').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -454,7 +460,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -467,6 +473,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -483,6 +490,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -505,7 +513,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No delivered orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -513,7 +521,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -526,6 +534,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -542,6 +551,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))

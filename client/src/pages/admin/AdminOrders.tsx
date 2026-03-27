@@ -268,6 +268,7 @@ const AdminOrders = () => {
                           </select>
                         </div>
                       </th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Type</th>
                       <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Customer</th>
                       <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">
                         <div className="flex flex-col gap-1">
@@ -311,7 +312,7 @@ const AdminOrders = () => {
                   <tbody className="divide-y divide-gray-800">
                     {filteredOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 sm:px-4 md:px-6 py-8 text-center text-gray-500">
+                        <td colSpan={6} className="px-3 sm:px-4 md:px-6 py-8 text-center text-gray-500">
                           <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
                           <p>No orders found</p>
                         </td>
@@ -328,6 +329,17 @@ const AdminOrders = () => {
                               <p className="font-medium text-white">{order.file_name}</p>
                               <p className="text-xs text-gray-500">{order.id.substring(0, 8)}</p>
                             </div>
+                          </td>
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                            {order.order_type === 'design' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300">
+                                🎨 Design
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
+                                📦 Print
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div>
