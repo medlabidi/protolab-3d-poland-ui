@@ -498,7 +498,11 @@ const DesignAssistance = () => {
         } catch (e) {
           data = {};
         }
-        setMessages(prev => [...prev, data.message]);
+        setMessages(prev => {
+          // Deduplicate: poll may have already fetched this message
+          if (prev.some(m => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
         setNewMessage("");
         setConversationFile(null);
         toast.success("Message sent");
