@@ -4,7 +4,7 @@ const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY || '',
   model: 'gemini-2.5-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-  maxTokens: 1024,
+  maxTokens: 2048,
 };
 
 interface GeminiMessage {
@@ -181,9 +181,18 @@ export function buildGeminiHistory(
     // 'engineer' messages are skipped — once escalated, AI is out of the loop
   }
 
-  // Gemini requires the last message to be 'user' role
-  // If it's 'model', the conversation context is still valid for generateContent
-  // but we should ensure it ends with user for proper turn-taking
+  // Gemini requires the last message to be 'user' role for generateContent
+  // If it ends with 'model', remove the trailing model message so Gemini has
+  // context but treats the previous user message as the current turn
+  if (history.length > 0 && history[history.length - 1].role === 'model') {
+    // Keep the model message in history — Gemini needs alternating turns
+    // But ensure we don't end on model. If the last user message came before,
+    // the model already responded, so there's nothing new to respond to.
+    // This shouldn't happen in normal flow (triggerAI is called after user sends),
+    // but guard against it.
+    console.log('[GEMINI] Warning: history ends with model role, conversation may be stale');
+  }
+
   return history;
 }
 

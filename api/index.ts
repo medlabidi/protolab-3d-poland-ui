@@ -5164,20 +5164,28 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
       return;
     }
 
-    // 3. Fetch all messages in the conversation
+    // 3. Fetch all messages in the conversation (exclude admin_brief messages)
     const { data: messages } = await supabase
       .from('conversation_messages')
-      .select('sender_type, message')
+      .select('sender_type, message, attachments')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
-    if (!messages) {
+    // Filter out admin_brief messages — they're admin-only and shouldn't be in AI history
+    const filteredMessages = (messages || []).filter((m: any) => {
+      if (m.attachments && Array.isArray(m.attachments)) {
+        return !m.attachments.some((att: any) => att.type === 'admin_brief');
+      }
+      return true;
+    });
+
+    if (!filteredMessages || filteredMessages.length === 0) {
       console.error('[AI_AGENT] No messages found for conversation:', conversationId);
       return;
     }
 
     // 4. If admin already responded, auto-escalate and stop
-    const hasEngineerMessages = messages.some((m: any) => m.sender_type === 'engineer');
+    const hasEngineerMessages = filteredMessages.some((m: any) => m.sender_type === 'engineer');
     if (hasEngineerMessages) {
       console.log('[AI_AGENT] Engineer already responded, auto-escalating');
       await supabase
@@ -5189,7 +5197,7 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
-    const geminiHistory = buildGeminiHistory(messages, designContext);
+    const geminiHistory = buildGeminiHistory(filteredMessages, designContext);
     const { text: aiText, shouldEscalate, adminBrief } = await generateAIResponse(geminiHistory);
 
     // 6. Insert AI message

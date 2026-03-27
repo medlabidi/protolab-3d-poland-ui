@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye, Bot } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye, Bot, ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -72,6 +72,7 @@ const DesignAssistance = () => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
+  const [requestsCollapsed, setRequestsCollapsed] = useState(false);
 
   // 3D Model Viewer state
   const [modelViewerModal, setModelViewerModal] = useState<{
@@ -221,6 +222,7 @@ const DesignAssistance = () => {
 
   const handleSelectRequest = async (request: DesignRequest) => {
     setSelectedRequest(request);
+    setRequestsCollapsed(true);
     
     // Fetch conversation for this request
     try {
@@ -813,13 +815,24 @@ const DesignAssistance = () => {
           {/* Two Column Layout */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 overflow-hidden">
             {/* Left Column - Order Details */}
-            <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
-              <CardHeader className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6">
-                <CardTitle className="text-white flex items-center gap-2 text-sm sm:text-base">
-                  <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                  Design Requests ({designRequests.length})
+            <Card className={`bg-gray-900 border-gray-800 flex flex-col overflow-hidden ${requestsCollapsed ? 'h-auto' : ''}`}>
+              <CardHeader
+                className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6 cursor-pointer select-none"
+                onClick={() => setRequestsCollapsed(!requestsCollapsed)}
+              >
+                <CardTitle className="text-white flex items-center justify-between text-sm sm:text-base">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    Design Requests ({designRequests.length})
+                  </div>
+                  {requestsCollapsed ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4 text-gray-400" />
+                  )}
                 </CardTitle>
               </CardHeader>
+              {!requestsCollapsed && (
               <CardContent className="p-0">
                 {/* Orders List - Scrollable */}
                 <ScrollArea className="h-[300px] sm:h-[400px] px-3 sm:px-4">
@@ -882,6 +895,7 @@ const DesignAssistance = () => {
                   </div>
                 </ScrollArea>
               </CardContent>
+              )}
             </Card>
 
             {/* Right Column - Conversation */}
