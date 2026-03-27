@@ -82,15 +82,7 @@ const AdminDesignAssistance = () => {
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    setTimeout(() => {
-      const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
-    }, 100);
-  }, [messages]);
+  // No auto-scroll on admin side — admin reads from top down
 
   useEffect(() => {
     fetchOrders();
