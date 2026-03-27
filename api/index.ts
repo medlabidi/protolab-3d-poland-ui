@@ -137,8 +137,7 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
 
   // Filter by order_type if specified
   if (orderType === 'print') {
-    // Include orders where order_type is 'print' OR NULL (legacy orders before order_type was added)
-    query = query.or('order_type.eq.print,order_type.is.null');
+    query = query.neq('order_type', 'design');
   } else if (orderType === 'design') {
     query = query.eq('order_type', 'design');
   }
