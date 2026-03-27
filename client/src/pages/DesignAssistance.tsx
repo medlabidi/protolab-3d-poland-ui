@@ -733,9 +733,9 @@ const DesignAssistance = () => {
         <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="mb-4 sm:mb-6 md:mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
+            <div className="mb-4 sm:mb-6 md:mb-8 pl-10 lg:pl-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-cyan-500" />
                 3D Design Assistance
               </h1>
               <p className="text-gray-400 mt-2 text-sm sm:text-base">Transform your ideas into custom 3D designs</p>
@@ -793,13 +793,13 @@ const DesignAssistance = () => {
       <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
         <div className="h-full flex flex-col">
           {/* Header with Create Button */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 pl-10 lg:pl-0">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-cyan-500" />
                 My Design Requests
               </h1>
-              <p className="text-gray-400 mt-1 text-sm sm:text-base">Track your custom 3D design projects</p>
+              <p className="text-gray-400 mt-1 text-xs sm:text-sm">Track your custom 3D design projects</p>
             </div>
             <Button 
               onClick={() => setShowFormDialog(true)}
@@ -814,15 +814,15 @@ const DesignAssistance = () => {
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 overflow-hidden">
             {/* Left Column - Order Details */}
             <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
-              <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-cyan-400" />
+              <CardHeader className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6">
+                <CardTitle className="text-white flex items-center gap-2 text-sm sm:text-base">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                   Design Requests ({designRequests.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {/* Orders List - Scrollable */}
-                <ScrollArea className="h-[400px] px-4">
+                <ScrollArea className="h-[300px] sm:h-[400px] px-3 sm:px-4">
                   <div className="space-y-3 pt-4">
                     {designRequests.map((request) => (
                       <Card
@@ -833,16 +833,16 @@ const DesignAssistance = () => {
                             : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'
                         }`}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 
-                              className="text-white font-semibold truncate flex-1 cursor-pointer"
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3
+                              className="text-white font-semibold text-sm sm:text-base truncate flex-1 min-w-0 cursor-pointer"
                               onClick={() => handleSelectRequest(request)}
                             >
                               {request.project_name}
                             </h3>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getStatusColor(request.design_status)}>
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                              <Badge className={`text-[10px] sm:text-xs ${getStatusColor(request.design_status)}`}>
                                 {formatStatus(request.design_status)}
                               </Badge>
                               <Button
@@ -859,8 +859,8 @@ const DesignAssistance = () => {
                               </Button>
                             </div>
                           </div>
-                          <p 
-                            className="text-gray-400 text-sm mb-2 line-clamp-2 cursor-pointer"
+                          <p
+                            className="text-gray-400 text-xs sm:text-sm mb-2 line-clamp-2 cursor-pointer"
                             onClick={() => handleSelectRequest(request)}
                           >
                             {request.idea_description}
@@ -886,9 +886,9 @@ const DesignAssistance = () => {
 
             {/* Right Column - Conversation */}
             <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
-              <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-cyan-400" />
+              <CardHeader className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6">
+                <CardTitle className="text-white flex items-center gap-2 text-sm sm:text-base">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                   Conversation with Admin
                 </CardTitle>
               </CardHeader>
@@ -896,11 +896,11 @@ const DesignAssistance = () => {
                 {selectedRequest ? (
                   <>
                     {/* Request Details Summary */}
-                    <div className="px-4 pt-4 space-y-3">
-                      <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-white font-semibold text-sm">{selectedRequest.project_name}</h3>
-                          <Badge className={getStatusColor(selectedRequest.design_status)}>
+                    <div className="px-3 sm:px-4 pt-3 sm:pt-4 space-y-3">
+                      <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="text-white font-semibold text-xs sm:text-sm truncate flex-1 min-w-0">{selectedRequest.project_name}</h3>
+                          <Badge className={`text-[10px] sm:text-xs flex-shrink-0 ${getStatusColor(selectedRequest.design_status)}`}>
                             {formatStatus(selectedRequest.design_status)}
                           </Badge>
                         </div>
@@ -1075,16 +1075,16 @@ const DesignAssistance = () => {
                               key={msg.id}
                               className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
-                              <div className={`flex items-start gap-2 max-w-[85%] ${msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <div className={`flex items-start gap-1.5 sm:gap-2 max-w-[90%] sm:max-w-[85%] ${msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                                 {/* Avatar */}
-                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                <div className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold ${
                                   msg.sender_type === 'user'
                                     ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
                                     : msg.sender_type === 'system'
                                     ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white'
                                     : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
                                 }`}>
-                                  {msg.sender_type === 'user' ? 'Y' : msg.sender_type === 'system' ? <Bot className="w-4 h-4" /> : 'A'}
+                                  {msg.sender_type === 'user' ? 'Y' : msg.sender_type === 'system' ? <Bot className="w-3 h-3 sm:w-4 sm:h-4" /> : 'A'}
                                 </div>
                                 
                                 {/* Message Content */}
@@ -1101,7 +1101,7 @@ const DesignAssistance = () => {
                                   </span>
                                   
                                   <div
-                                    className={`rounded-lg p-3 ${
+                                    className={`rounded-lg p-2 sm:p-3 ${
                                       msg.sender_type === 'user'
                                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                                         : msg.sender_type === 'system'
@@ -1109,7 +1109,7 @@ const DesignAssistance = () => {
                                         : 'bg-gray-800 text-gray-200 border border-gray-700'
                                     }`}
                                   >
-                                    <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                                     
                                     {/* Timestamp */}
                                     <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
@@ -1430,7 +1430,7 @@ const DesignAssistance = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 px-4 pb-4 space-y-2">
+                      <div className="flex-shrink-0 px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
                         {/* Talk to Human button — show when AI is active */}
                         {messages.some((m: any) => m.sender_type === 'system') && !messages.some((m: any) => m.sender_type === 'engineer') && (
                           <div className="flex justify-center">
@@ -1623,7 +1623,7 @@ const DesignAssistance = () => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
               <Info className="w-6 h-6" />
@@ -1733,18 +1733,18 @@ const DesignFormDialog = ({
 }: any) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <Palette className="w-6 h-6 text-cyan-500" />
+          <DialogTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-2">
+            <Palette className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-500" />
             New Design Request
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-4">
           {/* Design Title */}
           <div className="space-y-2">
-            <Label htmlFor="designTitle" className="text-base font-semibold">
+            <Label htmlFor="designTitle" className="text-sm sm:text-sm sm:text-base font-semibold">
               Design Title
             </Label>
             <Input
@@ -1758,7 +1758,7 @@ const DesignFormDialog = ({
 
           {/* Design Type */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">What type of design do you need?</Label>
+            <Label className="text-sm sm:text-sm sm:text-base font-semibold">What type of design do you need?</Label>
             <RadioGroup
               value={formData.usage}
               onValueChange={(value) => setFormData({ ...formData, usage: value as any })}
@@ -1785,7 +1785,7 @@ const DesignFormDialog = ({
 
           {/* Idea Description */}
           <div className="space-y-2">
-            <Label htmlFor="ideaDescription" className="text-base font-semibold">
+            <Label htmlFor="ideaDescription" className="text-sm sm:text-base font-semibold">
               Describe your idea <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -1800,7 +1800,7 @@ const DesignFormDialog = ({
 
           {/* Approximate Dimensions */}
           <div className="space-y-2">
-            <Label className="text-base font-semibold">Approximate Dimensions (mm)</Label>
+            <Label className="text-sm sm:text-base font-semibold">Approximate Dimensions (mm)</Label>
             <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="dimWidth" className="text-xs text-gray-400">Width</Label>
@@ -1846,7 +1846,7 @@ const DesignFormDialog = ({
 
           {/* File Upload */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Reference Files (Optional)</Label>
+            <Label className="text-sm sm:text-base font-semibold">Reference Files (Optional)</Label>
             <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
                 <p className="font-semibold text-cyan-400 mb-1">📎 All Formats</p>
