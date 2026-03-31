@@ -2201,6 +2201,287 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
   }
 }
 
+// ==================== TEXT-TO-3D GENERATION HANDLERS ====================
+
+async function handleCreateGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { prompt, style, face_limit } = req.body;
+
+  if (!prompt || prompt.trim().length < 3) {
+    return res.status(400).json({ error: 'Prompt is required (minimum 3 characters)' });
+  }
+  if (prompt.length > 500) {
+    return res.status(400).json({ error: 'Prompt too long (maximum 500 characters)' });
+  }
+
+  try {
+    // Build the generation prompt with style prefix
+    let generationPrompt = prompt.trim();
+    const styleMap: Record<string, string> = {
+      cartoon: 'cartoon style, ',
+      realistic: 'realistic detailed, ',
+      lowpoly: 'low poly, ',
+      sculpture: 'smooth sculpture, ',
+    };
+    if (style && styleMap[style]) {
+      generationPrompt = styleMap[style] + generationPrompt;
+    }
+
+    // Create generation_jobs record
+    const { data: job, error: insertError } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: user.userId,
+        prompt: prompt.trim(),
+        style: style || null,
+        face_limit: face_limit || null,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (insertError || !job) {
+      console.error('[GENERATE-3D] Insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to create generation job' });
+    }
+
+    // Call Tripo3D API
+    const tripoApiKey = process.env.TRIPO3D_API_KEY;
+    if (!tripoApiKey) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: 'Tripo3D API key not configured' })
+        .eq('id', job.id);
+      return res.status(500).json({ error: 'Text-to-3D service not configured' });
+    }
+
+    const tripoBody: any = {
+      type: 'text_to_model',
+      prompt: generationPrompt,
+    };
+    if (face_limit) tripoBody.face_limit = face_limit;
+
+    const tripoResponse = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tripoApiKey}`,
+      },
+      body: JSON.stringify(tripoBody),
+    });
+
+    const tripoData = await tripoResponse.json();
+
+    if (!tripoResponse.ok || !tripoData.data?.task_id) {
+      const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: errorMsg })
+        .eq('id', job.id);
+      return res.status(502).json({ error: 'Failed to start 3D generation', details: errorMsg });
+    }
+
+    // Update job with task_id
+    await supabase.from('generation_jobs')
+      .update({ tripo_task_id: tripoData.data.task_id, status: 'generating' })
+      .eq('id', job.id);
+
+    return res.status(201).json({
+      job: { id: job.id, status: 'generating', prompt: prompt.trim(), created_at: job.created_at },
+    });
+  } catch (error) {
+    console.error('[GENERATE-3D] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleCheckGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[2]; // /generate-3d/{jobId}
+
+  if (!jobId) {
+    return res.status(400).json({ error: 'Job ID required' });
+  }
+
+  try {
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', user.userId)
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ error: 'Generation job not found' });
+    }
+
+    // Terminal states — return immediately
+    if (job.status === 'ready' || job.status === 'failed') {
+      return res.status(200).json({ job });
+    }
+
+    // If generating, check Tripo3D
+    if (job.status === 'generating' && job.tripo_task_id) {
+      const tripoApiKey = process.env.TRIPO3D_API_KEY;
+      const tripoResponse = await fetch(
+        `https://api.tripo3d.ai/v2/openapi/task/${job.tripo_task_id}`,
+        { headers: { 'Authorization': `Bearer ${tripoApiKey}` } }
+      );
+
+      const tripoData = await tripoResponse.json();
+      const tripoStatus = tripoData.data?.status;
+
+      if (tripoStatus === 'success') {
+        // Find GLB URL in response
+        const glbUrl = tripoData.data?.output?.pbr_model?.glb
+          || tripoData.data?.output?.model?.glb
+          || tripoData.data?.output?.rendered_image; // fallback
+
+        if (!glbUrl) {
+          await supabase.from('generation_jobs')
+            .update({ status: 'failed', error_message: 'No model URL in Tripo response' })
+            .eq('id', job.id);
+          return res.status(200).json({ job: { ...job, status: 'failed', error_message: 'No model URL returned' } });
+        }
+
+        // Set to processing
+        await supabase.from('generation_jobs')
+          .update({ status: 'processing' })
+          .eq('id', job.id);
+
+        try {
+          // Download GLB from Tripo
+          const glbResponse = await fetch(glbUrl);
+          if (!glbResponse.ok) throw new Error('Failed to download model from Tripo3D');
+
+          const glbBuffer = Buffer.from(await glbResponse.arrayBuffer());
+          const fileName = `generated-${job.id.substring(0, 8)}.glb`;
+          const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+          const filePath = `${user.userId}/generated/${Date.now()}-${fileName}`;
+
+          // Upload to Supabase storage
+          const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, glbBuffer, { contentType: 'model/gltf-binary' });
+
+          if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+          // Get public URL
+          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+          // Update as ready
+          await supabase.from('generation_jobs')
+            .update({ status: 'ready', file_url: urlData.publicUrl, file_name: fileName })
+            .eq('id', job.id);
+
+          return res.status(200).json({
+            job: { ...job, status: 'ready', file_url: urlData.publicUrl, file_name: fileName },
+          });
+        } catch (downloadErr: any) {
+          await supabase.from('generation_jobs')
+            .update({ status: 'failed', error_message: downloadErr.message })
+            .eq('id', job.id);
+          return res.status(200).json({ job: { ...job, status: 'failed', error_message: downloadErr.message } });
+        }
+      } else if (tripoStatus === 'failed' || tripoStatus === 'cancelled') {
+        await supabase.from('generation_jobs')
+          .update({ status: 'failed', error_message: `Generation ${tripoStatus}` })
+          .eq('id', job.id);
+        return res.status(200).json({ job: { ...job, status: 'failed', error_message: `Generation ${tripoStatus}` } });
+      }
+
+      // Still queued/running
+      return res.status(200).json({ job: { ...job, status: 'generating' } });
+    }
+
+    // Processing state — still downloading/uploading from a previous poll
+    return res.status(200).json({ job });
+  } catch (error) {
+    console.error('[GENERATE-3D-CHECK] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleGetMyGenerations(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('generation_jobs')
+    .select('*')
+    .eq('user_id', user.userId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch generations' });
+  }
+
+  return res.status(200).json({ generations: data || [] });
+}
+
+async function handleCreateOrderFromGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[2]; // /generate-3d/{jobId}/order
+
+  const { material, color, quantity } = req.body;
+
+  try {
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', user.userId)
+      .eq('status', 'ready')
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ error: 'Completed generation not found' });
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.userId,
+        file_name: job.file_name || 'generated-model.glb',
+        file_url: job.file_url,
+        material: material || 'PLA',
+        color: color || 'white',
+        quantity: quantity || 1,
+        price: 0,
+        payment_status: 'on_hold',
+        shipping_method: 'pickup',
+        status: 'submitted',
+        order_type: 'print',
+        notes: `Generated from prompt: "${job.prompt}"`,
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('[GENERATE-3D-ORDER] Error:', orderError);
+      return res.status(500).json({ error: 'Failed to create order' });
+    }
+
+    return res.status(201).json({ order });
+  } catch (error) {
+    console.error('[GENERATE-3D-ORDER] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   console.log('[ENTRY] Function invoked:', req.method, req.url);
@@ -2427,7 +2708,21 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path.match(/^\/conversations\/[^/]+\/escalate$/) && req.method === 'POST') {
       return await handleEscalateToAdmin(req as AuthenticatedRequest, res);
     }
-    
+
+    // Text-to-3D generation routes
+    if (path === '/generate-3d' && req.method === 'POST') {
+      return await handleCreateGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path === '/generate-3d' && req.method === 'GET') {
+      return await handleGetMyGenerations(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/generate-3d\/[^/]+\/order$/) && req.method === 'POST') {
+      return await handleCreateOrderFromGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/generate-3d\/[^/]+$/) && req.method === 'GET') {
+      return await handleCheckGeneration(req as AuthenticatedRequest, res);
+    }
+
     // Admin routes
     if (path === '/admin/orders' && req.method === 'GET') {
       return await handleAdminGetOrders(req as AuthenticatedRequest, res);

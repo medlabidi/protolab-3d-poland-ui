@@ -36,6 +36,7 @@ import Business from "./pages/Business";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentPage from "./pages/PaymentPage";
+import TextTo3D from "./pages/TextTo3D";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -91,6 +92,7 @@ const App = () => {
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/new-print" element={<ProtectedRoute><NewPrint /></ProtectedRoute>} />
                 <Route path="/print-jobs" element={<ProtectedRoute><PrintJobs /></ProtectedRoute>} />
+                <Route path="/text-to-3d" element={<ProtectedRoute><TextTo3D /></ProtectedRoute>} />
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
                 <Route path="/orders/:orderId/edit" element={<ProtectedRoute><EditOrder /></ProtectedRoute>} />
