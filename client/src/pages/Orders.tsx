@@ -1280,10 +1280,6 @@ const Orders = () => {
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-48">
-                                        <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}>
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          {t('orders.orderActions.viewDetails')}
-                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => navigate('/design-assistance')}>
                                           <Palette className="w-4 h-4 mr-2" />
                                           View in Design Assistance
@@ -1296,7 +1292,7 @@ const Orders = () => {
                                           {t('orders.orderActions.copyOrderId')}
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        {(order.payment_status === 'pending' || order.payment_status === 'on_hold') && (
+                                        {(order.payment_status === 'pending' || order.payment_status === 'on_hold') && order.price > 0 && (
                                           <DropdownMenuItem onClick={() => navigate(`/checkout?orderId=${order.id}`)}>
                                             <CreditCard className="w-4 h-4 mr-2" />
                                             Complete Payment
@@ -1351,7 +1347,6 @@ const Orders = () => {
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-48">
-                                        <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => navigate('/design-assistance')}><Palette className="w-4 h-4 mr-2" />View in Design Assistance</DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
@@ -1537,7 +1532,7 @@ const Orders = () => {
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-48">
-                                      <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => navigate('/design-assistance')}><Palette className="w-4 h-4 mr-2" />View in Design Assistance</DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleSoftDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deleteOrder')}</DropdownMenuItem>
@@ -1560,7 +1555,7 @@ const Orders = () => {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-48">
-                                      <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => navigate('/design-assistance')}><Palette className="w-4 h-4 mr-2" />View in Design Assistance</DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleSoftDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deleteOrder')}</DropdownMenuItem>
@@ -2059,23 +2054,13 @@ const Orders = () => {
                 Copy ID
               </Button>
               <Button
-                variant="outline"
                 onClick={() => {
                   setShowPreview(false);
                   navigate('/design-assistance');
                 }}
               >
                 <Palette className="w-4 h-4 mr-2" />
-                Design Assistance
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowPreview(false);
-                  if (previewOrder) navigate(`/orders/${previewOrder.id}`);
-                }}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View Full Details
+                Go to Design Assistance
               </Button>
             </DialogFooter>
           </DialogContent>
