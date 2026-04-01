@@ -1176,9 +1176,9 @@ const Orders = () => {
                             </div>
 
                             <div className="space-y-2">
-                              <div className="overflow-x-auto">
-                                <div className="min-w-[600px]">
-                              <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                              <div>
+                              {/* Desktop header */}
+                              <div className="hidden md:grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                                 <div>Project Name</div>
                                 <div>Design Status</div>
                                 <div>{t('orders.table.payment')}</div>
@@ -1188,9 +1188,10 @@ const Orders = () => {
                               </div>
 
                               {filteredDesignOrders.map((order, index) => (
+                                <div key={order.id}>
+                                {/* Desktop row */}
                                 <div
-                                  key={order.id}
-                                  className={`grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-purple-500/5 transition-all hover-lift border animate-scale-in cursor-pointer ${
+                                  className={`hidden md:grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-purple-500/5 transition-all hover-lift border animate-scale-in cursor-pointer ${
                                     order.has_unread_messages
                                       ? 'bg-orange-50 border-orange-400'
                                       : 'border-transparent hover:border-purple-500/20'
@@ -1291,8 +1292,54 @@ const Orders = () => {
                                     </DropdownMenu>
                                   </div>
                                 </div>
-                              ))}
+                                {/* Mobile card */}
+                                <div
+                                  className={`md:hidden p-3 rounded-xl border animate-scale-in cursor-pointer ${
+                                    order.has_unread_messages
+                                      ? 'bg-orange-50 border-orange-400'
+                                      : 'border-transparent hover:border-purple-500/20'
+                                  }`}
+                                  style={{ animationDelay: `${index * 0.05}s` }}
+                                  onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      {order.has_unread_messages && <MessageCircle className="w-3 h-3 text-orange-500 animate-pulse flex-shrink-0" />}
+                                      <span className="font-bold text-purple-500 text-sm truncate">{order.project_name || order.file_name}</span>
+                                    </div>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                          <MoreHorizontal className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => navigate('/design-assistance')}><Palette className="w-4 h-4 mr-2" />View in Design Assistance</DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    {order.design_status ? (
+                                      <Badge className={`text-xs ${
+                                        order.design_status === 'completed' ? 'bg-green-500/20 text-green-600' :
+                                        order.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-600' :
+                                        order.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-600' :
+                                        order.design_status === 'cancelled' ? 'bg-red-500/20 text-red-600' :
+                                        'bg-yellow-500/20 text-yellow-600'
+                                      }`}>{capitalizeFirst(order.design_status.replace('_', ' '))}</Badge>
+                                    ) : (
+                                      <StatusBadge status={order.status} />
+                                    )}
+                                    {order.payment_status && <PaymentStatusBadge status={order.payment_status} />}
+                                  </div>
+                                  <div className="flex items-center justify-between mt-2 text-sm">
+                                    <span className="text-muted-foreground">{formatDate(order.created_at)}</span>
+                                    <span className="font-bold gradient-text">{formatPrice(order.price)}</span>
+                                  </div>
                                 </div>
+                                </div>
+                              ))}
                               </div>
                             </div>
                           </div>
@@ -1330,9 +1377,9 @@ const Orders = () => {
                               <Printer className="w-5 h-5 text-primary" />
                               <h3 className="text-lg font-bold text-foreground">Print Jobs ({filteredArchivedPrintOrders.length})</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                              <div className="min-w-[700px]">
-                            <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                            <div>
+                            {/* Desktop header */}
+                            <div className="hidden md:grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>{t('orders.table.fileName')}</div>
                               <div>{t('orders.table.status')}</div>
                               <div>{t('orders.table.payment')}</div>
@@ -1342,9 +1389,10 @@ const Orders = () => {
                               <div className="text-right">{t('orders.table.actions')}</div>
                             </div>
                             {filteredArchivedPrintOrders.map((order, index) => (
+                              <div key={order.id}>
+                              {/* Desktop row */}
                               <div
-                                key={order.id}
-                                className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75 cursor-pointer"
+                                className="hidden md:grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75 cursor-pointer"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                                 onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
                               >
@@ -1369,8 +1417,39 @@ const Orders = () => {
                                   </DropdownMenu>
                                 </div>
                               </div>
-                            ))}
+                              {/* Mobile card */}
+                              <div
+                                className="md:hidden p-3 rounded-xl border animate-scale-in opacity-75 cursor-pointer border-transparent hover:border-muted"
+                                style={{ animationDelay: `${index * 0.05}s` }}
+                                onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm truncate flex-1 text-muted-foreground">{order.file_name}</span>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleSoftDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deleteOrder')}</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <StatusBadge status={order.status} />
+                                  {order.payment_status && <PaymentStatusBadge status={order.payment_status} />}
+                                </div>
+                                <div className="flex items-center justify-between mt-2 text-sm">
+                                  <span><span className="font-semibold">{capitalizeFirst(order.material)}</span> <span className="text-muted-foreground">({capitalizeFirst(order.color)})</span></span>
+                                  <span className="font-bold text-muted-foreground">{formatPrice(order.price)}</span>
+                                </div>
                               </div>
+                              </div>
+                            ))}
                             </div>
                           </div>
                         )}
@@ -1382,9 +1461,9 @@ const Orders = () => {
                               <Palette className="w-5 h-5 text-purple-500" />
                               <h3 className="text-lg font-bold text-foreground">Design Assistance ({filteredArchivedDesignOrders.length})</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                              <div className="min-w-[600px]">
-                            <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                            <div>
+                            {/* Desktop header */}
+                            <div className="hidden md:grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>Project Name</div>
                               <div>Design Status</div>
                               <div>{t('orders.table.payment')}</div>
@@ -1393,9 +1472,10 @@ const Orders = () => {
                               <div className="text-right">{t('orders.table.actions')}</div>
                             </div>
                             {filteredArchivedDesignOrders.map((order, index) => (
+                              <div key={order.id}>
+                              {/* Desktop row */}
                               <div
-                                key={order.id}
-                                className="grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75 cursor-pointer"
+                                className="hidden md:grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-muted animate-scale-in opacity-75 cursor-pointer"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                                 onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
                               >
@@ -1428,8 +1508,49 @@ const Orders = () => {
                                   </DropdownMenu>
                                 </div>
                               </div>
-                            ))}
+                              {/* Mobile card */}
+                              <div
+                                className="md:hidden p-3 rounded-xl border animate-scale-in opacity-75 cursor-pointer border-transparent hover:border-muted"
+                                style={{ animationDelay: `${index * 0.05}s` }}
+                                onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm truncate flex-1 text-muted-foreground">{order.project_name || order.file_name}</span>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => navigate(`/orders/${order.id}`)}><Eye className="w-4 h-4 mr-2" />{t('orders.orderActions.viewDetails')}</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleSoftDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deleteOrder')}</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  {order.design_status ? (
+                                    <Badge className={`text-xs ${
+                                      order.design_status === 'completed' ? 'bg-green-500/20 text-green-600' :
+                                      order.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-600' :
+                                      order.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-600' :
+                                      order.design_status === 'cancelled' ? 'bg-red-500/20 text-red-600' :
+                                      'bg-yellow-500/20 text-yellow-600'
+                                    }`}>{capitalizeFirst(order.design_status.replace('_', ' '))}</Badge>
+                                  ) : (
+                                    <StatusBadge status={order.status} />
+                                  )}
+                                  {order.payment_status && <PaymentStatusBadge status={order.payment_status} />}
+                                </div>
+                                <div className="flex items-center justify-between mt-2 text-sm">
+                                  <span className="text-muted-foreground">{formatDate(order.created_at)}</span>
+                                  <span className="font-bold text-muted-foreground">{formatPrice(order.price)}</span>
+                                </div>
                               </div>
+                              </div>
+                            ))}
                             </div>
                           </div>
                         )}
@@ -1466,9 +1587,9 @@ const Orders = () => {
                               <Printer className="w-5 h-5 text-primary" />
                               <h3 className="text-lg font-bold text-foreground">Print Jobs ({filteredDeletedPrintOrders.length})</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                              <div className="min-w-[700px]">
-                            <div className="grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                            <div>
+                            {/* Desktop header */}
+                            <div className="hidden md:grid grid-cols-7 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>{t('orders.table.fileName')}</div>
                               <div>{t('orders.table.status')}</div>
                               <div>{t('orders.table.payment')}</div>
@@ -1478,9 +1599,10 @@ const Orders = () => {
                               <div className="text-right">{t('orders.table.actions')}</div>
                             </div>
                             {filteredDeletedPrintOrders.map((order, index) => (
+                              <div key={order.id}>
+                              {/* Desktop row */}
                               <div
-                                key={order.id}
-                                className="grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50 cursor-pointer"
+                                className="hidden md:grid grid-cols-7 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50 cursor-pointer"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                                 onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
                               >
@@ -1504,8 +1626,38 @@ const Orders = () => {
                                   </DropdownMenu>
                                 </div>
                               </div>
-                            ))}
+                              {/* Mobile card */}
+                              <div
+                                className="md:hidden p-3 rounded-xl border animate-scale-in opacity-50 cursor-pointer border-transparent hover:border-destructive/20"
+                                style={{ animationDelay: `${index * 0.05}s` }}
+                                onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm truncate flex-1 text-muted-foreground line-through">{order.file_name}</span>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handlePermanentDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deletePermanently')}</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <StatusBadge status={order.status} />
+                                  {order.payment_status && <PaymentStatusBadge status={order.payment_status} />}
+                                </div>
+                                <div className="flex items-center justify-between mt-2 text-sm">
+                                  <span><span className="font-semibold">{capitalizeFirst(order.material)}</span> <span className="text-muted-foreground">({capitalizeFirst(order.color)})</span></span>
+                                  <span className="font-bold text-muted-foreground">{formatPrice(order.price)}</span>
+                                </div>
                               </div>
+                              </div>
+                            ))}
                             </div>
                           </div>
                         )}
@@ -1517,9 +1669,9 @@ const Orders = () => {
                               <Palette className="w-5 h-5 text-purple-500" />
                               <h3 className="text-lg font-bold text-foreground">Design Assistance ({filteredDeletedDesignOrders.length})</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                              <div className="min-w-[600px]">
-                            <div className="grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
+                            <div>
+                            {/* Desktop header */}
+                            <div className="hidden md:grid grid-cols-6 gap-4 text-sm font-bold text-muted-foreground pb-2 px-4">
                               <div>Project Name</div>
                               <div>Design Status</div>
                               <div>{t('orders.table.payment')}</div>
@@ -1528,9 +1680,10 @@ const Orders = () => {
                               <div className="text-right">{t('orders.table.actions')}</div>
                             </div>
                             {filteredDeletedDesignOrders.map((order, index) => (
+                              <div key={order.id}>
+                              {/* Desktop row */}
                               <div
-                                key={order.id}
-                                className="grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50 cursor-pointer"
+                                className="hidden md:grid grid-cols-6 gap-4 items-center py-4 px-4 rounded-xl hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/20 animate-scale-in opacity-50 cursor-pointer"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                                 onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
                               >
@@ -1562,8 +1715,48 @@ const Orders = () => {
                                   </DropdownMenu>
                                 </div>
                               </div>
-                            ))}
+                              {/* Mobile card */}
+                              <div
+                                className="md:hidden p-3 rounded-xl border animate-scale-in opacity-50 cursor-pointer border-transparent hover:border-destructive/20"
+                                style={{ animationDelay: `${index * 0.05}s` }}
+                                onClick={() => { setPreviewOrder(order); setShowPreview(true); }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm truncate flex-1 text-muted-foreground line-through">{order.project_name || order.file_name}</span>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => handleRestoreOrder(order.id)}><ArchiveRestore className="w-4 h-4 mr-2" />{t('orders.orderActions.restoreOrder')}</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handlePermanentDeleteOrder(order.id)}><Trash2 className="w-4 h-4 mr-2" />{t('orders.orderActions.deletePermanently')}</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  {order.design_status ? (
+                                    <Badge className={`text-xs ${
+                                      order.design_status === 'completed' ? 'bg-green-500/20 text-green-600' :
+                                      order.design_status === 'in_progress' ? 'bg-blue-500/20 text-blue-600' :
+                                      order.design_status === 'in_review' ? 'bg-orange-500/20 text-orange-600' :
+                                      order.design_status === 'cancelled' ? 'bg-red-500/20 text-red-600' :
+                                      'bg-yellow-500/20 text-yellow-600'
+                                    }`}>{capitalizeFirst(order.design_status.replace('_', ' '))}</Badge>
+                                  ) : (
+                                    <StatusBadge status={order.status} />
+                                  )}
+                                  {order.payment_status && <PaymentStatusBadge status={order.payment_status} />}
+                                </div>
+                                <div className="flex items-center justify-between mt-2 text-sm">
+                                  <span className="text-muted-foreground">{formatDate(order.created_at)}</span>
+                                  <span className="font-bold text-muted-foreground">{formatPrice(order.price)}</span>
+                                </div>
                               </div>
+                              </div>
+                            ))}
                             </div>
                           </div>
                         )}
@@ -1627,10 +1820,10 @@ const Orders = () => {
 
         {/* Order Preview Dialog */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl flex items-center gap-2">
-                <Package className="w-6 h-6 text-primary" />
+              <DialogTitle className="text-lg sm:text-2xl flex items-center gap-2">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 {previewOrder?.file_name}
               </DialogTitle>
               <DialogDescription>
@@ -1642,12 +1835,12 @@ const Orders = () => {
               <div className="grid md:grid-cols-2 gap-6 mt-4">
                 {/* Left Column - 3D Model Preview */}
                 <div className="space-y-4">
-                  <div className="bg-muted rounded-lg p-4 h-[400px] flex items-center justify-center">
+                  <div className="bg-muted rounded-lg p-4 h-[250px] sm:h-[400px] flex items-center justify-center">
                     {previewOrder.file_url ? (
                       <ModelViewerUrl 
                         url={previewOrder.file_url}
                         fileName={previewOrder.file_name || 'model.stl'}
-                        height="400px"
+                        height="100%"
                       />
                     ) : (
                       <div className="text-center text-muted-foreground">
