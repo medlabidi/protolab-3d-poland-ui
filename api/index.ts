@@ -2285,7 +2285,7 @@ async function handleCreateGeneration(req: AuthenticatedRequest, res: VercelResp
       body: JSON.stringify(tripoBody),
     });
 
-    const tripoData = await tripoResponse.json();
+    const tripoData: any = await tripoResponse.json();
 
     if (!tripoResponse.ok || !tripoData.data?.task_id) {
       const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
@@ -2364,7 +2364,7 @@ async function pollAndProcessTripoJob(supabase: any, job: any, uploaderUserId: s
     { headers: { 'Authorization': `Bearer ${tripoApiKey}` } }
   );
 
-  const tripoData = await tripoResponse.json();
+  const tripoData: any = await tripoResponse.json();
   const tripoStatus = tripoData.data?.status;
 
   if (tripoStatus === 'success') {
@@ -2844,7 +2844,7 @@ async function triggerTripo3DGeneration(
       }),
     });
 
-    const tripoData = await tripoResponse.json();
+    const tripoData: any = await tripoResponse.json();
 
     if (!tripoResponse.ok || !tripoData.data?.task_id) {
       const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
