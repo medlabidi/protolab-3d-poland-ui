@@ -59,6 +59,7 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   unread_count?: number;
+  has_error?: boolean;
   last_message?: Message;
   user?: ConversationUser;
   order?: ConversationOrder;
@@ -362,11 +363,16 @@ const AdminConversations = () => {
                             <p className="font-medium text-white text-sm truncate">
                               {conversation.user?.name || 'Unknown'}
                             </p>
-                            {conversation.unread_count ? (
-                              <Badge variant="default" className="bg-red-500">
-                                {conversation.unread_count}
-                              </Badge>
-                            ) : null}
+                            <div className="flex items-center gap-1">
+                              {conversation.has_error && (
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                              )}
+                              {conversation.unread_count ? (
+                                <Badge variant="default" className="bg-red-500">
+                                  {conversation.unread_count}
+                                </Badge>
+                              ) : null}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-400 truncate mb-2">
                             {conversation.user?.email}
@@ -451,7 +457,26 @@ const AdminConversations = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {messages.map((message) => (
+                        {messages.map((message) => {
+                          // Render admin_error messages as a special warning card
+                          const isAdminError = message.attachments && Array.isArray(message.attachments) &&
+                            message.attachments.some((att: any) => att.type === 'admin_error');
+                          if (isAdminError) {
+                            return (
+                              <div key={message.id} className="mx-auto max-w-[90%]">
+                                <div className="rounded-xl border border-red-500/30 bg-red-900/20 p-3 space-y-1">
+                                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
+                                    <AlertCircle className="w-4 h-4" />
+                                    System Error
+                                  </div>
+                                  <p className="text-sm text-red-300">{message.message}</p>
+                                  <p className="text-[10px] text-red-500/60 text-right">{formatDate(message.created_at)}</p>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
                           <div
                             key={message.id}
                             className={cn(
@@ -500,7 +525,8 @@ const AdminConversations = () => {
                               </span>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         <div ref={messagesEndRef} />
                       </div>
                     )}

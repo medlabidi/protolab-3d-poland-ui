@@ -1575,13 +1575,33 @@ async function handleAdminGetConversations(req: AuthenticatedRequest, res: Verce
         )
       `)
       .order('updated_at', { ascending: false });
-    
+
     if (error) {
       console.error('Failed to fetch conversations:', error);
       return res.status(200).json({ conversations: [] });
     }
-    
-    return res.status(200).json({ conversations: conversations || [] });
+
+    // Check which conversations have admin_error messages
+    const convIds = (conversations || []).map((c: any) => c.id);
+    let errorConvIds = new Set<string>();
+    if (convIds.length > 0) {
+      const { data: errorMsgs } = await supabase
+        .from('conversation_messages')
+        .select('conversation_id')
+        .in('conversation_id', convIds)
+        .contains('attachments', [{ type: 'admin_error' }]);
+      if (errorMsgs) {
+        errorConvIds = new Set(errorMsgs.map((m: any) => m.conversation_id));
+      }
+    }
+
+    // Attach has_error flag to each conversation
+    const enriched = (conversations || []).map((c: any) => ({
+      ...c,
+      has_error: errorConvIds.has(c.id),
+    }));
+
+    return res.status(200).json({ conversations: enriched });
   } catch (error) {
     console.error('Conversations fetch error:', error);
     return res.status(200).json({ conversations: [] });
@@ -5973,13 +5993,19 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     // Post admin-only error message so the admin sees it in the chat
     try {
       const errMsg = error instanceof Error ? error.message : 'Unknown error';
-      await supabase.from('conversation_messages').insert([{
+      console.log('[AI_AGENT] Inserting admin_error message for conversation:', conversationId, 'error:', errMsg);
+      const { error: insertError } = await supabase.from('conversation_messages').insert([{
         conversation_id: conversationId,
         sender_type: 'system',
         sender_id: null,
         message: `⚠️ Pikoro encountered an error: ${errMsg}`,
         attachments: [{ type: 'admin_error' }],
       }]);
+      if (insertError) {
+        console.error('[AI_AGENT] Supabase insert error:', insertError);
+      } else {
+        console.log('[AI_AGENT] admin_error message inserted successfully');
+      }
       // Mark as unread for admin so they notice
       await supabase.from('conversations')
         .update({ admin_read: false, updated_at: new Date().toISOString() })
