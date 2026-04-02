@@ -38,6 +38,7 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useMemo } from "react";
 import { API_URL } from "@/config/api";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -63,59 +64,23 @@ const Dashboard = () => {
     fetchDesignRequests();
   }, []);
 
-  const refreshAccessToken = async (): Promise<string | null> => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) return null;
-
+  const fetchDashboardData = async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('accessToken', data.tokens.accessToken);
-        localStorage.setItem('refreshToken', data.tokens.refreshToken);
-        return data.tokens.accessToken;
-      }
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-    }
-    
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    navigate('/login');
-    return null;
-  };
-
-  const fetchDashboardData = async (retry = true) => {
-    try {
-      let token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) {
         navigate('/login');
         return;
       }
 
       // Fetch user orders
-      let response = await fetch(`${API_URL}/orders/my`, {
+      const response = await fetch(`${API_URL}/orders/my`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      // If unauthorized, try to refresh token
-      if (response.status === 401 && retry) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          return fetchDashboardData(false);
-        }
-        return;
-      }
-
       if (!response.ok) {
-        console.error('❌ Failed to fetch orders:', response.status, response.statusText);
+        console.error('Failed to fetch orders:', response.status, response.statusText);
         toast.error(`Failed to load orders: ${response.statusText}`);
         setLoading(false);
         return;
@@ -195,10 +160,9 @@ const Dashboard = () => {
 
   const fetchDesignRequests = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
 
-      console.log('🎨 Fetching design requests...');
       const response = await fetch(`${API_URL}/design-requests/my`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -229,7 +193,7 @@ const Dashboard = () => {
 
   const fetchCreditBalance = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
 
       const response = await fetch(`${API_URL}/credits/balance`, {
@@ -318,9 +282,9 @@ const Dashboard = () => {
 
   const handleRenameProject = async () => {
     if (!selectedProject || !newProjectName.trim()) return;
-    
+
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       // Use allProjects to get all orders in the project
       const projectOrders = groupedOrders.allProjects[selectedProject] || groupedOrders.projects[selectedProject];
       

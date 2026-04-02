@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { scheduleTokenRefresh } from "@/utils/tokenRefresh";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -72,6 +73,9 @@ const AdminLogin = () => {
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
       localStorage.setItem('userId', data.user.id);
+
+      // Start auto token refresh for admin sessions
+      scheduleTokenRefresh(data.tokens.accessToken);
 
       toast.success('Welcome back, Admin!');
       navigate(from, { replace: true });

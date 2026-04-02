@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { useState, useEffect } from "react";
 import { stopTokenRefresh } from "@/utils/tokenRefresh";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 import { API_URL } from "@/config/api";
 
 export const DashboardSidebar = () => {
@@ -21,7 +22,7 @@ export const DashboardSidebar = () => {
 
   useEffect(() => {
     const fetchUnread = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
       try {
         const res = await fetch(`${API_URL}/conversations/unread-count`, {

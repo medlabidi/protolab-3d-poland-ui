@@ -32,6 +32,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { API_URL } from "@/config/api";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 
 const menuItems = [
   {
@@ -138,7 +139,7 @@ export const AdminSidebar = () => {
 
   useEffect(() => {
     const fetchCounts = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
       try {
         const res = await fetch(`${API_URL}/admin/conversations/unread-count`, {
