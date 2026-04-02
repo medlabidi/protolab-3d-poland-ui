@@ -6562,4 +6562,4 @@ var OpenSCAD = (() => {
     return OpenSCAD.ready;
   };
 })();
-export default OpenSCAD;
+// export default OpenSCAD; // Removed: breaks classic workers. OpenSCAD is already a global var.
