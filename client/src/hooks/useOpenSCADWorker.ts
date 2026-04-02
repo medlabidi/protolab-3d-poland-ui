@@ -20,11 +20,9 @@ export function useOpenSCADWorker() {
   const idCounter = useRef(0);
 
   useEffect(() => {
-    // Create worker from the worker file
-    const worker = new Worker(
-      new URL('../worker/openscad-worker.ts', import.meta.url),
-      { type: 'classic' }
-    );
+    // Load the worker from public/ as a plain classic JS worker
+    // (not bundled by Vite, so importScripts works for loading the Emscripten WASM glue)
+    const worker = new Worker('/vendor/openscad-wasm/openscad-worker.js');
 
     worker.onmessage = (event) => {
       const { id, output, log, error, duration } = event.data;

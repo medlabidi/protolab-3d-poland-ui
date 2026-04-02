@@ -1,5 +1,5 @@
 var OpenSCAD = (() => {
-  var _scriptDir = import.meta.url;
+  var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : '/vendor/openscad-wasm/';
 
   return function (OpenSCAD = {}) {
     var Module = typeof OpenSCAD != 'undefined' ? OpenSCAD : {};
@@ -320,7 +320,7 @@ var OpenSCAD = (() => {
         wasmBinaryFile = locateFile(wasmBinaryFile);
       }
     } else {
-      wasmBinaryFile = new URL('openscad.wasm', import.meta.url).href;
+      wasmBinaryFile = '/vendor/openscad-wasm/openscad.wasm';
     }
     function getBinary(file) {
       try {

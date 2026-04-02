@@ -21,16 +21,18 @@ interface WorkerResponse {
   duration: number;
 }
 
-let OpenSCADModule: any = null;
-
 async function getInstance(
   code: string,
   params: Array<{ name: string; value: string | number | boolean }> = []
 ) {
-  // Import the OpenSCAD WASM module
-  if (!OpenSCADModule) {
-    // In a web worker, importScripts loads the Emscripten JS glue
-    workerScope.importScripts('/vendor/openscad-wasm/openscad.js');
+  // Load the OpenSCAD WASM module
+  // Note: Vite bundles workers as ES modules, which don't support importScripts.
+  // Instead, fetch the Emscripten JS glue and eval it into the global scope.
+  if (!workerScope.OpenSCAD) {
+    const response = await fetch('/vendor/openscad-wasm/openscad.js');
+    const scriptText = await response.text();
+    // Indirect eval executes in global scope, making OpenSCAD available
+    (0, eval)(scriptText);
   }
 
   const stdOut: string[] = [];
