@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -78,6 +78,8 @@ const AdminDesignAssistance = () => {
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
+  const [generationJob, setGenerationJob] = useState<any>(null);
+  const [generatingTripo, setGeneratingTripo] = useState(false);
   
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,123 @@ const AdminDesignAssistance = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [selectedRequestForConversation?.id]);
+
+  // Fetch generation jobs for current conversation and poll active ones
+  useEffect(() => {
+    if (!conversationId) {
+      setGenerationJob(null);
+      return;
+    }
+
+    const fetchJobs = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/admin/generate-3d/conversation/${conversationId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const latestJob = data.jobs?.[0] || null;
+          setGenerationJob(latestJob);
+
+          // If job is active, poll for status updates
+          if (latestJob && ['pending', 'generating', 'processing'].includes(latestJob.status)) {
+            pollGenerationJob(latestJob.id);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+
+    fetchJobs();
+  }, [conversationId]);
+
+  const pollGenerationJob = (jobId: string) => {
+    const poll = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setGenerationJob(data.job);
+          // Keep polling if still in progress
+          if (['pending', 'generating', 'processing'].includes(data.job?.status)) {
+            setTimeout(poll, 5000);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+    setTimeout(poll, 5000);
+  };
+
+  const handleTriggerGeneration = async (prompt: string) => {
+    if (!conversationId || !selectedRequestForConversation) return;
+    setGeneratingTripo(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          conversationId,
+          orderId: selectedRequestForConversation.id,
+          prompt,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob({ id: data.jobId, status: 'pending' });
+        pollGenerationJob(data.jobId);
+        toast.success('3D generation started');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to start generation');
+      }
+    } catch (e) {
+      toast.error('Failed to start generation');
+    } finally {
+      setGeneratingTripo(false);
+    }
+  };
+
+  const handleApproveGeneration = async (jobId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/approve`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+        toast.success('Model approved and sent to client');
+      } else {
+        toast.error('Failed to approve model');
+      }
+    } catch (e) {
+      toast.error('Failed to approve model');
+    }
+  };
+
+  const handleRejectGeneration = async (jobId: string) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/reject`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+        toast.success('Model rejected');
+      } else {
+        toast.error('Failed to reject model');
+      }
+    } catch (e) {
+      toast.error('Failed to reject model');
+    }
+  };
 
   // Poll for new/updated design requests every 15 seconds
   useEffect(() => {
@@ -1301,16 +1420,137 @@ const AdminDesignAssistance = () => {
                           // Render admin-only design brief as a special card
                           const isAdminBrief = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief');
                           if (isAdminBrief) {
+                            const briefAtt = msg.attachments.find((att: any) => att.type === 'admin_brief');
+                            const isDecorative = briefAtt?.classification === 'decorative';
                             return (
-                              <div key={msg.id} className="mx-auto max-w-[90%]">
-                                <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-4 space-y-2">
+                              <div key={msg.id} className="mx-auto max-w-[90%] space-y-3">
+                                <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-4 space-y-3">
                                   <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
                                     <FileText className="w-4 h-4" />
                                     Design Brief from Pikoro
+                                    {isDecorative && (
+                                      <Badge className="ml-auto bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">Decorative</Badge>
+                                    )}
                                   </div>
                                   <p className="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
                                   <p className="text-[10px] text-amber-500/60 text-right">Only visible to admins</p>
+
+                                  {/* Generate 3D button — only for decorative designs */}
+                                  {isDecorative && !generationJob && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleTriggerGeneration(msg.message)}
+                                      disabled={generatingTripo}
+                                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                    >
+                                      {generatingTripo ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting generation...</>
+                                      ) : (
+                                        <><Sparkles className="w-4 h-4 mr-2" />Generate 3D Preview</>
+                                      )}
+                                    </Button>
+                                  )}
                                 </div>
+
+                                {/* Generation job status display */}
+                                {generationJob && (
+                                  <div className="rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-pink-900/20 p-4 space-y-3">
+                                    {/* Pending / Generating */}
+                                    {['pending', 'generating', 'processing'].includes(generationJob.status) && (
+                                      <div className="flex items-center gap-3 text-purple-300">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <div>
+                                          <p className="text-sm font-medium">Generating 3D preview...</p>
+                                          <p className="text-xs text-gray-400">This may take up to a minute</p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Pending Approval — show model + approve/reject */}
+                                    {generationJob.status === 'pending_approval' && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                                          <Sparkles className="w-4 h-4" />
+                                          3D Preview — Awaiting Your Approval
+                                        </div>
+                                        <div className="rounded-xl overflow-hidden border border-purple-700/50" style={{ height: '300px' }}>
+                                          <ModelViewerUrl
+                                            url={generationJob.file_url}
+                                            fileName={generationJob.file_name || 'model.glb'}
+                                            height="100%"
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleApproveGeneration(generationJob.id)}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                          >
+                                            <Check className="w-4 h-4 mr-2" />Approve & Send to Client
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleRejectGeneration(generationJob.id)}
+                                            className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                                          >
+                                            <X className="w-4 h-4 mr-2" />Reject
+                                          </Button>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {/* Approved — show model with badge */}
+                                    {generationJob.status === 'approved' && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
+                                          <Check className="w-4 h-4" />
+                                          3D Preview — Approved & Sent to Client
+                                        </div>
+                                        <div className="rounded-xl overflow-hidden border border-green-700/50" style={{ height: '300px' }}>
+                                          <ModelViewerUrl
+                                            url={generationJob.file_url}
+                                            fileName={generationJob.file_name || 'model.glb'}
+                                            height="100%"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {/* Failed */}
+                                    {generationJob.status === 'failed' && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-red-400 text-sm">
+                                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                          <span>Generation failed: {generationJob.error_message || 'Unknown error'}</span>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => { setGenerationJob(null); handleTriggerGeneration(msg.message); }}
+                                          className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
+                                        >
+                                          <RotateCcw className="w-4 h-4 mr-2" />Retry Generation
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Rejected — allow retry */}
+                                    {generationJob.status === 'rejected' && (
+                                      <div className="space-y-2">
+                                        <p className="text-sm text-gray-400">Previous generation was rejected.</p>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => { setGenerationJob(null); handleTriggerGeneration(msg.message); }}
+                                          className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
+                                        >
+                                          <RotateCcw className="w-4 h-4 mr-2" />Regenerate 3D Preview
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           }

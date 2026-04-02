@@ -2322,98 +2322,14 @@ async function handleCheckGeneration(req: AuthenticatedRequest, res: VercelRespo
     }
 
     // Terminal states — return immediately
-    if (job.status === 'ready' || job.status === 'failed') {
+    if (job.status === 'ready' || job.status === 'failed' || job.status === 'approved' || job.status === 'pending_approval' || job.status === 'rejected') {
       return res.status(200).json({ job });
     }
 
-    // If generating, check Tripo3D
+    // If generating, check Tripo3D and process
     if (job.status === 'generating' && job.tripo_task_id) {
-      const tripoApiKey = process.env.TRIPO3D_API_KEY;
-      const tripoResponse = await fetch(
-        `https://api.tripo3d.ai/v2/openapi/task/${job.tripo_task_id}`,
-        { headers: { 'Authorization': `Bearer ${tripoApiKey}` } }
-      );
-
-      const tripoData = await tripoResponse.json();
-      const tripoStatus = tripoData.data?.status;
-
-      if (tripoStatus === 'success') {
-        // Find GLB URL in response
-        const glbUrl = tripoData.data?.output?.pbr_model?.glb
-          || tripoData.data?.output?.model?.glb
-          || tripoData.data?.output?.rendered_image; // fallback
-
-        if (!glbUrl) {
-          await supabase.from('generation_jobs')
-            .update({ status: 'failed', error_message: 'No model URL in Tripo response' })
-            .eq('id', job.id);
-          return res.status(200).json({ job: { ...job, status: 'failed', error_message: 'No model URL returned' } });
-        }
-
-        // Set to processing
-        await supabase.from('generation_jobs')
-          .update({ status: 'processing' })
-          .eq('id', job.id);
-
-        try {
-          // Download GLB from Tripo
-          const glbResponse = await fetch(glbUrl);
-          if (!glbResponse.ok) throw new Error('Failed to download model from Tripo3D');
-
-          const glbBuffer = Buffer.from(await glbResponse.arrayBuffer());
-          const fileName = `generated-${job.id.substring(0, 8)}.glb`;
-          const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
-          const filePath = `${user.userId}/generated/${Date.now()}-${fileName}`;
-
-          // Upload to Supabase storage
-          const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, glbBuffer, { contentType: 'model/gltf-binary' });
-
-          if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-          // Get public URL
-          const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-
-          // Update as ready
-          await supabase.from('generation_jobs')
-            .update({ status: 'ready', file_url: urlData.publicUrl, file_name: fileName })
-            .eq('id', job.id);
-
-          // Post result to conversation if linked
-          if (job.conversation_id) {
-            await supabase.from('conversation_messages').insert([{
-              conversation_id: job.conversation_id,
-              sender_type: 'system',
-              sender_id: null,
-              message: '3D preview model is ready!',
-              attachments: [{
-                type: 'generated_model',
-                url: urlData.publicUrl,
-                name: fileName,
-                generation_job_id: job.id,
-              }],
-            }]);
-          }
-
-          return res.status(200).json({
-            job: { ...job, status: 'ready', file_url: urlData.publicUrl, file_name: fileName },
-          });
-        } catch (downloadErr: any) {
-          await supabase.from('generation_jobs')
-            .update({ status: 'failed', error_message: downloadErr.message })
-            .eq('id', job.id);
-          return res.status(200).json({ job: { ...job, status: 'failed', error_message: downloadErr.message } });
-        }
-      } else if (tripoStatus === 'failed' || tripoStatus === 'cancelled') {
-        await supabase.from('generation_jobs')
-          .update({ status: 'failed', error_message: `Generation ${tripoStatus}` })
-          .eq('id', job.id);
-        return res.status(200).json({ job: { ...job, status: 'failed', error_message: `Generation ${tripoStatus}` } });
-      }
-
-      // Still queued/running
-      return res.status(200).json({ job: { ...job, status: 'generating' } });
+      const result = await pollAndProcessTripoJob(supabase, job, user.userId);
+      return res.status(200).json({ job: result });
     }
 
     // Processing state — still downloading/uploading from a previous poll
@@ -2422,6 +2338,230 @@ async function handleCheckGeneration(req: AuthenticatedRequest, res: VercelRespo
     console.error('[GENERATE-3D-CHECK] Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+/**
+ * Shared helper: poll Tripo3D for job status, download + upload GLB if ready.
+ * Sets status to 'pending_approval' (NOT 'ready') so admin must approve before client sees it.
+ */
+async function pollAndProcessTripoJob(supabase: any, job: any, uploaderUserId: string) {
+  const tripoApiKey = process.env.TRIPO3D_API_KEY;
+  const tripoResponse = await fetch(
+    `https://api.tripo3d.ai/v2/openapi/task/${job.tripo_task_id}`,
+    { headers: { 'Authorization': `Bearer ${tripoApiKey}` } }
+  );
+
+  const tripoData = await tripoResponse.json();
+  const tripoStatus = tripoData.data?.status;
+
+  if (tripoStatus === 'success') {
+    const glbUrl = tripoData.data?.output?.pbr_model?.glb
+      || tripoData.data?.output?.model?.glb
+      || tripoData.data?.output?.rendered_image;
+
+    if (!glbUrl) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: 'No model URL in Tripo response' })
+        .eq('id', job.id);
+      return { ...job, status: 'failed', error_message: 'No model URL returned' };
+    }
+
+    await supabase.from('generation_jobs')
+      .update({ status: 'processing' })
+      .eq('id', job.id);
+
+    try {
+      const glbResponse = await fetch(glbUrl);
+      if (!glbResponse.ok) throw new Error('Failed to download model from Tripo3D');
+
+      const glbBuffer = Buffer.from(await glbResponse.arrayBuffer());
+      const fileName = `generated-${job.id.substring(0, 8)}.glb`;
+      const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+      const filePath = `${uploaderUserId}/generated/${Date.now()}-${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, glbBuffer, { contentType: 'model/gltf-binary' });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+      // Set to pending_approval — admin must approve before client sees it
+      await supabase.from('generation_jobs')
+        .update({ status: 'pending_approval', file_url: urlData.publicUrl, file_name: fileName })
+        .eq('id', job.id);
+
+      return { ...job, status: 'pending_approval', file_url: urlData.publicUrl, file_name: fileName };
+    } catch (downloadErr: any) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: downloadErr.message })
+        .eq('id', job.id);
+      return { ...job, status: 'failed', error_message: downloadErr.message };
+    }
+  } else if (tripoStatus === 'failed' || tripoStatus === 'cancelled') {
+    await supabase.from('generation_jobs')
+      .update({ status: 'failed', error_message: `Generation ${tripoStatus}` })
+      .eq('id', job.id);
+    return { ...job, status: 'failed', error_message: `Generation ${tripoStatus}` };
+  }
+
+  // Still queued/running
+  return { ...job, status: 'generating' };
+}
+
+// ─── Admin 3D Generation Endpoints ───────────────────────────────
+
+async function handleAdminTriggerGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const { conversationId, orderId, prompt } = req.body;
+  if (!conversationId || !orderId || !prompt) {
+    return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+  }
+
+  // Get the user_id from the conversation (the client who owns the order)
+  const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
+  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+  const result = await triggerTripo3DGeneration(prompt, orderId, conversationId, conv.user_id);
+
+  if (result.error) {
+    return res.status(500).json({ error: result.error });
+  }
+
+  return res.status(201).json({ jobId: result.jobId });
+}
+
+async function handleAdminGetConversationJobs(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const conversationId = pathStr.split('/').pop(); // /admin/generate-3d/conversation/{conversationId}
+
+  if (!conversationId) return res.status(400).json({ error: 'Conversation ID required' });
+
+  const { data: jobs, error } = await supabase
+    .from('generation_jobs')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: 'Failed to fetch generation jobs' });
+
+  return res.status(200).json({ jobs: jobs || [] });
+}
+
+async function handleAdminCheckGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  try {
+    const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+    if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+    // Terminal states
+    if (['pending_approval', 'approved', 'failed', 'rejected'].includes(job.status)) {
+      return res.status(200).json({ job });
+    }
+
+    // If generating, poll Tripo3D
+    if (job.status === 'generating' && job.tripo_task_id) {
+      const result = await pollAndProcessTripoJob(supabase, job, job.user_id);
+      return res.status(200).json({ job: result });
+    }
+
+    return res.status(200).json({ job });
+  } catch (error) {
+    console.error('[ADMIN-GENERATE-3D-CHECK] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleAdminApproveGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}/approve
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+  if (job.status !== 'pending_approval') {
+    return res.status(400).json({ error: `Cannot approve job in status: ${job.status}` });
+  }
+
+  // Update status to approved
+  await supabase.from('generation_jobs').update({ status: 'approved' }).eq('id', job.id);
+
+  // Post the model to the conversation so the client can see it
+  if (job.conversation_id && job.file_url) {
+    await supabase.from('conversation_messages').insert([{
+      conversation_id: job.conversation_id,
+      sender_type: 'system',
+      sender_id: null,
+      message: '3D preview model is ready!',
+      attachments: [{
+        type: 'generated_model',
+        url: job.file_url,
+        name: job.file_name,
+        generation_job_id: job.id,
+      }],
+    }]);
+  }
+
+  return res.status(200).json({ job: { ...job, status: 'approved' } });
+}
+
+async function handleAdminRejectGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}/reject
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+  await supabase.from('generation_jobs').update({ status: 'rejected' }).eq('id', job.id);
+
+  return res.status(200).json({ job: { ...job, status: 'rejected' } });
 }
 
 async function handleGetMyGenerations(req: AuthenticatedRequest, res: VercelResponse) {
@@ -2516,19 +2656,11 @@ async function triggerTripo3DGeneration(
   orderId: string,
   conversationId: string,
   userId: string
-) {
+): Promise<{ jobId?: string; error?: string }> {
   const tripoApiKey = process.env.TRIPO3D_API_KEY;
   if (!tripoApiKey) {
     console.log('[TRIPO3D] API key not configured, skipping generation');
-    const supabase = getSupabase();
-    await supabase.from('conversation_messages').insert([{
-      conversation_id: conversationId,
-      sender_type: 'system',
-      sender_id: null,
-      message: '⚠️ 3D preview generation skipped: API key not configured.',
-      attachments: [{ type: 'admin_only' }],
-    }]);
-    return;
+    return { error: 'API key not configured' };
   }
 
   const supabase = getSupabase();
@@ -2549,10 +2681,10 @@ async function triggerTripo3DGeneration(
 
     if (error || !job) {
       console.error('[TRIPO3D] Failed to create job:', error);
-      return;
+      return { error: 'Failed to create generation job' };
     }
 
-    // 2. Call Tripo3D API
+    // 2. Call Tripo3D API with model v1.4
     const tripoResponse = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
       method: 'POST',
       headers: {
@@ -2561,6 +2693,7 @@ async function triggerTripo3DGeneration(
       },
       body: JSON.stringify({
         type: 'text_to_model',
+        model_version: 'v1.4-20250131',
         prompt: `decorative 3D figurine: ${adminBrief}`,
       }),
     });
@@ -2573,16 +2706,7 @@ async function triggerTripo3DGeneration(
       await supabase.from('generation_jobs')
         .update({ status: 'failed', error_message: errorMsg })
         .eq('id', job.id);
-
-      // Notify admin about the failure in conversation
-      await supabase.from('conversation_messages').insert([{
-        conversation_id: conversationId,
-        sender_type: 'system',
-        sender_id: null,
-        message: `⚠️ 3D preview generation failed: ${errorMsg}`,
-        attachments: [{ type: 'generation_error', generation_job_id: job.id, error: errorMsg }],
-      }]);
-      return;
+      return { error: errorMsg };
     }
 
     // 3. Update job with task ID
@@ -2590,28 +2714,11 @@ async function triggerTripo3DGeneration(
       .update({ tripo_task_id: tripoData.data.task_id, status: 'generating' })
       .eq('id', job.id);
 
-    // 4. Post a system message about the generation
-    await supabase.from('conversation_messages').insert([{
-      conversation_id: conversationId,
-      sender_type: 'system',
-      sender_id: null,
-      message: 'Generating a 3D preview based on the design brief. This may take up to a minute...',
-      attachments: [{ type: 'generation_status', generation_job_id: job.id }],
-    }]);
-
     console.log('[TRIPO3D] Generation triggered for order:', orderId, 'job:', job.id);
+    return { jobId: job.id };
   } catch (err: any) {
     console.error('[TRIPO3D] Error triggering generation:', err);
-    try {
-      const supabase = getSupabase();
-      await supabase.from('conversation_messages').insert([{
-        conversation_id: conversationId,
-        sender_type: 'system',
-        sender_id: null,
-        message: `⚠️ 3D preview generation error: ${err.message || 'Unknown error'}`,
-        attachments: [{ type: 'generation_error', error: err.message }],
-      }]);
-    } catch (_) { /* ignore nested error */ }
+    return { error: err.message || 'Unknown error' };
   }
 }
 
@@ -2854,6 +2961,23 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/generate-3d\/[^/]+$/) && req.method === 'GET') {
       return await handleCheckGeneration(req as AuthenticatedRequest, res);
+    }
+
+    // Admin 3D generation routes
+    if (path === '/admin/generate-3d' && req.method === 'POST') {
+      return await handleAdminTriggerGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/conversation\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminGetConversationJobs(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+\/approve$/) && req.method === 'POST') {
+      return await handleAdminApproveGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+\/reject$/) && req.method === 'POST') {
+      return await handleAdminRejectGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminCheckGeneration(req as AuthenticatedRequest, res);
     }
 
     // Admin routes
@@ -5678,13 +5802,8 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
             sender_type: 'system',
             sender_id: null,
             message: cleanBrief,
-            attachments: [{ type: 'admin_brief' }],
+            attachments: [{ type: 'admin_brief', classification: isDecorative ? 'decorative' : 'functional' }],
           }]);
-
-        // Trigger Tripo3D generation for decorative designs
-        if (isDecorative && conversationUserId) {
-          triggerTripo3DGeneration(cleanBrief, orderId, conversationId, conversationUserId);
-        }
       }
 
       console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);
