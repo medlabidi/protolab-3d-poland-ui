@@ -314,19 +314,36 @@ export async function generateAIResponse(
 
   const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
-  });
+  let response: Response | null = null;
+  const maxRetries = 2;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[GEMINI] API error:', response.status, errorText);
-    throw new Error(`Gemini API error: ${response.status}`);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (response.status === 429 && attempt < maxRetries) {
+      // Rate limited — extract retry delay or use exponential backoff
+      const retryText = await response.text();
+      const delayMatch = retryText.match(/retry in (\d+)/i);
+      const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : (attempt + 1) * 30000;
+      const cappedWait = Math.min(waitMs, 60000);
+      console.log(`[GEMINI] Rate limited (429), retrying in ${cappedWait / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, cappedWait));
+      continue;
+    }
+    break;
   }
 
-  const data = (await response.json()) as GeminiResponse;
+  if (!response!.ok) {
+    const errorText = await response!.text();
+    console.error('[GEMINI] API error:', response!.status, errorText);
+    throw new Error(`Gemini API error: ${response!.status}`);
+  }
+
+  const data = (await response!.json()) as GeminiResponse;
 
   if (!data.candidates || data.candidates.length === 0) {
     throw new Error('Gemini returned no candidates');
