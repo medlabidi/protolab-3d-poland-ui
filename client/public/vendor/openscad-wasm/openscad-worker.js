@@ -60,12 +60,17 @@ self.onmessage = async function(event) {
     var exitCode = instance.callMain(args);
     var duration = performance.now() - start;
 
+    // Filter out harmless warnings from stderr
+    var filteredStdErr = stdErr.filter(function(line) {
+      return line.indexOf('Could not initialize localization') === -1;
+    });
+
     if (exitCode !== 0) {
       self.postMessage({
         id: id,
         type: 'compile',
-        error: stdErr.join('\n') || ('OpenSCAD exited with code ' + exitCode),
-        log: { stdOut: stdOut, stdErr: stdErr },
+        error: filteredStdErr.join('\n') || ('OpenSCAD exited with code ' + exitCode),
+        log: { stdOut: stdOut, stdErr: filteredStdErr },
         duration: duration,
       });
       return;
@@ -75,7 +80,7 @@ self.onmessage = async function(event) {
     var output = instance.FS.readFile('/output.stl', { encoding: 'binary' });
 
     self.postMessage(
-      { id: id, type: 'compile', output: output, log: { stdOut: stdOut, stdErr: stdErr }, duration: duration },
+      { id: id, type: 'compile', output: output, log: { stdOut: stdOut, stdErr: filteredStdErr }, duration: duration },
       [output.buffer]
     );
   } catch (err) {

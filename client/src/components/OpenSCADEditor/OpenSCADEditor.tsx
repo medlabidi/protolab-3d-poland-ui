@@ -263,11 +263,27 @@ export function OpenSCADEditor({ code, parameters: initialParameters, onExport, 
 
       {/* Error display */}
       {compileError && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3">
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 space-y-2">
           <div className="flex items-start gap-2 text-red-400 text-sm">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <pre className="whitespace-pre-wrap text-xs font-mono">{compileError}</pre>
           </div>
+          {/* Show code with line numbers on error so admin can see the problem */}
+          <details open className="text-xs">
+            <summary className="cursor-pointer text-red-400/70 hover:text-red-400">Show generated code</summary>
+            <pre className="mt-1 p-2 bg-gray-900/80 rounded text-[10px] font-mono max-h-48 overflow-y-auto text-gray-400">
+              {currentCode.split('\n').map((line, i) => {
+                const lineNum = i + 1;
+                // Highlight the error line if mentioned in the error message
+                const isErrorLine = compileError.includes(`line ${lineNum}`) || compileError.includes(`line ${lineNum},`);
+                return (
+                  <span key={i} className={isErrorLine ? 'text-red-400 bg-red-500/20 block' : ''}>
+                    {String(lineNum).padStart(3, ' ')} | {line}{'\n'}
+                  </span>
+                );
+              })}
+            </pre>
+          </details>
         </div>
       )}
 

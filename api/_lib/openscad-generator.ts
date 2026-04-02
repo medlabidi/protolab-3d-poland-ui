@@ -260,8 +260,34 @@ export async function generateOpenSCADCode(
 
   let code = data.candidates[0].content.parts.map((p: any) => p.text).join('');
 
-  // Strip markdown code fences if present (LLM sometimes adds them despite instructions)
-  code = code.replace(/^```(?:openscad|scad)?\s*\n/i, '').replace(/\n```\s*$/, '');
+  // Robust cleanup: strip markdown fences, preamble text, trailing explanations
+  // Handle various fence formats: ```openscad, ```scad, ```SCAD, ```OpenSCAD, plain ```
+  code = code.replace(/^[\s\S]*?```(?:openscad|scad|OPENSCAD|SCAD)?\s*\n/i, '');
+  code = code.replace(/\n```[\s\S]*$/, '');
+
+  // If no fences were found but there's preamble text before the first variable/comment/module,
+  // try to extract just the OpenSCAD code
+  if (!code.match(/^[\s]*(?:\/\/|\/\*|\$|[a-zA-Z_][\w]*\s*=|module\s|function\s|use\s|include\s)/m)) {
+    // Look for the first line that looks like OpenSCAD code
+    const lines = code.split('\n');
+    const codeStart = lines.findIndex(l =>
+      /^(?:\/\/|\/\*|\$|[a-zA-Z_][\w]*\s*=|module\s|function\s|use\s|include\s|cube|sphere|cylinder|union|difference|intersection)/.test(l.trim())
+    );
+    if (codeStart > 0) {
+      code = lines.slice(codeStart).join('\n');
+    }
+  }
+
+  // Remove any trailing explanation text after the last semicolon or closing brace
+  const lastSemiOrBrace = Math.max(code.lastIndexOf(';'), code.lastIndexOf('}'));
+  if (lastSemiOrBrace > 0) {
+    // Check if there's significant non-code text after the last code line
+    const after = code.substring(lastSemiOrBrace + 1).trim();
+    if (after.length > 5 && !after.match(/^[\s\/\*]/)) {
+      code = code.substring(0, lastSemiOrBrace + 1);
+    }
+  }
+
   code = code.trim();
 
   if (code === '404') {
@@ -274,6 +300,7 @@ export async function generateOpenSCADCode(
     codeLength: code.length,
     parameterCount: parameters.length,
     paramNames: parameters.map(p => p.name),
+    firstLines: code.split('\n').slice(0, 5).join(' | '),
   });
 
   return { code, parameters };
