@@ -1582,7 +1582,7 @@ const AdminDesignAssistance = () => {
                                         <div className="rounded-xl overflow-hidden border border-purple-700/50" style={{ height: '300px' }}>
                                           <ModelViewerUrl
                                             url={generationJob.file_url}
-                                            fileName={generationJob.file_name || 'model.glb'}
+                                            fileName={generationJob.file_name || (generationJob.generation_type === 'openscad' ? 'model.stl' : 'model.glb')}
                                             height="100%"
                                           />
                                         </div>
@@ -1616,7 +1616,7 @@ const AdminDesignAssistance = () => {
                                         <div className="rounded-xl overflow-hidden border border-green-700/50" style={{ height: '300px' }}>
                                           <ModelViewerUrl
                                             url={generationJob.file_url}
-                                            fileName={generationJob.file_name || 'model.glb'}
+                                            fileName={generationJob.file_name || (generationJob.generation_type === 'openscad' ? 'model.stl' : 'model.glb')}
                                             height="100%"
                                           />
                                         </div>
@@ -1633,7 +1633,14 @@ const AdminDesignAssistance = () => {
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          onClick={() => { setGenerationJob(null); handleTriggerGeneration(msg.message); }}
+                                          onClick={() => {
+                                            setGenerationJob(null);
+                                            if (generationJob.generation_type === 'openscad') {
+                                              handleTriggerOpenSCAD(msg.message);
+                                            } else {
+                                              handleTriggerGeneration(msg.message);
+                                            }
+                                          }}
                                           className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
                                         >
                                           <RotateCcw className="w-4 h-4 mr-2" />Retry Generation
@@ -1648,10 +1655,17 @@ const AdminDesignAssistance = () => {
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          onClick={() => { setGenerationJob(null); handleTriggerGeneration(msg.message); }}
+                                          onClick={() => {
+                                            setGenerationJob(null);
+                                            if (generationJob.generation_type === 'openscad') {
+                                              handleTriggerOpenSCAD(msg.message);
+                                            } else {
+                                              handleTriggerGeneration(msg.message);
+                                            }
+                                          }}
                                           className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
                                         >
-                                          <RotateCcw className="w-4 h-4 mr-2" />Regenerate 3D Preview
+                                          <RotateCcw className="w-4 h-4 mr-2" />Regenerate
                                         </Button>
                                       </div>
                                     )}
