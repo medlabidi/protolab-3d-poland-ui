@@ -7,9 +7,13 @@ const GEMINI_CONFIG = {
   maxTokens: 2048,
 };
 
+type GeminiPart =
+  | { text: string }
+  | { inline_data: { mime_type: string; data: string } };
+
 interface GeminiMessage {
   role: 'user' | 'model';
-  parts: Array<{ text: string }>;
+  parts: GeminiPart[];
 }
 
 interface GeminiRequest {
@@ -38,12 +42,62 @@ interface GeminiResponse {
   };
 }
 
+interface MessageWithAttachments {
+  sender_type: string;
+  message: string;
+  attachments?: any[];
+}
+
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB limit for inline_data
+
+/**
+ * Fetch an image from a URL and return base64 data + mime type.
+ * Returns null if the image can't be fetched or is too large.
+ */
+async function fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log('[GEMINI] Failed to fetch image:', url, response.status);
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const mimeType = IMAGE_MIME_TYPES.find(m => contentType.includes(m)) || 'image/jpeg';
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > MAX_IMAGE_SIZE) {
+      console.log('[GEMINI] Image too large, skipping:', url, buffer.length);
+      return null;
+    }
+
+    return { data: buffer.toString('base64'), mimeType };
+  } catch (err) {
+    console.error('[GEMINI] Error fetching image:', url, err);
+    return null;
+  }
+}
+
+/**
+ * Check if a file is an image based on its mime_type or name
+ */
+function isImageFile(file: any): boolean {
+  if (file.mime_type && IMAGE_MIME_TYPES.some(m => file.mime_type.includes(m))) return true;
+  if (file.type && IMAGE_MIME_TYPES.some(m => file.type.includes(m))) return true;
+  const name = (file.name || file.original_name || '').toLowerCase();
+  return /\.(jpg|jpeg|png|gif|webp)$/.test(name);
+}
+
 const SYSTEM_PROMPT = `You are Pikoro, ProtoLab's AI Design Assistant. You are a specialist in 3D design and CAD. Your role is to consult with clients and gather all the details a human designer needs to create their 3D design.
 
 IMPORTANT: Design assistance is a STANDALONE service. It is about defining the right 3D design for the client. It is NOT about 3D printing, prototyping, or manufacturing. Do NOT ask about materials, print settings, wall thickness, infill, supports, or anything related to fabrication. Focus purely on the DESIGN itself.
 
 STARTING CONTEXT:
 The client has already submitted a design request form with initial information (project name, description, dimensions, usage, etc.). This data is provided to you as [DESIGN REQUEST CONTEXT]. USE this data — do NOT re-ask questions the client already answered in the form. Acknowledge what they provided and ask followup questions to fill in the gaps.
+
+IMAGES:
+You can see images! When the client uploads reference images (either in the initial form or during the conversation), they will appear inline. Analyze them carefully — describe what you see and use the visual details to inform the design discussion. If the image is a reference for the design, acknowledge it and note relevant visual elements (shape, proportions, style, features).
 
 PERSONALITY:
 - Sharp, serious, and professional
@@ -95,7 +149,7 @@ Then write a structured design brief for the human designer. Include ALL gathere
 - Functional requirements
 - Visual style and features
 - Intended use/purpose
-- Reference materials mentioned
+- Reference materials mentioned (note: reference images are attached for the designer to see)
 - Any special requirements or constraints
 - Key decisions the client confirmed during the conversation
 [ESCALATE_TO_ADMIN]
@@ -112,7 +166,8 @@ FORMAT:
 - When escalating, you MUST use the [CLIENT_MESSAGE] and [ADMIN_BRIEF] markers exactly as shown`;
 
 /**
- * Build design context string from order data
+ * Build design context string from order data.
+ * Returns both the text context and any image URLs from attached files.
  */
 export function buildDesignContext(order: {
   file_name?: string;
@@ -121,7 +176,7 @@ export function buildDesignContext(order: {
   approximate_dimensions?: string;
   desired_material?: string;
   attached_files?: any[];
-}): string {
+}): { text: string; imageUrls: string[] } {
   const parts = [
     `[DESIGN REQUEST CONTEXT]`,
     `Project title: ${order.file_name || 'Untitled'}`,
@@ -131,50 +186,93 @@ export function buildDesignContext(order: {
     `Desired material: ${order.desired_material || 'Not specified'}`,
   ];
 
+  const imageUrls: string[] = [];
+
   if (order.attached_files && order.attached_files.length > 0) {
-    parts.push(`Reference files attached: ${order.attached_files.map((f: any) => f.name).join(', ')}`);
+    const imageFiles = order.attached_files.filter(isImageFile);
+    const otherFiles = order.attached_files.filter(f => !isImageFile(f));
+
+    if (imageFiles.length > 0) {
+      parts.push(`Reference images attached: ${imageFiles.length} image(s) — see below`);
+      imageUrls.push(...imageFiles.map((f: any) => f.url).filter(Boolean));
+    }
+    if (otherFiles.length > 0) {
+      parts.push(`Other files attached: ${otherFiles.map((f: any) => f.name).join(', ')}`);
+    }
+    if (imageFiles.length === 0 && otherFiles.length === 0) {
+      parts.push(`Reference files attached: ${order.attached_files.map((f: any) => f.name).join(', ')}`);
+    }
   } else {
     parts.push(`Reference files: None`);
   }
 
   parts.push('', 'Please greet the client and help them refine this design request.');
 
-  return parts.join('\n');
+  return { text: parts.join('\n'), imageUrls };
 }
 
 /**
- * Build Gemini conversation history from database messages
+ * Build Gemini conversation history from database messages.
+ * Now includes image attachments as inline_data parts.
  */
-export function buildGeminiHistory(
-  messages: Array<{ sender_type: string; message: string }>,
-  designContext: string
-): GeminiMessage[] {
+export async function buildGeminiHistory(
+  messages: MessageWithAttachments[],
+  designContext: { text: string; imageUrls: string[] }
+): Promise<GeminiMessage[]> {
   const history: GeminiMessage[] = [];
 
-  // First message: design context as a user turn
-  history.push({
-    role: 'user',
-    parts: [{ text: designContext }],
-  });
+  // First message: design context + form reference images as a user turn
+  const contextParts: GeminiPart[] = [{ text: designContext.text }];
+
+  // Fetch and include form reference images
+  for (const url of designContext.imageUrls) {
+    const imgData = await fetchImageAsBase64(url);
+    if (imgData) {
+      contextParts.push({ inline_data: { mime_type: imgData.mimeType, data: imgData.data } });
+    }
+  }
+
+  history.push({ role: 'user', parts: contextParts });
 
   // Map conversation messages to Gemini roles
   for (const msg of messages) {
+    // Extract image URLs from attachments
+    const imageAttachments: string[] = [];
+    if (msg.attachments && Array.isArray(msg.attachments)) {
+      for (const att of msg.attachments) {
+        if (att.url && isImageFile(att)) {
+          imageAttachments.push(att.url);
+        }
+      }
+    }
+
     if (msg.sender_type === 'user') {
-      // Merge consecutive same-role messages (Gemini requires alternating roles)
+      const userParts: GeminiPart[] = [{ text: msg.message || '(image attached)' }];
+
+      // Fetch conversation images inline
+      for (const url of imageAttachments) {
+        const imgData = await fetchImageAsBase64(url);
+        if (imgData) {
+          userParts.push({ inline_data: { mime_type: imgData.mimeType, data: imgData.data } });
+        }
+      }
+
+      // Merge consecutive user messages
       const last = history[history.length - 1];
       if (last && last.role === 'user') {
-        last.parts[0].text += '\n\n' + msg.message;
+        last.parts.push({ text: '\n\n' + (msg.message || '') });
+        // Add images from this message too
+        for (const part of userParts) {
+          if ('inline_data' in part) last.parts.push(part);
+        }
       } else {
-        history.push({
-          role: 'user',
-          parts: [{ text: msg.message }],
-        });
+        history.push({ role: 'user', parts: userParts });
       }
     } else if (msg.sender_type === 'system') {
-      // AI's own previous messages
+      // AI's own previous messages (text only — model doesn't send images)
       const last = history[history.length - 1];
       if (last && last.role === 'model') {
-        last.parts[0].text += '\n\n' + msg.message;
+        last.parts.push({ text: '\n\n' + msg.message });
       } else {
         history.push({
           role: 'model',
@@ -186,14 +284,7 @@ export function buildGeminiHistory(
   }
 
   // Gemini requires the last message to be 'user' role for generateContent
-  // If it ends with 'model', remove the trailing model message so Gemini has
-  // context but treats the previous user message as the current turn
   if (history.length > 0 && history[history.length - 1].role === 'model') {
-    // Keep the model message in history — Gemini needs alternating turns
-    // But ensure we don't end on model. If the last user message came before,
-    // the model already responded, so there's nothing new to respond to.
-    // This shouldn't happen in normal flow (triggerAI is called after user sends),
-    // but guard against it.
     console.log('[GEMINI] Warning: history ends with model role, conversation may be stale');
   }
 

@@ -5750,7 +5750,7 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
-    const geminiHistory = buildGeminiHistory(filteredMessages, designContext);
+    const geminiHistory = await buildGeminiHistory(filteredMessages, designContext);
     const { text: aiText, shouldEscalate, adminBrief } = await generateAIResponse(geminiHistory);
 
     // 6. Insert AI message
