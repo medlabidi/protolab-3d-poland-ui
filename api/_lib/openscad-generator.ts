@@ -285,6 +285,11 @@ export async function generateOpenSCADCode(
   if (!response!.ok) {
     const errorText = await response!.text();
     console.error('[OPENSCAD] Gemini API error:', response!.status, errorText);
+    if (response!.status === 429) {
+      const delayMatch = errorText.match(/retry in (\d+)/i);
+      const waitSec = delayMatch ? delayMatch[1] : '60';
+      throw new Error(`AI rate limit reached. Please wait ~${waitSec}s and try again, or upgrade the Gemini API plan.`);
+    }
     throw new Error(`Gemini API error: ${response!.status}`);
   }
 
