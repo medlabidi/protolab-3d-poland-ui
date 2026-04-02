@@ -1448,6 +1448,14 @@ const DesignAssistance = () => {
                                         <span>Generating 3D preview...</span>
                                       </div>
                                     ))}
+
+                                    {/* Generation Error */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_error').map((att: any, idx: number) => (
+                                      <div key={`gen-err-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg p-2">
+                                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                        <span>{att.error || 'Generation failed'}</span>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               </div>

@@ -2520,6 +2520,14 @@ async function triggerTripo3DGeneration(
   const tripoApiKey = process.env.TRIPO3D_API_KEY;
   if (!tripoApiKey) {
     console.log('[TRIPO3D] API key not configured, skipping generation');
+    const supabase = getSupabase();
+    await supabase.from('conversation_messages').insert([{
+      conversation_id: conversationId,
+      sender_type: 'system',
+      sender_id: null,
+      message: '⚠️ 3D preview generation skipped: API key not configured.',
+      attachments: [{ type: 'admin_only' }],
+    }]);
     return;
   }
 
@@ -2565,6 +2573,15 @@ async function triggerTripo3DGeneration(
       await supabase.from('generation_jobs')
         .update({ status: 'failed', error_message: errorMsg })
         .eq('id', job.id);
+
+      // Notify admin about the failure in conversation
+      await supabase.from('conversation_messages').insert([{
+        conversation_id: conversationId,
+        sender_type: 'system',
+        sender_id: null,
+        message: `⚠️ 3D preview generation failed: ${errorMsg}`,
+        attachments: [{ type: 'generation_error', generation_job_id: job.id, error: errorMsg }],
+      }]);
       return;
     }
 
@@ -2583,8 +2600,18 @@ async function triggerTripo3DGeneration(
     }]);
 
     console.log('[TRIPO3D] Generation triggered for order:', orderId, 'job:', job.id);
-  } catch (err) {
+  } catch (err: any) {
     console.error('[TRIPO3D] Error triggering generation:', err);
+    try {
+      const supabase = getSupabase();
+      await supabase.from('conversation_messages').insert([{
+        conversation_id: conversationId,
+        sender_type: 'system',
+        sender_id: null,
+        message: `⚠️ 3D preview generation error: ${err.message || 'Unknown error'}`,
+        attachments: [{ type: 'generation_error', error: err.message }],
+      }]);
+    } catch (_) { /* ignore nested error */ }
   }
 }
 
