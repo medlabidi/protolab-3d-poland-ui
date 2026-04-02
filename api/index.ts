@@ -2380,6 +2380,22 @@ async function handleCheckGeneration(req: AuthenticatedRequest, res: VercelRespo
             .update({ status: 'ready', file_url: urlData.publicUrl, file_name: fileName })
             .eq('id', job.id);
 
+          // Post result to conversation if linked
+          if (job.conversation_id) {
+            await supabase.from('conversation_messages').insert([{
+              conversation_id: job.conversation_id,
+              sender_type: 'system',
+              sender_id: null,
+              message: '3D preview model is ready!',
+              attachments: [{
+                type: 'generated_model',
+                url: urlData.publicUrl,
+                name: fileName,
+                generation_job_id: job.id,
+              }],
+            }]);
+          }
+
           return res.status(200).json({
             job: { ...job, status: 'ready', file_url: urlData.publicUrl, file_name: fileName },
           });
@@ -2413,12 +2429,23 @@ async function handleGetMyGenerations(req: AuthenticatedRequest, res: VercelResp
   if (!user) return;
 
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  const url = req.url || '';
+  const queryString = url.split('?')[1] || '';
+  const params = new URLSearchParams(queryString);
+  const orderId = params.get('order_id');
+
+  let query = supabase
     .from('generation_jobs')
     .select('*')
     .eq('user_id', user.userId)
     .order('created_at', { ascending: false })
     .limit(20);
+
+  if (orderId) {
+    query = query.eq('order_id', orderId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return res.status(500).json({ error: 'Failed to fetch generations' });
@@ -2479,6 +2506,85 @@ async function handleCreateOrderFromGeneration(req: AuthenticatedRequest, res: V
   } catch (error) {
     console.error('[GENERATE-3D-ORDER] Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// ==================== TRIPO3D AUTO-GENERATION (from design escalation) ====================
+
+async function triggerTripo3DGeneration(
+  adminBrief: string,
+  orderId: string,
+  conversationId: string,
+  userId: string
+) {
+  const tripoApiKey = process.env.TRIPO3D_API_KEY;
+  if (!tripoApiKey) {
+    console.log('[TRIPO3D] API key not configured, skipping generation');
+    return;
+  }
+
+  const supabase = getSupabase();
+
+  try {
+    // 1. Create generation job linked to order/conversation
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: userId,
+        prompt: adminBrief,
+        order_id: orderId,
+        conversation_id: conversationId,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (error || !job) {
+      console.error('[TRIPO3D] Failed to create job:', error);
+      return;
+    }
+
+    // 2. Call Tripo3D API
+    const tripoResponse = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tripoApiKey}`,
+      },
+      body: JSON.stringify({
+        type: 'text_to_model',
+        prompt: `decorative 3D figurine: ${adminBrief}`,
+      }),
+    });
+
+    const tripoData = await tripoResponse.json();
+
+    if (!tripoResponse.ok || !tripoData.data?.task_id) {
+      const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
+      console.error('[TRIPO3D] API error:', errorMsg);
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: errorMsg })
+        .eq('id', job.id);
+      return;
+    }
+
+    // 3. Update job with task ID
+    await supabase.from('generation_jobs')
+      .update({ tripo_task_id: tripoData.data.task_id, status: 'generating' })
+      .eq('id', job.id);
+
+    // 4. Post a system message about the generation
+    await supabase.from('conversation_messages').insert([{
+      conversation_id: conversationId,
+      sender_type: 'system',
+      sender_id: null,
+      message: 'Generating a 3D preview based on the design brief. This may take up to a minute...',
+      attachments: [{ type: 'generation_status', generation_job_id: job.id }],
+    }]);
+
+    console.log('[TRIPO3D] Generation triggered for order:', orderId, 'job:', job.id);
+  } catch (err) {
+    console.error('[TRIPO3D] Error triggering generation:', err);
   }
 }
 
@@ -5426,15 +5532,17 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
   try {
     // 1. Check conversation AI status (fallback to 'active' if column doesn't exist yet)
     let aiStatus = 'active';
+    let conversationUserId: string | null = null;
     try {
       const { data: conversation } = await supabase
         .from('conversations')
-        .select('ai_status')
+        .select('ai_status, user_id')
         .eq('id', conversationId)
         .single();
       if (conversation?.ai_status) {
         aiStatus = conversation.ai_status;
       }
+      conversationUserId = conversation?.user_id || null;
     } catch (e) {
       console.log('[AI_AGENT] Could not read ai_status, assuming active');
     }
@@ -5529,15 +5637,27 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
       // Insert admin-only design brief (hidden from client, visible to admin)
       if (adminBrief) {
+        // Strip [DECORATIVE]/[FUNCTIONAL] tag before storing the brief
+        const isDecorative = adminBrief.trimStart().startsWith('[DECORATIVE]');
+        const cleanBrief = adminBrief
+          .replace(/^\s*\[DECORATIVE\]\s*/i, '')
+          .replace(/^\s*\[FUNCTIONAL\]\s*/i, '')
+          .trim();
+
         await supabase
           .from('conversation_messages')
           .insert([{
             conversation_id: conversationId,
             sender_type: 'system',
             sender_id: null,
-            message: adminBrief,
+            message: cleanBrief,
             attachments: [{ type: 'admin_brief' }],
           }]);
+
+        // Trigger Tripo3D generation for decorative designs
+        if (isDecorative && conversationUserId) {
+          triggerTripo3DGeneration(cleanBrief, orderId, conversationId, conversationUserId);
+        }
       }
 
       console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);

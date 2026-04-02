@@ -1355,7 +1355,26 @@ const AdminDesignAssistance = () => {
                                   }`}
                                 >
                                   <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                                  
+
+                                  {/* Generated 3D Model Preview */}
+                                  {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => (
+                                    <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
+                                      <ModelViewerUrl
+                                        url={att.url}
+                                        fileName={att.name || 'model.glb'}
+                                        height="100%"
+                                      />
+                                    </div>
+                                  ))}
+
+                                  {/* Generation Status (loading) */}
+                                  {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_status').map((att: any, idx: number) => (
+                                    <div key={`gen-status-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <span>Generating 3D preview...</span>
+                                    </div>
+                                  ))}
+
                                   {/* Attachments */}
                                   {msg.attachments && msg.attachments.length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/10 space-y-1">

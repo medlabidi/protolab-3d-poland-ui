@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
 import { ModelPreviewCard } from "@/components/ModelPreviewCard";
 import { ModelViewerModal } from "@/components/ModelViewerModal";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { is3DFile, isImageFile, isPdfFile } from "@/utils/fileHelpers";
 import { Attachment } from "@/types/attachment";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -1428,6 +1429,25 @@ const DesignAssistance = () => {
                                         </div>
                                       );
                                     })()}
+
+                                    {/* Generated 3D Model Previews */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => (
+                                      <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
+                                        <ModelViewerUrl
+                                          url={att.url}
+                                          fileName={att.name || 'model.glb'}
+                                          height="100%"
+                                        />
+                                      </div>
+                                    ))}
+
+                                    {/* Generation Status (loading) */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_status').map((att: any, idx: number) => (
+                                      <div key={`gen-status-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Generating 3D preview...</span>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               </div>
