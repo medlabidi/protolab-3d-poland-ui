@@ -1485,6 +1485,23 @@ const AdminDesignAssistance = () => {
                         </div>
                       ) : (
                         messages.map((msg) => {
+                          // Render admin-only error as a warning card
+                          const isAdminError = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_error');
+                          if (isAdminError) {
+                            return (
+                              <div key={msg.id} className="mx-auto max-w-[90%]">
+                                <div className="rounded-xl border-2 border-red-500/30 bg-gradient-to-br from-red-900/20 to-orange-900/20 p-4 space-y-1">
+                                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
+                                    <AlertCircle className="w-4 h-4" />
+                                    System Error
+                                  </div>
+                                  <p className="text-sm text-red-300">{msg.message}</p>
+                                  <p className="text-[10px] text-red-500/60 text-right">Only visible to admins</p>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           // Render admin-only design brief as a special card
                           const isAdminBrief = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief');
                           if (isAdminBrief) {

@@ -5881,10 +5881,10 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
-    // Filter out admin_brief messages — they're admin-only and shouldn't be in AI history
+    // Filter out admin-only messages — they shouldn't be in AI history
     const filteredMessages = (messages || []).filter((m: any) => {
       if (m.attachments && Array.isArray(m.attachments)) {
-        return !m.attachments.some((att: any) => att.type === 'admin_brief');
+        return !m.attachments.some((att: any) => att.type === 'admin_brief' || att.type === 'admin_error');
       }
       return true;
     });
@@ -5969,6 +5969,24 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     console.log('[AI_AGENT] AI response sent for conversation:', conversationId);
   } catch (error) {
     console.error('[AI_AGENT] Error generating response:', error);
+
+    // Post admin-only error message so the admin sees it in the chat
+    try {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      await supabase.from('conversation_messages').insert([{
+        conversation_id: conversationId,
+        sender_type: 'system',
+        sender_id: null,
+        message: `⚠️ Pikoro encountered an error: ${errMsg}`,
+        attachments: [{ type: 'admin_error' }],
+      }]);
+      // Mark as unread for admin so they notice
+      await supabase.from('conversations')
+        .update({ admin_read: false, updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    } catch (insertErr) {
+      console.error('[AI_AGENT] Failed to insert error message:', insertErr);
+    }
   }
 }
 

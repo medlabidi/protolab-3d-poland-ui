@@ -1083,8 +1083,8 @@ const DesignAssistance = () => {
                           </div>
                         ) : (
                           messages.filter((msg) => {
-                            // Hide admin-only messages (design briefs) from client view
-                            if (msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief')) {
+                            // Hide admin-only messages (design briefs, errors) from client view
+                            if (msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief' || att.type === 'admin_error')) {
                               return false;
                             }
                             return true;
