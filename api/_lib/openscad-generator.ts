@@ -4,7 +4,7 @@ const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY || '',
   model: 'gemini-2.5-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-  maxTokens: 8192,
+  maxTokens: 16384,
 };
 
 // --- Parameter types (adapted from CADAM) ---
@@ -48,6 +48,24 @@ RULES:
 - Make sure all parts are connected as one solid 3D printable object using union/difference/intersection
 - Orient the model for optimal 3D printing (flat base on XY plane)
 - Add inline comments for parameter ranges where useful, e.g.: wall_thickness = 2; // [1:0.5:5]
+- Keep designs simple and concise. Avoid overly complex geometry that requires hundreds of lines.
+- Prefer built-in OpenSCAD primitives (cube, cylinder, sphere) and CSG operations over custom math.
+
+OPENSCAD LANGUAGE RULES (CRITICAL):
+- There is NO built-in PI constant. If you need pi, define it: PI = 3.14159265359;
+- sin(), cos(), tan() take DEGREES, not radians. Do NOT convert to radians.
+  Example: cos(20) gives cosine of 20 degrees. NEVER do cos(angle * PI / 180).
+- atan2(y, x) returns degrees
+- Use "for" loops, not "foreach"
+- String concatenation uses str(): str("text", variable)
+- Conditional assignment: x = condition ? val_a : val_b;
+- Module calls do NOT use "new". Just: my_module();
+- Boolean operators: && || ! (not "and" "or" "not")
+- Exponentiation: pow(base, exp) or use ^
+- Variables are single-assignment in each scope. Do NOT reassign variables.
+- linear_extrude() and rotate_extrude() are built-in. Use them for 2D-to-3D.
+- polygon() takes a vector of [x,y] points for 2D shapes.
+- Do NOT use features from other languages (Python, JavaScript, etc.)
 
 PARAMETER FORMAT:
 - Declare all parameters at the top of the file
