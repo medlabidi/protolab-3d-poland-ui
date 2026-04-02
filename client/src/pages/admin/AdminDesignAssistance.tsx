@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { OpenSCADEditor } from "@/components/OpenSCADEditor/OpenSCADEditor";
 import { OrderTimeline } from "@/components/OrderTimeline";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -80,6 +81,7 @@ const AdminDesignAssistance = () => {
   const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
   const [generationJob, setGenerationJob] = useState<any>(null);
   const [generatingTripo, setGeneratingTripo] = useState(false);
+  const [generatingOpenSCAD, setGeneratingOpenSCAD] = useState(false);
   
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -241,6 +243,72 @@ const AdminDesignAssistance = () => {
       }
     } catch (e) {
       toast.error('Failed to reject model');
+    }
+  };
+
+  // --- OpenSCAD CAD generation handlers ---
+  const handleTriggerOpenSCAD = async (prompt: string) => {
+    if (!conversationId || !selectedRequestForConversation) return;
+    setGeneratingOpenSCAD(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-openscad`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          conversationId,
+          orderId: selectedRequestForConversation.id,
+          prompt,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob({
+          id: data.jobId,
+          status: 'code_ready',
+          generation_type: 'openscad',
+          openscad_code: data.code,
+          parameters: data.parameters,
+        });
+        toast.success('CAD code generated');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to generate CAD');
+      }
+    } catch (e) {
+      toast.error('Failed to generate CAD');
+    } finally {
+      setGeneratingOpenSCAD(false);
+    }
+  };
+
+  const handleUploadSTL = async (stlData: Uint8Array) => {
+    if (!generationJob?.id) return;
+    try {
+      const token = localStorage.getItem('accessToken');
+      // Convert to base64 for JSON transport (chunk to avoid call stack overflow)
+      let binary = '';
+      const bytes = stlData;
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      const response = await fetch(`${API_URL}/admin/generate-openscad/${generationJob.id}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ stlBase64: base64 }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+        toast.success('STL uploaded — ready for approval');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to upload STL');
+      }
+    } catch (e) {
+      toast.error('Failed to upload STL');
     }
   };
 
@@ -1422,6 +1490,7 @@ const AdminDesignAssistance = () => {
                           if (isAdminBrief) {
                             const briefAtt = msg.attachments.find((att: any) => att.type === 'admin_brief');
                             const isDecorative = briefAtt?.classification === 'decorative';
+                            const isFunctional = briefAtt?.classification === 'functional';
                             return (
                               <div key={msg.id} className="mx-auto max-w-[90%] space-y-3">
                                 <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-4 space-y-3">
@@ -1430,6 +1499,9 @@ const AdminDesignAssistance = () => {
                                     Design Brief from Pikoro
                                     {isDecorative && (
                                       <Badge className="ml-auto bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">Decorative</Badge>
+                                    )}
+                                    {isFunctional && (
+                                      <Badge className="ml-auto bg-indigo-500/20 text-indigo-300 border-indigo-500/30 text-[10px]">Functional</Badge>
                                     )}
                                   </div>
                                   <p className="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
@@ -1450,6 +1522,22 @@ const AdminDesignAssistance = () => {
                                       )}
                                     </Button>
                                   )}
+
+                                  {/* Generate CAD button — only for functional designs */}
+                                  {isFunctional && !generationJob && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleTriggerOpenSCAD(msg.message)}
+                                      disabled={generatingOpenSCAD}
+                                      className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
+                                    >
+                                      {generatingOpenSCAD ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating CAD...</>
+                                      ) : (
+                                        <><Wrench className="w-4 h-4 mr-2" />Generate CAD</>
+                                      )}
+                                    </Button>
+                                  )}
                                 </div>
 
                                 {/* Generation job status display */}
@@ -1464,6 +1552,24 @@ const AdminDesignAssistance = () => {
                                           <p className="text-xs text-gray-400">This may take up to a minute</p>
                                         </div>
                                       </div>
+                                    )}
+
+                                    {/* Code Ready — OpenSCAD editor with parametric preview */}
+                                    {generationJob.status === 'code_ready' && generationJob.openscad_code && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+                                          <Wrench className="w-4 h-4" />
+                                          CAD Model — Edit Parameters & Preview
+                                        </div>
+                                        <OpenSCADEditor
+                                          code={generationJob.openscad_code}
+                                          parameters={generationJob.parameters || []}
+                                          onExport={handleUploadSTL}
+                                          onRegenerate={() => {
+                                            setGenerationJob(null);
+                                          }}
+                                        />
+                                      </>
                                     )}
 
                                     {/* Pending Approval — show model + approve/reject */}

@@ -41,6 +41,9 @@ let sendWelcomeEmail: any;
 let generateAIResponse: any;
 let buildGeminiHistory: any;
 let buildDesignContext: any;
+let generateOpenSCADCode: any;
+let parseParameters: any;
+let applyParameterChanges: any;
 
 const initModules = async () => {
   if (!bcrypt) {
@@ -76,6 +79,16 @@ const initModules = async () => {
       buildDesignContext = geminiModule.buildDesignContext;
     } catch (e) {
       console.warn('[AI_AGENT] Gemini module not available:', e);
+    }
+  }
+  if (!generateOpenSCADCode) {
+    try {
+      const openscadModule = await import('./_lib/openscad-generator');
+      generateOpenSCADCode = openscadModule.generateOpenSCADCode;
+      parseParameters = openscadModule.parseParameters;
+      applyParameterChanges = openscadModule.applyParameterChanges;
+    } catch (e) {
+      console.warn('[OPENSCAD] Module not available:', e);
     }
   }
 };
@@ -2482,7 +2495,7 @@ async function handleAdminCheckGeneration(req: AuthenticatedRequest, res: Vercel
     if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
 
     // Terminal states
-    if (['pending_approval', 'approved', 'failed', 'rejected'].includes(job.status)) {
+    if (['pending_approval', 'approved', 'failed', 'rejected', 'code_ready'].includes(job.status)) {
       return res.status(200).json({ job });
     }
 
@@ -2562,6 +2575,139 @@ async function handleAdminRejectGeneration(req: AuthenticatedRequest, res: Verce
   await supabase.from('generation_jobs').update({ status: 'rejected' }).eq('id', job.id);
 
   return res.status(200).json({ job: { ...job, status: 'rejected' } });
+}
+
+// --- OpenSCAD CAD generation endpoints ---
+
+async function handleAdminGenerateOpenSCAD(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  if (!generateOpenSCADCode) {
+    return res.status(500).json({ error: 'OpenSCAD module not loaded' });
+  }
+
+  const { conversationId, orderId, prompt } = req.body;
+  if (!conversationId || !orderId || !prompt) {
+    return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+  }
+
+  const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
+  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+  try {
+    const { code, parameters } = await generateOpenSCADCode(prompt);
+
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: conv.user_id,
+        prompt,
+        order_id: orderId,
+        conversation_id: conversationId,
+        status: 'code_ready',
+        generation_type: 'openscad',
+        openscad_code: code,
+        parameters,
+      })
+      .select()
+      .single();
+
+    if (error || !job) {
+      console.error('[OPENSCAD] Failed to create job:', error);
+      return res.status(500).json({ error: 'Failed to create generation job' });
+    }
+
+    return res.status(201).json({ jobId: job.id, code, parameters });
+  } catch (err: any) {
+    console.error('[OPENSCAD] Generation error:', err);
+    return res.status(500).json({ error: err.message || 'OpenSCAD generation failed' });
+  }
+}
+
+async function handleAdminUploadOpenSCADSTL(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-openscad/{jobId}/upload
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+  if (job.generation_type !== 'openscad') return res.status(400).json({ error: 'Not an OpenSCAD job' });
+
+  // Expect base64 STL data in request body
+  const { stlBase64, fileName } = req.body;
+  if (!stlBase64) return res.status(400).json({ error: 'stlBase64 is required' });
+
+  try {
+    const stlBuffer = Buffer.from(stlBase64, 'base64');
+    const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+    const finalName = fileName || `openscad-${job.id.substring(0, 8)}.stl`;
+    const filePath = `${job.user_id}/generated/${Date.now()}-${finalName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, stlBuffer, { contentType: 'model/stl' });
+
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    await supabase.from('generation_jobs')
+      .update({ status: 'pending_approval', file_url: urlData.publicUrl, file_name: finalName })
+      .eq('id', job.id);
+
+    return res.status(200).json({
+      job: { ...job, status: 'pending_approval', file_url: urlData.publicUrl, file_name: finalName },
+    });
+  } catch (err: any) {
+    console.error('[OPENSCAD] Upload error:', err);
+    return res.status(500).json({ error: err.message || 'Upload failed' });
+  }
+}
+
+async function handleAdminUpdateOpenSCADCode(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-openscad/{jobId}/code
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+  if (job.generation_type !== 'openscad') return res.status(400).json({ error: 'Not an OpenSCAD job' });
+
+  const { code, parameters } = req.body;
+  const updates: any = {};
+  if (code !== undefined) updates.openscad_code = code;
+  if (parameters !== undefined) updates.parameters = parameters;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'Nothing to update' });
+  }
+
+  await supabase.from('generation_jobs').update(updates).eq('id', job.id);
+
+  return res.status(200).json({ job: { ...job, ...updates } });
 }
 
 async function handleGetMyGenerations(req: AuthenticatedRequest, res: VercelResponse) {
@@ -2978,6 +3124,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
     if (path.match(/^\/admin\/generate-3d\/[^/]+$/) && req.method === 'GET') {
       return await handleAdminCheckGeneration(req as AuthenticatedRequest, res);
+    }
+
+    // Admin OpenSCAD generation routes
+    if (path === '/admin/generate-openscad' && req.method === 'POST') {
+      return await handleAdminGenerateOpenSCAD(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-openscad\/[^/]+\/upload$/) && req.method === 'POST') {
+      return await handleAdminUploadOpenSCADSTL(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-openscad\/[^/]+\/code$/) && req.method === 'PUT') {
+      return await handleAdminUpdateOpenSCADCode(req as AuthenticatedRequest, res);
     }
 
     // Admin routes
