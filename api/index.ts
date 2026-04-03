@@ -6008,6 +6008,33 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
             message: cleanBrief,
             attachments: [{ type: 'admin_brief', classification }],
           }]);
+
+        // Auto-trigger ADAM (OpenSCAD) for functional designs
+        if (classification === 'functional' && generateOpenSCADCode && conversationUserId) {
+          console.log('[AI_AGENT] Functional design detected — auto-triggering ADAM/OpenSCAD');
+          try {
+            const { code, parameters } = await generateOpenSCADCode(cleanBrief);
+            const { error: jobError } = await supabase
+              .from('generation_jobs')
+              .insert({
+                user_id: conversationUserId,
+                prompt: cleanBrief,
+                order_id: orderId,
+                conversation_id: conversationId,
+                status: 'code_ready',
+                generation_type: 'openscad',
+                openscad_code: code,
+                parameters,
+              });
+            if (jobError) {
+              console.error('[AI_AGENT] Failed to create ADAM job:', jobError);
+            } else {
+              console.log('[AI_AGENT] ADAM/OpenSCAD job created for conversation:', conversationId);
+            }
+          } catch (adamErr) {
+            console.error('[AI_AGENT] ADAM/OpenSCAD generation failed:', adamErr);
+          }
+        }
       }
 
       console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);
