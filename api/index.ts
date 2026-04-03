@@ -5989,11 +5989,14 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
       // Insert admin-only design brief (hidden from client, visible to admin)
       if (adminBrief) {
-        // Strip [DECORATIVE]/[FUNCTIONAL] tag before storing the brief
-        const isDecorative = adminBrief.trimStart().startsWith('[DECORATIVE]');
+        // Detect classification tag anywhere in the brief (AI may place it after newlines or text)
+        const hasFunctionalTag = /\[FUNCTIONAL\]/i.test(adminBrief);
+        const hasDecorativeTag = /\[DECORATIVE\]/i.test(adminBrief);
+        const classification = hasFunctionalTag ? 'functional' : hasDecorativeTag ? 'decorative' : 'decorative';
+        console.log('[AI_AGENT] Brief classification:', { hasFunctionalTag, hasDecorativeTag, classification, briefStart: adminBrief.substring(0, 100) });
         const cleanBrief = adminBrief
-          .replace(/^\s*\[DECORATIVE\]\s*/i, '')
-          .replace(/^\s*\[FUNCTIONAL\]\s*/i, '')
+          .replace(/\[DECORATIVE\]/gi, '')
+          .replace(/\[FUNCTIONAL\]/gi, '')
           .trim();
 
         await supabase
@@ -6003,7 +6006,7 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
             sender_type: 'system',
             sender_id: null,
             message: cleanBrief,
-            attachments: [{ type: 'admin_brief', classification: isDecorative ? 'decorative' : 'functional' }],
+            attachments: [{ type: 'admin_brief', classification }],
           }]);
       }
 

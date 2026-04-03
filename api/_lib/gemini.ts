@@ -450,6 +450,7 @@ export async function generateAIResponse(
     length: text.length,
     shouldEscalate,
     hasAdminBrief: !!adminBrief,
+    adminBriefStart: adminBrief?.substring(0, 120),
   });
 
   return { text, shouldEscalate, adminBrief, model };
