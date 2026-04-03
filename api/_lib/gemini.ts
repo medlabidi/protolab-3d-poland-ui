@@ -1,9 +1,16 @@
-// api/_lib/gemini.ts — Google Gemini API helper for AI Design Assistant
+// api/_lib/gemini.ts — Google Gemini API helper for AI Design Assistant (with Groq fallback)
 
 const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY || '',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-2.0-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+  maxTokens: 2048,
+};
+
+const GROQ_CONFIG = {
+  apiKey: process.env.GROQ_API_KEY || '',
+  model: 'llama-3.3-70b-versatile',
+  baseUrl: 'https://api.groq.com/openai/v1',
   maxTokens: 2048,
 };
 
@@ -292,69 +299,141 @@ export async function buildGeminiHistory(
 }
 
 /**
- * Generate AI response using Gemini API
+ * Convert Gemini message history to OpenAI/Groq chat format (text only, images dropped).
+ */
+function geminiToGroqMessages(
+  systemPrompt: string,
+  history: GeminiMessage[]
+): Array<{ role: string; content: string }> {
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: systemPrompt },
+  ];
+  for (const msg of history) {
+    const textParts = msg.parts
+      .filter((p): p is { text: string } => 'text' in p)
+      .map(p => p.text);
+    if (textParts.length > 0) {
+      messages.push({
+        role: msg.role === 'model' ? 'assistant' : 'user',
+        content: textParts.join('\n'),
+      });
+    }
+  }
+  return messages;
+}
+
+/**
+ * Call Groq API as fallback when Gemini is rate-limited.
+ */
+async function callGroq(
+  systemPrompt: string,
+  history: GeminiMessage[],
+  maxTokens: number,
+  temperature: number,
+): Promise<string> {
+  const messages = geminiToGroqMessages(systemPrompt, history);
+
+  const response = await fetch(`${GROQ_CONFIG.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_CONFIG.model,
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('[GROQ] API error:', response.status, errText);
+    throw new Error(`Groq API error: ${response.status}`);
+  }
+
+  const data: any = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+/**
+ * Generate AI response using Gemini API, with Groq fallback on rate limit
  */
 export async function generateAIResponse(
   conversationHistory: GeminiMessage[]
 ): Promise<{ text: string; shouldEscalate: boolean; adminBrief?: string }> {
-  if (!GEMINI_CONFIG.apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
+  if (!GEMINI_CONFIG.apiKey && !GROQ_CONFIG.apiKey) {
+    throw new Error('No AI API key configured (set GEMINI_API_KEY or GROQ_API_KEY)');
   }
 
-  const requestBody: GeminiRequest = {
-    contents: conversationHistory,
-    systemInstruction: {
-      parts: [{ text: SYSTEM_PROMPT }],
-    },
-    generationConfig: {
-      maxOutputTokens: GEMINI_CONFIG.maxTokens,
-      temperature: 0.7,
-    },
-  };
+  let text: string | null = null;
 
-  const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
+  // Try Gemini first (if key available)
+  if (GEMINI_CONFIG.apiKey) {
+    const requestBody: GeminiRequest = {
+      contents: conversationHistory,
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      generationConfig: {
+        maxOutputTokens: GEMINI_CONFIG.maxTokens,
+        temperature: 0.7,
+      },
+    };
 
-  let response: Response | null = null;
-  const maxRetries = 2;
+    const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
+    let response: Response | null = null;
+    const maxRetries = 1;
 
-    if (response.status === 429 && attempt < maxRetries) {
-      // Rate limited — extract retry delay or use exponential backoff
-      const retryText = await response.text();
-      const delayMatch = retryText.match(/retry in (\d+)/i);
-      const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : (attempt + 1) * 30000;
-      const cappedWait = Math.min(waitMs, 60000);
-      console.log(`[GEMINI] Rate limited (429), retrying in ${cappedWait / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, cappedWait));
-      continue;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryText = await response.text();
+        const delayMatch = retryText.match(/retry in (\d+)/i);
+        const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : 15000;
+        const cappedWait = Math.min(waitMs, 30000);
+        console.log(`[GEMINI] Rate limited (429), retrying in ${cappedWait / 1000}s`);
+        await new Promise(resolve => setTimeout(resolve, cappedWait));
+        continue;
+      }
+      break;
     }
-    break;
-  }
 
-  if (!response!.ok) {
-    const errorText = await response!.text();
-    console.error('[GEMINI] API error:', response!.status, errorText);
-    if (response!.status === 429) {
-      const delayMatch = errorText.match(/retry in (\d+)/i);
-      const waitSec = delayMatch ? delayMatch[1] : '60';
-      throw new Error(`AI rate limit reached. Please wait ~${waitSec}s and try again.`);
+    if (response!.ok) {
+      const data = (await response!.json()) as GeminiResponse;
+      if (data.candidates && data.candidates.length > 0) {
+        text = data.candidates[0].content.parts.map(p => p.text).join('');
+        console.log('[GEMINI] Response generated, length:', text.length);
+      }
+    } else {
+      const errorText = await response!.text();
+      console.error('[GEMINI] API error:', response!.status, errorText);
+      if (response!.status !== 429) {
+        // Non-rate-limit error with no Groq fallback → throw
+        if (!GROQ_CONFIG.apiKey) {
+          throw new Error(`Gemini API error: ${response!.status}`);
+        }
+      }
     }
-    throw new Error(`Gemini API error: ${response!.status}`);
   }
 
-  const data = (await response!.json()) as GeminiResponse;
-
-  if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('Gemini returned no candidates');
+  // Fallback to Groq if Gemini failed or was rate-limited
+  if (text === null && GROQ_CONFIG.apiKey) {
+    console.log('[GROQ] Using Groq fallback...');
+    text = await callGroq(SYSTEM_PROMPT, conversationHistory, GROQ_CONFIG.maxTokens, 0.7);
+    console.log('[GROQ] Fallback response generated, length:', text.length);
   }
 
-  let text = data.candidates[0].content.parts.map(p => p.text).join('');
+  if (text === null) {
+    throw new Error('AI rate limit reached and no fallback available.');
+  }
 
   // Extract escalation marker
   const shouldEscalate = text.includes('[ESCALATE_TO_ADMIN]');
@@ -380,11 +459,10 @@ export async function generateAIResponse(
     text = text.replace('[CLIENT_MESSAGE]', '').replace('[ADMIN_BRIEF]', '').trim();
   }
 
-  console.log('[GEMINI] Response generated:', {
+  console.log('[AI] Final response:', {
     length: text.length,
     shouldEscalate,
     hasAdminBrief: !!adminBrief,
-    tokenUsage: data.usageMetadata,
   });
 
   return { text, shouldEscalate, adminBrief };

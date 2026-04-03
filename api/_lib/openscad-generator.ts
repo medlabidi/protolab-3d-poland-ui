@@ -2,8 +2,15 @@
 
 const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY || '',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-2.0-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+  maxTokens: 16384,
+};
+
+const GROQ_CONFIG = {
+  apiKey: process.env.GROQ_API_KEY || '',
+  model: 'llama-3.3-70b-versatile',
+  baseUrl: 'https://api.groq.com/openai/v1',
   maxTokens: 16384,
 };
 
@@ -238,68 +245,93 @@ export function applyParameterChanges(
 export async function generateOpenSCADCode(
   prompt: string
 ): Promise<{ code: string; parameters: Parameter[] }> {
-  if (!GEMINI_CONFIG.apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
+  if (!GEMINI_CONFIG.apiKey && !GROQ_CONFIG.apiKey) {
+    throw new Error('No AI API key configured (set GEMINI_API_KEY or GROQ_API_KEY)');
   }
 
-  const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
+  const userMessage = `Design brief for a functional 3D-printable part:\n\n${prompt}`;
+  let code: string | null = null;
 
-  const requestBody = JSON.stringify({
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: `Design brief for a functional 3D-printable part:\n\n${prompt}` }],
-      },
-    ],
-    systemInstruction: {
-      parts: [{ text: OPENSCAD_SYSTEM_PROMPT }],
-    },
-    generationConfig: {
-      maxOutputTokens: GEMINI_CONFIG.maxTokens,
-      temperature: 0.3,
-    },
-  });
-
-  let response: Response | null = null;
-  const maxRetries = 2;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: requestBody,
+  // Try Gemini first
+  if (GEMINI_CONFIG.apiKey) {
+    const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
+    const requestBody = JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+      systemInstruction: { parts: [{ text: OPENSCAD_SYSTEM_PROMPT }] },
+      generationConfig: { maxOutputTokens: GEMINI_CONFIG.maxTokens, temperature: 0.3 },
     });
 
-    if (response.status === 429 && attempt < maxRetries) {
-      const retryText = await response.text();
-      const delayMatch = retryText.match(/retry in (\d+)/i);
-      const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : (attempt + 1) * 30000;
-      const cappedWait = Math.min(waitMs, 60000);
-      console.log(`[OPENSCAD] Rate limited (429), retrying in ${cappedWait / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, cappedWait));
-      continue;
+    let response: Response | null = null;
+    const maxRetries = 1;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+      });
+
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryText = await response.text();
+        const delayMatch = retryText.match(/retry in (\d+)/i);
+        const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : 15000;
+        const cappedWait = Math.min(waitMs, 30000);
+        console.log(`[OPENSCAD] Rate limited (429), retrying in ${cappedWait / 1000}s`);
+        await new Promise(resolve => setTimeout(resolve, cappedWait));
+        continue;
+      }
+      break;
     }
-    break;
-  }
 
-  if (!response!.ok) {
-    const errorText = await response!.text();
-    console.error('[OPENSCAD] Gemini API error:', response!.status, errorText);
-    if (response!.status === 429) {
-      const delayMatch = errorText.match(/retry in (\d+)/i);
-      const waitSec = delayMatch ? delayMatch[1] : '60';
-      throw new Error(`AI rate limit reached. Please wait ~${waitSec}s and try again, or upgrade the Gemini API plan.`);
+    if (response!.ok) {
+      const data: any = await response!.json();
+      if (data.candidates?.length > 0) {
+        code = data.candidates[0].content.parts.map((p: any) => p.text).join('');
+        console.log('[OPENSCAD] Gemini response, length:', code!.length);
+      }
+    } else {
+      const errorText = await response!.text();
+      console.error('[OPENSCAD] Gemini API error:', response!.status, errorText);
+      if (response!.status !== 429 && !GROQ_CONFIG.apiKey) {
+        throw new Error(`Gemini API error: ${response!.status}`);
+      }
     }
-    throw new Error(`Gemini API error: ${response!.status}`);
   }
 
-  const data: any = await response!.json();
+  // Fallback to Groq
+  if (code === null && GROQ_CONFIG.apiKey) {
+    console.log('[OPENSCAD] Using Groq fallback...');
+    const groqResponse = await fetch(`${GROQ_CONFIG.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_CONFIG.model,
+        messages: [
+          { role: 'system', content: OPENSCAD_SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: GROQ_CONFIG.maxTokens,
+        temperature: 0.3,
+      }),
+    });
 
-  if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('Gemini returned no candidates');
+    if (!groqResponse.ok) {
+      const errText = await groqResponse.text();
+      console.error('[OPENSCAD] Groq API error:', groqResponse.status, errText);
+      throw new Error(`Groq API error: ${groqResponse.status}`);
+    }
+
+    const groqData: any = await groqResponse.json();
+    code = groqData.choices?.[0]?.message?.content || '';
+    console.log('[OPENSCAD] Groq fallback response, length:', code!.length);
   }
 
-  let code = data.candidates[0].content.parts.map((p: any) => p.text).join('');
+  if (code === null) {
+    throw new Error('AI rate limit reached and no fallback available.');
+  }
 
   // Robust cleanup: strip markdown fences, preamble text, trailing explanations
   // Handle various fence formats: ```openscad, ```scad, ```SCAD, ```OpenSCAD, plain ```
