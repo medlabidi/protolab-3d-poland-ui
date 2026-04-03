@@ -1523,19 +1523,24 @@ const AdminDesignAssistance = () => {
                           const isAdminBrief = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief');
                           if (isAdminBrief) {
                             const briefAtt = msg.attachments.find((att: any) => att.type === 'admin_brief');
-                            const isDecorative = briefAtt?.classification === 'decorative';
-                            const isFunctional = briefAtt?.classification === 'functional';
+                            const classification = briefAtt?.classification;
+                            const isDecorative = classification === 'decorative';
+                            const isMechanical = classification === 'mechanical';
+                            const classificationBadge: Record<string, { bg: string; text: string; label: string }> = {
+                              decorative: { bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'Decorative' },
+                              mechanical: { bg: 'bg-indigo-500/20', text: 'text-indigo-300', label: 'Mechanical' },
+                              functional: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', label: 'Functional' },
+                              prototype: { bg: 'bg-orange-500/20', text: 'text-orange-300', label: 'Prototype' },
+                            };
+                            const badge = classificationBadge[classification] || null;
                             return (
                               <div key={msg.id} className="mx-auto max-w-[90%] space-y-3">
                                 <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-4 space-y-3">
                                   <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
                                     <FileText className="w-4 h-4" />
                                     Design Brief from Pikoro
-                                    {isDecorative && (
-                                      <Badge className="ml-auto bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">Decorative</Badge>
-                                    )}
-                                    {isFunctional && (
-                                      <Badge className="ml-auto bg-indigo-500/20 text-indigo-300 border-indigo-500/30 text-[10px]">Functional</Badge>
+                                    {badge && (
+                                      <Badge className={`ml-auto ${badge.bg} ${badge.text} border-current/30 text-[10px]`}>{badge.label}</Badge>
                                     )}
                                   </div>
                                   <p className="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
@@ -1557,8 +1562,8 @@ const AdminDesignAssistance = () => {
                                     </Button>
                                   )}
 
-                                  {/* Generate CAD button — only for functional designs */}
-                                  {isFunctional && !generationJob && (
+                                  {/* Generate CAD button — only for mechanical designs */}
+                                  {isMechanical && !generationJob && (
                                     <Button
                                       size="sm"
                                       onClick={() => handleTriggerOpenSCAD(msg.message)}

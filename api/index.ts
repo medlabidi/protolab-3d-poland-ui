@@ -6032,14 +6032,18 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
       // Insert admin-only design brief (hidden from client, visible to admin)
       if (adminBrief) {
-        // Detect classification tag anywhere in the brief (AI may place it after newlines or text)
-        const hasFunctionalTag = /\[FUNCTIONAL\]/i.test(adminBrief);
+        // Detect classification tag anywhere in the brief
+        const hasMechanicalTag = /\[MECHANICAL\]/i.test(adminBrief);
         const hasDecorativeTag = /\[DECORATIVE\]/i.test(adminBrief);
-        const classification = hasFunctionalTag ? 'functional' : hasDecorativeTag ? 'decorative' : 'decorative';
-        console.log('[AI_AGENT] Brief classification:', { hasFunctionalTag, hasDecorativeTag, classification, briefStart: adminBrief.substring(0, 100) });
+        const hasFunctionalTag = /\[FUNCTIONAL\]/i.test(adminBrief);
+        const hasPrototypeTag = /\[PROTOTYPE\]/i.test(adminBrief);
+        const classification = hasMechanicalTag ? 'mechanical' : hasDecorativeTag ? 'decorative' : hasFunctionalTag ? 'functional' : hasPrototypeTag ? 'prototype' : 'other';
+        console.log('[AI_AGENT] Brief classification:', { hasMechanicalTag, hasDecorativeTag, hasFunctionalTag, hasPrototypeTag, classification, briefStart: adminBrief.substring(0, 100) });
         const cleanBrief = adminBrief
           .replace(/\[DECORATIVE\]/gi, '')
+          .replace(/\[MECHANICAL\]/gi, '')
           .replace(/\[FUNCTIONAL\]/gi, '')
+          .replace(/\[PROTOTYPE\]/gi, '')
           .trim();
 
         await supabase
@@ -6052,9 +6056,9 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
             attachments: [{ type: 'admin_brief', classification }],
           }]);
 
-        // Auto-trigger ADAM (OpenSCAD) for functional designs
-        if (classification === 'functional' && generateOpenSCADCode && conversationUserId) {
-          console.log('[AI_AGENT] Functional design detected — auto-triggering ADAM/OpenSCAD');
+        // Auto-trigger ADAM (OpenSCAD) only for mechanical designs
+        if (classification === 'mechanical' && generateOpenSCADCode && conversationUserId) {
+          console.log('[AI_AGENT] Mechanical design detected — auto-triggering ADAM/OpenSCAD');
           try {
             const { code, parameters } = await generateOpenSCADCode(cleanBrief);
             const { error: jobError } = await supabase
