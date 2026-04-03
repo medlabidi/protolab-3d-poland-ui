@@ -2453,22 +2453,29 @@ async function handleAdminTriggerGeneration(req: AuthenticatedRequest, res: Verc
   const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
   if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
 
-  const { conversationId, orderId, prompt } = req.body;
-  if (!conversationId || !orderId || !prompt) {
-    return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+  try {
+    const { conversationId, orderId, prompt } = req.body;
+    console.log('[GENERATE-3D] Request:', { conversationId, orderId, promptLength: prompt?.length });
+    if (!conversationId || !orderId || !prompt) {
+      return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+    }
+
+    // Get the user_id from the conversation (the client who owns the order)
+    const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
+    if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+    const result = await triggerTripo3DGeneration(prompt, orderId, conversationId, conv.user_id);
+
+    if (result.error) {
+      console.error('[GENERATE-3D] Error:', result.error);
+      return res.status(500).json({ error: result.error });
+    }
+
+    return res.status(201).json({ jobId: result.jobId });
+  } catch (err: any) {
+    console.error('[GENERATE-3D] Unhandled error:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
   }
-
-  // Get the user_id from the conversation (the client who owns the order)
-  const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
-  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
-
-  const result = await triggerTripo3DGeneration(prompt, orderId, conversationId, conv.user_id);
-
-  if (result.error) {
-    return res.status(500).json({ error: result.error });
-  }
-
-  return res.status(201).json({ jobId: result.jobId });
 }
 
 async function handleAdminGetConversationJobs(req: AuthenticatedRequest, res: VercelResponse) {
@@ -2825,9 +2832,11 @@ async function triggerTripo3DGeneration(
 ): Promise<{ jobId?: string; error?: string }> {
   const tripoApiKey = process.env.TRIPO3D_API_KEY;
   if (!tripoApiKey) {
-    console.log('[TRIPO3D] API key not configured, skipping generation');
-    return { error: 'API key not configured' };
+    console.error('[TRIPO3D] TRIPO3D_API_KEY not set in environment');
+    return { error: 'TRIPO3D_API_KEY not configured' };
   }
+
+  console.log('[TRIPO3D] Starting generation for order:', orderId, 'prompt length:', adminBrief.length);
 
   const supabase = getSupabase();
 
