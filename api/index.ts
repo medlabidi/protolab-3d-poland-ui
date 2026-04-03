@@ -5951,14 +5951,15 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
     const geminiHistory = await buildGeminiHistory(filteredMessages, designContext);
-    const { text: aiText, shouldEscalate, adminBrief } = await generateAIResponse(geminiHistory);
+    const { text: aiText, shouldEscalate, adminBrief, model: aiModel } = await generateAIResponse(geminiHistory);
 
-    // 6. Insert AI message
+    // 6. Insert AI message (with model info for admin visibility)
     const aiMessageData: any = {
       conversation_id: conversationId,
       sender_type: 'system',
       sender_id: null,
       message: aiText,
+      attachments: aiModel ? [{ type: 'ai_model', model: aiModel }] : undefined,
     };
 
     const { error: insertError } = await supabase

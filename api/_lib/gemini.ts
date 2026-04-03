@@ -362,12 +362,13 @@ async function callGroq(
  */
 export async function generateAIResponse(
   conversationHistory: GeminiMessage[]
-): Promise<{ text: string; shouldEscalate: boolean; adminBrief?: string }> {
+): Promise<{ text: string; shouldEscalate: boolean; adminBrief?: string; model?: string }> {
   if (!GEMINI_CONFIG.apiKey && !GROQ_CONFIG.apiKey) {
     throw new Error('No AI API key configured (set GEMINI_API_KEY or GROQ_API_KEY)');
   }
 
   let text: string | null = null;
+  let model: string = 'unknown';
 
   // Try Gemini first (if key available)
   if (GEMINI_CONFIG.apiKey) {
@@ -394,6 +395,7 @@ export async function generateAIResponse(
       const data = (await response.json()) as GeminiResponse;
       if (data.candidates && data.candidates.length > 0) {
         text = data.candidates[0].content.parts.map(p => p.text).join('');
+        model = `Gemini ${GEMINI_CONFIG.model}`;
         console.log('[GEMINI] Response generated, length:', text.length);
       }
     } else {
@@ -412,6 +414,7 @@ export async function generateAIResponse(
   if (text === null && GROQ_CONFIG.apiKey) {
     console.log('[GROQ] Using Groq fallback...');
     text = await callGroq(SYSTEM_PROMPT, conversationHistory, GROQ_CONFIG.maxTokens, 0.7);
+    model = `Groq ${GROQ_CONFIG.model}`;
     console.log('[GROQ] Fallback response generated, length:', text.length);
   }
 
@@ -449,5 +452,5 @@ export async function generateAIResponse(
     hasAdminBrief: !!adminBrief,
   });
 
-  return { text, shouldEscalate, adminBrief };
+  return { text, shouldEscalate, adminBrief, model };
 }

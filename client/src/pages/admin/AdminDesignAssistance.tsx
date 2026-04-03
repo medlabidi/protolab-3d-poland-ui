@@ -1733,7 +1733,14 @@ const AdminDesignAssistance = () => {
                                     ? 'text-emerald-400 text-left'
                                     : 'text-purple-400 text-left'
                                 }`}>
-                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : msg.sender_type === 'system' ? 'Pikoro' : 'User'}
+                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : msg.sender_type === 'system' ? (
+                                    <>
+                                      Pikoro
+                                      {msg.attachments?.find((att: any) => att.type === 'ai_model')?.model && (
+                                        <span className="text-emerald-600 font-normal ml-1">· {msg.attachments.find((att: any) => att.type === 'ai_model').model}</span>
+                                      )}
+                                    </>
+                                  ) : 'User'}
                                 </span>
 
                                 <div
