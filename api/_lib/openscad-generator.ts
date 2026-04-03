@@ -11,7 +11,7 @@ const GROQ_CONFIG = {
   apiKey: process.env.GROQ_API_KEY || '',
   model: 'llama-3.3-70b-versatile',
   baseUrl: 'https://api.groq.com/openai/v1',
-  maxTokens: 16384,
+  maxTokens: 4096,
 };
 
 // --- Parameter types (adapted from CADAM) ---
@@ -249,7 +249,9 @@ export async function generateOpenSCADCode(
     throw new Error('No AI API key configured (set GEMINI_API_KEY or GROQ_API_KEY)');
   }
 
-  const userMessage = `Design brief for a functional 3D-printable part:\n\n${prompt}`;
+  // Truncate prompt to avoid 413 payload errors on Groq
+  const truncatedPrompt = prompt.length > 4000 ? prompt.substring(0, 4000) + '\n...(truncated)' : prompt;
+  const userMessage = `Design brief for a functional 3D-printable part:\n\n${truncatedPrompt}`;
   let code: string | null = null;
 
   // Try Gemini first
