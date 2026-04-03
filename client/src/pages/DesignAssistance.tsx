@@ -533,7 +533,11 @@ const DesignAssistance = () => {
   };
 
   const handleApproveDesign = async (requestId: string) => {
-    if (!confirm('Are you sure you want to approve this design? You will proceed to payment.')) {
+    const hasPrice = selectedRequest?.estimated_price && selectedRequest.estimated_price > 0;
+    const confirmMsg = hasPrice
+      ? `Are you sure you want to approve this design? You will proceed to payment of ${selectedRequest!.estimated_price!.toFixed(2)} PLN.`
+      : 'Are you sure you want to approve this design?';
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -947,7 +951,7 @@ const DesignAssistance = () => {
                       </div>
 
                       {/* Prominent Price Banner */}
-                      {(selectedRequest.estimated_price || selectedRequest.design_status === 'approved') ? (
+                      {(selectedRequest.estimated_price && selectedRequest.estimated_price > 0) || (selectedRequest.design_status === 'approved' && selectedRequest.estimated_price && selectedRequest.estimated_price > 0) ? (
                         <div className={`rounded-xl border p-4 space-y-3 ${
                           isPaymentCompleted
                             ? 'bg-green-500/10 border-green-500/40'
@@ -1002,16 +1006,42 @@ const DesignAssistance = () => {
                               </Button>
                             </div>
                           )}
-                          {!isPaymentCompleted && selectedRequest.design_status === 'approved' && (!selectedRequest.estimated_price || selectedRequest.estimated_price <= 0) && (
-                            <div className="space-y-2 pt-1">
-                              <p className="text-green-200 text-xs">You approved this design. Files are available for download.</p>
-                            </div>
-                          )}
                           {!isPaymentCompleted && selectedRequest.design_status !== 'completed' && selectedRequest.design_status !== 'approved' && (
                             <p className="text-gray-400 text-xs">Waiting for admin to finalize the design before you can approve and pay.</p>
                           )}
                         </div>
                       ) : null}
+
+                      {/* Preview-only approval card (no price) */}
+                      {selectedRequest.design_status === 'completed' && (!selectedRequest.estimated_price || selectedRequest.estimated_price <= 0) && !isPaymentCompleted && (
+                        <div className="rounded-xl border p-4 space-y-3 bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border-purple-400/40">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Design Review</span>
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500 text-xs animate-pulse">Action Required</Badge>
+                          </div>
+                          <p className="text-purple-200 text-xs">The admin has sent a 3D preview for your review. Please approve or reject the design.</p>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleApproveDesign(selectedRequest.id)}
+                              disabled={processingApproval}
+                              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-sm h-10"
+                            >
+                              {processingApproval ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
+                              ) : (
+                                <><Check className="w-4 h-4 mr-2" />Approve Design</>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() => setShowRejectDialog(true)}
+                              variant="outline"
+                              className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10 font-semibold text-sm h-10"
+                            >
+                              <X className="w-4 h-4 mr-2" />Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Attached Reference Files */}
                       {selectedRequest.attached_files && selectedRequest.attached_files.length > 0 && (
