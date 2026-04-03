@@ -82,6 +82,7 @@ const AdminDesignAssistance = () => {
   const [generationJob, setGenerationJob] = useState<any>(null);
   const [generatingTripo, setGeneratingTripo] = useState(false);
   const [generatingOpenSCAD, setGeneratingOpenSCAD] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -181,6 +182,7 @@ const AdminDesignAssistance = () => {
   const handleTriggerGeneration = async (prompt: string) => {
     if (!conversationId || !selectedRequestForConversation) return;
     setGeneratingTripo(true);
+    setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/generate-3d`, {
@@ -196,19 +198,19 @@ const AdminDesignAssistance = () => {
         const data = await response.json();
         setGenerationJob({ id: data.jobId, status: 'pending' });
         pollGenerationJob(data.jobId);
-        toast.success('3D generation started');
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Failed to start generation');
+        setActionError(data.error || 'Failed to start 3D generation');
       }
     } catch (e) {
-      toast.error('Failed to start generation');
+      setActionError('Failed to start 3D generation — network error');
     } finally {
       setGeneratingTripo(false);
     }
   };
 
   const handleApproveGeneration = async (jobId: string) => {
+    setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/approve`, {
@@ -218,16 +220,16 @@ const AdminDesignAssistance = () => {
       if (response.ok) {
         const data = await response.json();
         setGenerationJob(data.job);
-        toast.success('Model approved and sent to client');
       } else {
-        toast.error('Failed to approve model');
+        setActionError('Failed to approve model');
       }
     } catch (e) {
-      toast.error('Failed to approve model');
+      setActionError('Failed to approve model — network error');
     }
   };
 
   const handleRejectGeneration = async (jobId: string) => {
+    setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/reject`, {
@@ -237,12 +239,11 @@ const AdminDesignAssistance = () => {
       if (response.ok) {
         const data = await response.json();
         setGenerationJob(data.job);
-        toast.success('Model rejected');
       } else {
-        toast.error('Failed to reject model');
+        setActionError('Failed to reject model');
       }
     } catch (e) {
-      toast.error('Failed to reject model');
+      setActionError('Failed to reject model — network error');
     }
   };
 
@@ -250,6 +251,7 @@ const AdminDesignAssistance = () => {
   const handleTriggerOpenSCAD = async (prompt: string) => {
     if (!conversationId || !selectedRequestForConversation) return;
     setGeneratingOpenSCAD(true);
+    setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/generate-openscad`, {
@@ -270,13 +272,12 @@ const AdminDesignAssistance = () => {
           openscad_code: data.code,
           parameters: data.parameters,
         });
-        toast.success('CAD code generated');
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Failed to generate CAD');
+        setActionError(data.error || 'Failed to generate CAD');
       }
     } catch (e) {
-      toast.error('Failed to generate CAD');
+      setActionError('Failed to generate CAD — network error');
     } finally {
       setGeneratingOpenSCAD(false);
     }
@@ -284,6 +285,7 @@ const AdminDesignAssistance = () => {
 
   const handleUploadSTL = async (stlData: Uint8Array) => {
     if (!generationJob?.id) return;
+    setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       // Convert to base64 for JSON transport (chunk to avoid call stack overflow)
@@ -302,13 +304,12 @@ const AdminDesignAssistance = () => {
       if (response.ok) {
         const data = await response.json();
         setGenerationJob(data.job);
-        toast.success('STL uploaded — ready for approval');
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Failed to upload STL');
+        setActionError(data.error || 'Failed to upload STL');
       }
     } catch (e) {
-      toast.error('Failed to upload STL');
+      setActionError('Failed to upload STL — network error');
     }
   };
 
@@ -1556,6 +1557,19 @@ const AdminDesignAssistance = () => {
                                     </Button>
                                   )}
                                 </div>
+
+                                {/* Inline action error */}
+                                {actionError && (
+                                  <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-3 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-red-300">{actionError}</p>
+                                    </div>
+                                    <button onClick={() => setActionError(null)} className="text-red-500/60 hover:text-red-400 flex-shrink-0">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
 
                                 {/* Generation job status display */}
                                 {generationJob && (
