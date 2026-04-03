@@ -5037,6 +5037,9 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
     }
 
     // Auto-create conversation and send idea_description as first message
+    // Track if we need to trigger AI after response
+    let pendingAI: { convId: string; orderId: string } | null = null;
+
     if (order) {
       try {
         const { data: conv, error: convError } = await supabase
@@ -5081,12 +5084,7 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
             } catch (e) {
               console.log('[DESIGN] Could not set ai_status:', e);
             }
-            try {
-              await triggerAIAgentResponse(conv.id, order.id);
-              console.log('[DESIGN] >>> AI agent trigger completed successfully');
-            } catch (aiErr) {
-              console.error('[DESIGN] >>> AI agent trigger error:', aiErr);
-            }
+            pendingAI = { convId: conv.id, orderId: order.id };
           }
         }
       } catch (convErr) {
@@ -5094,7 +5092,20 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
       }
     }
 
-    return res.status(201).json(mapOrderToDesignRequest(order));
+    // Send response to client immediately
+    res.status(201).json(mapOrderToDesignRequest(order));
+
+    // Then trigger AI in background (function stays alive while we await)
+    if (pendingAI) {
+      try {
+        await triggerAIAgentResponse(pendingAI.convId, pendingAI.orderId);
+        console.log('[DESIGN] >>> AI agent trigger completed successfully');
+      } catch (aiErr) {
+        console.error('[DESIGN] >>> AI agent trigger error:', aiErr);
+      }
+    }
+
+    return;
   } catch (error) {
     console.error('Design request error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -5810,7 +5821,11 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     
     console.log('[SEND_MESSAGE] Message sent successfully:', message);
 
-    // Trigger AI agent response if this is a design conversation and AI is active
+    // Send response to client immediately so they don't wait for AI
+    res.status(201).json({ message });
+
+    // Continue processing: trigger AI agent response after response is sent
+    // The function stays alive while we await, but the client already has their 201
     try {
       const { data: convData } = await supabase
         .from('conversations')
@@ -5833,7 +5848,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       console.error('[SEND_MESSAGE] AI agent trigger error:', aiError);
     }
 
-    return res.status(201).json({ message });
+    return;
   } catch (error: any) {
     console.error('[SEND_MESSAGE] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
