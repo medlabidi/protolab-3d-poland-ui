@@ -2868,7 +2868,6 @@ async function triggerTripo3DGeneration(
       },
       body: JSON.stringify({
         type: 'text_to_model',
-        model_version: 'v1.4-20250131',
         prompt: `decorative 3D figurine: ${adminBrief}`,
       }),
     });
