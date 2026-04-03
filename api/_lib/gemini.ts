@@ -384,41 +384,25 @@ export async function generateAIResponse(
 
     const url = `${GEMINI_CONFIG.baseUrl}/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
 
-    let response: Response | null = null;
-    const maxRetries = 1;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (response.status === 429 && attempt < maxRetries) {
-        const retryText = await response.text();
-        const delayMatch = retryText.match(/retry in (\d+)/i);
-        const waitMs = delayMatch ? parseInt(delayMatch[1]) * 1000 : 15000;
-        const cappedWait = Math.min(waitMs, 30000);
-        console.log(`[GEMINI] Rate limited (429), retrying in ${cappedWait / 1000}s`);
-        await new Promise(resolve => setTimeout(resolve, cappedWait));
-        continue;
-      }
-      break;
-    }
-
-    if (response!.ok) {
-      const data = (await response!.json()) as GeminiResponse;
+    if (response.ok) {
+      const data = (await response.json()) as GeminiResponse;
       if (data.candidates && data.candidates.length > 0) {
         text = data.candidates[0].content.parts.map(p => p.text).join('');
         console.log('[GEMINI] Response generated, length:', text.length);
       }
     } else {
-      const errorText = await response!.text();
-      console.error('[GEMINI] API error:', response!.status, errorText);
-      if (response!.status !== 429) {
+      const errorText = await response.text();
+      console.error('[GEMINI] API error:', response.status, errorText);
+      if (response.status !== 429) {
         // Non-rate-limit error with no Groq fallback → throw
         if (!GROQ_CONFIG.apiKey) {
-          throw new Error(`Gemini API error: ${response!.status}`);
+          throw new Error(`Gemini API error: ${response.status}`);
         }
       }
     }
