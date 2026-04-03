@@ -1431,15 +1431,52 @@ const DesignAssistance = () => {
                                     })()}
 
                                     {/* Generated 3D Model Previews */}
-                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => (
-                                      <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
-                                        <ModelViewerUrl
-                                          url={att.url}
-                                          fileName={att.name || 'model.glb'}
-                                          height="100%"
-                                        />
-                                      </div>
-                                    ))}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => {
+                                      const accessType = att.access_type;
+                                      const isPaid = accessType === 'paid' && att.price > 0;
+                                      const isPaidUnpaid = isPaid && att.payment_status !== 'paid';
+                                      const isPreviewOnly = accessType === 'preview_only';
+
+                                      // Legacy: no access_type — bare viewer
+                                      if (!accessType) {
+                                        return (
+                                          <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
+                                            <ModelViewerUrl
+                                              url={att.url}
+                                              fileName={att.name || 'model.glb'}
+                                              height="100%"
+                                            />
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div key={`gen-model-${idx}`} className="mt-3">
+                                          {isPreviewOnly && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <Lock className="w-3 h-3 text-purple-400" />
+                                              <Badge className="text-[10px] px-1.5 py-0 bg-purple-500/20 text-purple-400 border-purple-500">
+                                                Preview only — download restricted
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          {isPaidUnpaid && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <Lock className="w-3 h-3 text-yellow-400" />
+                                              <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/20 text-yellow-400 border-yellow-500">
+                                                {att.price} PLN — Approve & pay to download
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          <ModelPreviewCard
+                                            attachment={{ name: att.name || 'Generated Model', url: att.url }}
+                                            approvalStatus={selectedRequest?.user_approval_status as any}
+                                            onOpenFullscreen={() => setModelViewerModal({ open: true, attachment: { ...att, name: att.name || 'Generated Model' } })}
+                                            showApprovalButtons={selectedRequest?.design_status === 'completed'}
+                                          />
+                                        </div>
+                                      );
+                                    })}
 
                                     {/* Generation Status (loading) */}
                                     {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_status').map((att: any, idx: number) => (
@@ -1626,12 +1663,15 @@ const DesignAssistance = () => {
         approvalStatus={selectedRequest?.user_approval_status as any}
         onApprove={
           selectedRequest &&
-          modelViewerModal.attachment?.access_type !== 'preview_only'
+          selectedRequest.design_status === 'completed' &&
+          (!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending')
             ? () => handleApproveDesign(selectedRequest.id)
             : undefined
         }
         onReject={
-          modelViewerModal.attachment?.access_type !== 'preview_only'
+          selectedRequest &&
+          selectedRequest.design_status === 'completed' &&
+          (!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending')
             ? () => {
                 setModelViewerModal({ open: false, attachment: null });
                 setShowRejectDialog(true);
@@ -1639,7 +1679,9 @@ const DesignAssistance = () => {
             : undefined
         }
         onDownload={
-          isPaymentCompleted && modelViewerModal.attachment?.download_allowed !== false
+          isPaymentCompleted &&
+          modelViewerModal.attachment?.access_type !== 'preview_only' &&
+          modelViewerModal.attachment?.download_allowed !== false
             ? handleDownload
             : undefined
         }

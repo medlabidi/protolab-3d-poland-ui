@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw, Wrench } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw, Wrench, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -83,7 +83,9 @@ const AdminDesignAssistance = () => {
   const [generatingTripo, setGeneratingTripo] = useState(false);
   const [generatingOpenSCAD, setGeneratingOpenSCAD] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  
+  const [genAccessType, setGenAccessType] = useState<'paid' | 'preview_only' | null>(null);
+  const [genPrice, setGenPrice] = useState<string>('');
+
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef<number>(0);
@@ -210,16 +212,30 @@ const AdminDesignAssistance = () => {
   };
 
   const handleApproveGeneration = async (jobId: string) => {
+    if (!genAccessType) {
+      setActionError('Please select an access type (Preview Only or Set Price) before approving.');
+      return;
+    }
+    if (genAccessType === 'paid' && (!genPrice || parseFloat(genPrice) <= 0)) {
+      setActionError('Please enter a valid price before approving.');
+      return;
+    }
     setActionError(null);
     try {
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/approve`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_type: genAccessType,
+          price: genAccessType === 'paid' ? parseFloat(genPrice) : undefined,
+        }),
       });
       if (response.ok) {
         const data = await response.json();
         setGenerationJob(data.job);
+        setGenAccessType(null);
+        setGenPrice('');
       } else {
         setActionError('Failed to approve model');
       }
@@ -1603,7 +1619,7 @@ const AdminDesignAssistance = () => {
                                       </>
                                     )}
 
-                                    {/* Pending Approval — show model + approve/reject */}
+                                    {/* Pending Approval — show model + access type selector + approve/reject */}
                                     {generationJob.status === 'pending_approval' && (
                                       <>
                                         <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
@@ -1617,13 +1633,55 @@ const AdminDesignAssistance = () => {
                                             height="100%"
                                           />
                                         </div>
+
+                                        {/* Access Type Selector */}
+                                        <div className="space-y-2">
+                                          <p className="text-xs text-gray-400 font-semibold">Client Access:</p>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              type="button"
+                                              variant={genAccessType === 'preview_only' ? 'default' : 'outline'}
+                                              size="sm"
+                                              onClick={() => { setGenAccessType('preview_only'); setGenPrice(''); }}
+                                              className={genAccessType === 'preview_only' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                                            >
+                                              <Lock className="w-3 h-3 mr-1" />Preview Only
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant={genAccessType === 'paid' ? 'default' : 'outline'}
+                                              size="sm"
+                                              onClick={() => setGenAccessType('paid')}
+                                              className={genAccessType === 'paid' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                                            >
+                                              Set Price
+                                            </Button>
+                                          </div>
+                                          {genAccessType === 'paid' && (
+                                            <Input
+                                              type="number"
+                                              placeholder="Price in PLN"
+                                              value={genPrice}
+                                              onChange={(e) => setGenPrice(e.target.value)}
+                                              className="bg-gray-800 border-gray-700 text-white"
+                                              min="0.01"
+                                              step="0.01"
+                                            />
+                                          )}
+                                          {!genAccessType && (
+                                            <p className="text-[10px] text-yellow-400">Select access type to enable approval</p>
+                                          )}
+                                        </div>
+
                                         <div className="flex gap-2">
                                           <Button
                                             size="sm"
                                             onClick={() => handleApproveGeneration(generationJob.id)}
+                                            disabled={!genAccessType || (genAccessType === 'paid' && (!genPrice || parseFloat(genPrice) <= 0))}
                                             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                                           >
-                                            <Check className="w-4 h-4 mr-2" />Approve & Send to Client
+                                            <Check className="w-4 h-4 mr-2" />
+                                            {genAccessType === 'paid' ? `Approve & Send (${genPrice || '?'} PLN)` : 'Approve & Send to Client'}
                                           </Button>
                                           <Button
                                             size="sm"

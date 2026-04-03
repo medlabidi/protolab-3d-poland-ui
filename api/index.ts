@@ -2553,6 +2553,15 @@ async function handleAdminApproveGeneration(req: AuthenticatedRequest, res: Verc
 
   if (!jobId) return res.status(400).json({ error: 'Job ID required' });
 
+  // Parse access_type and price from body
+  const { access_type, price } = req.body || {};
+  if (!access_type || !['preview_only', 'paid'].includes(access_type)) {
+    return res.status(400).json({ error: 'access_type must be "preview_only" or "paid"' });
+  }
+  if (access_type === 'paid' && (!price || price <= 0)) {
+    return res.status(400).json({ error: 'price is required and must be > 0 when access_type is "paid"' });
+  }
+
   const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
   if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
 
@@ -2563,20 +2572,54 @@ async function handleAdminApproveGeneration(req: AuthenticatedRequest, res: Verc
   // Update status to approved
   await supabase.from('generation_jobs').update({ status: 'approved' }).eq('id', job.id);
 
-  // Post the model to the conversation so the client can see it
+  // Post the model to the conversation with access_type metadata
   if (job.conversation_id && job.file_url) {
+    const attachment: any = {
+      type: 'generated_model',
+      url: job.file_url,
+      name: job.file_name,
+      generation_job_id: job.id,
+      access_type,
+      download_allowed: false,
+    };
+    if (access_type === 'paid') {
+      attachment.price = price;
+      attachment.payment_status = 'pending';
+    }
+
+    const messageText = access_type === 'paid'
+      ? `Your 3D model is ready! Price: ${price} PLN. Please review and approve to proceed to payment.`
+      : 'Your 3D model is ready! Please review the design.';
+
     await supabase.from('conversation_messages').insert([{
       conversation_id: job.conversation_id,
       sender_type: 'system',
       sender_id: null,
-      message: '3D preview model is ready!',
-      attachments: [{
-        type: 'generated_model',
-        url: job.file_url,
-        name: job.file_name,
-        generation_job_id: job.id,
-      }],
+      message: messageText,
+      attachments: [attachment],
     }]);
+  }
+
+  // Update the order: set design_status to 'completed' and price if paid
+  const orderId = job.order_id;
+  if (orderId) {
+    const orderUpdate: any = { design_status: 'completed' };
+    if (access_type === 'paid') {
+      orderUpdate.price = price;
+    }
+    await supabase.from('orders').update(orderUpdate).eq('id', orderId);
+    console.log(`[ADMIN-APPROVE-GEN] Updated order ${orderId}: design_status=completed${access_type === 'paid' ? `, price=${price}` : ''}`);
+  } else if (job.conversation_id) {
+    // Fallback: look up order_id from conversation
+    const { data: conv } = await supabase.from('conversations').select('order_id').eq('id', job.conversation_id).single();
+    if (conv?.order_id) {
+      const orderUpdate: any = { design_status: 'completed' };
+      if (access_type === 'paid') {
+        orderUpdate.price = price;
+      }
+      await supabase.from('orders').update(orderUpdate).eq('id', conv.order_id);
+      console.log(`[ADMIN-APPROVE-GEN] Updated order ${conv.order_id} (via conversation): design_status=completed`);
+    }
   }
 
   return res.status(200).json({ job: { ...job, status: 'approved' } });
