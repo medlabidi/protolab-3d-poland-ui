@@ -353,12 +353,12 @@ const AdminReports = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
 
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
                 Reports & Analytics
               </h1>
               <p className="text-gray-400">
@@ -388,13 +388,13 @@ const AdminReports = () => {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-gradient-to-br from-blue-900 to-blue-800 border-0">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-200 text-sm mb-1">Total Reports</p>
-                    <p className="text-3xl font-bold text-white">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                       {reports.length}
                     </p>
                   </div>
@@ -408,7 +408,7 @@ const AdminReports = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-green-200 text-sm mb-1">This Month</p>
-                    <p className="text-3xl font-bold text-white">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                       {
                         reports.filter((r) =>
                           r.generatedDate.startsWith("2026-01")
@@ -426,7 +426,7 @@ const AdminReports = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-purple-200 text-sm mb-1">Scheduled</p>
-                    <p className="text-3xl font-bold text-white">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                       {scheduledReports.filter((r) => r.enabled).length}
                     </p>
                   </div>
@@ -440,7 +440,7 @@ const AdminReports = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-pink-200 text-sm mb-1">Total Size</p>
-                    <p className="text-3xl font-bold text-white">8.8 MB</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">8.8 MB</p>
                   </div>
                   <FileSpreadsheet className="w-8 h-8 text-pink-300 opacity-80" />
                 </div>
@@ -449,7 +449,7 @@ const AdminReports = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <Button
               onClick={() => {
                 setNewReport({ ...newReport, type: "Printers", period: "weekly" });
@@ -878,10 +878,10 @@ const AdminReports = () => {
 
           {/* Report Templates */}
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-white mb-4">
               Report Templates
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {
                   title: "Printers Performance",
@@ -1050,7 +1050,7 @@ const AdminReports = () => {
             </div>
 
             {newReport.period === "custom" && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start-date" className="text-gray-300">
                     Start Date
@@ -1167,7 +1167,7 @@ const AdminReports = () => {
             <div className="bg-gray-800 rounded-lg p-6 min-h-[400px] max-h-[500px] overflow-y-auto">
               {/* Report Header */}
               <div className="border-b border-gray-700 pb-4 mb-4">
-                <h2 className="text-2xl font-bold text-white mb-2">{selectedReport?.name}</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2">{selectedReport?.name}</h2>
                 <div className="flex items-center gap-4 text-sm text-gray-400">
                   <span>Period: {selectedReport?.period}</span>
                   <span>•</span>
@@ -1182,18 +1182,18 @@ const AdminReports = () => {
               {/* Report Content Based on Type */}
               {selectedReport?.type === "Printers" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Printers</p>
-                      <p className="text-2xl font-bold text-white mt-1">12</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">12</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Active</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">10</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">10</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Avg Uptime</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">94.2%</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">94.2%</p>
                     </div>
                   </div>
                   <div>
@@ -1212,18 +1212,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Materials" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Materials</p>
-                      <p className="text-2xl font-bold text-white mt-1">24</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">24</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Low Stock</p>
-                      <p className="text-2xl font-bold text-yellow-400 mt-1">5</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 mt-1">5</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Value</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">€8,542</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">€8,542</p>
                     </div>
                   </div>
                   <div>
@@ -1246,18 +1246,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Maintenance" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Completed</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">18</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">18</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Upcoming</p>
-                      <p className="text-2xl font-bold text-yellow-400 mt-1">6</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 mt-1">6</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Cost</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">€1,240</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">€1,240</p>
                     </div>
                   </div>
                   <div>
@@ -1283,18 +1283,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Suppliers" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Active Suppliers</p>
-                      <p className="text-2xl font-bold text-white mt-1">8</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">8</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Avg Rating</p>
-                      <p className="text-2xl font-bold text-yellow-400 mt-1">4.6★</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 mt-1">4.6★</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Orders</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">142</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">142</p>
                     </div>
                   </div>
                   <div>
@@ -1320,18 +1320,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Print Jobs" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Jobs</p>
-                      <p className="text-2xl font-bold text-white mt-1">156</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">156</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Completed</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">142</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">142</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Success Rate</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">91%</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">91%</p>
                     </div>
                   </div>
                   <div>
@@ -1354,18 +1354,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Design Assistance" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Requests</p>
-                      <p className="text-2xl font-bold text-white mt-1">48</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">48</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Completed</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">42</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">42</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Avg Time</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">2.5 days</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">2.5 days</p>
                     </div>
                   </div>
                   <div>
@@ -1388,18 +1388,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Finance" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Revenue</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">€24,580</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">€24,580</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Expenses</p>
-                      <p className="text-2xl font-bold text-red-400 mt-1">€8,240</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-red-400 mt-1">€8,240</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Net Profit</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">€16,340</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">€16,340</p>
                     </div>
                   </div>
                   <div>
@@ -1422,18 +1422,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Business" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Orders</p>
-                      <p className="text-2xl font-bold text-white mt-1">156</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">156</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Revenue</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">€24,580</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">€24,580</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">New Customers</p>
-                      <p className="text-2xl font-bold text-blue-400 mt-1">28</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400 mt-1">28</p>
                     </div>
                   </div>
                   <div>
@@ -1456,18 +1456,18 @@ const AdminReports = () => {
 
               {selectedReport?.type === "Customer" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Total Customers</p>
-                      <p className="text-2xl font-bold text-white mt-1">284</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">284</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Active Users</p>
-                      <p className="text-2xl font-bold text-green-400 mt-1">156</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-400 mt-1">156</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-lg">
                       <p className="text-gray-400 text-sm">Satisfaction</p>
-                      <p className="text-2xl font-bold text-yellow-400 mt-1">4.7★</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 mt-1">4.7★</p>
                     </div>
                   </div>
                   <div>
@@ -1704,7 +1704,7 @@ const AdminReports = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-400">Type</p>
                 <p className="text-white font-medium mt-1">

@@ -35,17 +35,15 @@ let getRefreshTokenExpiry: any;
 let verifyAccessToken: any;
 let cors: any;
 let requireAuth: any;
-let requireAdmin: any;
-let extractPathParam: any;
-let getParam: any;
 let sendVerificationEmail: any;
 let sendPasswordResetEmail: any;
 let sendWelcomeEmail: any;
 let generateAIResponse: any;
 let buildGeminiHistory: any;
 let buildDesignContext: any;
-let searchThingiverse: any;
-let formatThingiverseAsAttachments: any;
+let generateOpenSCADCode: any;
+let parseParameters: any;
+let applyParameterChanges: any;
 
 const initModules = async () => {
   if (!bcrypt) {
@@ -66,9 +64,6 @@ const initModules = async () => {
     const middlewareModule = await import('./_lib/middleware');
     cors = middlewareModule.cors;
     requireAuth = middlewareModule.requireAuth;
-    requireAdmin = middlewareModule.requireAdmin;
-    extractPathParam = middlewareModule.extractPathParam;
-    getParam = middlewareModule.getParam;
   }
   if (!sendVerificationEmail) {
     const emailModule = await import('./_lib/email');
@@ -86,13 +81,14 @@ const initModules = async () => {
       console.warn('[AI_AGENT] Gemini module not available:', e);
     }
   }
-  if (!searchThingiverse) {
+  if (!generateOpenSCADCode) {
     try {
-      const thingiverseModule = await import('./_lib/thingiverse');
-      searchThingiverse = thingiverseModule.searchThingiverse;
-      formatThingiverseAsAttachments = thingiverseModule.formatThingiverseAsAttachments;
+      const openscadModule = await import('./_lib/openscad-generator');
+      generateOpenSCADCode = openscadModule.generateOpenSCADCode;
+      parseParameters = openscadModule.parseParameters;
+      applyParameterChanges = openscadModule.applyParameterChanges;
     } catch (e) {
-      console.warn('[AI_AGENT] Thingiverse module not available:', e);
+      console.warn('[OPENSCAD] Module not available:', e);
     }
   }
 };
@@ -127,24 +123,45 @@ const parseJsonBody = async (req: VercelRequest): Promise<any> => {
 // These handlers MUST be declared before the router export to avoid "is not defined" errors
 
 async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const orderType = req.query?.type as string | undefined;
-  let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+  // Check if user is admin
+  const supabase = getSupabase();
   
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get filter type from query parameter
+  const orderType = req.query?.type as string | undefined;
+  
+  // Build query
+  let query = supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  // Filter by order_type if specified
   if (orderType === 'print') {
-    query = query.or('order_type.eq.print,order_type.is.null');
+    query = query.neq('order_type', 'design');
   } else if (orderType === 'design') {
     query = query.eq('order_type', 'design');
   }
-  
+
   const { data: orders, error } = await query;
+
   if (error) {
     return res.status(500).json({ error: 'Failed to fetch orders' });
   }
-  
+
+  // Fetch user data separately (no FK join dependency)
   const orderList = orders || [];
   const userIds = [...new Set(orderList.map((o: any) => o.user_id).filter(Boolean))];
   let userMap: Record<string, any> = {};
@@ -158,15 +175,28 @@ async function handleAdminGetOrders(req: AuthenticatedRequest, res: VercelRespon
     }
   }
   const enrichedOrders = orderList.map((o: any) => ({ ...o, users: userMap[o.user_id] || null }));
-  
+
   return res.status(200).json({ orders: enrichedOrders });
 }
 
 async function handleAdminGetUsers(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
+  // Check if user is admin
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Get all users
   const { data: users, error } = await supabase
     .from('users')
     .select('id, name, email, role, phone, address, city, zip_code, country, email_verified, created_at, status')
@@ -250,9 +280,16 @@ async function handleMarkNotificationRead(req: AuthenticatedRequest, res: Vercel
 }
 
 async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  // Check admin
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   
   try {
     const { data: businesses, error } = await supabase
@@ -265,6 +302,7 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
       return res.status(200).json({ businesses: [] });
     }
     
+    // Enhance with order stats for each business
     const businessesWithStats = await Promise.all((businesses || []).map(async (business: any) => {
       const { data: orders } = await supabase
         .from('orders')
@@ -276,7 +314,11 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
         sum + (parseFloat(o.paid_amount) || parseFloat(o.price) || 0), 0
       ) || 0;
       
-      return { ...business, orderCount, totalSpent };
+      return {
+        ...business,
+        orderCount,
+        totalSpent
+      };
     }));
     
     return res.status(200).json({ businesses: businessesWithStats });
@@ -287,12 +329,30 @@ async function handleAdminGetBusinesses(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminGetOrderById(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const orderId = extractPathParam(req, 2);
-  const { data: order, error } = await supabase.from('orders').select('*').eq('id', orderId).single();
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const orderId = path.split('/')[3]; // /admin/orders/:id
+  
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
   
   if (error || !order) {
     return res.status(404).json({ error: 'Order not found' });
@@ -402,11 +462,24 @@ async function handleAdminUpdateOrderStatus(req: AuthenticatedRequest, res: Verc
 }
 
 async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const targetUserId = extractPathParam(req, 2);
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const url = req.url || '';
+  const path = url.split('?')[0].replace('/api', '');
+  const targetUserId = path.split('/')[3]; // /admin/users/:id/role
   const { role } = req.body;
   
   if (!['user', 'admin'].includes(role)) {
@@ -428,11 +501,26 @@ async function handleAdminUpdateUserRole(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const { data: settings, error } = await supabase.from('settings').select('*').limit(1).single();
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { data: settings, error } = await supabase
+    .from('settings')
+    .select('*')
+    .limit(1)
+    .single();
   
   if (error && error.code !== 'PGRST116') {
     return res.status(500).json({ error: 'Failed to fetch settings' });
@@ -442,12 +530,28 @@ async function handleAdminGetSettings(req: AuthenticatedRequest, res: VercelResp
 }
 
 async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
   const updates = req.body;
-  const { data: existing } = await supabase.from('settings').select('id').limit(1).single();
+  
+  const { data: existing } = await supabase
+    .from('settings')
+    .select('id')
+    .limit(1)
+    .single();
   
   let result;
   if (existing) {
@@ -463,7 +567,11 @@ async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelR
     }
     result = data;
   } else {
-    const { data, error } = await supabase.from('settings').insert([updates]).select().single();
+    const { data, error } = await supabase
+      .from('settings')
+      .insert([updates])
+      .select()
+      .single();
     
     if (error) {
       return res.status(500).json({ error: 'Failed to create settings' });
@@ -475,9 +583,20 @@ async function handleAdminUpdateSettings(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   
   const { data: materials, error } = await supabase
     .from('materials')
@@ -494,9 +613,20 @@ async function handleAdminGetMaterials(req: AuthenticatedRequest, res: VercelRes
 }
 
 async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   
   const { data: printers, error } = await supabase
     .from('printers')
@@ -511,15 +641,38 @@ async function handleAdminGetPrinters(req: AuthenticatedRequest, res: VercelResp
 }
 
 async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  // Extract only the fields that exist in the database
   const { material_type, color, hex_color, price_per_kg, stock_status, supplier, description, is_active } = req.body;
+  
+  const materialData = {
+    material_type,
+    color,
+    hex_color,
+    price_per_kg,
+    stock_status,
+    supplier,
+    description,
+    is_active
+  };
   
   const { data: material, error } = await supabase
     .from('materials')
-    .insert([{ material_type, color, hex_color, price_per_kg, stock_status, supplier, description, is_active }])
+    .insert([materialData])
     .select()
     .single();
   
@@ -532,19 +685,33 @@ async function handleAdminCreateMaterial(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const { id, stock_quantity, ...updates } = req.body;
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { id, ...updates } = req.body;
   
   if (!id) {
     return res.status(400).json({ error: 'Material ID is required' });
   }
   
+  // Remove stock_quantity if it exists (column doesn't exist in DB)
+  const { stock_quantity, ...filteredUpdates } = updates;
+  
   const { data: material, error } = await supabase
     .from('materials')
-    .update(updates)
+    .update(filteredUpdates)
     .eq('id', id)
     .select()
     .single();
@@ -557,16 +724,32 @@ async function handleAdminUpdateMaterial(req: AuthenticatedRequest, res: VercelR
 }
 
 async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const materialId = getParam(req, 'id');
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialId = req.query.id;
+  
   if (!materialId) {
     return res.status(400).json({ error: 'Material ID is required' });
   }
   
-  const { error } = await supabase.from('materials').delete().eq('id', materialId);
+  const { error } = await supabase
+    .from('materials')
+    .delete()
+    .eq('id', materialId);
+  
   if (error) {
     return res.status(500).json({ error: 'Failed to delete material', details: error.message });
   }
@@ -577,9 +760,20 @@ async function handleAdminDeleteMaterial(req: AuthenticatedRequest, res: VercelR
 // Material Types handlers
 async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
     
     const { data: materialTypes, error } = await supabase
       .from('material_types')
@@ -606,23 +800,39 @@ async function handleAdminGetMaterialTypes(req: AuthenticatedRequest, res: Verce
 }
 
 async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
   const { name, description } = req.body;
+  
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Material type name is required' });
   }
   
   const { data: materialType, error } = await supabase
     .from('material_types')
-    .insert([{ name: name.trim(), description: description || null, is_active: true }])
+    .insert([{ 
+      name: name.trim(), 
+      description: description || null,
+      is_active: true 
+    }])
     .select()
     .single();
   
   if (error) {
-    if (error.code === '23505') {
+    if (error.code === '23505') { // Unique constraint violation
       return res.status(409).json({ error: 'Material type already exists' });
     }
     return res.status(500).json({ error: 'Failed to create material type', details: error.message });
@@ -632,16 +842,29 @@ async function handleAdminCreateMaterialType(req: AuthenticatedRequest, res: Ver
 }
 
 async function handleAdminUpdateMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const materialTypeId = getParam(req, 'id');
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialTypeId = req.query.id;
+  
   if (!materialTypeId) {
     return res.status(400).json({ error: 'Material type ID is required' });
   }
   
   const { name, description, is_active } = req.body;
+  
   const updateData: any = {};
   if (name !== undefined) updateData.name = name.trim();
   if (description !== undefined) updateData.description = description;
@@ -665,15 +888,28 @@ async function handleAdminUpdateMaterialType(req: AuthenticatedRequest, res: Ver
 }
 
 async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const materialTypeId = getParam(req, 'id');
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const materialTypeId = req.query.id;
+  
   if (!materialTypeId) {
     return res.status(400).json({ error: 'Material type ID is required' });
   }
   
+  // Check if any materials are using this type
   const { data: materials, error: checkError } = await supabase
     .from('materials')
     .select('id')
@@ -688,7 +924,11 @@ async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: Ver
     return res.status(409).json({ error: 'Cannot delete material type that is in use by materials' });
   }
   
-  const { error } = await supabase.from('material_types').delete().eq('id', materialTypeId);
+  const { error } = await supabase
+    .from('material_types')
+    .delete()
+    .eq('id', materialTypeId);
+  
   if (error) {
     return res.status(500).json({ error: 'Failed to delete material type', details: error.message });
   }
@@ -699,9 +939,20 @@ async function handleAdminDeleteMaterialType(req: AuthenticatedRequest, res: Ver
 // Suppliers handlers
 async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
+    
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
     
     const { data: suppliers, error } = await supabase
       .from('suppliers')
@@ -716,6 +967,7 @@ async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelRes
       });
     }
     
+    // Ensure materials_supplied are integers, not strings
     const suppliersWithIntegers = (suppliers || []).map(supplier => ({
       ...supplier,
       materials_supplied: Array.isArray(supplier.materials_supplied)
@@ -735,11 +987,36 @@ async function handleAdminGetSuppliers(req: AuthenticatedRequest, res: VercelRes
 
 async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
     
-    const { name, contact_name, email, phone, address, city, postal_code, country, website, materials_supplied, delivery_time, notes, active } = req.body;
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { 
+      name, 
+      contact_name, 
+      email, 
+      phone, 
+      address, 
+      city, 
+      postal_code, 
+      country, 
+      website, 
+      materials_supplied, 
+      delivery_time, 
+      notes, 
+      active 
+    } = req.body;
     
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
@@ -795,16 +1072,42 @@ async function handleAdminCreateSupplier(req: AuthenticatedRequest, res: VercelR
 
 async function handleAdminUpdateSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
     
-    const supplierId = getParam(req, 'id');
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const supplierId = req.query.id;
+    
     if (!supplierId) {
       return res.status(400).json({ error: 'Supplier ID is required' });
     }
     
-    const { name, contact_name, email, phone, address, city, postal_code, country, website, materials_supplied, delivery_time, notes, active } = req.body;
+    const { 
+      name, 
+      contact_name, 
+      email, 
+      phone, 
+      address, 
+      city, 
+      postal_code, 
+      country, 
+      website, 
+      materials_supplied, 
+      delivery_time, 
+      notes, 
+      active 
+    } = req.body;
     
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
@@ -847,16 +1150,32 @@ async function handleAdminUpdateSupplier(req: AuthenticatedRequest, res: VercelR
 
 async function handleAdminDeleteSupplier(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
     
-    const supplierId = getParam(req, 'id');
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const supplierId = req.query.id;
+    
     if (!supplierId) {
       return res.status(400).json({ error: 'Supplier ID is required' });
     }
     
-    const { error } = await supabase.from('suppliers').delete().eq('id', supplierId);
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', supplierId);
+    
     if (error) {
       return res.status(500).json({ error: 'Failed to delete supplier', details: error.message });
     }
@@ -974,11 +1293,23 @@ async function handleAdminCreateMaintenance(req: AuthenticatedRequest, res: Verc
 
 async function handleAdminUpdateMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
     
-    const maintenanceId = getParam(req, 'id');
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const maintenanceId = req.query.id;
+    
     if (!maintenanceId) {
       return res.status(400).json({ error: 'Maintenance ID is required' });
     }
@@ -1007,16 +1338,32 @@ async function handleAdminUpdateMaintenance(req: AuthenticatedRequest, res: Verc
 
 async function handleAdminDeleteMaintenance(req: AuthenticatedRequest, res: VercelResponse) {
   try {
-    const supabase = getSupabase();
-    const user = await requireAdmin(req, res, supabase);
+    const user = requireAuth(req, res);
     if (!user) return;
     
-    const maintenanceId = getParam(req, 'id');
+    const supabase = getSupabase();
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.userId)
+      .single();
+    
+    if (userError || userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const maintenanceId = req.query.id;
+    
     if (!maintenanceId) {
       return res.status(400).json({ error: 'Maintenance ID is required' });
     }
     
-    const { error } = await supabase.from('maintenances').delete().eq('id', maintenanceId);
+    const { error } = await supabase
+      .from('maintenances')
+      .delete()
+      .eq('id', maintenanceId);
+    
     if (error) {
       console.error('Error deleting maintenance:', error);
       return res.status(500).json({ error: 'Failed to delete maintenance', details: error.message });
@@ -1033,9 +1380,20 @@ async function handleAdminDeleteMaintenance(req: AuthenticatedRequest, res: Verc
 }
 
 async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
+  
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   
   console.log('Creating printer with data:', req.body);
   
@@ -1054,33 +1412,55 @@ async function handleAdminCreatePrinter(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
   const { id, ...updates } = req.body;
+  
   if (!id) {
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
-  const { count: totalPrinters } = await supabase.from('printers').select('*', { count: 'exact', head: true });
+  // Count total printers
+  const { count: totalPrinters } = await supabase
+    .from('printers')
+    .select('*', { count: 'exact', head: true });
   
   console.log('[PRINTER_UPDATE] Total printers:', totalPrinters);
   console.log('[PRINTER_UPDATE] Updates:', updates);
   
+  // If only one printer, it MUST be default - force it
   if (totalPrinters === 1) {
     console.log('[PRINTER_UPDATE] Only one printer - forcing is_default=true');
     updates.is_default = true;
   }
   
+  // If setting as default, unset all other printers first
   if (updates.is_default === true && totalPrinters > 1) {
     console.log('[PRINTER_UPDATE] Setting as default - unsetting others');
-    const { error: unsetError } = await supabase.from('printers').update({ is_default: false }).neq('id', id);
+    const { error: unsetError } = await supabase
+      .from('printers')
+      .update({ is_default: false })
+      .neq('id', id);
+    
     if (unsetError) {
       console.error('[PRINTER_UPDATE] Error unsetting other default printers:', unsetError);
     }
   }
   
+  // If trying to unset default on the only printer, reject it
   if (updates.is_default === false && totalPrinters === 1) {
     return res.status(400).json({ 
       error: 'Cannot unset default on the only printer',
@@ -1088,20 +1468,42 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
     });
   }
   
+  // If unsetting default and multiple printers exist, ensure another one becomes default
   if (updates.is_default === false && totalPrinters > 1) {
-    const { data: otherDefault } = await supabase.from('printers').select('id').eq('is_default', true).neq('id', id).limit(1).single();
+    const { data: otherDefault } = await supabase
+      .from('printers')
+      .select('id')
+      .eq('is_default', true)
+      .neq('id', id)
+      .limit(1)
+      .single();
     
     if (!otherDefault) {
-      const { data: firstActive } = await supabase.from('printers').select('id').eq('is_active', true).neq('id', id).limit(1).single();
+      // No other default exists, find first active printer and make it default
+      const { data: firstActive } = await supabase
+        .from('printers')
+        .select('id')
+        .eq('is_active', true)
+        .neq('id', id)
+        .limit(1)
+        .single();
       
       if (firstActive) {
         console.log('[PRINTER_UPDATE] Making another printer default:', firstActive.id);
-        await supabase.from('printers').update({ is_default: true }).eq('id', firstActive.id);
+        await supabase
+          .from('printers')
+          .update({ is_default: true })
+          .eq('id', firstActive.id);
       }
     }
   }
   
-  const { data: printer, error } = await supabase.from('printers').update(updates).eq('id', id).select().single();
+  const { data: printer, error } = await supabase
+    .from('printers')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
   
   if (error) {
     console.error('[PRINTER_UPDATE] Error updating printer:', error);
@@ -1113,16 +1515,32 @@ async function handleAdminUpdatePrinter(req: AuthenticatedRequest, res: VercelRe
 }
 
 async function handleAdminDeletePrinter(req: AuthenticatedRequest, res: VercelResponse) {
-  const supabase = getSupabase();
-  const user = await requireAdmin(req, res, supabase);
+  const user = requireAuth(req, res);
   if (!user) return;
   
-  const printerId = getParam(req, 'id');
+  const supabase = getSupabase();
+  
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.userId)
+    .single();
+  
+  if (userError || userData?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const printerId = req.query.id;
+  
   if (!printerId) {
     return res.status(400).json({ error: 'Printer ID is required' });
   }
   
-  const { error } = await supabase.from('printers').delete().eq('id', printerId);
+  const { error } = await supabase
+    .from('printers')
+    .delete()
+    .eq('id', printerId);
+  
   if (error) {
     return res.status(500).json({ error: 'Failed to delete printer', details: error.message });
   }
@@ -1157,13 +1575,33 @@ async function handleAdminGetConversations(req: AuthenticatedRequest, res: Verce
         )
       `)
       .order('updated_at', { ascending: false });
-    
+
     if (error) {
       console.error('Failed to fetch conversations:', error);
       return res.status(200).json({ conversations: [] });
     }
-    
-    return res.status(200).json({ conversations: conversations || [] });
+
+    // Check which conversations have admin_error messages
+    const convIds = (conversations || []).map((c: any) => c.id);
+    let errorConvIds = new Set<string>();
+    if (convIds.length > 0) {
+      const { data: errorMsgs } = await supabase
+        .from('conversation_messages')
+        .select('conversation_id')
+        .in('conversation_id', convIds)
+        .contains('attachments', [{ type: 'admin_error' }]);
+      if (errorMsgs) {
+        errorConvIds = new Set(errorMsgs.map((m: any) => m.conversation_id));
+      }
+    }
+
+    // Attach has_error flag to each conversation
+    const enriched = (conversations || []).map((c: any) => ({
+      ...c,
+      has_error: errorConvIds.has(c.id),
+    }));
+
+    return res.status(200).json({ conversations: enriched });
   } catch (error) {
     console.error('Conversations fetch error:', error);
     return res.status(200).json({ conversations: [] });
@@ -1796,6 +2234,711 @@ async function handleGetDefaultPrinter(req: VercelRequest, res: VercelResponse) 
   }
 }
 
+// ==================== TEXT-TO-3D GENERATION HANDLERS ====================
+
+async function handleCreateGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { prompt, style, face_limit } = req.body;
+
+  if (!prompt || prompt.trim().length < 3) {
+    return res.status(400).json({ error: 'Prompt is required (minimum 3 characters)' });
+  }
+  if (prompt.length > 500) {
+    return res.status(400).json({ error: 'Prompt too long (maximum 500 characters)' });
+  }
+
+  try {
+    // Build the generation prompt with style prefix
+    let generationPrompt = prompt.trim();
+    const styleMap: Record<string, string> = {
+      cartoon: 'cartoon style, ',
+      realistic: 'realistic detailed, ',
+      lowpoly: 'low poly, ',
+      sculpture: 'smooth sculpture, ',
+    };
+    if (style && styleMap[style]) {
+      generationPrompt = styleMap[style] + generationPrompt;
+    }
+
+    // Create generation_jobs record
+    const { data: job, error: insertError } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: user.userId,
+        prompt: prompt.trim(),
+        style: style || null,
+        face_limit: face_limit || null,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (insertError || !job) {
+      console.error('[GENERATE-3D] Insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to create generation job' });
+    }
+
+    // Call Tripo3D API
+    const tripoApiKey = process.env.TRIPO3D_API_KEY;
+    if (!tripoApiKey) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: 'Tripo3D API key not configured' })
+        .eq('id', job.id);
+      return res.status(500).json({ error: 'Text-to-3D service not configured' });
+    }
+
+    const tripoBody: any = {
+      type: 'text_to_model',
+      prompt: generationPrompt,
+    };
+    if (face_limit) tripoBody.face_limit = face_limit;
+
+    const tripoResponse = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tripoApiKey}`,
+      },
+      body: JSON.stringify(tripoBody),
+    });
+
+    const tripoData: any = await tripoResponse.json();
+
+    if (!tripoResponse.ok || !tripoData.data?.task_id) {
+      const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: errorMsg })
+        .eq('id', job.id);
+      return res.status(502).json({ error: 'Failed to start 3D generation', details: errorMsg });
+    }
+
+    // Update job with task_id
+    await supabase.from('generation_jobs')
+      .update({ tripo_task_id: tripoData.data.task_id, status: 'generating' })
+      .eq('id', job.id);
+
+    return res.status(201).json({
+      job: { id: job.id, status: 'generating', prompt: prompt.trim(), created_at: job.created_at },
+    });
+  } catch (error) {
+    console.error('[GENERATE-3D] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleCheckGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[2]; // /generate-3d/{jobId}
+
+  if (!jobId) {
+    return res.status(400).json({ error: 'Job ID required' });
+  }
+
+  try {
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', user.userId)
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ error: 'Generation job not found' });
+    }
+
+    // Terminal states — return immediately
+    if (job.status === 'ready' || job.status === 'failed' || job.status === 'approved' || job.status === 'pending_approval' || job.status === 'rejected') {
+      return res.status(200).json({ job });
+    }
+
+    // If generating, check Tripo3D and process
+    if (job.status === 'generating' && job.tripo_task_id) {
+      const result = await pollAndProcessTripoJob(supabase, job, user.userId);
+      return res.status(200).json({ job: result });
+    }
+
+    // Processing state — still downloading/uploading from a previous poll
+    return res.status(200).json({ job });
+  } catch (error) {
+    console.error('[GENERATE-3D-CHECK] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/**
+ * Shared helper: poll Tripo3D for job status, download + upload GLB if ready.
+ * Sets status to 'pending_approval' (NOT 'ready') so admin must approve before client sees it.
+ */
+async function pollAndProcessTripoJob(supabase: any, job: any, uploaderUserId: string) {
+  const tripoApiKey = process.env.TRIPO3D_API_KEY;
+  const tripoResponse = await fetch(
+    `https://api.tripo3d.ai/v2/openapi/task/${job.tripo_task_id}`,
+    { headers: { 'Authorization': `Bearer ${tripoApiKey}` } }
+  );
+
+  const tripoData: any = await tripoResponse.json();
+  const tripoStatus = tripoData.data?.status;
+
+  if (tripoStatus === 'success') {
+    const glbUrl = tripoData.data?.output?.pbr_model?.glb
+      || tripoData.data?.output?.model?.glb
+      || tripoData.data?.output?.rendered_image;
+
+    if (!glbUrl) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: 'No model URL in Tripo response' })
+        .eq('id', job.id);
+      return { ...job, status: 'failed', error_message: 'No model URL returned' };
+    }
+
+    await supabase.from('generation_jobs')
+      .update({ status: 'processing' })
+      .eq('id', job.id);
+
+    try {
+      const glbResponse = await fetch(glbUrl);
+      if (!glbResponse.ok) throw new Error('Failed to download model from Tripo3D');
+
+      const glbBuffer = Buffer.from(await glbResponse.arrayBuffer());
+      const fileName = `generated-${job.id.substring(0, 8)}.glb`;
+      const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+      const filePath = `${uploaderUserId}/generated/${Date.now()}-${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, glbBuffer, { contentType: 'model/gltf-binary' });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+      // Set to pending_approval — admin must approve before client sees it
+      await supabase.from('generation_jobs')
+        .update({ status: 'pending_approval', file_url: urlData.publicUrl, file_name: fileName })
+        .eq('id', job.id);
+
+      return { ...job, status: 'pending_approval', file_url: urlData.publicUrl, file_name: fileName };
+    } catch (downloadErr: any) {
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: downloadErr.message })
+        .eq('id', job.id);
+      return { ...job, status: 'failed', error_message: downloadErr.message };
+    }
+  } else if (tripoStatus === 'failed' || tripoStatus === 'cancelled') {
+    await supabase.from('generation_jobs')
+      .update({ status: 'failed', error_message: `Generation ${tripoStatus}` })
+      .eq('id', job.id);
+    return { ...job, status: 'failed', error_message: `Generation ${tripoStatus}` };
+  }
+
+  // Still queued/running
+  return { ...job, status: 'generating' };
+}
+
+// ─── Admin 3D Generation Endpoints ───────────────────────────────
+
+async function handleAdminTriggerGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  try {
+    const { conversationId, orderId, prompt } = req.body;
+    console.log('[GENERATE-3D] Request:', { conversationId, orderId, promptLength: prompt?.length });
+    if (!conversationId || !orderId || !prompt) {
+      return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+    }
+
+    // Get the user_id from the conversation (the client who owns the order)
+    const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
+    if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+    const result = await triggerTripo3DGeneration(prompt, orderId, conversationId, conv.user_id);
+
+    if (result.error) {
+      console.error('[GENERATE-3D] Error:', result.error);
+      return res.status(500).json({ error: result.error });
+    }
+
+    return res.status(201).json({ jobId: result.jobId });
+  } catch (err: any) {
+    console.error('[GENERATE-3D] Unhandled error:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+}
+
+async function handleAdminGetConversationJobs(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const conversationId = pathStr.split('/').pop(); // /admin/generate-3d/conversation/{conversationId}
+
+  if (!conversationId) return res.status(400).json({ error: 'Conversation ID required' });
+
+  const { data: jobs, error } = await supabase
+    .from('generation_jobs')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: 'Failed to fetch generation jobs' });
+
+  return res.status(200).json({ jobs: jobs || [] });
+}
+
+async function handleAdminCheckGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  try {
+    const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+    if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+    // Terminal states
+    if (['pending_approval', 'approved', 'failed', 'rejected', 'code_ready'].includes(job.status)) {
+      return res.status(200).json({ job });
+    }
+
+    // If generating, poll Tripo3D
+    if (job.status === 'generating' && job.tripo_task_id) {
+      const result = await pollAndProcessTripoJob(supabase, job, job.user_id);
+      return res.status(200).json({ job: result });
+    }
+
+    return res.status(200).json({ job });
+  } catch (error) {
+    console.error('[ADMIN-GENERATE-3D-CHECK] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function handleAdminApproveGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}/approve
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  // Parse access_type and price from body
+  const { access_type, price } = req.body || {};
+  if (!access_type || !['preview_only', 'paid'].includes(access_type)) {
+    return res.status(400).json({ error: 'access_type must be "preview_only" or "paid"' });
+  }
+  if (access_type === 'paid' && (!price || price <= 0)) {
+    return res.status(400).json({ error: 'price is required and must be > 0 when access_type is "paid"' });
+  }
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+  if (job.status !== 'pending_approval') {
+    return res.status(400).json({ error: `Cannot approve job in status: ${job.status}` });
+  }
+
+  // Update status to approved
+  await supabase.from('generation_jobs').update({ status: 'approved' }).eq('id', job.id);
+
+  // Post the model to the conversation with access_type metadata
+  if (job.conversation_id && job.file_url) {
+    const attachment: any = {
+      type: 'generated_model',
+      url: job.file_url,
+      name: job.file_name,
+      generation_job_id: job.id,
+      access_type,
+      download_allowed: false,
+    };
+    if (access_type === 'paid') {
+      attachment.price = price;
+      attachment.payment_status = 'pending';
+    }
+
+    const messageText = access_type === 'paid'
+      ? `Your 3D model is ready! Price: ${price} PLN. Please review and approve to proceed to payment.`
+      : 'Your 3D model is ready! Please review the design.';
+
+    await supabase.from('conversation_messages').insert([{
+      conversation_id: job.conversation_id,
+      sender_type: 'system',
+      sender_id: null,
+      message: messageText,
+      attachments: [attachment],
+    }]);
+  }
+
+  // Update the order: set design_status to 'completed' and price if paid
+  const orderId = job.order_id;
+  if (orderId) {
+    const orderUpdate: any = { design_status: 'completed' };
+    if (access_type === 'paid') {
+      orderUpdate.price = price;
+    }
+    await supabase.from('orders').update(orderUpdate).eq('id', orderId);
+    console.log(`[ADMIN-APPROVE-GEN] Updated order ${orderId}: design_status=completed${access_type === 'paid' ? `, price=${price}` : ''}`);
+  } else if (job.conversation_id) {
+    // Fallback: look up order_id from conversation
+    const { data: conv } = await supabase.from('conversations').select('order_id').eq('id', job.conversation_id).single();
+    if (conv?.order_id) {
+      const orderUpdate: any = { design_status: 'completed' };
+      if (access_type === 'paid') {
+        orderUpdate.price = price;
+      }
+      await supabase.from('orders').update(orderUpdate).eq('id', conv.order_id);
+      console.log(`[ADMIN-APPROVE-GEN] Updated order ${conv.order_id} (via conversation): design_status=completed`);
+    }
+  }
+
+  return res.status(200).json({ job: { ...job, status: 'approved' } });
+}
+
+async function handleAdminRejectGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-3d/{jobId}/reject
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+
+  await supabase.from('generation_jobs').update({ status: 'rejected' }).eq('id', job.id);
+
+  return res.status(200).json({ job: { ...job, status: 'rejected' } });
+}
+
+// --- OpenSCAD CAD generation endpoints ---
+
+async function handleAdminGenerateOpenSCAD(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  if (!generateOpenSCADCode) {
+    return res.status(500).json({ error: 'OpenSCAD module not loaded' });
+  }
+
+  const { conversationId, orderId, prompt } = req.body;
+  if (!conversationId || !orderId || !prompt) {
+    return res.status(400).json({ error: 'conversationId, orderId, and prompt are required' });
+  }
+
+  const { data: conv } = await supabase.from('conversations').select('user_id').eq('id', conversationId).single();
+  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+  try {
+    const { code, parameters } = await generateOpenSCADCode(prompt);
+
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: conv.user_id,
+        prompt,
+        order_id: orderId,
+        conversation_id: conversationId,
+        status: 'code_ready',
+        generation_type: 'openscad',
+        openscad_code: code,
+        parameters,
+      })
+      .select()
+      .single();
+
+    if (error || !job) {
+      console.error('[OPENSCAD] Failed to create job:', error);
+      return res.status(500).json({ error: 'Failed to create generation job' });
+    }
+
+    return res.status(201).json({ jobId: job.id, code, parameters });
+  } catch (err: any) {
+    console.error('[OPENSCAD] Generation error:', err);
+    return res.status(500).json({ error: err.message || 'OpenSCAD generation failed' });
+  }
+}
+
+async function handleAdminUploadOpenSCADSTL(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-openscad/{jobId}/upload
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+  if (job.generation_type !== 'openscad') return res.status(400).json({ error: 'Not an OpenSCAD job' });
+
+  // Expect base64 STL data in request body
+  const { stlBase64, fileName } = req.body;
+  if (!stlBase64) return res.status(400).json({ error: 'stlBase64 is required' });
+
+  try {
+    const stlBuffer = Buffer.from(stlBase64, 'base64');
+    const bucket = process.env.SUPABASE_BUCKET || 'print-jobs';
+    const finalName = fileName || `openscad-${job.id.substring(0, 8)}.stl`;
+    const filePath = `${job.user_id}/generated/${Date.now()}-${finalName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, stlBuffer, { contentType: 'model/stl' });
+
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+    await supabase.from('generation_jobs')
+      .update({ status: 'pending_approval', file_url: urlData.publicUrl, file_name: finalName })
+      .eq('id', job.id);
+
+    return res.status(200).json({
+      job: { ...job, status: 'pending_approval', file_url: urlData.publicUrl, file_name: finalName },
+    });
+  } catch (err: any) {
+    console.error('[OPENSCAD] Upload error:', err);
+    return res.status(500).json({ error: err.message || 'Upload failed' });
+  }
+}
+
+async function handleAdminUpdateOpenSCADCode(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.userId).single();
+  if (userData?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[3]; // /admin/generate-openscad/{jobId}/code
+
+  if (!jobId) return res.status(400).json({ error: 'Job ID required' });
+
+  const { data: job, error } = await supabase.from('generation_jobs').select('*').eq('id', jobId).single();
+  if (error || !job) return res.status(404).json({ error: 'Generation job not found' });
+  if (job.generation_type !== 'openscad') return res.status(400).json({ error: 'Not an OpenSCAD job' });
+
+  const { code, parameters } = req.body;
+  const updates: any = {};
+  if (code !== undefined) updates.openscad_code = code;
+  if (parameters !== undefined) updates.parameters = parameters;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'Nothing to update' });
+  }
+
+  await supabase.from('generation_jobs').update(updates).eq('id', job.id);
+
+  return res.status(200).json({ job: { ...job, ...updates } });
+}
+
+async function handleGetMyGenerations(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const url = req.url || '';
+  const queryString = url.split('?')[1] || '';
+  const params = new URLSearchParams(queryString);
+  const orderId = params.get('order_id');
+
+  let query = supabase
+    .from('generation_jobs')
+    .select('*')
+    .eq('user_id', user.userId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (orderId) {
+    query = query.eq('order_id', orderId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch generations' });
+  }
+
+  return res.status(200).json({ generations: data || [] });
+}
+
+async function handleCreateOrderFromGeneration(req: AuthenticatedRequest, res: VercelResponse) {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const supabase = getSupabase();
+  const url = req.url || '';
+  const pathStr = url.split('?')[0].replace('/api', '');
+  const jobId = pathStr.split('/')[2]; // /generate-3d/{jobId}/order
+
+  const { material, color, quantity } = req.body;
+
+  try {
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', user.userId)
+      .eq('status', 'ready')
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ error: 'Completed generation not found' });
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.userId,
+        file_name: job.file_name || 'generated-model.glb',
+        file_url: job.file_url,
+        material: material || 'PLA',
+        color: color || 'white',
+        quantity: quantity || 1,
+        price: 0,
+        payment_status: 'on_hold',
+        shipping_method: 'pickup',
+        status: 'submitted',
+        order_type: 'print',
+        notes: `Generated from prompt: "${job.prompt}"`,
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('[GENERATE-3D-ORDER] Error:', orderError);
+      return res.status(500).json({ error: 'Failed to create order' });
+    }
+
+    return res.status(201).json({ order });
+  } catch (error) {
+    console.error('[GENERATE-3D-ORDER] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// ==================== TRIPO3D AUTO-GENERATION (from design escalation) ====================
+
+async function triggerTripo3DGeneration(
+  adminBrief: string,
+  orderId: string,
+  conversationId: string,
+  userId: string
+): Promise<{ jobId?: string; error?: string }> {
+  const tripoApiKey = process.env.TRIPO3D_API_KEY;
+  if (!tripoApiKey) {
+    console.error('[TRIPO3D] TRIPO3D_API_KEY not set in environment');
+    return { error: 'TRIPO3D_API_KEY not configured' };
+  }
+
+  console.log('[TRIPO3D] Starting generation for order:', orderId, 'prompt length:', adminBrief.length);
+
+  const supabase = getSupabase();
+
+  try {
+    // 1. Create generation job linked to order/conversation
+    const { data: job, error } = await supabase
+      .from('generation_jobs')
+      .insert({
+        user_id: userId,
+        prompt: adminBrief,
+        order_id: orderId,
+        conversation_id: conversationId,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (error || !job) {
+      console.error('[TRIPO3D] Failed to create job:', error);
+      return { error: 'Failed to create generation job' };
+    }
+
+    // 2. Call Tripo3D API with model v1.4
+    const tripoResponse = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tripoApiKey}`,
+      },
+      body: JSON.stringify({
+        type: 'text_to_model',
+        prompt: `decorative 3D figurine: ${adminBrief}`,
+      }),
+    });
+
+    const tripoData: any = await tripoResponse.json();
+
+    if (!tripoResponse.ok || !tripoData.data?.task_id) {
+      const errorMsg = tripoData.message || tripoData.error || 'Tripo3D API error';
+      console.error('[TRIPO3D] API error:', errorMsg);
+      await supabase.from('generation_jobs')
+        .update({ status: 'failed', error_message: errorMsg })
+        .eq('id', job.id);
+      return { error: errorMsg };
+    }
+
+    // 3. Update job with task ID
+    await supabase.from('generation_jobs')
+      .update({ tripo_task_id: tripoData.data.task_id, status: 'generating' })
+      .eq('id', job.id);
+
+    console.log('[TRIPO3D] Generation triggered for order:', orderId, 'job:', job.id);
+    return { jobId: job.id };
+  } catch (err: any) {
+    console.error('[TRIPO3D] Error triggering generation:', err);
+    return { error: err.message || 'Unknown error' };
+  }
+}
+
 // Main API router
 export default async (req: VercelRequest, res: VercelResponse) => {
   console.log('[ENTRY] Function invoked:', req.method, req.url);
@@ -2022,7 +3165,49 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     if (path.match(/^\/conversations\/[^/]+\/escalate$/) && req.method === 'POST') {
       return await handleEscalateToAdmin(req as AuthenticatedRequest, res);
     }
-    
+
+    // Text-to-3D generation routes
+    if (path === '/generate-3d' && req.method === 'POST') {
+      return await handleCreateGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path === '/generate-3d' && req.method === 'GET') {
+      return await handleGetMyGenerations(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/generate-3d\/[^/]+\/order$/) && req.method === 'POST') {
+      return await handleCreateOrderFromGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/generate-3d\/[^/]+$/) && req.method === 'GET') {
+      return await handleCheckGeneration(req as AuthenticatedRequest, res);
+    }
+
+    // Admin 3D generation routes
+    if (path === '/admin/generate-3d' && req.method === 'POST') {
+      return await handleAdminTriggerGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/conversation\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminGetConversationJobs(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+\/approve$/) && req.method === 'POST') {
+      return await handleAdminApproveGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+\/reject$/) && req.method === 'POST') {
+      return await handleAdminRejectGeneration(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-3d\/[^/]+$/) && req.method === 'GET') {
+      return await handleAdminCheckGeneration(req as AuthenticatedRequest, res);
+    }
+
+    // Admin OpenSCAD generation routes
+    if (path === '/admin/generate-openscad' && req.method === 'POST') {
+      return await handleAdminGenerateOpenSCAD(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-openscad\/[^/]+\/upload$/) && req.method === 'POST') {
+      return await handleAdminUploadOpenSCADSTL(req as AuthenticatedRequest, res);
+    }
+    if (path.match(/^\/admin\/generate-openscad\/[^/]+\/code$/) && req.method === 'PUT') {
+      return await handleAdminUpdateOpenSCADCode(req as AuthenticatedRequest, res);
+    }
+
     // Admin routes
     if (path === '/admin/orders' && req.method === 'GET') {
       return await handleAdminGetOrders(req as AuthenticatedRequest, res);
@@ -3903,6 +5088,9 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
     }
 
     // Auto-create conversation and send idea_description as first message
+    // Track if we need to trigger AI after response
+    let pendingAI: { convId: string; orderId: string } | null = null;
+
     if (order) {
       try {
         const { data: conv, error: convError } = await supabase
@@ -3947,12 +5135,7 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
             } catch (e) {
               console.log('[DESIGN] Could not set ai_status:', e);
             }
-            try {
-              await triggerAIAgentResponse(conv.id, order.id);
-              console.log('[DESIGN] >>> AI agent trigger completed successfully');
-            } catch (aiErr) {
-              console.error('[DESIGN] >>> AI agent trigger error:', aiErr);
-            }
+            pendingAI = { convId: conv.id, orderId: order.id };
           }
         }
       } catch (convErr) {
@@ -3960,7 +5143,20 @@ async function handleCreateDesignRequest(req: AuthenticatedRequest, res: VercelR
       }
     }
 
-    return res.status(201).json(mapOrderToDesignRequest(order));
+    // Send response to client immediately
+    res.status(201).json(mapOrderToDesignRequest(order));
+
+    // Then trigger AI in background (function stays alive while we await)
+    if (pendingAI) {
+      try {
+        await triggerAIAgentResponse(pendingAI.convId, pendingAI.orderId);
+        console.log('[DESIGN] >>> AI agent trigger completed successfully');
+      } catch (aiErr) {
+        console.error('[DESIGN] >>> AI agent trigger error:', aiErr);
+      }
+    }
+
+    return;
   } catch (error) {
     console.error('Design request error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -4676,7 +5872,11 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
     
     console.log('[SEND_MESSAGE] Message sent successfully:', message);
 
-    // Trigger AI agent response if this is a design conversation and AI is active
+    // Send response to client immediately so they don't wait for AI
+    res.status(201).json({ message });
+
+    // Continue processing: trigger AI agent response after response is sent
+    // The function stays alive while we await, but the client already has their 201
     try {
       const { data: convData } = await supabase
         .from('conversations')
@@ -4699,7 +5899,7 @@ async function handleSendMessage(req: AuthenticatedRequest, res: VercelResponse)
       console.error('[SEND_MESSAGE] AI agent trigger error:', aiError);
     }
 
-    return res.status(201).json({ message });
+    return;
   } catch (error: any) {
     console.error('[SEND_MESSAGE] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
@@ -4726,15 +5926,17 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
   try {
     // 1. Check conversation AI status (fallback to 'active' if column doesn't exist yet)
     let aiStatus = 'active';
+    let conversationUserId: string | null = null;
     try {
       const { data: conversation } = await supabase
         .from('conversations')
-        .select('ai_status')
+        .select('ai_status, user_id')
         .eq('id', conversationId)
         .single();
       if (conversation?.ai_status) {
         aiStatus = conversation.ai_status;
       }
+      conversationUserId = conversation?.user_id || null;
     } catch (e) {
       console.log('[AI_AGENT] Could not read ai_status, assuming active');
     }
@@ -4758,20 +5960,28 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
       return;
     }
 
-    // 3. Fetch all messages in the conversation
+    // 3. Fetch all messages in the conversation (exclude admin_brief messages)
     const { data: messages } = await supabase
       .from('conversation_messages')
-      .select('sender_type, message')
+      .select('sender_type, message, attachments')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
-    if (!messages) {
+    // Filter out admin-only messages — they shouldn't be in AI history
+    const filteredMessages = (messages || []).filter((m: any) => {
+      if (m.attachments && Array.isArray(m.attachments)) {
+        return !m.attachments.some((att: any) => att.type === 'admin_brief' || att.type === 'admin_error');
+      }
+      return true;
+    });
+
+    if (!filteredMessages || filteredMessages.length === 0) {
       console.error('[AI_AGENT] No messages found for conversation:', conversationId);
       return;
     }
 
     // 4. If admin already responded, auto-escalate and stop
-    const hasEngineerMessages = messages.some((m: any) => m.sender_type === 'engineer');
+    const hasEngineerMessages = filteredMessages.some((m: any) => m.sender_type === 'engineer');
     if (hasEngineerMessages) {
       console.log('[AI_AGENT] Engineer already responded, auto-escalating');
       await supabase
@@ -4783,31 +5993,17 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
 
     // 5. Build conversation history and generate AI response
     const designContext = buildDesignContext(order);
-    const geminiHistory = buildGeminiHistory(messages, designContext);
-    const { text: aiText, shouldEscalate, thingiverseSearches } = await generateAIResponse(geminiHistory);
+    const geminiHistory = await buildGeminiHistory(filteredMessages, designContext);
+    const { text: aiText, shouldEscalate, adminBrief, model: aiModel } = await generateAIResponse(geminiHistory);
 
-    // 6. Execute Thingiverse searches if requested
-    let allAttachments: any[] = [];
-    if (thingiverseSearches.length > 0 && searchThingiverse && formatThingiverseAsAttachments) {
-      for (const searchQuery of thingiverseSearches.slice(0, 2)) {
-        const results = await searchThingiverse(searchQuery);
-        if (results.length > 0) {
-          allAttachments = allAttachments.concat(formatThingiverseAsAttachments(results));
-        }
-      }
-    }
-
-    // 7. Insert AI message
+    // 6. Insert AI message (with model info for admin visibility)
     const aiMessageData: any = {
       conversation_id: conversationId,
       sender_type: 'system',
       sender_id: null,
       message: aiText,
+      attachments: aiModel ? [{ type: 'ai_model', model: aiModel }] : undefined,
     };
-
-    if (allAttachments.length > 0) {
-      aiMessageData.attachments = allAttachments;
-    }
 
     const { error: insertError } = await supabase
       .from('conversation_messages')
@@ -4834,14 +6030,59 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
         .update({ ai_status: 'escalated', admin_read: false })
         .eq('id', conversationId);
 
-      await supabase
-        .from('conversation_messages')
-        .insert([{
-          conversation_id: conversationId,
-          sender_type: 'system',
-          sender_id: null,
-          message: 'This conversation has been escalated to a human design engineer. An admin will review the conversation history and continue assisting you shortly.',
-        }]);
+      // Insert admin-only design brief (hidden from client, visible to admin)
+      if (adminBrief) {
+        // Detect classification tag anywhere in the brief
+        const hasMechanicalTag = /\[MECHANICAL\]/i.test(adminBrief);
+        const hasDecorativeTag = /\[DECORATIVE\]/i.test(adminBrief);
+        const hasFunctionalTag = /\[FUNCTIONAL\]/i.test(adminBrief);
+        const hasPrototypeTag = /\[PROTOTYPE\]/i.test(adminBrief);
+        const classification = hasMechanicalTag ? 'mechanical' : hasDecorativeTag ? 'decorative' : hasFunctionalTag ? 'functional' : hasPrototypeTag ? 'prototype' : 'other';
+        console.log('[AI_AGENT] Brief classification:', { hasMechanicalTag, hasDecorativeTag, hasFunctionalTag, hasPrototypeTag, classification, briefStart: adminBrief.substring(0, 100) });
+        const cleanBrief = adminBrief
+          .replace(/\[DECORATIVE\]/gi, '')
+          .replace(/\[MECHANICAL\]/gi, '')
+          .replace(/\[FUNCTIONAL\]/gi, '')
+          .replace(/\[PROTOTYPE\]/gi, '')
+          .trim();
+
+        await supabase
+          .from('conversation_messages')
+          .insert([{
+            conversation_id: conversationId,
+            sender_type: 'system',
+            sender_id: null,
+            message: cleanBrief,
+            attachments: [{ type: 'admin_brief', classification }],
+          }]);
+
+        // Auto-trigger ADAM (OpenSCAD) only for mechanical designs
+        if (classification === 'mechanical' && generateOpenSCADCode && conversationUserId) {
+          console.log('[AI_AGENT] Mechanical design detected — auto-triggering ADAM/OpenSCAD');
+          try {
+            const { code, parameters } = await generateOpenSCADCode(cleanBrief);
+            const { error: jobError } = await supabase
+              .from('generation_jobs')
+              .insert({
+                user_id: conversationUserId,
+                prompt: cleanBrief,
+                order_id: orderId,
+                conversation_id: conversationId,
+                status: 'code_ready',
+                generation_type: 'openscad',
+                openscad_code: code,
+                parameters,
+              });
+            if (jobError) {
+              console.error('[AI_AGENT] Failed to create ADAM job:', jobError);
+            } else {
+              console.log('[AI_AGENT] ADAM/OpenSCAD job created for conversation:', conversationId);
+            }
+          } catch (adamErr) {
+            console.error('[AI_AGENT] ADAM/OpenSCAD generation failed:', adamErr);
+          }
+        }
+      }
 
       console.log('[AI_AGENT] Conversation escalated to admin:', conversationId);
     }
@@ -4849,6 +6090,30 @@ async function triggerAIAgentResponse(conversationId: string, orderId: string) {
     console.log('[AI_AGENT] AI response sent for conversation:', conversationId);
   } catch (error) {
     console.error('[AI_AGENT] Error generating response:', error);
+
+    // Post admin-only error message so the admin sees it in the chat
+    try {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.log('[AI_AGENT] Inserting admin_error message for conversation:', conversationId, 'error:', errMsg);
+      const { error: insertError } = await supabase.from('conversation_messages').insert([{
+        conversation_id: conversationId,
+        sender_type: 'system',
+        sender_id: null,
+        message: `⚠️ Pikoro encountered an error: ${errMsg}`,
+        attachments: [{ type: 'admin_error' }],
+      }]);
+      if (insertError) {
+        console.error('[AI_AGENT] Supabase insert error:', insertError);
+      } else {
+        console.log('[AI_AGENT] admin_error message inserted successfully');
+      }
+      // Mark as unread for admin so they notice
+      await supabase.from('conversations')
+        .update({ admin_read: false, updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    } catch (insertErr) {
+      console.error('[AI_AGENT] Failed to insert error message:', insertErr);
+    }
   }
 }
 

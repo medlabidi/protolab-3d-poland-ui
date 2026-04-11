@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Upload, Palette, Calendar, ArrowRight, CheckCircle2, LayoutDashboard, Download, Package, Zap, Truck } from "lucide-react";
+import { Upload, Palette, Calendar, ArrowRight, CheckCircle2, LayoutDashboard, Download, Package, Zap, Truck, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const Services = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Check if user is logged in
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('accessToken');
 
@@ -36,7 +38,7 @@ const Services = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 border-b border-border glass-effect z-50 animate-slide-up">
-        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+        <div className="container mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xl font-bold text-primary group cursor-pointer" onClick={() => navigate("/")}>
             <Logo size="sm" textClassName="text-xl" />
           </div>
@@ -48,15 +50,22 @@ const Services = () => {
               {t('nav.services')}
             </Button>
           </nav>
-          <div className="flex items-center gap-4">
+          {/* Hamburger button for mobile */}
+          <button
+            className="md:hidden p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <div className="flex items-center gap-2 sm:gap-4">
             <LanguageSwitcher />
             {isLoggedIn ? (
-              <Button onClick={() => navigate("/dashboard")} className="hover-lift shadow-lg hover:shadow-xl">
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-                {t('dashboard.overview')}
+              <Button onClick={() => navigate("/dashboard")} className="hover-lift shadow-lg hover:shadow-xl" size="sm">
+                <LayoutDashboard className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('dashboard.overview')}</span>
               </Button>
             ) : (
-              <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift">
+              <Button variant="outline" onClick={() => navigate("/login")} className="hover-lift text-sm sm:text-base">
                 {t('landing.login')}
               </Button>
             )}
@@ -64,25 +73,45 @@ const Services = () => {
         </div>
       </header>
 
+      {/* Mobile Navigation Dropdown */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-x-0 top-[57px] z-40 md:hidden bg-background/95 backdrop-blur-md border-b border-border p-4 space-y-2">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-primary"
+            onClick={() => { navigate("/about"); setMobileMenuOpen(false); }}
+          >
+            {t('nav.aboutUs')}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-primary"
+            onClick={() => { navigate("/services"); setMobileMenuOpen(false); }}
+          >
+            {t('nav.services')}
+          </Button>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <section className="pt-32 pb-8 px-6 relative animate-slide-up">
+      <section className="pt-24 sm:pt-28 md:pt-32 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6 relative animate-slide-up">
         <div className="container mx-auto max-w-7xl text-center">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-6 animate-gradient bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent leading-tight">
             {t('services.hero.title')}
           </h1>
-          <p className="text-lg text-muted-foreground mb-12 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-6 sm:mb-8 md:mb-12 max-w-4xl mx-auto leading-relaxed">
             {t('services.hero.subtitle')}
           </p>
         </div>
       </section>
 
       {/* Services Grid */}
-      <section className="py-16 px-6">
+      <section className="py-8 sm:py-12 md:py-16 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-7xl">
           <Tabs defaultValue="printing" className="w-full">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-12">
-              <TabsTrigger value="printing" className="text-lg">3D Printing</TabsTrigger>
-              <TabsTrigger value="assistance" className="text-lg">3D Design Assistance</TabsTrigger>
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6 sm:mb-8 md:mb-12">
+              <TabsTrigger value="printing" className="text-sm sm:text-base md:text-lg">3D Printing</TabsTrigger>
+              <TabsTrigger value="assistance" className="text-sm sm:text-base md:text-lg">3D Design Assistance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="printing" className="space-y-8">
@@ -90,13 +119,13 @@ const Services = () => {
                 <Card className="border-none shadow-xl bg-gradient-to-br from-card to-muted/50">
                   <CardContent className="pt-8">
                     {/* Service Header */}
-                    <div className="flex items-center gap-6 mb-8">
-                      <div className="w-24 h-24 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Package className="w-12 h-12 text-white" />
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Package className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-3xl font-bold mb-2">3D Printing Service</h3>
-                        <p className="text-muted-foreground text-lg">
+                        <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">3D Printing Service</h3>
+                        <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
                           Professional 3D printing with premium materials and fast delivery
                         </p>
                       </div>
@@ -104,7 +133,7 @@ const Services = () => {
 
                     {/* Detailed Description */}
                     <div className="mb-8 p-6 bg-muted/30 rounded-xl">
-                      <h4 className="font-semibold text-xl mb-4">What We Offer</h4>
+                      <h4 className="font-semibold text-lg sm:text-xl mb-4">What We Offer</h4>
                       <p className="text-muted-foreground leading-relaxed mb-4">
                         Transform your digital designs into physical reality with our state-of-the-art 3D printing service. 
                         We offer high-quality prints using a wide range of materials including PLA, ABS, PETG, TPU, Nylon, and Resin. 
@@ -131,9 +160,9 @@ const Services = () => {
                     </div>
 
                     {/* Process Steps */}
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                       <div>
-                        <h4 className="font-semibold text-xl mb-6">Simple Process:</h4>
+                        <h4 className="font-semibold text-lg sm:text-xl mb-4 sm:mb-6">Simple Process:</h4>
                         <div className="space-y-4">
                           {[
                             { 
@@ -177,7 +206,7 @@ const Services = () => {
 
                       {/* Pricing & Features */}
                       <div>
-                        <h4 className="font-semibold text-xl mb-6">Pricing & Benefits:</h4>
+                        <h4 className="font-semibold text-lg sm:text-xl mb-4 sm:mb-6">Pricing & Benefits:</h4>
                         <div className="space-y-4">
                           <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <h5 className="font-semibold mb-2 text-primary">Transparent Pricing</h5>
@@ -222,13 +251,13 @@ const Services = () => {
                 <Card className="border-none shadow-xl bg-gradient-to-br from-card to-muted/50">
                   <CardContent className="pt-8">
                     {/* Service Header */}
-                    <div className="flex items-center gap-6 mb-8">
-                      <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Palette className="w-12 h-12 text-white" />
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Palette className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-3xl font-bold mb-2">3D Design Assistance</h3>
-                        <p className="text-muted-foreground text-lg">
+                        <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">3D Design Assistance</h3>
+                        <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
                           Professional 3D modeling from concept to ready-to-print file
                         </p>
                       </div>
@@ -236,7 +265,7 @@ const Services = () => {
 
                     {/* Detailed Description */}
                     <div className="mb-8 p-6 bg-muted/30 rounded-xl">
-                      <h4 className="font-semibold text-xl mb-4">What We Offer</h4>
+                      <h4 className="font-semibold text-lg sm:text-xl mb-4">What We Offer</h4>
                       <p className="text-muted-foreground leading-relaxed mb-4">
                         Don't have a 3D model yet? No problem! Our experienced design team will transform your ideas, 
                         sketches, or descriptions into professional 3D models ready for printing. Perfect for custom parts, 
@@ -263,9 +292,9 @@ const Services = () => {
                     </div>
 
                     {/* Process Steps */}
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                       <div>
-                        <h4 className="font-semibold text-xl mb-6">Design Process:</h4>
+                        <h4 className="font-semibold text-lg sm:text-xl mb-4 sm:mb-6">Design Process:</h4>
                         <div className="space-y-4">
                           {[
                             { 
@@ -309,7 +338,7 @@ const Services = () => {
 
                       {/* Pricing & Features */}
                       <div>
-                        <h4 className="font-semibold text-xl mb-6">Design Services:</h4>
+                        <h4 className="font-semibold text-lg sm:text-xl mb-4 sm:mb-6">Design Services:</h4>
                         <div className="space-y-4">
                           <div className="p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
                             <h5 className="font-semibold mb-2 text-purple-600">Simple Objects</h5>
@@ -355,11 +384,11 @@ const Services = () => {
       </section>
 
       {/* Dashboard Demo Video Section */}
-      <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background relative">
+      <section className="py-10 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-muted/30 to-background relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="animate-slide-up text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">See Our Dashboard In Action</h2>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+          <div className="animate-slide-up text-center mb-6 sm:mb-8 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 gradient-text">See Our Dashboard In Action</h2>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-3xl mx-auto">
               Experience our intuitive client dashboard where you can manage your orders, track progress, and communicate with our team - all in one place.
             </p>
           </div>
@@ -405,15 +434,15 @@ const Services = () => {
               </div>
               
               {/* Floating Elements */}
-              <div className="absolute -top-10 -left-10 w-20 h-20 bg-primary/20 rounded-full blur-2xl animate-float"></div>
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl animate-float" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute -top-10 -left-10 w-20 h-20 bg-primary/20 rounded-full blur-2xl animate-float hidden sm:block"></div>
+              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl animate-float hidden sm:block" style={{ animationDelay: '1s' }}></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="py-24 px-6 bg-gradient-to-b from-background via-primary/5 to-muted/30 relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-24 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-background via-primary/5 to-muted/30 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
@@ -422,23 +451,23 @@ const Services = () => {
         </div>
         
         <div className="container mx-auto max-w-7xl relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 gradient-text leading-tight">
+          <div className="text-center mb-10 sm:mb-14 md:mb-20">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 gradient-text leading-tight">
               {t('landing.whyChooseUsSubtitle')}
             </h2>
-            <p className="text-muted-foreground text-xl max-w-3xl mx-auto">
+            <p className="text-muted-foreground text-base sm:text-lg md:text-xl max-w-3xl mx-auto">
               {t('landing.whyChooseUsDescription')}
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {features.map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="group animate-scale-in relative"
                 style={{ animationDelay: `${index * 0.15}s` }}
               >
-                <div className="relative p-8 rounded-3xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-500 h-full shadow-lg">
+                <div className="relative p-5 sm:p-6 md:p-8 rounded-3xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-500 h-full shadow-lg">
                   {/* Icon Container */}
                   <div className="relative mb-6">
                     <div className="w-20 h-20 bg-gradient-to-br from-primary via-purple-600 to-accent rounded-2xl flex items-center justify-center shadow-xl transition-all duration-500 relative z-10">
@@ -450,10 +479,10 @@ const Services = () => {
                   </div>
                   
                   {/* Content */}
-                  <h3 className="text-2xl font-bold mb-4 group-hover:text-primary transition-colors duration-300">
+                  <h3 className="text-xl sm:text-2xl font-bold mb-4 group-hover:text-primary transition-colors duration-300">
                     {feature.title}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed text-lg group-hover:text-foreground/80 transition-colors duration-300">
+                  <p className="text-muted-foreground leading-relaxed text-base sm:text-lg group-hover:text-foreground/80 transition-colors duration-300">
                     {feature.description}
                   </p>
                   
@@ -472,13 +501,13 @@ const Services = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="w-full border-y-2 border-border bg-white py-16 px-6">
+      <section className="w-full border-y-2 border-border bg-white py-8 sm:py-12 md:py-16 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-7xl text-center">
-          <h2 className="text-3xl font-bold mb-4 gradient-text">{t('services.cta.title')}</h2>
-          <p className="text-xl text-muted-foreground mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 gradient-text">{t('services.cta.title')}</h2>
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8">
             {t('services.cta.subtitle')}
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-wrap gap-4 justify-center">
             <Button
               size="lg"
               onClick={() => navigate("/new-print")}
@@ -506,9 +535,9 @@ const Services = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-16 px-6 bg-gradient-to-b from-background to-muted/30 relative">
+      <footer className="border-t border-border py-8 sm:py-12 md:py-16 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-background to-muted/30 relative">
         <div className="container mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
+          <div className="grid md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
             <div>
               <div className="flex items-center gap-2 text-xl font-bold mb-6 group cursor-pointer">
                 <Logo size="sm" textClassName="text-xl" />

@@ -308,7 +308,7 @@ const AdminMaintenanceInsights = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <p className="text-white">Loading...</p>
         </main>
       </div>
@@ -319,12 +319,12 @@ const AdminMaintenanceInsights = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Maintenance Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Maintenance Management</h1>
               <p className="text-gray-400">Schedule maintenance and manage maintenance rates for pricing calculations</p>
             </div>
             <div className="flex gap-2">
@@ -587,14 +587,14 @@ const AdminMaintenanceInsights = () => {
 
       {/* Add Maintenance Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-white">Schedule Maintenance</DialogTitle>
             <DialogDescription className="text-gray-400">
               Add a new maintenance activity for a printer
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="space-y-2 col-span-2">
               <Label className="text-gray-300">Printer *</Label>
               <Select

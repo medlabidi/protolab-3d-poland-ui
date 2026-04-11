@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye, Bot } from "lucide-react";
+import { Upload, X, Palette, FileText, Plus, Loader2, MessageSquare, Package, Info, Check, AlertCircle, Maximize2, Download, Lock, Eye, Bot, ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
@@ -15,8 +15,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/config/api";
 import { ModelPreviewCard } from "@/components/ModelPreviewCard";
 import { ModelViewerModal } from "@/components/ModelViewerModal";
+import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
 import { is3DFile, isImageFile, isPdfFile } from "@/utils/fileHelpers";
-import { Attachment, Message } from "@/types/attachment";
+import { Attachment } from "@/types/attachment";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 interface DesignRequest {
@@ -26,8 +27,8 @@ interface DesignRequest {
   usage_type?: 'mechanical' | 'decorative' | 'functional' | 'prototype' | 'other';
   usage_details?: string;
   approximate_dimensions?: string;
-  attached_files?: Attachment[];
-  reference_images?: Attachment[];
+  attached_files?: any[];
+  reference_images?: any[];
   design_status: 'pending' | 'in_review' | 'in_progress' | 'completed' | 'approved' | 'cancelled';
   estimated_price?: number;
   final_price?: number;
@@ -39,6 +40,15 @@ interface DesignRequest {
   user_rejection_reason?: string;
   created_at: string;
   updated_at?: string;
+}
+
+interface Message {
+  id: string;
+  sender_type: 'user' | 'engineer' | 'system';
+  message: string;
+  attachments?: any[];
+  created_at: string;
+  is_read: boolean;
 }
 
 const DesignAssistance = () => {
@@ -63,6 +73,7 @@ const DesignAssistance = () => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
+  const [requestsCollapsed, setRequestsCollapsed] = useState(false);
 
   // 3D Model Viewer state
   const [modelViewerModal, setModelViewerModal] = useState<{
@@ -212,6 +223,7 @@ const DesignAssistance = () => {
 
   const handleSelectRequest = async (request: DesignRequest) => {
     setSelectedRequest(request);
+    setRequestsCollapsed(true);
     
     // Fetch conversation for this request
     try {
@@ -232,8 +244,23 @@ const DesignAssistance = () => {
         }
         setConversationId(data.conversation?.id || null);
         setMessages(data.messages || []);
+        console.log('✅ [Design Assistance] Loaded conversation:', data.conversation?.id, 'Messages:', data.messages?.length || 0);
         
-        // Load messages and conversation details
+        // Log messages with attachments for debugging
+        const messagesWithAttachments = data.messages?.filter((msg: any) => msg.attachments && msg.attachments.length > 0);
+        if (messagesWithAttachments && messagesWithAttachments.length > 0) {
+          console.log('📎 [Design Assistance] Messages with attachments:', messagesWithAttachments.length);
+          messagesWithAttachments.forEach((msg: any, idx: number) => {
+            console.log(`  Message ${idx + 1}:`, {
+              id: msg.id,
+              sender: msg.sender_type,
+              attachments: msg.attachments.map((att: any) => ({
+                name: att.name,
+                url: att.url,
+                size: att.size
+              }))
+            });
+          });
         }
       } else if (response.status === 404) {
         // No conversation yet
@@ -472,7 +499,11 @@ const DesignAssistance = () => {
         } catch (e) {
           data = {};
         }
-        setMessages(prev => [...prev, data.message]);
+        setMessages(prev => {
+          // Deduplicate: poll may have already fetched this message
+          if (prev.some(m => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
         setNewMessage("");
         setConversationFile(null);
         toast.success("Message sent");
@@ -502,7 +533,11 @@ const DesignAssistance = () => {
   };
 
   const handleApproveDesign = async (requestId: string) => {
-    if (!confirm('Are you sure you want to approve this design? You will proceed to payment.')) {
+    const hasPrice = selectedRequest?.estimated_price && selectedRequest.estimated_price > 0;
+    const confirmMsg = hasPrice
+      ? `Are you sure you want to approve this design? You will proceed to payment of ${selectedRequest!.estimated_price!.toFixed(2)} PLN.`
+      : 'Are you sure you want to approve this design?';
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -709,9 +744,9 @@ const DesignAssistance = () => {
         <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="mb-4 sm:mb-6 md:mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
+            <div className="mb-4 sm:mb-6 md:mb-8 pl-10 lg:pl-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-cyan-500" />
                 3D Design Assistance
               </h1>
               <p className="text-gray-400 mt-2 text-sm sm:text-base">Transform your ideas into custom 3D designs</p>
@@ -769,13 +804,13 @@ const DesignAssistance = () => {
       <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
         <div className="h-full flex flex-col">
           {/* Header with Create Button */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 pl-10 lg:pl-0">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-500" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-cyan-500" />
                 My Design Requests
               </h1>
-              <p className="text-gray-400 mt-1 text-sm sm:text-base">Track your custom 3D design projects</p>
+              <p className="text-gray-400 mt-1 text-xs sm:text-sm">Track your custom 3D design projects</p>
             </div>
             <Button 
               onClick={() => setShowFormDialog(true)}
@@ -789,16 +824,27 @@ const DesignAssistance = () => {
           {/* Two Column Layout */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 overflow-hidden">
             {/* Left Column - Order Details */}
-            <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
-              <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-cyan-400" />
-                  Design Requests ({designRequests.length})
+            <Card className={`bg-gray-900 border-gray-800 flex flex-col overflow-hidden ${requestsCollapsed ? 'h-auto' : ''}`}>
+              <CardHeader
+                className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6 cursor-pointer select-none"
+                onClick={() => setRequestsCollapsed(!requestsCollapsed)}
+              >
+                <CardTitle className="text-white flex items-center justify-between text-sm sm:text-base">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    Design Requests ({designRequests.length})
+                  </div>
+                  {requestsCollapsed ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4 text-gray-400" />
+                  )}
                 </CardTitle>
               </CardHeader>
+              {!requestsCollapsed && (
               <CardContent className="p-0">
                 {/* Orders List - Scrollable */}
-                <ScrollArea className="h-[400px] px-4">
+                <ScrollArea className="h-[300px] sm:h-[400px] px-3 sm:px-4">
                   <div className="space-y-3 pt-4">
                     {designRequests.map((request) => (
                       <Card
@@ -809,16 +855,16 @@ const DesignAssistance = () => {
                             : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'
                         }`}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 
-                              className="text-white font-semibold truncate flex-1 cursor-pointer"
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3
+                              className="text-white font-semibold text-sm sm:text-base truncate flex-1 min-w-0 cursor-pointer"
                               onClick={() => handleSelectRequest(request)}
                             >
                               {request.project_name}
                             </h3>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getStatusColor(request.design_status)}>
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                              <Badge className={`text-[10px] sm:text-xs ${getStatusColor(request.design_status)}`}>
                                 {formatStatus(request.design_status)}
                               </Badge>
                               <Button
@@ -835,8 +881,8 @@ const DesignAssistance = () => {
                               </Button>
                             </div>
                           </div>
-                          <p 
-                            className="text-gray-400 text-sm mb-2 line-clamp-2 cursor-pointer"
+                          <p
+                            className="text-gray-400 text-xs sm:text-sm mb-2 line-clamp-2 cursor-pointer"
                             onClick={() => handleSelectRequest(request)}
                           >
                             {request.idea_description}
@@ -858,13 +904,14 @@ const DesignAssistance = () => {
                   </div>
                 </ScrollArea>
               </CardContent>
+              )}
             </Card>
 
             {/* Right Column - Conversation */}
             <Card className="bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
-              <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-cyan-400" />
+              <CardHeader className="pb-3 sm:pb-4 flex-shrink-0 px-3 sm:px-6">
+                <CardTitle className="text-white flex items-center gap-2 text-sm sm:text-base">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                   Conversation with Admin
                 </CardTitle>
               </CardHeader>
@@ -872,11 +919,11 @@ const DesignAssistance = () => {
                 {selectedRequest ? (
                   <>
                     {/* Request Details Summary */}
-                    <div className="px-4 pt-4 space-y-3">
-                      <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-white font-semibold text-sm">{selectedRequest.project_name}</h3>
-                          <Badge className={getStatusColor(selectedRequest.design_status)}>
+                    <div className="px-3 sm:px-4 pt-3 sm:pt-4 space-y-3">
+                      <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 rounded-lg p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="text-white font-semibold text-xs sm:text-sm truncate flex-1 min-w-0">{selectedRequest.project_name}</h3>
+                          <Badge className={`text-[10px] sm:text-xs flex-shrink-0 ${getStatusColor(selectedRequest.design_status)}`}>
                             {formatStatus(selectedRequest.design_status)}
                           </Badge>
                         </div>
@@ -904,7 +951,7 @@ const DesignAssistance = () => {
                       </div>
 
                       {/* Prominent Price Banner */}
-                      {(selectedRequest.estimated_price || selectedRequest.design_status === 'approved') ? (
+                      {(selectedRequest.estimated_price && selectedRequest.estimated_price > 0) || (selectedRequest.design_status === 'approved' && selectedRequest.estimated_price && selectedRequest.estimated_price > 0) ? (
                         <div className={`rounded-xl border p-4 space-y-3 ${
                           isPaymentCompleted
                             ? 'bg-green-500/10 border-green-500/40'
@@ -959,16 +1006,42 @@ const DesignAssistance = () => {
                               </Button>
                             </div>
                           )}
-                          {!isPaymentCompleted && selectedRequest.design_status === 'approved' && (!selectedRequest.estimated_price || selectedRequest.estimated_price <= 0) && (
-                            <div className="space-y-2 pt-1">
-                              <p className="text-green-200 text-xs">You approved this design. Files are available for download.</p>
-                            </div>
-                          )}
                           {!isPaymentCompleted && selectedRequest.design_status !== 'completed' && selectedRequest.design_status !== 'approved' && (
                             <p className="text-gray-400 text-xs">Waiting for admin to finalize the design before you can approve and pay.</p>
                           )}
                         </div>
                       ) : null}
+
+                      {/* Preview-only approval card (no price) */}
+                      {selectedRequest.design_status === 'completed' && (!selectedRequest.estimated_price || selectedRequest.estimated_price <= 0) && !isPaymentCompleted && (
+                        <div className="rounded-xl border p-4 space-y-3 bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border-purple-400/40">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Design Review</span>
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500 text-xs animate-pulse">Action Required</Badge>
+                          </div>
+                          <p className="text-purple-200 text-xs">The admin has sent a 3D preview for your review. Please approve or reject the design.</p>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleApproveDesign(selectedRequest.id)}
+                              disabled={processingApproval}
+                              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-sm h-10"
+                            >
+                              {processingApproval ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
+                              ) : (
+                                <><Check className="w-4 h-4 mr-2" />Approve Design</>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() => setShowRejectDialog(true)}
+                              variant="outline"
+                              className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10 font-semibold text-sm h-10"
+                            >
+                              <X className="w-4 h-4 mr-2" />Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Attached Reference Files */}
                       {selectedRequest.attached_files && selectedRequest.attached_files.length > 0 && (
@@ -978,7 +1051,7 @@ const DesignAssistance = () => {
                             Reference Files ({selectedRequest.attached_files.length})
                           </p>
                           <div className="space-y-1">
-                            {selectedRequest.attached_files.filter((file: any) => file != null && file.url).map((file: any, idx: number) => (
+                            {selectedRequest.attached_files.map((file: any, idx: number) => (
                               <a
                                 key={idx}
                                 href={file.url}
@@ -1039,27 +1112,28 @@ const DesignAssistance = () => {
                             No messages yet. Start the conversation!
                           </div>
                         ) : (
-                          messages.map((msg) => {
-                            // Log message details for debugging
-                            if (msg.attachments && msg.attachments.length > 0) {
-                              console.log(`💬 [Message] ID: ${msg.id}, Sender: ${msg.sender_type}, Attachments: ${msg.attachments.length}`);
+                          messages.filter((msg) => {
+                            // Hide admin-only messages (design briefs, errors) from client view
+                            if (msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief' || att.type === 'admin_error')) {
+                              return false;
                             }
-                            
+                            return true;
+                          }).map((msg) => {
                             return (
                             <div
                               key={msg.id}
                               className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
-                              <div className={`flex items-start gap-2 max-w-[85%] ${msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <div className={`flex items-start gap-1.5 sm:gap-2 max-w-[90%] sm:max-w-[85%] ${msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                                 {/* Avatar */}
-                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                <div className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold ${
                                   msg.sender_type === 'user'
                                     ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white'
                                     : msg.sender_type === 'system'
                                     ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white'
                                     : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
                                 }`}>
-                                  {msg.sender_type === 'user' ? 'Y' : msg.sender_type === 'system' ? <Bot className="w-4 h-4" /> : 'A'}
+                                  {msg.sender_type === 'user' ? 'Y' : msg.sender_type === 'system' ? <Bot className="w-3 h-3 sm:w-4 sm:h-4" /> : 'A'}
                                 </div>
                                 
                                 {/* Message Content */}
@@ -1076,7 +1150,7 @@ const DesignAssistance = () => {
                                   </span>
                                   
                                   <div
-                                    className={`rounded-lg p-3 ${
+                                    className={`rounded-lg p-2 sm:p-3 ${
                                       msg.sender_type === 'user'
                                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                                         : msg.sender_type === 'system'
@@ -1084,7 +1158,7 @@ const DesignAssistance = () => {
                                         : 'bg-gray-800 text-gray-200 border border-gray-700'
                                     }`}
                                   >
-                                    <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                                     
                                     {/* Timestamp */}
                                     <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
@@ -1104,56 +1178,10 @@ const DesignAssistance = () => {
                                       </span>
                                     </div>
 
-                                    {/* Thingiverse Results (AI Agent) */}
-                                    {msg.sender_type === 'system' && msg.attachments && msg.attachments.some((att: Attachment) => att.source === 'thingiverse') && (
-                                      <div className="mt-3 space-y-2">
-                                        <div className="flex items-center gap-1 mb-1">
-                                          <Eye className="w-3 h-3 text-emerald-400" />
-                                          <span className="text-xs text-emerald-400 font-medium">Found on Thingiverse (preview only)</span>
-                                        </div>
-                                        {msg.attachments.filter((att: Attachment) => att.source === 'thingiverse').map((att: Attachment, idx: number) => (
-                                          <div key={`tv-${idx}`} className="flex gap-3 p-2 bg-gray-900/50 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-colors">
-                                            {att.url && (
-                                              <img
-                                                src={att.url}
-                                                alt={att.name}
-                                                className="w-16 h-16 object-cover rounded flex-shrink-0"
-                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                              />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                              <p className="text-sm text-white font-medium truncate">{att.name}</p>
-                                              {att.description && (
-                                                <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{att.description}</p>
-                                              )}
-                                              <div className="flex items-center gap-2 mt-1">
-                                                {att.creator && (
-                                                  <span className="text-xs text-gray-500">by {att.creator}</span>
-                                                )}
-                                                {att.thingiverse_url && (
-                                                  <a
-                                                    href={att.thingiverse_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-emerald-400 hover:text-emerald-300 underline"
-                                                  >
-                                                    View on Thingiverse
-                                                  </a>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-600 self-start flex-shrink-0">
-                                              Preview
-                                            </Badge>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
                                     {/* File Attachments */}
                                     {msg.attachments && msg.attachments.length > 0 && (
                                       <div className="mt-2 space-y-2">
-                                        {msg.attachments.filter((att: Attachment) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: Attachment, idx: number) => {
+                                        {msg.attachments.filter((att: any) => att.url && !(msg.sender_type !== 'user' && is3DFile(att.name || att.url))).map((att: any, idx: number) => {
                                           const isAdminFile = msg.sender_type !== 'user';
                                           const accessType = att.access_type || 'free';
                                           const isDownloadBlocked = isAdminFile && (
@@ -1393,7 +1421,7 @@ const DesignAssistance = () => {
 
                                     {/* 3D File Attachments from Admin */}
                                     {msg.sender_type !== 'user' && msg.attachments && msg.attachments.length > 0 && (() => {
-                                      const filtered3DFiles = msg.attachments.filter((att: Attachment) => {
+                                      const filtered3DFiles = msg.attachments.filter((att: any) => {
                                         const hasUrl = !!att.url;
                                         const fileName = att.name || att.url;
                                         return hasUrl && is3DFile(fileName);
@@ -1403,7 +1431,7 @@ const DesignAssistance = () => {
 
                                       return (
                                         <div className="mt-3 space-y-3">
-                                          {filtered3DFiles.map((attachment: Attachment, idx: number) => {
+                                          {filtered3DFiles.map((attachment: any, idx: number) => {
                                             const isPreviewOnly = attachment.access_type === 'preview_only' && !attachment.download_allowed;
                                             return (
                                               <div key={idx}>
@@ -1431,6 +1459,70 @@ const DesignAssistance = () => {
                                         </div>
                                       );
                                     })()}
+
+                                    {/* Generated 3D Model Previews */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => {
+                                      const accessType = att.access_type;
+                                      const isPaid = accessType === 'paid' && att.price > 0;
+                                      const isPaidUnpaid = isPaid && att.payment_status !== 'paid';
+                                      const isPreviewOnly = accessType === 'preview_only';
+
+                                      // Legacy: no access_type — bare viewer
+                                      if (!accessType) {
+                                        return (
+                                          <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
+                                            <ModelViewerUrl
+                                              url={att.url}
+                                              fileName={att.name || 'model.glb'}
+                                              height="100%"
+                                            />
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div key={`gen-model-${idx}`} className="mt-3">
+                                          {isPreviewOnly && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <Lock className="w-3 h-3 text-purple-400" />
+                                              <Badge className="text-[10px] px-1.5 py-0 bg-purple-500/20 text-purple-400 border-purple-500">
+                                                Preview only — download restricted
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          {isPaidUnpaid && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <Lock className="w-3 h-3 text-yellow-400" />
+                                              <Badge className="text-[10px] px-1.5 py-0 bg-yellow-500/20 text-yellow-400 border-yellow-500">
+                                                {att.price} PLN — Approve & pay to download
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          <ModelPreviewCard
+                                            attachment={{ name: att.name || 'Generated Model', url: att.url }}
+                                            approvalStatus={selectedRequest?.user_approval_status as any}
+                                            onOpenFullscreen={() => setModelViewerModal({ open: true, attachment: { ...att, name: att.name || 'Generated Model' } })}
+                                            showApprovalButtons={selectedRequest?.design_status === 'completed'}
+                                          />
+                                        </div>
+                                      );
+                                    })}
+
+                                    {/* Generation Status (loading) */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_status').map((att: any, idx: number) => (
+                                      <div key={`gen-status-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Generating 3D preview...</span>
+                                      </div>
+                                    ))}
+
+                                    {/* Generation Error */}
+                                    {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_error').map((att: any, idx: number) => (
+                                      <div key={`gen-err-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg p-2">
+                                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                        <span>{att.error || 'Generation failed'}</span>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               </div>
@@ -1451,7 +1543,7 @@ const DesignAssistance = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 px-4 pb-4 space-y-2">
+                      <div className="flex-shrink-0 px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
                         {/* Talk to Human button — show when AI is active */}
                         {messages.some((m: any) => m.sender_type === 'system') && !messages.some((m: any) => m.sender_type === 'engineer') && (
                           <div className="flex justify-center">
@@ -1601,12 +1693,15 @@ const DesignAssistance = () => {
         approvalStatus={selectedRequest?.user_approval_status as any}
         onApprove={
           selectedRequest &&
-          modelViewerModal.attachment?.access_type !== 'preview_only'
+          selectedRequest.design_status === 'completed' &&
+          (!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending')
             ? () => handleApproveDesign(selectedRequest.id)
             : undefined
         }
         onReject={
-          modelViewerModal.attachment?.access_type !== 'preview_only'
+          selectedRequest &&
+          selectedRequest.design_status === 'completed' &&
+          (!selectedRequest.user_approval_status || selectedRequest.user_approval_status === 'pending')
             ? () => {
                 setModelViewerModal({ open: false, attachment: null });
                 setShowRejectDialog(true);
@@ -1614,7 +1709,9 @@ const DesignAssistance = () => {
             : undefined
         }
         onDownload={
-          isPaymentCompleted && modelViewerModal.attachment?.download_allowed !== false
+          isPaymentCompleted &&
+          modelViewerModal.attachment?.access_type !== 'preview_only' &&
+          modelViewerModal.attachment?.download_allowed !== false
             ? handleDownload
             : undefined
         }
@@ -1644,7 +1741,7 @@ const DesignAssistance = () => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
               <Info className="w-6 h-6" />
@@ -1672,7 +1769,7 @@ const DesignAssistance = () => {
               </div>
 
               {/* Specifications Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-400 text-sm">Usage Type</Label>
                   <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
@@ -1692,7 +1789,7 @@ const DesignAssistance = () => {
               )}
 
               {/* Pricing */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
                 {detailsRequest.estimated_price && (
                   <div>
                     <Label className="text-gray-400 text-sm">Estimated Price</Label>
@@ -1754,18 +1851,18 @@ const DesignFormDialog = ({
 }: any) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <Palette className="w-6 h-6 text-cyan-500" />
+          <DialogTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-2">
+            <Palette className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-500" />
             New Design Request
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-4">
           {/* Design Title */}
           <div className="space-y-2">
-            <Label htmlFor="designTitle" className="text-base font-semibold">
+            <Label htmlFor="designTitle" className="text-sm sm:text-sm sm:text-base font-semibold">
               Design Title
             </Label>
             <Input
@@ -1779,11 +1876,11 @@ const DesignFormDialog = ({
 
           {/* Design Type */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">What type of design do you need?</Label>
+            <Label className="text-sm sm:text-sm sm:text-base font-semibold">What type of design do you need?</Label>
             <RadioGroup
               value={formData.usage}
               onValueChange={(value) => setFormData({ ...formData, usage: value as any })}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
               <div className="flex items-center space-x-2 p-3 rounded-lg border border-gray-700 hover:bg-gray-800 cursor-pointer">
                 <RadioGroupItem value="mechanical" id="mechanical" />
@@ -1806,7 +1903,7 @@ const DesignFormDialog = ({
 
           {/* Idea Description */}
           <div className="space-y-2">
-            <Label htmlFor="ideaDescription" className="text-base font-semibold">
+            <Label htmlFor="ideaDescription" className="text-sm sm:text-base font-semibold">
               Describe your idea <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -1821,8 +1918,8 @@ const DesignFormDialog = ({
 
           {/* Approximate Dimensions */}
           <div className="space-y-2">
-            <Label className="text-base font-semibold">Approximate Dimensions (mm)</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <Label className="text-sm sm:text-base font-semibold">Approximate Dimensions (mm)</Label>
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="dimWidth" className="text-xs text-gray-400">Width</Label>
                 <Input
@@ -1867,7 +1964,7 @@ const DesignFormDialog = ({
 
           {/* File Upload */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Reference Files (Optional)</Label>
+            <Label className="text-sm sm:text-base font-semibold">Reference Files (Optional)</Label>
             <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
               <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
                 <p className="font-semibold text-cyan-400 mb-1">📎 All Formats</p>
@@ -1875,7 +1972,7 @@ const DesignFormDialog = ({
               </div>
             </div>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+              className={`border-2 border-dashed rounded-lg p-3 sm:p-4 md:p-6 lg:p-8 text-center transition-all ${
                 isDragging ? 'border-cyan-500 bg-cyan-500/10' : 'border-gray-700 hover:border-gray-600'
               }`}
               onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}

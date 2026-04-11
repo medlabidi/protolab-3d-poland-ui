@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentStatusBadge, OrderStatus, PaymentStatus } from "@/components/StatusBadge";
-import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot } from "lucide-react";
+import { Eye, Palette, Download, Search, Loader2, MessageSquare, Info, Upload, X, Package, Bot, FileText, AlertCircle, Sparkles, Check, RotateCcw, Wrench, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ModelViewerUrl } from "@/components/ModelViewer/ModelViewerUrl";
+import { OpenSCADEditor } from "@/components/OpenSCADEditor/OpenSCADEditor";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import type { Attachment, Message } from '@/types/attachment';
 
@@ -79,18 +80,28 @@ const AdminDesignAssistance = () => {
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState<Order | null>(null);
-  
+  const [generationJob, setGenerationJob] = useState<any>(null);
+  const [generatingTripo, setGeneratingTripo] = useState(false);
+  const [generatingOpenSCAD, setGeneratingOpenSCAD] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [genAccessType, setGenAccessType] = useState<'paid' | 'preview_only' | null>(null);
+  const [genPrice, setGenPrice] = useState<string>('');
+
   const conversationRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef<number>(0);
 
-  // Auto-scroll to bottom when messages change
+  // Smart auto-scroll: only scroll when new messages arrive
   useEffect(() => {
-    setTimeout(() => {
-      const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
-    }, 100);
+    if (messages.length > prevMessageCountRef.current) {
+      setTimeout(() => {
+        const viewport = messagesScrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 100);
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   useEffect(() => {
@@ -121,6 +132,203 @@ const AdminDesignAssistance = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [selectedRequestForConversation?.id]);
+
+  // Fetch generation jobs for current conversation and poll active ones
+  useEffect(() => {
+    if (!conversationId) {
+      setGenerationJob(null);
+      return;
+    }
+
+    const fetchJobs = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/admin/generate-3d/conversation/${conversationId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const latestJob = data.jobs?.[0] || null;
+          setGenerationJob(latestJob);
+
+          // If job is active, poll for status updates
+          if (latestJob && ['pending', 'generating', 'processing'].includes(latestJob.status)) {
+            pollGenerationJob(latestJob.id);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+
+    fetchJobs();
+  }, [conversationId]);
+
+  const pollGenerationJob = (jobId: string) => {
+    const poll = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setGenerationJob(data.job);
+          // Keep polling if still in progress
+          if (['pending', 'generating', 'processing'].includes(data.job?.status)) {
+            setTimeout(poll, 5000);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+    setTimeout(poll, 5000);
+  };
+
+  const handleTriggerGeneration = async (prompt: string) => {
+    if (!conversationId || !selectedRequestForConversation) return;
+    setGeneratingTripo(true);
+    setActionError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          conversationId,
+          orderId: selectedRequestForConversation.id,
+          prompt,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob({ id: data.jobId, status: 'pending' });
+        pollGenerationJob(data.jobId);
+      } else {
+        const data = await response.json();
+        setActionError(data.error || 'Failed to start 3D generation');
+      }
+    } catch (e) {
+      setActionError('Failed to start 3D generation — network error');
+    } finally {
+      setGeneratingTripo(false);
+    }
+  };
+
+  const handleApproveGeneration = async (jobId: string) => {
+    if (!genAccessType) {
+      setActionError('Please select an access type (Preview Only or Set Price) before approving.');
+      return;
+    }
+    if (genAccessType === 'paid' && (!genPrice || parseFloat(genPrice) <= 0)) {
+      setActionError('Please enter a valid price before approving.');
+      return;
+    }
+    setActionError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/approve`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_type: genAccessType,
+          price: genAccessType === 'paid' ? parseFloat(genPrice) : undefined,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+        setGenAccessType(null);
+        setGenPrice('');
+      } else {
+        setActionError('Failed to approve model');
+      }
+    } catch (e) {
+      setActionError('Failed to approve model — network error');
+    }
+  };
+
+  const handleRejectGeneration = async (jobId: string) => {
+    setActionError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-3d/${jobId}/reject`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+      } else {
+        setActionError('Failed to reject model');
+      }
+    } catch (e) {
+      setActionError('Failed to reject model — network error');
+    }
+  };
+
+  // --- OpenSCAD CAD generation handlers ---
+  const handleTriggerOpenSCAD = async (prompt: string) => {
+    if (!conversationId || !selectedRequestForConversation) return;
+    setGeneratingOpenSCAD(true);
+    setActionError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/admin/generate-openscad`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          conversationId,
+          orderId: selectedRequestForConversation.id,
+          prompt,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob({
+          id: data.jobId,
+          status: 'code_ready',
+          generation_type: 'openscad',
+          openscad_code: data.code,
+          parameters: data.parameters,
+        });
+      } else {
+        const data = await response.json();
+        setActionError(data.error || 'Failed to generate CAD');
+      }
+    } catch (e) {
+      setActionError('Failed to generate CAD — network error');
+    } finally {
+      setGeneratingOpenSCAD(false);
+    }
+  };
+
+  const handleUploadSTL = async (stlData: Uint8Array) => {
+    if (!generationJob?.id) return;
+    setActionError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      // Convert to base64 for JSON transport (chunk to avoid call stack overflow)
+      let binary = '';
+      const bytes = stlData;
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      const response = await fetch(`${API_URL}/admin/generate-openscad/${generationJob.id}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ stlBase64: base64 }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGenerationJob(data.job);
+      } else {
+        const data = await response.json();
+        setActionError(data.error || 'Failed to upload STL');
+      }
+    } catch (e) {
+      setActionError('Failed to upload STL — network error');
+    }
+  };
 
   // Poll for new/updated design requests every 15 seconds
   useEffect(() => {
@@ -604,37 +812,37 @@ const AdminDesignAssistance = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Palette className="w-8 h-8 text-purple-500" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 Design Assistance Orders
               </h1>
               <p className="text-gray-400 mt-1">Manage custom design requests and assistance orders</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
                   type="text"
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
+                  className="pl-10 bg-gray-900 border-gray-800 text-white w-full sm:w-64"
                 />
               </div>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{orders.length}</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{orders.length}</div>
                   <p className="text-sm text-gray-400 mt-1">Total Requests</p>
                 </div>
               </CardContent>
@@ -642,7 +850,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-500">
                     {orders.filter(o => o.design_status === 'pending' || o.design_status === 'in_review').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Pending</p>
@@ -652,7 +860,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500">
                     {orders.filter(o => o.design_status === 'in_progress').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">In Progress</p>
@@ -662,7 +870,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-500">
                     {orders.filter(o => o.design_status === 'completed').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Completed</p>
@@ -672,7 +880,7 @@ const AdminDesignAssistance = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-cyan-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-500">
                     {orders.filter(o => o.design_status === 'approved').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Approved (Awaiting Payment)</p>
@@ -682,7 +890,9 @@ const AdminDesignAssistance = () => {
           </div>
 
           {/* Kanban Board - Orders by Status */}
-          <div className="grid grid-cols-6 gap-4">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 pb-4">
+            <div className="min-w-[900px] px-3 sm:px-0">
+              <div className="grid grid-cols-6 gap-3 sm:gap-4">
             {/* Pending Column */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
@@ -1026,6 +1236,8 @@ const AdminDesignAssistance = () => {
                 )}
               </CardContent>
             </Card>
+              </div>
+            </div>
           </div>
 
           {/* Orders Table - Hidden by default, can be toggled */}
@@ -1034,6 +1246,8 @@ const AdminDesignAssistance = () => {
               <CardTitle className="text-white">All Design Assistance Orders</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
+                <div className="min-w-[800px]">
               <div className="space-y-2">
                 <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
                   <div>Order ID</div>
@@ -1094,17 +1308,19 @@ const AdminDesignAssistance = () => {
                   ))
                 )}
               </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Design Requests List with Conversations */}
-        <div className="grid grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6 md:mt-8">
           {/* Left Column - Design Requests List */}
           <Card className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
             <CardHeader className="border-b border-gray-800 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2 text-white">
                   <Palette className="w-5 h-5 text-cyan-500" />
                   Design Requests
                   <span className="text-sm font-normal text-gray-400">({orders.length})</span>
@@ -1188,7 +1404,7 @@ const AdminDesignAssistance = () => {
           <Card ref={conversationRef} className="shadow-xl border-2 border-transparent hover:border-cyan-500/20 transition-all bg-gradient-to-br from-gray-900 to-cyan-500/5 flex flex-col overflow-hidden">
             <CardHeader className="border-b border-gray-800 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2 text-white">
+                <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2 text-white">
                   <MessageSquare className="w-5 h-5 text-cyan-500" />
                   Conversation
                   {messages.length > 0 && (
@@ -1215,7 +1431,7 @@ const AdminDesignAssistance = () => {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden flex flex-col p-6 pt-0 gap-4">
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-3 sm:p-4 md:p-6 pt-0 gap-3 sm:gap-4">
               {selectedRequestForConversation ? (
                 <>
                   {/* Project Info Bar */}
@@ -1286,7 +1502,275 @@ const AdminDesignAssistance = () => {
                           No messages yet. Start the conversation!
                         </div>
                       ) : (
-                        messages.map((msg) => (
+                        messages.map((msg) => {
+                          // Render admin-only error as a warning card
+                          const isAdminError = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_error');
+                          if (isAdminError) {
+                            return (
+                              <div key={msg.id} className="mx-auto max-w-[90%]">
+                                <div className="rounded-xl border-2 border-red-500/30 bg-gradient-to-br from-red-900/20 to-orange-900/20 p-4 space-y-1">
+                                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
+                                    <AlertCircle className="w-4 h-4" />
+                                    System Error
+                                  </div>
+                                  <p className="text-sm text-red-300">{msg.message}</p>
+                                  <p className="text-[10px] text-red-500/60 text-right">Only visible to admins</p>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Render admin-only design brief as a special card
+                          const isAdminBrief = msg.attachments && msg.attachments.some((att: any) => att.type === 'admin_brief');
+                          if (isAdminBrief) {
+                            const briefAtt = msg.attachments.find((att: any) => att.type === 'admin_brief');
+                            const classification = briefAtt?.classification;
+                            const isDecorative = classification === 'decorative';
+                            const isMechanical = classification === 'mechanical';
+                            const classificationBadge: Record<string, { bg: string; text: string; label: string }> = {
+                              decorative: { bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'Decorative' },
+                              mechanical: { bg: 'bg-indigo-500/20', text: 'text-indigo-300', label: 'Mechanical' },
+                              functional: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', label: 'Functional' },
+                              prototype: { bg: 'bg-orange-500/20', text: 'text-orange-300', label: 'Prototype' },
+                            };
+                            const badge = classificationBadge[classification] || null;
+                            return (
+                              <div key={msg.id} className="mx-auto max-w-[90%] space-y-3">
+                                <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-4 space-y-3">
+                                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                                    <FileText className="w-4 h-4" />
+                                    Design Brief from Pikoro
+                                    {badge && (
+                                      <Badge className={`ml-auto ${badge.bg} ${badge.text} border-current/30 text-[10px]`}>{badge.label}</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-200 whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
+                                  <p className="text-[10px] text-amber-500/60 text-right">Only visible to admins</p>
+
+                                  {/* Generate 3D button — only for decorative designs */}
+                                  {isDecorative && !generationJob && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleTriggerGeneration(msg.message)}
+                                      disabled={generatingTripo}
+                                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                    >
+                                      {generatingTripo ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting generation...</>
+                                      ) : (
+                                        <><Sparkles className="w-4 h-4 mr-2" />Generate 3D Preview</>
+                                      )}
+                                    </Button>
+                                  )}
+
+                                  {/* Generate CAD button — only for mechanical designs */}
+                                  {isMechanical && !generationJob && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleTriggerOpenSCAD(msg.message)}
+                                      disabled={generatingOpenSCAD}
+                                      className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
+                                    >
+                                      {generatingOpenSCAD ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating CAD...</>
+                                      ) : (
+                                        <><Wrench className="w-4 h-4 mr-2" />Generate CAD</>
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {/* Inline action error */}
+                                {actionError && (
+                                  <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-3 flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-red-300">{actionError}</p>
+                                    </div>
+                                    <button onClick={() => setActionError(null)} className="text-red-500/60 hover:text-red-400 flex-shrink-0">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Generation job status display */}
+                                {generationJob && (
+                                  <div className="rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-pink-900/20 p-4 space-y-3">
+                                    {/* Pending / Generating */}
+                                    {['pending', 'generating', 'processing'].includes(generationJob.status) && (
+                                      <div className="flex items-center gap-3 text-purple-300">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <div>
+                                          <p className="text-sm font-medium">Generating 3D preview...</p>
+                                          <p className="text-xs text-gray-400">This may take up to a minute</p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Code Ready — OpenSCAD editor with parametric preview */}
+                                    {generationJob.status === 'code_ready' && generationJob.openscad_code && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+                                          <Wrench className="w-4 h-4" />
+                                          CAD Model — Edit Parameters & Preview
+                                        </div>
+                                        <OpenSCADEditor
+                                          code={generationJob.openscad_code}
+                                          parameters={generationJob.parameters || []}
+                                          onExport={handleUploadSTL}
+                                          onRegenerate={() => {
+                                            setGenerationJob(null);
+                                          }}
+                                        />
+                                      </>
+                                    )}
+
+                                    {/* Pending Approval — show model + access type selector + approve/reject */}
+                                    {generationJob.status === 'pending_approval' && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                                          <Sparkles className="w-4 h-4" />
+                                          3D Preview — Awaiting Your Approval
+                                        </div>
+                                        <div className="rounded-xl overflow-hidden border border-purple-700/50" style={{ height: '300px' }}>
+                                          <ModelViewerUrl
+                                            url={generationJob.file_url}
+                                            fileName={generationJob.file_name || (generationJob.generation_type === 'openscad' ? 'model.stl' : 'model.glb')}
+                                            height="100%"
+                                          />
+                                        </div>
+
+                                        {/* Access Type Selector */}
+                                        <div className="space-y-2">
+                                          <p className="text-xs text-gray-400 font-semibold">Client Access:</p>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              type="button"
+                                              variant={genAccessType === 'preview_only' ? 'default' : 'outline'}
+                                              size="sm"
+                                              onClick={() => { setGenAccessType('preview_only'); setGenPrice(''); }}
+                                              className={genAccessType === 'preview_only' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                                            >
+                                              <Lock className="w-3 h-3 mr-1" />Preview Only
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant={genAccessType === 'paid' ? 'default' : 'outline'}
+                                              size="sm"
+                                              onClick={() => setGenAccessType('paid')}
+                                              className={genAccessType === 'paid' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}
+                                            >
+                                              Set Price
+                                            </Button>
+                                          </div>
+                                          {genAccessType === 'paid' && (
+                                            <Input
+                                              type="number"
+                                              placeholder="Price in PLN"
+                                              value={genPrice}
+                                              onChange={(e) => setGenPrice(e.target.value)}
+                                              className="bg-gray-800 border-gray-700 text-white"
+                                              min="0.01"
+                                              step="0.01"
+                                            />
+                                          )}
+                                          {!genAccessType && (
+                                            <p className="text-[10px] text-yellow-400">Select access type to enable approval</p>
+                                          )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleApproveGeneration(generationJob.id)}
+                                            disabled={!genAccessType || (genAccessType === 'paid' && (!genPrice || parseFloat(genPrice) <= 0))}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                          >
+                                            <Check className="w-4 h-4 mr-2" />
+                                            {genAccessType === 'paid' ? `Approve & Send (${genPrice || '?'} PLN)` : 'Approve & Send to Client'}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleRejectGeneration(generationJob.id)}
+                                            className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                                          >
+                                            <X className="w-4 h-4 mr-2" />Reject
+                                          </Button>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {/* Approved — show model with badge */}
+                                    {generationJob.status === 'approved' && (
+                                      <>
+                                        <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
+                                          <Check className="w-4 h-4" />
+                                          3D Preview — Approved & Sent to Client
+                                        </div>
+                                        <div className="rounded-xl overflow-hidden border border-green-700/50" style={{ height: '300px' }}>
+                                          <ModelViewerUrl
+                                            url={generationJob.file_url}
+                                            fileName={generationJob.file_name || (generationJob.generation_type === 'openscad' ? 'model.stl' : 'model.glb')}
+                                            height="100%"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {/* Failed */}
+                                    {generationJob.status === 'failed' && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-red-400 text-sm">
+                                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                          <span>Generation failed: {generationJob.error_message || 'Unknown error'}</span>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setGenerationJob(null);
+                                            if (generationJob.generation_type === 'openscad') {
+                                              handleTriggerOpenSCAD(msg.message);
+                                            } else {
+                                              handleTriggerGeneration(msg.message);
+                                            }
+                                          }}
+                                          className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
+                                        >
+                                          <RotateCcw className="w-4 h-4 mr-2" />Retry Generation
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Rejected — allow retry */}
+                                    {generationJob.status === 'rejected' && (
+                                      <div className="space-y-2">
+                                        <p className="text-sm text-gray-400">Previous generation was rejected.</p>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setGenerationJob(null);
+                                            if (generationJob.generation_type === 'openscad') {
+                                              handleTriggerOpenSCAD(msg.message);
+                                            } else {
+                                              handleTriggerGeneration(msg.message);
+                                            }
+                                          }}
+                                          className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10"
+                                        >
+                                          <RotateCcw className="w-4 h-4 mr-2" />Regenerate
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          return (
                           <div
                             key={msg.id}
                             className={`flex ${msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
@@ -1313,7 +1797,14 @@ const AdminDesignAssistance = () => {
                                     ? 'text-emerald-400 text-left'
                                     : 'text-purple-400 text-left'
                                 }`}>
-                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : msg.sender_type === 'system' ? 'Pikoro' : 'User'}
+                                  {msg.sender_type === 'engineer' || msg.sender_type === 'admin' ? 'Admin (You)' : msg.sender_type === 'system' ? (
+                                    <>
+                                      Pikoro
+                                      {msg.attachments?.find((att: any) => att.type === 'ai_model')?.model && (
+                                        <span className="text-emerald-600 font-normal ml-1">· {msg.attachments.find((att: any) => att.type === 'ai_model').model}</span>
+                                      )}
+                                    </>
+                                  ) : 'User'}
                                 </span>
 
                                 <div
@@ -1326,7 +1817,34 @@ const AdminDesignAssistance = () => {
                                   }`}
                                 >
                                   <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                                  
+
+                                  {/* Generated 3D Model Preview */}
+                                  {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generated_model').map((att: any, idx: number) => (
+                                    <div key={`gen-model-${idx}`} className="mt-3 rounded-xl overflow-hidden border border-gray-700" style={{ height: '300px' }}>
+                                      <ModelViewerUrl
+                                        url={att.url}
+                                        fileName={att.name || 'model.glb'}
+                                        height="100%"
+                                      />
+                                    </div>
+                                  ))}
+
+                                  {/* Generation Status (loading) */}
+                                  {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_status').map((att: any, idx: number) => (
+                                    <div key={`gen-status-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <span>Generating 3D preview...</span>
+                                    </div>
+                                  ))}
+
+                                  {/* Generation Error */}
+                                  {msg.attachments && msg.attachments.filter((att: any) => att.type === 'generation_error' || att.type === 'admin_only').map((att: any, idx: number) => (
+                                    <div key={`gen-err-${idx}`} className="mt-3 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg p-2">
+                                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                      <span>{att.error || 'Generation issue'}</span>
+                                    </div>
+                                  ))}
+
                                   {/* Attachments */}
                                   {msg.attachments && msg.attachments.length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
@@ -1394,7 +1912,8 @@ const AdminDesignAssistance = () => {
                               </div>
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </ScrollArea>
@@ -1521,11 +2040,11 @@ const AdminDesignAssistance = () => {
         </div>      </main>
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <DialogTitle className="text-2xl text-white">Design Assistance Order Details</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl md:text-2xl text-white">Design Assistance Order Details</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Order ID: {selectedOrder?.id}
                 </DialogDescription>
@@ -1547,7 +2066,7 @@ const AdminDesignAssistance = () => {
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
             </div>
           ) : selectedOrder ? (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Reference Files */}
               {selectedOrder.attached_files && selectedOrder.attached_files.length > 0 && (
                 <Card className="bg-gray-800 border-gray-700">
@@ -1575,7 +2094,7 @@ const AdminDesignAssistance = () => {
                   <CardTitle className="text-white">Design Project Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-400">Project Name</label>
                       <p className="text-white font-medium">{selectedOrder.project_name}</p>
@@ -1642,7 +2161,7 @@ const AdminDesignAssistance = () => {
               </Card>
 
               {/* Customer & Payment Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
                     <CardTitle className="text-white">Customer Info</CardTitle>
@@ -1666,13 +2185,13 @@ const AdminDesignAssistance = () => {
                   <CardContent className="space-y-3">
                     <div>
                       <label className="text-sm text-gray-400">Estimated Price</label>
-                      <p className="text-white font-bold text-xl">
+                      <p className="text-white font-bold text-base sm:text-lg md:text-xl">
                         {selectedOrder.estimated_price ? formatPrice(selectedOrder.estimated_price) : 'Not set'}
                       </p>
                     </div>
                     <div>
                       <label className="text-sm text-gray-400">Final Price</label>
-                      <p className="text-white font-bold text-xl">
+                      <p className="text-white font-bold text-base sm:text-lg md:text-xl">
                         {selectedOrder.final_price ? formatPrice(selectedOrder.final_price) : 'Not set'}
                       </p>
                     </div>
@@ -1745,9 +2264,9 @@ const AdminDesignAssistance = () => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl text-cyan-400 flex items-center gap-2">
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl text-cyan-400 flex items-center gap-2">
               <Info className="w-6 h-6" />
               Order Details
             </DialogTitle>
@@ -1757,11 +2276,11 @@ const AdminDesignAssistance = () => {
           </DialogHeader>
           
           {detailsRequest && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               {/* Project Name & Status */}
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1">{detailsRequest.project_name}</h3>
                   <p className="text-gray-400 text-sm">Created: {new Date(detailsRequest.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <Badge className={`${
@@ -1783,7 +2302,7 @@ const AdminDesignAssistance = () => {
               </div>
 
               {/* Specifications Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-400 text-sm">Usage Type</label>
                   <p className="text-white mt-1">{detailsRequest.usage_type || 'Not specified'}</p>
@@ -1792,7 +2311,7 @@ const AdminDesignAssistance = () => {
                   <label className="text-gray-400 text-sm">Material</label>
                   <p className="text-white mt-1">{detailsRequest.desired_material || 'Not specified'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="text-gray-400 text-sm">Dimensions</label>
                   <p className="text-white mt-1">{detailsRequest.approximate_dimensions || 'Not specified'}</p>
                 </div>
@@ -1807,7 +2326,7 @@ const AdminDesignAssistance = () => {
               )}
 
               {/* Pricing */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
                 {detailsRequest.estimated_price && (
                   <div>
                     <label className="text-gray-400 text-sm">Estimated Price</label>

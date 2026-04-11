@@ -20,6 +20,8 @@ import {
   Pencil,
   Building2,
   Wrench,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -30,6 +32,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { API_URL } from "@/config/api";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 
 const menuItems = [
   {
@@ -127,6 +130,7 @@ const menuItems = [
 
 export const AdminSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [approvedAndPaid, setApprovedAndPaid] = useState(0);
@@ -135,7 +139,7 @@ export const AdminSidebar = () => {
 
   useEffect(() => {
     const fetchCounts = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
       try {
         const res = await fetch(`${API_URL}/admin/conversations/unread-count`, {
@@ -180,10 +184,30 @@ export const AdminSidebar = () => {
   };
 
   return (
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="fixed top-4 left-4 z-50 lg:hidden bg-gray-900 text-white hover:bg-gray-800 border border-gray-800"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </Button>
+
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
     <aside
       className={cn(
-        "bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 min-h-screen sticky top-0 relative",
-        collapsed ? "w-20" : "w-64"
+        "fixed lg:relative inset-y-0 left-0 z-40 bg-gray-900 border-r border-gray-800 flex flex-col transition-all duration-300 ease-in-out min-h-screen",
+        collapsed ? "w-20" : "w-64",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
       {/* Toggle Button - Top Right */}
@@ -270,6 +294,7 @@ export const AdminSidebar = () => {
                         <NavLink
                           key={subItem.path}
                           to={subItem.path}
+                          onClick={() => setIsOpen(false)}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group text-sm",
                             isSubActive
@@ -305,6 +330,7 @@ export const AdminSidebar = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => setIsOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
                 isActive
@@ -373,5 +399,6 @@ export const AdminSidebar = () => {
         </Button>
       </div>
     </aside>
+    </>
   );
 };

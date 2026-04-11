@@ -78,7 +78,7 @@ const ResetPassword = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background flex items-center justify-center p-3 sm:p-4 md:p-6">
         <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
@@ -103,7 +103,7 @@ const ResetPassword = () => {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background flex items-center justify-center p-3 sm:p-4 md:p-6">
         <Card className="w-full max-w-md shadow-2xl border-2 border-red-200">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
@@ -127,7 +127,7 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-purple-500/5 to-background relative overflow-hidden flex items-center justify-center p-3 sm:p-4 md:p-6">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float"></div>
@@ -139,7 +139,7 @@ const ResetPassword = () => {
           <div className="flex justify-center">
             <Logo size="xl" showText={false} />
           </div>
-          <CardTitle className="text-3xl gradient-text">{t('resetPassword.title')}</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl gradient-text">{t('resetPassword.title')}</CardTitle>
           <CardDescription className="text-base">
             {t('resetPassword.subtitle')}
           </CardDescription>

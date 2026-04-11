@@ -72,7 +72,7 @@ const AdminPrintJobs = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_URL}/admin/orders`, {
+      const response = await fetch(`${API_URL}/admin/orders?type=print`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -171,9 +171,9 @@ const AdminPrintJobs = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="flex items-center justify-center h-full">
-            <div className="text-white text-xl">Loading print jobs...</div>
+            <div className="text-white text-base sm:text-lg md:text-xl">Loading print jobs...</div>
           </div>
         </main>
       </div>
@@ -184,12 +184,12 @@ const AdminPrintJobs = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
                 <PackageCheck className="w-8 h-8 text-blue-500" />
                 Print Jobs
               </h1>
@@ -203,18 +203,18 @@ const AdminPrintJobs = () => {
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-900 border-gray-800 text-white w-64"
+                  className="pl-10 bg-gray-900 border-gray-800 text-white w-full sm:w-64"
                 />
               </div>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{orders.length}</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{orders.length}</div>
                   <p className="text-sm text-gray-400 mt-1">Total Print Jobs</p>
                 </div>
               </CardContent>
@@ -222,7 +222,7 @@ const AdminPrintJobs = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-500">
                     {orders.filter(o => o.status === 'printing').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Printing Now</p>
@@ -232,7 +232,7 @@ const AdminPrintJobs = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500">
                     {orders.filter(o => o.status === 'in_queue').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">In Queue</p>
@@ -242,7 +242,7 @@ const AdminPrintJobs = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-500">
                     {orders.filter(o => o.status === 'finished').length}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">Completed</p>
@@ -252,7 +252,8 @@ const AdminPrintJobs = () => {
           </div>
 
           {/* Kanban Board - Orders by Status */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="overflow-x-auto">
+          <div className="grid grid-cols-5 gap-4 min-w-[750px]">
             {/* Submitted Column */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
@@ -268,7 +269,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No submitted orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'submitted').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-gray-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -276,7 +277,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -289,6 +290,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -305,6 +307,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -327,7 +330,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No orders in queue</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'in_queue').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -335,7 +338,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -348,6 +351,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -364,6 +368,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -386,7 +391,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No orders printing</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'printing').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-orange-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -394,7 +399,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -407,6 +412,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -423,6 +429,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -445,7 +452,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No finished orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'finished').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-green-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -453,7 +460,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -466,6 +473,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -482,6 +490,7 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -504,7 +513,7 @@ const AdminPrintJobs = () => {
                   <p className="text-gray-500 text-xs text-center py-4">No delivered orders</p>
                 ) : (
                   filteredOrders.filter(o => o.status === 'delivered' || o.status === 'on_hold').map((order) => (
-                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer">
+                    <Card key={order.id} className="bg-gray-800 border-gray-700 hover:border-purple-500/50 transition-colors cursor-pointer" onClick={() => fetchOrderDetails(order.id)}>
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <p className="text-white font-medium text-sm truncate flex-1">{order.file_name}</p>
@@ -512,7 +521,7 @@ const AdminPrintJobs = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-blue-500/20"
-                            onClick={() => fetchOrderDetails(order.id)}
+                            onClick={(e) => { e.stopPropagation(); fetchOrderDetails(order.id); }}
                           >
                             <Eye className="w-3 h-3 text-blue-400" />
                           </Button>
@@ -525,6 +534,7 @@ const AdminPrintJobs = () => {
                           <span className="text-gray-500">#{order.id.slice(0, 8)}</span>
                           <span className="text-white font-medium">{formatPrice(order.price)}</span>
                         </div>
+                        <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
@@ -541,12 +551,14 @@ const AdminPrintJobs = () => {
                             <SelectItem value="on_hold">On Hold</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
                 )}
               </CardContent>
             </Card>
+          </div>
           </div>
 
           {/* Orders Table - Hidden by default */}
@@ -555,7 +567,8 @@ const AdminPrintJobs = () => {
               <CardTitle className="text-white">All Print Jobs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="overflow-x-auto">
+              <div className="space-y-2 min-w-[800px]">
                 <div className="grid grid-cols-8 gap-4 text-sm font-bold text-gray-400 pb-2 px-4 border-b border-gray-800">
                   <div>Order ID</div>
                   <div>File Name</div>
@@ -596,7 +609,7 @@ const AdminPrintJobs = () => {
                           value={order.status}
                           onValueChange={(value) => updateOrderStatus(order.id, value)}
                         >
-                          <SelectTrigger className="w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
+                          <SelectTrigger className="w-full sm:w-[140px] h-8 bg-gray-800 border-gray-700 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -647,13 +660,14 @@ const AdminPrintJobs = () => {
                   ))
                 )}
               </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Order Details Dialog */}
         <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
             {loadingOrderDetails ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -662,7 +676,7 @@ const AdminPrintJobs = () => {
             ) : selectedOrder ? (
               <>
                 <DialogHeader>
-                  <DialogTitle className="text-2xl flex items-center gap-3 text-white">
+                  <DialogTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-3 text-white">
                     Commande #{selectedOrder.id.slice(0, 8).toUpperCase()}
                     <StatusBadge status={selectedOrder.status} />
                     {selectedOrder.payment_status && (
@@ -677,7 +691,7 @@ const AdminPrintJobs = () => {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Parent Order Link */}
                   {selectedOrder.parent_order_id && (
                     <Card className="bg-purple-900/20 border-purple-700">
@@ -743,7 +757,7 @@ const AdminPrintJobs = () => {
                         {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
                           <div className="p-4 bg-gray-800/50 rounded-lg">
                             <p className="text-xs text-purple-300 uppercase tracking-wide mb-3">Reference Images</p>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {selectedOrder.reference_images.map((img, idx) => (
                                 <img 
                                   key={idx}
@@ -803,7 +817,7 @@ const AdminPrintJobs = () => {
                         <CardTitle className="text-white">⚙️ Parameters</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <p className="text-xs text-gray-500 uppercase">Material</p>
                             <p className="font-semibold text-white">{selectedOrder.material?.toUpperCase()}</p>
@@ -813,7 +827,7 @@ const AdminPrintJobs = () => {
                             <p className="font-semibold text-white">{capitalizeFirst(selectedOrder.color)}</p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <p className="text-xs text-gray-500 uppercase">Quality</p>
                             <p className="font-semibold text-white">{selectedOrder.layer_height}mm</p>
@@ -825,7 +839,7 @@ const AdminPrintJobs = () => {
                         </div>
                         <div className="flex justify-between items-center pt-3 border-t border-gray-700">
                           <span className="text-gray-400">📦 Quantity</span>
-                          <span className="font-bold text-xl text-blue-400">{selectedOrder.quantity}</span>
+                          <span className="font-bold text-base sm:text-lg md:text-xl text-blue-400">{selectedOrder.quantity}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -872,7 +886,7 @@ const AdminPrintJobs = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="bg-gray-900 rounded-lg p-4 text-center">
-                          <p className="font-mono text-xl font-bold text-blue-400">{selectedOrder.tracking_code}</p>
+                          <p className="font-mono text-base sm:text-lg md:text-xl font-bold text-blue-400">{selectedOrder.tracking_code}</p>
                         </div>
                       </CardContent>
                     </Card>

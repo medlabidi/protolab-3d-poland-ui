@@ -458,7 +458,7 @@ const EditProject = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <span className="ml-3 text-muted-foreground">{t('editProject.loading')}</span>
@@ -472,7 +472,7 @@ const EditProject = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto text-center py-12">
             <p className="text-destructive text-lg">{error || t('editProject.projectNotFound')}</p>
             <Button onClick={() => navigate("/orders")} variant="outline" className="mt-4">
@@ -488,7 +488,7 @@ const EditProject = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardContent className="pt-6">
@@ -514,7 +514,7 @@ const EditProject = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background overflow-hidden">
       <DashboardSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto max-h-screen">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4 animate-slide-up">
@@ -526,7 +526,7 @@ const EditProject = () => {
                 <FolderOpen className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">{t('editProject.title')}: {decodedProjectName}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold gradient-text">{t('editProject.title')}: {decodedProjectName}</h1>
                 <p className="text-muted-foreground">{orders.length} {t('editProject.parts')} • {t('editProject.created')} {formatDate(orders[0]?.created_at)}</p>
               </div>
             </div>
@@ -553,7 +553,7 @@ const EditProject = () => {
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2">
               <TabsTrigger value="parts" className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4" />
                 {t('editProject.tabs.parts')}
@@ -626,7 +626,7 @@ const EditProject = () => {
                               </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label>{t('editProject.labels.material')}</Label>
                                 <Select 
@@ -664,7 +664,7 @@ const EditProject = () => {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label>{t('editProject.labels.quality')}</Label>
                                 <Select 
@@ -787,7 +787,7 @@ const EditProject = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-5 gap-4 items-center">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 items-center">
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground mb-1">{t('editProject.priceSummary.originalTotal')}</p>
                   <p className="text-xl font-bold">{originalTotal.toFixed(2)} PLN</p>

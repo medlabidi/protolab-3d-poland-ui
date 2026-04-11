@@ -317,7 +317,7 @@ const Refund = () => {
     return (
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
       </div>
@@ -354,15 +354,15 @@ const Refund = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-background via-muted/10 to-background">
       <DashboardSidebar />
 
-      <main className="flex-1 p-8">
-        <div className="max-w-3xl mx-auto space-y-8">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
           {/* Header */}
           <div className="flex items-center gap-4 animate-slide-up">
             <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold gradient-text">{getReasonTitle()}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold gradient-text">{getReasonTitle()}</h1>
               <p className="text-muted-foreground">{getReasonDescription()}</p>
             </div>
           </div>

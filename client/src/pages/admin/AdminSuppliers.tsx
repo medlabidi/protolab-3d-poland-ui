@@ -358,12 +358,12 @@ const AdminSuppliers = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Suppliers Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Suppliers Management</h1>
               <p className="text-gray-400">Manage your material suppliers</p>
             </div>
             <Button 
@@ -479,16 +479,16 @@ const AdminSuppliers = () => {
 
           {/* Add Supplier Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Add New Supplier</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Fill in all supplier information
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                 {/* Company Info */}
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-1 sm:col-span-2">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
                     Company Information
@@ -514,7 +514,7 @@ const AdminSuppliers = () => {
                 </div>
 
                 {/* Contact Info */}
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     Contact
@@ -539,7 +539,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Website</Label>
                   <Input
                     placeholder="https://example.com"
@@ -550,13 +550,13 @@ const AdminSuppliers = () => {
                 </div>
 
                 {/* Address */}
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
                     Address
                   </h3>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Address</Label>
                   <Input
                     placeholder="123 Main Street"
@@ -583,7 +583,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Country</Label>
                   <Input
                     placeholder="Poland"
@@ -594,13 +594,13 @@ const AdminSuppliers = () => {
                 </div>
 
                 {/* Business Details */}
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Package className="w-4 h-4" />
                     Business Details
                   </h3>
                 </div>
-                <div className="space-y-3 col-span-2">
+                <div className="space-y-3 col-span-1 sm:col-span-1 sm:col-span-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-gray-300">Materials Supplied</Label>
                     <Button
@@ -647,7 +647,7 @@ const AdminSuppliers = () => {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Delivery Time</Label>
                   <Input
                     placeholder="3-5 days"
@@ -666,7 +666,7 @@ const AdminSuppliers = () => {
                   />
                   <Label htmlFor="active" className="text-gray-300 cursor-pointer">Active Supplier</Label>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Notes</Label>
                   <Textarea
                     placeholder="Additional notes..."
@@ -697,16 +697,16 @@ const AdminSuppliers = () => {
 
           {/* Edit Supplier Dialog - Same structure as Add */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Supplier</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Edit supplier information
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                 {/* Same form structure as Add Dialog */}
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-1 sm:col-span-2">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
                     Company Information
@@ -728,7 +728,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
                   />
                 </div>
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     Contact
@@ -751,7 +751,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Website</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
@@ -759,13 +759,13 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   />
                 </div>
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
                     Address
                   </h3>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Address</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
@@ -789,7 +789,7 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Country</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
@@ -797,13 +797,13 @@ const AdminSuppliers = () => {
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                   />
                 </div>
-                <div className="col-span-2 mt-4">
+                <div className="col-span-1 sm:col-span-2 mt-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <Package className="w-4 h-4" />
                     Business Details
                   </h3>
                 </div>
-                <div className="space-y-3 col-span-2">
+                <div className="space-y-3 col-span-1 sm:col-span-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-gray-300">Materials Supplied</Label>
                     <Button
@@ -850,7 +850,7 @@ const AdminSuppliers = () => {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Delivery Time</Label>
                   <Input
                     className="bg-gray-800 border-gray-700 text-white"
@@ -868,7 +868,7 @@ const AdminSuppliers = () => {
                   />
                   <Label htmlFor="edit-active" className="text-gray-300 cursor-pointer">Active Supplier</Label>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
                   <Label className="text-gray-300">Notes</Label>
                   <Textarea
                     className="bg-gray-800 border-gray-700 text-white"
@@ -898,7 +898,7 @@ const AdminSuppliers = () => {
 
           {/* Details Dialog */}
           <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-white">Supplier Details</DialogTitle>
               </DialogHeader>
@@ -909,12 +909,12 @@ const AdminSuppliers = () => {
                       <Building2 className="w-8 h-8 text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-white">{selectedSupplier.name}</h3>
+                      <h3 className="text-base sm:text-lg md:text-xl font-semibold text-white">{selectedSupplier.name}</h3>
                       <p className="text-gray-400">{selectedSupplier.contact_name}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Email</p>
                       <p className="text-white">{selectedSupplier.email}</p>
@@ -923,7 +923,7 @@ const AdminSuppliers = () => {
                       <p className="text-sm text-gray-500 mb-1">Phone</p>
                       <p className="text-white">{selectedSupplier.phone}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <p className="text-sm text-gray-500 mb-1">Full Address</p>
                       <p className="text-white">
                         {selectedSupplier.address}<br />
@@ -932,7 +932,7 @@ const AdminSuppliers = () => {
                       </p>
                     </div>
                     {selectedSupplier.website && (
-                      <div className="col-span-2">
+                      <div className="col-span-1 sm:col-span-2">
                         <p className="text-sm text-gray-500 mb-1">Website</p>
                         <a href={selectedSupplier.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
                           {selectedSupplier.website}
@@ -947,7 +947,7 @@ const AdminSuppliers = () => {
                       <p className="text-sm text-gray-500 mb-1">Total Orders</p>
                       <p className="text-white">{selectedSupplier.total_orders}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <p className="text-sm text-gray-500 mb-2">Materials Supplied</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedSupplier.materials_supplied.map((materialTypeId, idx) => {
@@ -961,7 +961,7 @@ const AdminSuppliers = () => {
                       </div>
                     </div>
                     {selectedSupplier.notes && (
-                      <div className="col-span-2">
+                      <div className="col-span-1 sm:col-span-2">
                         <p className="text-sm text-gray-500 mb-1">Notes</p>
                         <p className="text-gray-300">{selectedSupplier.notes}</p>
                       </div>

@@ -48,6 +48,7 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   unread_count?: number;
+  has_error?: boolean;
   last_message?: Message;
   user?: ConversationUser;
   order?: ConversationOrder;
@@ -272,16 +273,16 @@ const AdminConversations = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
 
-      <main className="flex-1 p-8 overflow-hidden flex flex-col">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden flex flex-col">
         <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2">Conversations</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Conversations</h1>
             <p className="text-gray-400">Manage customer conversations and support messages</p>
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 overflow-hidden">
             {/* Conversations List */}
             <Card className="lg:col-span-1 bg-gray-900 border-gray-800 flex flex-col overflow-hidden">
               <CardHeader className="border-b border-gray-800">
@@ -351,11 +352,16 @@ const AdminConversations = () => {
                             <p className="font-medium text-white text-sm truncate">
                               {conversation.user?.name || 'Unknown'}
                             </p>
-                            {conversation.unread_count ? (
-                              <Badge variant="default" className="bg-red-500">
-                                {conversation.unread_count}
-                              </Badge>
-                            ) : null}
+                            <div className="flex items-center gap-1">
+                              {conversation.has_error && (
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                              )}
+                              {conversation.unread_count ? (
+                                <Badge variant="default" className="bg-red-500">
+                                  {conversation.unread_count}
+                                </Badge>
+                              ) : null}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-400 truncate mb-2">
                             {conversation.user?.email}
@@ -385,9 +391,9 @@ const AdminConversations = () => {
                 <>
                   {/* Conversation Header */}
                   <CardHeader className="border-b border-gray-800 flex-shrink-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div>
-                        <CardTitle className="text-xl text-white mb-2">
+                        <CardTitle className="text-base sm:text-lg md:text-xl text-white mb-2">
                           {selectedConversation.user?.name}
                         </CardTitle>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -440,7 +446,26 @@ const AdminConversations = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {messages.map((message) => (
+                        {messages.map((message) => {
+                          // Render admin_error messages as a special warning card
+                          const isAdminError = message.attachments && Array.isArray(message.attachments) &&
+                            message.attachments.some((att: any) => att.type === 'admin_error');
+                          if (isAdminError) {
+                            return (
+                              <div key={message.id} className="mx-auto max-w-[90%]">
+                                <div className="rounded-xl border border-red-500/30 bg-red-900/20 p-3 space-y-1">
+                                  <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
+                                    <AlertCircle className="w-4 h-4" />
+                                    System Error
+                                  </div>
+                                  <p className="text-sm text-red-300">{message.message}</p>
+                                  <p className="text-[10px] text-red-500/60 text-right">{formatDate(message.created_at)}</p>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
                           <div
                             key={message.id}
                             className={cn(
@@ -489,7 +514,8 @@ const AdminConversations = () => {
                               </span>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         <div ref={messagesEndRef} />
                       </div>
                     )}

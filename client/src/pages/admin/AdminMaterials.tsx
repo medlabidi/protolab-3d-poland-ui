@@ -421,12 +421,12 @@ const AdminMaterials = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Materials Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Materials Management</h1>
               <p className="text-gray-400">Manage your 3D printing materials and inventory</p>
             </div>
             <div className="flex gap-2">
@@ -462,7 +462,7 @@ const AdminMaterials = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="p-4">
                 <p className="text-gray-400 text-sm mb-2">Total Materials</p>
-                <p className="text-2xl font-bold text-white">{materials.length}</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{materials.length}</p>
               </CardContent>
             </Card>
           </div>
@@ -485,9 +485,9 @@ const AdminMaterials = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-800">
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Swatch</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Color Code</th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Color Swatch</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Color Code</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-300">Type</span>
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -503,8 +503,8 @@ const AdminMaterials = () => {
                             </Select>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Price (PLN/kg)</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-300">Stock Status</span>
                             <Select value={stockFilter} onValueChange={setStockFilter}>
@@ -520,32 +520,32 @@ const AdminMaterials = () => {
                             </Select>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Active</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Supplier</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Active</th>
+                        <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                       {getFilteredMaterials().map(material => {
                         return (
                           <tr key={material.id} className={`hover:bg-gray-800/50 transition-colors ${!material.is_active ? 'opacity-50' : ''}`}>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <div
                                 className="w-12 h-12 rounded-lg border border-gray-700"
                                 style={{ backgroundColor: material.hex_color || material.color }}
                               ></div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <p className="text-white font-mono text-sm">{material.color || 'N/A'}</p>
                               <p className="text-gray-400 text-xs">{material.hex_color || material.color}</p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <span className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
                                 {material.material_type || 'N/A'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-white">{material.price_per_kg}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-white">{material.price_per_kg}</td>
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <Select
                                 value={material.stock_status || "available"}
                                 onValueChange={async (value) => {
@@ -587,8 +587,8 @@ const AdminMaterials = () => {
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-6 py-4 text-gray-400">{material.supplier}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-gray-400">{material.supplier}</td>
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -608,7 +608,7 @@ const AdminMaterials = () => {
                                 )}
                               </Button>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                               <div className="flex gap-2">
                                 <Button 
                                   variant="ghost" 
@@ -640,14 +640,14 @@ const AdminMaterials = () => {
 
           {/* Add Material Dialog */}
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-white">Add New Material</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Fill in the details for the new material
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
                   <Label className="text-gray-300">Material Type *</Label>
                   <Select
@@ -766,14 +766,14 @@ const AdminMaterials = () => {
 
           {/* Edit Material Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Material</DialogTitle>
                 <DialogDescription className="text-gray-400">
                   Update the material information
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
                   <Label className="text-gray-300">Material Type *</Label>
                   <Select

@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { getValidAccessToken, refreshAccessToken } from '@/utils/tokenRefresh';
+import { clearAuthData } from '@/lib/api';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -14,14 +16,6 @@ export function useApi<T = any>() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('accessToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-  };
-
   const request = useCallback(async <R = T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
@@ -31,12 +25,34 @@ export function useApi<T = any>() {
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
+    const doFetch = async (token: string | null) => {
+      return fetch(`${API_URL}${endpoint}`, {
         method,
-        headers: getAuthHeaders(),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         ...(body && { body: JSON.stringify(body) }),
       });
+    };
+
+    try {
+      let token = await getValidAccessToken();
+      let response = await doFetch(token);
+
+      // On 401, try refresh and retry once
+      if (response.status === 401) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          token = localStorage.getItem('accessToken');
+          response = await doFetch(token);
+        } else {
+          clearAuthData();
+          window.location.href = '/signin';
+          setLoading(false);
+          return null;
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -66,31 +82,31 @@ export function useApi<T = any>() {
   }, []);
 
   const get = useCallback(
-    <R = T>(endpoint: string, options?: UseApiOptions) => 
+    <R = T>(endpoint: string, options?: UseApiOptions) =>
       request<R>(endpoint, 'GET', undefined, options),
     [request]
   );
 
   const post = useCallback(
-    <R = T>(endpoint: string, body: any, options?: UseApiOptions) => 
+    <R = T>(endpoint: string, body: any, options?: UseApiOptions) =>
       request<R>(endpoint, 'POST', body, options),
     [request]
   );
 
   const put = useCallback(
-    <R = T>(endpoint: string, body: any, options?: UseApiOptions) => 
+    <R = T>(endpoint: string, body: any, options?: UseApiOptions) =>
       request<R>(endpoint, 'PUT', body, options),
     [request]
   );
 
   const patch = useCallback(
-    <R = T>(endpoint: string, body: any, options?: UseApiOptions) => 
+    <R = T>(endpoint: string, body: any, options?: UseApiOptions) =>
       request<R>(endpoint, 'PATCH', body, options),
     [request]
   );
 
   const del = useCallback(
-    <R = T>(endpoint: string, options?: UseApiOptions) => 
+    <R = T>(endpoint: string, options?: UseApiOptions) =>
       request<R>(endpoint, 'DELETE', undefined, options),
     [request]
   );

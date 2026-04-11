@@ -191,7 +191,7 @@ const AdminOrderDetails = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">Chargement des détails...</p>
@@ -205,7 +205,7 @@ const AdminOrderDetails = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto space-y-4">
             <Button 
               variant="outline" 
@@ -218,7 +218,7 @@ const AdminOrderDetails = () => {
             <Card className="bg-gray-900 border-gray-800">
               <CardContent className="pt-6 text-center py-12">
                 <div className="text-6xl mb-4">❌</div>
-                <p className="text-red-400 text-xl font-semibold mb-2">
+                <p className="text-red-400 text-base sm:text-lg md:text-xl font-semibold mb-2">
                   {error || 'Commande introuvable'}
                 </p>
                 <p className="text-gray-500">
@@ -236,10 +236,10 @@ const AdminOrderDetails = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header avec bouton retour */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <Button 
               variant="outline" 
               onClick={() => navigate("/admin/orders")}
@@ -249,7 +249,7 @@ const AdminOrderDetails = () => {
               Retour aux commandes
             </Button>
             <div className="h-8 w-px bg-gray-700" />
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
               {order.order_type === 'design' ? '🎨 Design Assistance' : '📦 Print Job'}
             </h1>
             {order.order_type === 'design' && (
@@ -282,7 +282,7 @@ const AdminOrderDetails = () => {
                     ) : (
                       <Package className="w-6 h-6 text-blue-400" />
                     )}
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                       #{order.id.slice(0, 8).toUpperCase()}
                     </h2>
                     <StatusBadge status={order.status} />
@@ -329,7 +329,7 @@ const AdminOrderDetails = () => {
                 <div className="flex flex-col items-end justify-between">
                   <div className="text-right">
                     <p className="text-sm text-gray-400 mb-1">Prix total</p>
-                    <p className="text-4xl font-bold text-green-400">
+                    <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-400">
                       {order.price.toFixed(2)} PLN
                     </p>
                   </div>
@@ -479,7 +479,7 @@ const AdminOrderDetails = () => {
 
                   <div className="p-4 bg-gradient-to-r from-purple-900/30 to-purple-800/30 rounded-lg border border-purple-700/50">
                     <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Quantité demandée</p>
-                    <p className="text-2xl font-bold text-purple-400">{order.quantity} pièce(s)</p>
+                    <p className="text-lg sm:text-xl md:text-2xl font-bold text-purple-400">{order.quantity} pièce(s)</p>
                   </div>
                 </CardContent>
               </Card>
@@ -493,7 +493,7 @@ const AdminOrderDetails = () => {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                 {/* Material & Color */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-800 rounded-lg">
                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Matériau</p>
                     <p className="text-lg font-bold text-white">{order.material?.toUpperCase()}</p>
@@ -505,7 +505,7 @@ const AdminOrderDetails = () => {
                 </div>
 
                 {/* Quality & Infill */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-800 rounded-lg">
                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Qualité</p>
                     <p className="text-lg font-bold text-white">{getQualityLabel(order.layer_height)}</p>
@@ -520,7 +520,7 @@ const AdminOrderDetails = () => {
                 {/* Quantity */}
                 <div className="p-4 bg-gray-800 rounded-lg">
                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Quantité</p>
-                  <p className="text-2xl font-bold text-blue-400">{order.quantity} pièce(s)</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400">{order.quantity} pièce(s)</p>
                 </div>
               </CardContent>
             </Card>
@@ -528,13 +528,13 @@ const AdminOrderDetails = () => {
           </div>
 
           {/* Technical Stats */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
             {order.material_weight && (
               <Card className="bg-gradient-to-br from-blue-900/30 to-blue-800/30 border-blue-700/50">
                 <CardContent className="pt-6 pb-6">
                   <div className="text-center">
                     <Weight className="w-10 h-10 text-blue-400 mx-auto mb-3" />
-                    <div className="text-3xl font-bold text-blue-400 mb-1">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-400 mb-1">
                       {(order.material_weight * 1000).toFixed(1)}g
                     </div>
                     <p className="text-sm text-gray-400">Poids matériau estimé</p>
@@ -548,7 +548,7 @@ const AdminOrderDetails = () => {
                 <CardContent className="pt-6 pb-6">
                   <div className="text-center">
                     <Clock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                    <div className="text-3xl font-bold text-purple-400 mb-1">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-400 mb-1">
                       {Math.floor(order.print_time / 60)}h {order.print_time % 60}min
                     </div>
                     <p className="text-sm text-gray-400">Temps d'impression</p>
@@ -561,7 +561,7 @@ const AdminOrderDetails = () => {
               <CardContent className="pt-6 pb-6">
                 <div className="text-center">
                   <DollarSign className="w-10 h-10 text-green-400 mx-auto mb-3" />
-                  <div className="text-3xl font-bold text-green-400 mb-1">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-400 mb-1">
                     {order.price.toFixed(2)} PLN
                   </div>
                   <p className="text-sm text-gray-400">Prix total</p>
@@ -609,7 +609,7 @@ const AdminOrderDetails = () => {
                   <div className="p-4 bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-700/50 md:col-span-2">
                     <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Code de suivi</p>
                     <div className="flex items-center justify-between gap-4">
-                      <p className="font-mono text-xl font-bold text-blue-400">{order.tracking_code}</p>
+                      <p className="font-mono text-base sm:text-lg md:text-xl font-bold text-blue-400">{order.tracking_code}</p>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -667,9 +667,9 @@ const AdminOrderDetails = () => {
 
         {/* Dialog pour créer une commande d'impression */}
         <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+          <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-[95vw] sm:max-w-xl md:max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl flex items-center gap-2">
+              <DialogTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-2">
                 <Package className="h-6 w-6 text-blue-400" />
                 Créer une commande d'impression
               </DialogTitle>
@@ -679,7 +679,7 @@ const AdminOrderDetails = () => {
             </DialogHeader>
             
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="material">Matériau</Label>
                   <Input
@@ -700,7 +700,7 @@ const AdminOrderDetails = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="layerHeight">Hauteur de couche (mm)</Label>
                   <Input
@@ -724,7 +724,7 @@ const AdminOrderDetails = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quantity">Quantité</Label>
                   <Input

@@ -195,7 +195,7 @@ const AdminOrders = () => {
     return (
       <div className="flex min-h-screen bg-gray-950">
         <AdminSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
         </main>
       </div>
@@ -206,12 +206,12 @@ const AdminOrders = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Orders Management</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Orders Management</h1>
               <p className="text-gray-400">Total Orders: {orders.length}</p>
             </div>
           </div>
@@ -253,14 +253,14 @@ const AdminOrders = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">
                         <div className="flex flex-col gap-1">
                           <span>Order</span>
                           <select
                             value={typeFilter}
                             onChange={e => setTypeFilter(e.target.value)}
                             onClick={e => e.stopPropagation()}
-                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-full sm:w-32"
                           >
                             <option value="all">All Types</option>
                             <option value="print">Print Jobs</option>
@@ -268,15 +268,16 @@ const AdminOrders = () => {
                           </select>
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Customer</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Type</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Customer</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">
                         <div className="flex flex-col gap-1">
                           <span>Status</span>
                           <select
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
                             onClick={e => e.stopPropagation()}
-                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-full sm:w-32"
                           >
                             <option value="all">All</option>
                             <option value="submitted">Submitted</option>
@@ -289,15 +290,15 @@ const AdminOrders = () => {
                           </select>
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Price</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">Price</th>
+                      <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-sm font-semibold text-gray-300">
                         <div className="flex flex-col gap-1">
                           <span>Date</span>
                           <select
                             value={timeFilter}
                             onChange={e => setTimeFilter(e.target.value)}
                             onClick={e => e.stopPropagation()}
-                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-32"
+                            className="text-xs font-normal bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-gray-500 w-full sm:w-32"
                           >
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
@@ -311,7 +312,7 @@ const AdminOrders = () => {
                   <tbody className="divide-y divide-gray-800">
                     {filteredOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={6} className="px-3 sm:px-4 md:px-6 py-8 text-center text-gray-500">
                           <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
                           <p>No orders found</p>
                         </td>
@@ -323,13 +324,24 @@ const AdminOrders = () => {
                           className="hover:bg-gray-800/50 transition-colors cursor-pointer"
                           onClick={() => fetchOrderDetails(order.id)}
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div>
                               <p className="font-medium text-white">{order.file_name}</p>
                               <p className="text-xs text-gray-500">{order.id.substring(0, 8)}</p>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                            {order.order_type === 'design' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300">
+                                🎨 Design
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
+                                📦 Print
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div>
                               <p className="text-white">{
                                 order.users
@@ -341,16 +353,16 @@ const AdminOrders = () => {
                               <p className="text-xs text-gray-500">{order.users?.email}</p>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${getStatusColor(order.status)}`}>
                               {getStatusIcon(order.status)}
                               <span className="capitalize text-sm">{order.status.replace('_', ' ')}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                             <p className="font-medium text-white">{formatPrice(order.price)}</p>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
+                          <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm text-gray-500">
                             {formatDate(order.created_at)}
                           </td>
                         </tr>
@@ -367,9 +379,9 @@ const AdminOrders = () => {
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800 text-white">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold">
               {selectedOrder?.order_type === 'design' ? '🎨 Design Assistance' : '📦 Print Job'} - Details
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -382,7 +394,7 @@ const AdminOrders = () => {
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             </div>
           ) : selectedOrder ? (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Parent Order Link */}
               {selectedOrder.parent_order_id && (
                 <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
@@ -443,7 +455,7 @@ const AdminOrders = () => {
                     {selectedOrder.reference_images && selectedOrder.reference_images.length > 0 && (
                       <div className="p-4 bg-gray-800/50 rounded-lg">
                         <p className="text-xs text-purple-300 uppercase tracking-wide mb-3">Reference Images</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {(selectedOrder.reference_images as string[]).map((img, idx) => (
                             <img 
                               key={idx}
@@ -497,7 +509,7 @@ const AdminOrders = () => {
               {/* Order Details Grid */}
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-gray-200">Print Parameters</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
                     <p className="text-sm text-gray-400">Material</p>
                     <p className="font-medium text-white mt-1">{selectedOrder.material || 'Not specified'}</p>
@@ -528,7 +540,7 @@ const AdminOrders = () => {
               {/* Technical Stats */}
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-gray-200">Technical Stats</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
                     <p className="text-sm text-gray-400">Material Weight</p>
                     <p className="font-medium text-white mt-1">{selectedOrder.material_weight || 'Not calculated'}</p>

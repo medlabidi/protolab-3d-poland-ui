@@ -743,7 +743,7 @@ const PrintJobs = () => {
 
               {/* Right Column - Order Details */}
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
                     <StatusBadge status={detailOrder.status as OrderStatus} />
@@ -772,7 +772,7 @@ const PrintJobs = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Quantity</p>
                     <p className="font-semibold">{detailOrder.quantity}</p>

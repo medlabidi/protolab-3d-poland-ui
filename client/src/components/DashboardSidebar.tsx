@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { useState, useEffect } from "react";
 import { stopTokenRefresh } from "@/utils/tokenRefresh";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 import { API_URL } from "@/config/api";
 
 export const DashboardSidebar = () => {
@@ -21,7 +22,7 @@ export const DashboardSidebar = () => {
 
   useEffect(() => {
     const fetchUnread = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = await getValidAccessToken();
       if (!token) return;
       try {
         const res = await fetch(`${API_URL}/conversations/unread-count`, {
@@ -104,7 +105,7 @@ export const DashboardSidebar = () => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40 relative
+        fixed lg:relative inset-y-0 left-0 z-40
         ${isCollapsed ? 'w-20' : 'w-64'} bg-gray-900 border-r border-gray-800 min-h-screen flex flex-col
         transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}

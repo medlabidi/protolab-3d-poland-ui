@@ -57,12 +57,12 @@ const AdminAnalytics = () => {
     <div className="flex min-h-screen bg-gray-950">
       <AdminSidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Analytics & Reports</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Analytics & Reports</h1>
               <p className="text-gray-400">Business performance and insights</p>
             </div>
             <div className="flex gap-2">
@@ -147,7 +147,7 @@ const AdminAnalytics = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-white">${current.avgOrderValue.toFixed(2)}</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">${current.avgOrderValue.toFixed(2)}</p>
                 <p className="text-gray-400 text-sm mt-2">Average per order</p>
               </CardContent>
             </Card>
@@ -160,7 +160,7 @@ const AdminAnalytics = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-white">{current.completionRate.toFixed(1)}%</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{current.completionRate.toFixed(1)}%</p>
                 <div className="mt-3 w-full bg-gray-800 rounded-full h-2">
                   <div
                     className="bg-green-500 h-2 rounded-full"
@@ -178,7 +178,7 @@ const AdminAnalytics = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xl font-bold text-white">{current.topMaterial}</p>
+                <p className="text-base sm:text-lg md:text-xl font-bold text-white">{current.topMaterial}</p>
                 <p className="text-gray-400 text-sm mt-2">Most ordered material</p>
               </CardContent>
             </Card>
@@ -246,9 +246,9 @@ const AdminAnalytics = () => {
 
           {/* Maintenance Analytics Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                   <Wrench className="w-6 h-6 text-blue-400" />
                   Analyse des Coûts de Maintenance
                 </h2>
@@ -257,13 +257,13 @@ const AdminAnalytics = () => {
             </div>
 
             {/* Maintenance Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-gradient-to-br from-orange-900/40 to-orange-800/20 border-orange-800">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-orange-300 text-sm mb-1">Coût Mensuel Total</p>
-                      <p className="text-3xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                         {maintenanceData.totalMonthly.toFixed(2)} PLN
                       </p>
                       <p className="text-orange-400 text-xs mt-1">
@@ -282,7 +282,7 @@ const AdminAnalytics = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-blue-300 text-sm mb-1">Projection Annuelle</p>
-                      <p className="text-3xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                         {maintenanceData.totalAnnual.toFixed(2)} PLN
                       </p>
                       <p className="text-blue-400 text-xs mt-1">
@@ -301,7 +301,7 @@ const AdminAnalytics = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-purple-300 text-sm mb-1">Moyenne/Imprimante</p>
-                      <p className="text-3xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                         {maintenanceData.avgPerPrinter.toFixed(2)} PLN
                       </p>
                       <p className="text-purple-400 text-xs mt-1">
@@ -320,7 +320,7 @@ const AdminAnalytics = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-red-300 text-sm mb-1">Maintenances En Retard</p>
-                      <p className="text-3xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                         {maintenanceData.overdueCount}
                       </p>
                       <p className="text-red-400 text-xs mt-1">
@@ -398,7 +398,7 @@ const AdminAnalytics = () => {
                     <div className="h-px bg-gray-800" />
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">Ratio:</span>
-                      <span className="text-xl font-bold text-white">
+                      <span className="text-base sm:text-lg md:text-xl font-bold text-white">
                         {((maintenanceData.totalMonthly / current.revenue) * 100).toFixed(2)}%
                       </span>
                     </div>
@@ -444,7 +444,7 @@ const AdminAnalytics = () => {
                     <div className="h-px bg-gray-800" />
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">Taux d'utilisation:</span>
-                      <span className="text-xl font-bold text-white">
+                      <span className="text-base sm:text-lg md:text-xl font-bold text-white">
                         {((maintenanceData.printers.filter(p => p.status === 'operational').length / maintenanceData.printers.length) * 100).toFixed(0)}%
                       </span>
                     </div>

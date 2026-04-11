@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { getValidAccessToken } from "@/utils/tokenRefresh";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -49,7 +50,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch notifications from backend
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
+    const token = await getValidAccessToken();
     if (!token) return;
 
     try {
@@ -110,17 +111,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
-    
+
     // Mark as read on backend
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      fetch(`${API_URL}/users/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }).catch(console.error);
-    }
+    getValidAccessToken().then(token => {
+      if (token) {
+        fetch(`${API_URL}/users/notifications/${id}/read`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }).catch(console.error);
+      }
+    });
   }, []);
 
   const markAllAsRead = useCallback(() => {
